@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36121.58 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlazorWebGame", "BlazorWebGame\BlazorWebGame.csproj", "{BDE3FF59-1823-4D7F-A8F5-DB7E6CD066F3}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{BDE3FF59-1823-4D7F-A8F5-DB7E6CD066F3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BDE3FF59-1823-4D7F-A8F5-DB7E6CD066F3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BDE3FF59-1823-4D7F-A8F5-DB7E6CD066F3}.Debug|x64.ActiveCfg = Debug|x64
+		{BDE3FF59-1823-4D7F-A8F5-DB7E6CD066F3}.Debug|x64.Build.0 = Debug|x64
+		{BDE3FF59-1823-4D7F-A8F5-DB7E6CD066F3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BDE3FF59-1823-4D7F-A8F5-DB7E6CD066F3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BDE3FF59-1823-4D7F-A8F5-DB7E6CD066F3}.Release|x64.ActiveCfg = Release|x64
+		{BDE3FF59-1823-4D7F-A8F5-DB7E6CD066F3}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {FE3FDF35-02B3-4C80-B9C2-356B3BBB7F8C}
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,49 @@
+﻿@page "/"
+@using BlazorWebGame.Utils
+
+<h3>欢迎来到放置小游戏！</h3>
+
+<p>资源数量: @coinCount</p>
+<button @onclick="AddCoin">手动增加资源</button>
+@inject IJSRuntime JS
+@code {
+    private GameStorage _storage;
+    private int coinCount = 0;
+    private System.Timers.Timer? timer;
+    private DateTime lastTick = DateTime.UtcNow;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _storage = new GameStorage(JS);
+        coinCount = await _storage.LoadCoinsAsync();
+
+        lastTick = DateTime.UtcNow;
+        timer = new System.Timers.Timer(1000);
+        timer.Elapsed += async (s, e) =>
+        {
+            var now = DateTime.UtcNow;
+            var secondsPassed = (now - lastTick).TotalSeconds;
+            lastTick = now;
+
+            int coinsToAdd = (int)Math.Floor(secondsPassed);
+            if (coinsToAdd > 0)
+            {
+                coinCount += coinsToAdd;
+                await InvokeAsync(StateHasChanged);
+                await InvokeAsync(() => _storage.SaveCoinsAsync(coinCount));
+            }
+        };
+        timer.Start();
+    }
+
+    async Task AddCoin()
+    {
+        coinCount += 10;
+        await _storage.SaveCoinsAsync(coinCount);
+    }
+
+    public void Dispose()
+    {
+        timer?.Dispose();
+    }
+}
