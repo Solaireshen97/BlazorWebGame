@@ -1,0 +1,120 @@
+@page "/battle"
+@using BlazorWebGame.Services
+@using BlazorWebGame.Models
+@inject GameStateService GameState
+@implements IDisposable
+
+<PageTitle>战斗</PageTitle>
+
+<div class="battle-page-layout">
+    <!-- 上：怪物选择区 -->
+    <div class="monster-selection-area">
+        @foreach (var monsterTemplate in GameState.AvailableMonsters)
+        {
+            <button class="monster-select-card @(IsCurrentEnemy(monsterTemplate) ? "active" : "")"
+                    @onclick="() => SelectEnemy(monsterTemplate)">
+                @monsterTemplate.Name
+            </button>
+        }
+    </div>
+
+    <!-- 中：战斗核心区 -->
+    <div class="battle-core-area">
+        @if (GameState.IsPlayerDead)
+        {
+            <div class="player-dead-card">
+                <h3>你已阵亡...</h3>
+                <p>复活倒计时: @GameState.RevivalTimeRemaining.ToString("F1") 秒</p>
+            </div>
+        }
+        else if (GameState.CurrentEnemy != null)
+        {
+            <div class="battle-container">
+                <!-- 玩家 -->
+                <div class="character-card player-card">
+                    <div class="character-image-placeholder">
+                        <span>玩家图像</span>
+                    </div>
+                    <h5>@GameState.Player.Name</h5>
+                    <div class="health-bar-container">
+                        <div class="health-bar player-health" style="width: @(GetPlayerHealthPercentage())%;"></div>
+                    </div>
+                    <p>@GameState.Player.Health / @GameState.Player.MaxHealth</p>
+                    <div class="attack-progress-container">
+                        <div class="attack-progress-bar" style="width: @(GameState.PlayerAttackProgress)%;"></div>
+                    </div>
+                </div>
+
+                <!-- 敌人 -->
+                <div class="character-card enemy-card">
+                    <div class="character-image-placeholder">
+                        <span>怪物图像</span>
+                    </div>
+                    <h5>@GameState.CurrentEnemy.Name</h5>
+                    <div class="health-bar-container">
+                        <div class="health-bar enemy-health" style="width: @(GetEnemyHealthPercentage())%;"></div>
+                    </div>
+                    <p>@GameState.CurrentEnemy.Health / @GameState.CurrentEnemy.MaxHealth</p>
+                    <div class="attack-progress-container">
+                        <div class="attack-progress-bar" style="width: @(GameState.EnemyAttackProgress)%;"></div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- 下：详细信息区 -->
+    <div class="details-area">
+        <div class="details-card">
+            <h5>玩家信息</h5>
+            <p>攻击力: @GameState.Player.GetTotalAttackPower()</p>
+            <p>攻击速度: @GameState.Player.AttacksPerSecond.ToString("F2") 次/秒</p>
+        </div>
+        @if (GameState.CurrentEnemy != null)
+        {
+            <div class="details-card">
+                <h5>@GameState.CurrentEnemy.Name 信息</h5>
+                <p>攻击力: @GameState.CurrentEnemy.AttackPower</p>
+                <p>攻击速度: @GameState.CurrentEnemy.AttacksPerSecond.ToString("F2") 次/秒</p>
+                <p>金币掉落: @GameState.CurrentEnemy.GoldDropMin - @GameState.CurrentEnemy.GoldDropMax</p>
+            </div>
+        }
+    </div>
+</div>
+
+
+@code {
+    protected override void OnInitialized()
+    {
+        GameState.OnStateChanged += StateHasChanged;
+    }
+
+    private void SelectEnemy(Enemy enemyTemplate)
+    {
+        GameState.SpawnNewEnemy(enemyTemplate);
+    }
+
+    private bool IsCurrentEnemy(Enemy enemyTemplate)
+    {
+        return GameState.CurrentEnemy?.Name == enemyTemplate.Name;
+    }
+
+    private double GetPlayerHealthPercentage()
+    {
+        if (GameState.Player.MaxHealth <= 0) return 0;
+        var health = Math.Max(0, GameState.Player.Health);
+        return (double)health / GameState.Player.MaxHealth * 100;
+    }
+
+    private double GetEnemyHealthPercentage()
+    {
+        if (GameState.CurrentEnemy == null || GameState.CurrentEnemy.MaxHealth <= 0) return 0;
+        var health = Math.Max(0, GameState.CurrentEnemy.Health);
+        return (double)health / GameState.CurrentEnemy.MaxHealth * 100;
+    }
+
+    public void Dispose()
+    {
+        GameState.OnStateChanged -= StateHasChanged;
+    }
+}

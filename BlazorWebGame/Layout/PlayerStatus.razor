@@ -1,0 +1,28 @@
+@using BlazorWebGame.Services
+@inject GameStateService GameState
+@implements IDisposable
+
+<div class="player-status-bar @(GameState.IsPlayerDead ? "player-dead" : "")">
+    @if (GameState.IsPlayerDead)
+    {
+        <span>状态: <strong>已阵亡</strong></span>
+    }
+    else
+    {
+        <span>金币: <strong>@GameState.Player.Gold</strong></span>
+        <span class="ms-4">生命值: <strong>@GameState.Player.Health / @GameState.Player.MaxHealth</strong></span>
+        <span class="ms-4">攻击力: <strong>@GameState.Player.GetTotalAttackPower()</strong></span>
+    }
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        GameState.OnStateChanged += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        GameState.OnStateChanged -= StateHasChanged;
+    }
+}

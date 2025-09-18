@@ -1,9 +1,27 @@
-﻿@inherits LayoutComponentBase
-<div class="page">
+﻿@using BlazorWebGame.Services
+@inherits LayoutComponentBase
+@inject GameStateService GameState
 
-    <main>
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
+<div class="page-container">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <div class="main-content-area">
+        <PlayerStatus />
+
+        <main class="content">
+            <article class="content-body px-4">
+                @Body
+            </article>
+        </main>
+    </div>
 </div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        // 初始化并启动游戏状态服务
+        await GameState.InitializeAsync();
+    }
+}

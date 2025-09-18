@@ -1,49 +1,42 @@
 ﻿@page "/"
-@using BlazorWebGame.Utils
+@using BlazorWebGame.Services
+@inject GameStateService GameState
+@implements IDisposable
 
-<h3>欢迎来到放置小游戏！</h3>
+<PageTitle>主页</PageTitle>
 
-<p>资源数量: @coinCount</p>
-<button @onclick="AddCoin">手动增加资源</button>
-@inject IJSRuntime JS
+<h1>你好, @GameState.Player.Name!</h1>
+
+<p class="mt-4">当前金币数量: <strong>@GameState.Player.Gold</strong></p>
+
+<button class="btn btn-primary" @onclick="ManualAddGold">
+    <span class="oi oi-plus" aria-hidden="true"></span> 手动获得 10 金币
+</button>
+
+<button class="btn btn-secondary" @onclick="SaveGame">
+    <span class="oi oi-save" aria-hidden="true"></span> 手动保存
+</button>
+
 @code {
-    private GameStorage _storage;
-    private int coinCount = 0;
-    private System.Timers.Timer? timer;
-    private DateTime lastTick = DateTime.UtcNow;
-
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        _storage = new GameStorage(JS);
-        coinCount = await _storage.LoadCoinsAsync();
-
-        lastTick = DateTime.UtcNow;
-        timer = new System.Timers.Timer(1000);
-        timer.Elapsed += async (s, e) =>
-        {
-            var now = DateTime.UtcNow;
-            var secondsPassed = (now - lastTick).TotalSeconds;
-            lastTick = now;
-
-            int coinsToAdd = (int)Math.Floor(secondsPassed);
-            if (coinsToAdd > 0)
-            {
-                coinCount += coinsToAdd;
-                await InvokeAsync(StateHasChanged);
-                await InvokeAsync(() => _storage.SaveCoinsAsync(coinCount));
-            }
-        };
-        timer.Start();
+        // 订阅状态变化事件，以便在金币变化时自动刷新UI
+        GameState.OnStateChanged += StateHasChanged;
     }
 
-    async Task AddCoin()
+    private void ManualAddGold()
     {
-        coinCount += 10;
-        await _storage.SaveCoinsAsync(coinCount);
+        //GameState.AddGold(10);
+    }
+
+    private async Task SaveGame()
+    {
+        await GameState.SaveStateAsync();
     }
 
     public void Dispose()
     {
-        timer?.Dispose();
+        // 组件销毁时，取消订阅，防止内存泄漏
+        GameState.OnStateChanged -= StateHasChanged;
     }
 }

@@ -1,0 +1,20 @@
+.player-status-bar {
+    background-color: #343a40; /* 深色背景 */
+    color: white;
+    padding: 0.5rem 1.5rem;
+    border-bottom: 2px solid #495057;
+    font-size: 1.1rem;
+    transition: background-color 0.5s;
+}
+
+.player-status-bar.player-dead {
+    background-color: #dc3545; /* 死亡时背景变红 */
+}
+
+.player-status-bar strong {
+    color: #ffc107; /* 金币颜色 */
+}
+
+.player-status-bar.player-dead strong {
+    color: #fff;
+}

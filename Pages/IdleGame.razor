@@ -1,0 +1,33 @@
+@page "/idle-game"
+@inject GameStateService GameState
+@implements IDisposable
+
+<h3>放置游戏</h3>
+
+<p>金币数量: @GameState.Gold</p>
+<button class="btn btn-primary" @onclick="ManualAddGold">手动获得 10 金币</button>
+<button class="btn btn-secondary" @onclick="SaveGame">手动保存</button>
+
+@code {
+    protected override void OnInitialized()
+    {
+        // 订阅状态变化事件，以便在金币变化时自动刷新UI
+        GameState.OnStateChanged += StateHasChanged;
+    }
+
+    private void ManualAddGold()
+    {
+        GameState.AddGold(10);
+    }
+
+    private async Task SaveGame()
+    {
+        await GameState.SaveStateAsync();
+    }
+
+    public void Dispose()
+    {
+        // 组件销毁时，取消订阅，防止内存泄漏
+        GameState.OnStateChanged -= StateHasChanged;
+    }
+}

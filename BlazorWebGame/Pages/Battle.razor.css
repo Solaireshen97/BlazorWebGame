@@ -1,0 +1,153 @@
+.battle-page-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem; /* 各区域之间的间距 */
+    /* 让布局占据整个可用垂直空间 */
+    height: 100%;
+    min-height: calc(100vh - 200px); /* 减去顶部和底部导航栏的大约高度，确保内容不会被截断 */
+}
+
+/* 上：怪物选择区 */
+.monster-selection-area {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.monster-select-card {
+    border: 1px solid #ccc;
+    background-color: #f8f9fa;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+    .monster-select-card:hover {
+        border-color: #007bff;
+        color: #007bff;
+    }
+
+    .monster-select-card.active {
+        background-color: #007bff;
+        color: white;
+        border-color: #007bff;
+    }
+
+/* 中：战斗核心区 */
+.battle-core-area {
+    /* 关键：让此区域占据所有剩余的垂直空间 */
+    flex-grow: 1;
+    /* 关键：使用flex将内容垂直居中 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.player-dead-card {
+    border: 1px solid #6c757d;
+    border-radius: 8px;
+    padding: 16px;
+    max-width: 300px;
+    text-align: center;
+    background-color: #343a40;
+    color: white;
+    margin: auto;
+}
+
+.battle-container {
+    display: flex;
+    justify-content: space-around;
+    gap: 2rem;
+    flex-wrap: wrap;
+    width: 100%; /* 确保容器宽度正确 */
+}
+
+.character-card {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 16px;
+    width: 300px;
+    text-align: center;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    background-color: white;
+}
+
+/* 新增：图像占位符样式 */
+.character-image-placeholder {
+    width: 120px;
+    height: 120px;
+    background-color: #e9ecef;
+    border: 2px dashed #ccc;
+    border-radius: 50%; /* 圆形占位符 */
+    margin: 0 auto 1rem auto; /* 水平居中并与下方内容隔开 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+.health-bar-container {
+    background-color: #e9ecef;
+    border-radius: 4px;
+    height: 20px;
+    margin: 10px 0;
+    overflow: hidden;
+    border: 1px solid #ddd;
+}
+
+.health-bar {
+    height: 100%;
+    transition: width 0.1s linear;
+}
+
+.player-health {
+    background-color: #28a745; /* 绿色 */
+}
+
+.enemy-health {
+    background-color: #dc3545; /* 红色 */
+}
+
+.attack-progress-container {
+    background-color: #e9ecef;
+    border-radius: 4px;
+    height: 10px;
+    margin-top: 10px;
+    overflow: hidden;
+    border: 1px solid #ddd;
+}
+
+.attack-progress-bar {
+    background-color: #ffc107; /* 黄色 */
+    height: 100%;
+    transition: width 0.1s linear;
+}
+
+/* 下：详细信息区 */
+.details-area {
+    display: flex;
+    justify-content: space-around;
+    gap: 2rem;
+    flex-wrap: wrap;
+    padding-top: 1rem;
+    border-top: 1px solid #dee2e6;
+}
+
+.details-card {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 1rem;
+    width: 300px;
+}
+
+    .details-card h5 {
+        margin-top: 0;
+        border-bottom: 1px solid #ccc;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1rem;
+    }

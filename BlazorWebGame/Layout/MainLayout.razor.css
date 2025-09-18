@@ -10,6 +10,11 @@ main {
 
 .sidebar {
     background-image: linear-gradient(180deg, rgb(5, 39, 103) 0%, #3a0647 70%);
+    width: 250px;
+    background-color: #f8f9fa; /* Ç³»ÒÉ«±³¾° */
+    padding: 1rem;
+    border-right: 1px solid #dee2e6; /* ÓÒ±ß¿ò */
+    flex-shrink: 0; /* ·ÀÖ¹²à±ßÀ¸±»Ñ¹Ëõ */
 }
 
 .top-row {
@@ -74,4 +79,25 @@ main {
         padding-left: 2rem !important;
         padding-right: 1.5rem !important;
     }
+}
+
+.page-container {
+    display: flex;
+    height: 100vh;
+}
+
+.main-content-area {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* ·ÀÖ¹Ë«ÖØ¹ö¶¯Ìõ */
+}
+
+.content {
+    flex-grow: 1;
+    overflow-y: auto; /* ÄÚÈİ³¬³öÊ±¿É¹ö¶¯ */
+}
+
+.content-body {
+    padding: 1.5rem;
 }
