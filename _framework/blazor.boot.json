@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "BlazorWebGame",
   "resources": {
-    "hash": "sha256-sNmr8bS5d0XjdEhId/vaDMdANduKXThu4CnYLFdoxyc=",
+    "hash": "sha256-4BR7rEWM+U/HNGNGCkN8O7hloLv7/nV85fdnJkMb2U4=",
     "jsModuleNative": {
       "dotnet.native.js": "sha256-D0bzod5lwwSzPR43JC8TTCcZKw+3jIHOk8CZFCRj5is="
     },
@@ -54,7 +54,7 @@
       "System.Threading.wasm": "sha256-l1N5mKqZevUN7pZgyKazOGsgCY/8IzY+BCQqre7Ty9c=",
       "System.wasm": "sha256-9DLmgOsnmEbjuZrRVFruRmVRvh/skjCDv6hQMjVZ3K8=",
       "System.Private.CoreLib.wasm": "sha256-Yc1Kz1PCD5i0ERUIywxxyo/G0qMQqJWv43LXefkzpwQ=",
-      "BlazorWebGame.wasm": "sha256-B+2SYHA7WZMZLhpoLUZYkTbTabe5QvuQu/oLyCK45pg="
+      "BlazorWebGame.wasm": "sha256-ucGtDjlCsKDxcsDWNCDjWw9ijeUNrQKImBhffo5826w="
     }
   },
   "cacheBootResources": true,
