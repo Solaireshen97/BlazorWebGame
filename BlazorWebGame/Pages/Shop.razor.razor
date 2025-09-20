@@ -1,0 +1,57 @@
+﻿.shop-container {
+    max-width: 800px;
+    margin: auto;
+}
+
+.gold-text {
+    color: #ffc107;
+    font-weight: bold;
+}
+
+.item-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.item-card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+}
+
+.item-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+    .item-card-header h5 {
+        margin: 0;
+        font-size: 1.2rem;
+    }
+
+.item-price {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #28a745;
+}
+
+.item-card-description {
+    flex-grow: 1;
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.item-card-footer {
+    text-align: right;
+}

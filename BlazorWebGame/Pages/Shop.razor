@@ -1,0 +1,62 @@
+﻿@page "/shop"
+@using BlazorWebGame.Models
+@using BlazorWebGame.Services
+@inject GameStateService GameState
+@implements IDisposable
+
+<PageTitle>商店</PageTitle>
+
+@if (GameState.Player != null)
+{
+    <div class="shop-container">
+        <h3>欢迎来到商店！</h3>
+        <p>你当前拥有: <strong class="gold-text">@GameState.Player.Gold G</strong></p>
+
+        <div class="item-list">
+            @foreach (var itemId in ShopData.ForSaleItemIds)
+            {
+                var item = ItemData.GetItemById(itemId);
+                if (item != null)
+                {
+                    <div class="item-card">
+                        <div class="item-card-header">
+                            <h5>@item.Name</h5>
+                            <span class="item-price">@item.Value G</span>
+                        </div>
+                        <p class="item-card-description">@item.Description</p>
+                        <div class="item-card-footer">
+                            <button class="btn btn-primary"
+                                    @onclick="() => BuyItem(item.Id)"
+                                    disabled="@(GameState.Player.Gold < item.Value)">
+                                购买
+                            </button>
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+}
+else
+{
+    <p>正在加载玩家数据...</p>
+}
+
+
+@code {
+    protected override void OnInitialized()
+    {
+        GameState.OnStateChanged += StateHasChanged;
+    }
+
+    private void BuyItem(string itemId)
+    {
+        GameState.BuyItem(itemId);
+        // 可以在这里添加购买成功或失败的提示
+    }
+
+    public void Dispose()
+    {
+        GameState.OnStateChanged -= StateHasChanged;
+    }
+}

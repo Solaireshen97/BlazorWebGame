@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -106,15 +106,15 @@ public class GameStateService : IAsyncDisposable
 
         var equippedSkillIds = Player.EquippedSkills[Player.SelectedBattleProfession];
 
-        // 1. ±éÀúËùÓĞ×°±¸µÄ¼¼ÄÜ
+        // 1. ×°Ä¼
         foreach (var skillId in equippedSkillIds)
         {
             var currentCooldown = Player.SkillCooldowns.GetValueOrDefault(skillId);
 
-            // 2. ¼ì²é¼¼ÄÜÊÇ·ñÀäÈ´Íê±Ï
+            // 2. é¼¼Ç·È´
             if (currentCooldown <= 0)
             {
-                // ÊÇ -> ´¥·¢¼¼ÄÜ²¢ÖØÖÃÀäÈ´
+                //  -> Ü²È´
                 var skill = SkillData.GetSkillById(skillId);
                 if (skill != null)
                 {
@@ -124,7 +124,7 @@ public class GameStateService : IAsyncDisposable
             }
             else
             {
-                // ·ñ -> ÀäÈ´Ê±¼ä¼õ1
+                //  -> È´Ê±1
                 Player.SkillCooldowns[skillId]--;
             }
         }
@@ -133,20 +133,20 @@ public class GameStateService : IAsyncDisposable
 
         if (CurrentEnemy.Health <= 0)
         {
-            // --- Õ½ÀûÆ·µôÂäÂß¼­ ---
+            // --- Õ½Æ·ß¼ ---
             Player.Gold += CurrentEnemy.GetGoldDropAmount();
 
-            // 1. ´¦ÀíÎïÆ·µôÂä
+            // 1. Æ·
             var random = new Random();
             foreach (var lootItem in CurrentEnemy.LootTable)
             {
-                if (random.NextDouble() <= lootItem.Value) // random.NextDouble() ·µ»Ø 0.0 µ½ 1.0 Ö®¼äµÄÊı
+                if (random.NextDouble() <= lootItem.Value) // random.NextDouble()  0.0  1.0 Ö®
                 {
                     AddItemToInventory(lootItem.Key, 1);
                 }
             }
 
-            // 2. ´¦Àí¾­ÑéÖµºÍÉı¼¶
+            // 2. Öµ
             var profession = Player.SelectedBattleProfession;
             var oldLevel = Player.GetLevel(profession);
             Player.AddBattleXP(profession, CurrentEnemy.XpReward);
@@ -165,12 +165,12 @@ public class GameStateService : IAsyncDisposable
     {
         if (Player == null || CurrentEnemy == null) return;
 
-        // 1. ±éÀú¹ÖÎïËùÓĞ¼¼ÄÜ
+        // 1. Ğ¼
         foreach (var skillId in CurrentEnemy.SkillIds)
         {
             var currentCooldown = CurrentEnemy.SkillCooldowns.GetValueOrDefault(skillId);
 
-            // 2. ¼ì²é¼¼ÄÜÊÇ·ñÀäÈ´Íê±Ï
+            // 2. é¼¼Ç·È´
             if (currentCooldown <= 0)
             {
                 var skill = SkillData.GetSkillById(skillId);
@@ -182,12 +182,12 @@ public class GameStateService : IAsyncDisposable
             }
             else
             {
-                // ·ñ -> ÀäÈ´Ê±¼ä¼õ1
+                //  -> È´Ê±1
                 CurrentEnemy.SkillCooldowns[skillId]--;
             }
         }
 
-        // 3. Ö´ĞĞ¹ÖÎïÆÕÍ¨¹¥»÷
+        // 3. Ö´Ğ¹Í¨
         Player.Health -= CurrentEnemy.AttackPower;
         if (Player.Health <= 0)
         {
@@ -233,7 +233,7 @@ public class GameStateService : IAsyncDisposable
             CheckForNewSkillUnlocks(profession, currentLevel, true);
         }
 
-        // ĞŞÕıµã£º½«¼¼ÄÜÀäÈ´ÖØÖÃÂß¼­ÌáÈ¡µ½µ¥¶ÀµÄ·½·¨ÖĞ
+        // ã£ºÈ´ß¼È¡Ä·
         ResetPlayerSkillCooldowns();
 
         NotifyStateChanged();
@@ -290,12 +290,12 @@ public class GameStateService : IAsyncDisposable
         }
         RevivalTimeRemaining = 0;
 
-        // ĞŞÕıµã£ºÍæ¼Ò¸´»îÊ±£¬µ÷ÓÃÍêÕûµÄ³õÊ¼»¯ºÍÀäÈ´ÖØÖÃÂß¼­
+        // ã£ºÒ¸Ê±Ä³Ê¼È´ß¼
         InitializePlayerState();
     }
 
     /// <summary>
-    /// ÏòÍæ¼Ò¿â´æÖĞÌí¼ÓÎïÆ· (ÒÑÖØ¹¹)
+    /// Ò¿Æ· (Ø¹)
     /// </summary>
     public void AddItemToInventory(string itemId, int quantity)
     {
@@ -303,19 +303,19 @@ public class GameStateService : IAsyncDisposable
         var itemToAdd = ItemData.GetItemById(itemId);
         if (itemToAdd == null) return;
 
-        // ¼ì²éÎïÆ·ÊÇ·ñÔÚ×Ô¶¯³öÊÛÁĞ±íÖĞ
+        // Æ·Ç·Ô¶Ğ±
         if (Player.AutoSellItemIds.Contains(itemId))
         {
             Player.Gold += itemToAdd.Value * quantity;
             NotifyStateChanged();
-            return; // Ö±½Ó³öÊÛ£¬²»Ìí¼Óµ½±³°ü
+            return; // Ö±Ó³Û£Óµ
         }
 
-        // 1. Èç¹ûÎïÆ·ÊÇ¿É¶ÑµşµÄ£¬³¢ÊÔ¶Ñµş
+        // 1. Æ·Ç¿É¶ÑµÄ£Ô¶Ñµ
         if (itemToAdd.IsStackable)
         {
-            // Ñ°ÕÒÒÑ´æÔÚµÄ¡¢Î´ÂúµÄ¶Ñµş
-            var existingSlot = Player.Inventory.FirstOrDefault(s => s.ItemId == itemId && s.Quantity < 99); // ¼ÙÉè×î´ó¶ÑµşÎª99
+            // Ñ°Ñ´ÚµÄ¡Î´Ä¶Ñµ
+            var existingSlot = Player.Inventory.FirstOrDefault(s => s.ItemId == itemId && s.Quantity < 99); // ÑµÎª99
             if (existingSlot != null)
             {
                 existingSlot.Quantity += quantity;
@@ -324,7 +324,7 @@ public class GameStateService : IAsyncDisposable
             }
         }
 
-        // 2. Èç¹ûÎŞ·¨¶Ñµş£¨»òÎïÆ·ÊÇ×°±¸£©£¬Ñ°ÕÒÒ»¸ö¿Õ¸ñ×Ó
+        // 2. Ş·ÑµÆ·×°Ñ°Ò»Õ¸
         var emptySlot = Player.Inventory.FirstOrDefault(s => s.IsEmpty);
         if (emptySlot != null)
         {
@@ -333,13 +333,13 @@ public class GameStateService : IAsyncDisposable
         }
         else
         {
-            // ±³°üÂúÁË£¡Î´À´¿ÉÒÔÔÚ´ËÌí¼ÓÌáÊ¾¡£
+            // Ë£Î´Ú´Ê¾
         }
         NotifyStateChanged();
     }
 
     /// <summary>
-    /// ´Ó¿â´æÖĞ´©´÷Ò»¼ş×°±¸ (ÒÑÖØ¹¹)
+    /// Ó¿Ğ´Ò»×° (Ø¹)
     /// </summary>
     public void EquipItem(string itemId)
     {
@@ -349,20 +349,20 @@ public class GameStateService : IAsyncDisposable
 
         if (ItemData.GetItemById(itemId) is not Equipment equipmentToEquip) return;
 
-        // ¼ì²éÄ¿±ê²ÛÎ»ÊÇ·ñÒÑÓĞ×°±¸£¬Èç¹ûÓĞ£¬ÔòÏÈĞ¶ÏÂ
+        // Ä¿Î»Ç·×°Ğ£Ğ¶
         if (Player.EquippedItems.TryGetValue(equipmentToEquip.Slot, out var currentItemId))
         {
             UnequipItem(equipmentToEquip.Slot);
         }
 
-        // ´Ó¿â´æ¸ñ×ÓÖĞÒÆ³ı
+        // Ó¿Æ³
         slotToEquipFrom.Quantity--;
         if (slotToEquipFrom.Quantity <= 0)
         {
             slotToEquipFrom.ItemId = null;
         }
 
-        // ´©ÉÏĞÂ×°±¸
+        // ×°
         Player.EquippedItems[equipmentToEquip.Slot] = itemId;
 
         Player.Health = Math.Min(Player.Health, Player.GetTotalMaxHealth());
@@ -370,17 +370,17 @@ public class GameStateService : IAsyncDisposable
     }
 
     /// <summary>
-    /// Ğ¶ÏÂÒ»¼ş×°±¸µ½¿â´æ (ÒÑÖØ¹¹)
+    /// Ğ¶Ò»×° (Ø¹)
     /// </summary>
     public void UnequipItem(EquipmentSlot slot)
     {
         if (Player == null) return;
         if (!Player.EquippedItems.TryGetValue(slot, out var itemIdToUnequip)) return;
 
-        // ´Ó×°±¸À¸ÒÆ³ı
+        // ×°Æ³
         Player.EquippedItems.Remove(slot);
 
-        // Ìí¼Ó»Ø¿â´æ
+        // Ó»Ø¿
         AddItemToInventory(itemIdToUnequip, 1);
 
         Player.Health = Math.Min(Player.Health, Player.GetTotalMaxHealth());
@@ -388,7 +388,7 @@ public class GameStateService : IAsyncDisposable
     }
 
     /// <summary>
-    /// ³öÊÛ±³°üÖĞµÄÎïÆ·
+    /// Û±ĞµÆ·
     /// </summary>
     public void SellItem(string itemId, int quantity = 1)
     {
@@ -414,7 +414,31 @@ public class GameStateService : IAsyncDisposable
     }
 
     /// <summary>
-    /// ÇĞ»»ÎïÆ·µÄ×Ô¶¯³öÊÛ×´Ì¬
+    /// ä»å•†åº—è´­ä¹°ç‰©å“
+    /// </summary>
+    public bool BuyItem(string itemId)
+    {
+        if (Player == null) return false;
+
+        var itemToBuy = ItemData.GetItemById(itemId);
+        if (itemToBuy == null) return false;
+
+        // ç‰©å“çš„ "Value" æ—¢æ˜¯å”®ä»·ä¹Ÿæ˜¯ä¹°ä»·
+        int price = itemToBuy.Value;
+
+        if (Player.Gold >= price)
+        {
+            Player.Gold -= price;
+            AddItemToInventory(itemId, 1);
+            NotifyStateChanged();
+            return true;
+        }
+
+        return false; // é‡‘å¸ä¸è¶³
+    }
+
+    /// <summary>
+    /// Ğ»Æ·Ô¶×´Ì¬
     /// </summary>
     public void ToggleAutoSellItem(string itemId)
     {
@@ -442,13 +466,13 @@ public class GameStateService : IAsyncDisposable
 
     public void SpawnNewEnemy(Enemy enemyTemplate)
     {
-        // 1. ´Ó¾²Ì¬Ä£°åÁĞ±íÖĞÕÒµ½ÕıÈ·µÄÔ­Ê¼Ä£°å
+        // 1. Ó¾Ì¬Ä£Ğ±ÒµÈ·Ô­Ê¼Ä£
         var originalTemplate = AvailableMonsters.FirstOrDefault(m => m.Name == enemyTemplate.Name) ?? enemyTemplate;
 
-        // 2. Ê¹ÓÃÎÒÃÇĞŞÕıºóµÄ Clone() ·½·¨´´½¨Ò»¸ö¸É¾»µÄÉî¿½±´ÊµÀı
+        // 2. Ê¹ Clone() Ò»É¾î¿½Êµ
         CurrentEnemy = originalTemplate.Clone();
 
-        // 3. ÖØÖÃĞÂ¹ÖÎïµÄ¼¼ÄÜÀäÈ´
+        // 3. Â¹Ä¼È´
         CurrentEnemy.SkillCooldowns.Clear();
         foreach (var skillId in CurrentEnemy.SkillIds)
         {
@@ -481,7 +505,7 @@ public class GameStateService : IAsyncDisposable
         if (currentSelectableSkills < MaxEquippedSkills)
         {
             equipped.Add(skillId);
-            // ×°±¸ĞÂ¼¼ÄÜÊ±£¬Ò²Ó¦ÉèÖÃÆä³õÊ¼ÀäÈ´
+            // ×°Â¼Ê±Ò²Ó¦Ê¼È´
             Player.SkillCooldowns[skillId] = skill.InitialCooldownRounds;
             NotifyStateChanged();
         }
@@ -503,7 +527,7 @@ public class GameStateService : IAsyncDisposable
     }
 
     /// <summary>
-    /// ĞÂÔö£ºÖØÖÃÍæ¼ÒËùÓĞÒÑ×°±¸¼¼ÄÜµÄÀäÈ´Ê±¼ä
+    /// ×°ÜµÈ´Ê±
     /// </summary>
     private void ResetPlayerSkillCooldowns()
     {
