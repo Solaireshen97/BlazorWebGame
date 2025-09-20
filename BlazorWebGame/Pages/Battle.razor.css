@@ -185,3 +185,24 @@
     font-size: 1rem;
     cursor: help;
 }
+
+.skill-icon-container {
+    position: relative;
+    cursor: help;
+}
+
+.cooldown-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: bold;
+    border-radius: 5px;
+}

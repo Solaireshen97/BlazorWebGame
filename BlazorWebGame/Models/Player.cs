@@ -26,9 +26,14 @@ namespace BlazorWebGame.Models
         public HashSet<string> LearnedSharedSkills { get; set; } = new();
 
         /// <summary>
-        /// 每个职业装备的技能ID列表。Key是职业，Value是装备的技能ID列表
+        /// 每个职业装备的技能ID列表
         /// </summary>
         public Dictionary<BattleProfession, List<string>> EquippedSkills { get; set; } = new();
+
+        /// <summary>
+        /// 追踪技能的当前冷却回合数。Key: SkillId, Value: 剩余回合
+        /// </summary>
+        public Dictionary<string, int> SkillCooldowns { get; set; } = new();
 
         public Player()
         {

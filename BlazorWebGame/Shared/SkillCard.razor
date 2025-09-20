@@ -12,9 +12,16 @@
             <span class="skill-badge equipped-badge">已装备</span>
         }
     </div>
+
     <p class="skill-description">@Skill.Description</p>
+
     <div class="skill-footer">
-        <small>@Skill.Type.ToString() - @Skill.RequiredProfession.ToChineseString() Lv.@Skill.RequiredLevel</small>
+        <!-- 修正点：处理 nullable 类型 -->
+        <small>
+            @Skill.Type.ToString() -
+            @(Skill.RequiredProfession.HasValue? Skill.RequiredProfession.Value.ToChineseString() : "怪物/通用")
+            Lv.@Skill.RequiredLevel
+        </small>
     </div>
 </div>
 

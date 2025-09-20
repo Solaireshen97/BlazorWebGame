@@ -1,38 +1,37 @@
-using System;
+using System.Collections.Generic;
 
 namespace BlazorWebGame.Models
 {
     public class Enemy
     {
-        public string Name { get; set; }
-        public int Health { get; set; }
-        public int MaxHealth { get; set; }
-        public int AttackPower { get; set; }
-        public double AttacksPerSecond { get; set; }
-        public int GoldDropMin { get; set; }
-        public int GoldDropMax { get; set; }
-        public int XpReward { get; set; }
+        public string Name { get; set; } = "未知生物";
+        public int Health { get; set; } = 50;
+        public int MaxHealth { get; set; } = 50;
+        public int AttackPower { get; set; } = 5;
+        public double AttacksPerSecond { get; set; } = 0.8;
+        public int XpReward { get; set; } = 10;
+        public int MinGold { get; set; } = 1;
+        public int MaxGold { get; set; } = 5;
 
-        public Enemy(string name, int maxHealth, int attackPower, double attacksPerSecond, int goldDropMin, int goldDropMax, int xpReward)
-        {
-            Name = name;
-            MaxHealth = maxHealth;
-            Health = maxHealth;
-            AttackPower = attackPower;
-            AttacksPerSecond = attacksPerSecond;
-            GoldDropMin = goldDropMin;
-            GoldDropMax = goldDropMax;
-            XpReward = xpReward;
-        }
+        public List<string> SkillIds { get; set; } = new();
 
-        public Enemy Clone()
-        {
-            return new Enemy(Name, MaxHealth, AttackPower, AttacksPerSecond, GoldDropMin, GoldDropMax, XpReward);
-        }
+        public Dictionary<string, int> SkillCooldowns { get; set; } = new();
 
         public int GetGoldDropAmount()
         {
-            return new Random().Next(GoldDropMin, GoldDropMax + 1);
+            return new System.Random().Next(MinGold, MaxGold + 1);
+        }
+
+        /// <summary>
+        /// 执行深拷贝，确保引用类型被正确复制
+        /// </summary>
+        public Enemy Clone()
+        {
+            var clone = (Enemy)this.MemberwiseClone();
+            // 为引用类型创建新的实例
+            clone.SkillIds = new List<string>(this.SkillIds);
+            clone.SkillCooldowns = new Dictionary<string, int>(this.SkillCooldowns);
+            return clone;
         }
     }
 }

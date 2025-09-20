@@ -1,7 +1,14 @@
+/* --- 上半部分：职业选择 --- */
+.profession-selection-area {
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid #dee2e6;
+}
+
 .profession-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
 }
 
 .profession-card {
@@ -13,29 +20,26 @@
     background-color: #f8f9fa;
 }
 
-.profession-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
+    .profession-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
 
-.profession-card.selected {
-    border-color: #007bff;
-    background-color: #e7f1ff;
-    border-width: 2px;
-}
+    .profession-card.selected {
+        border-color: #007bff;
+        background-color: #e7f1ff;
+        border-width: 2px;
+    }
 
 .profession-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #dee2e6;
-    padding-bottom: 0.5rem;
-    margin-bottom: 1rem;
 }
 
-.profession-header h4 {
-    margin: 0;
-}
+    .profession-header h4 {
+        margin: 0;
+    }
 
 .selected-badge {
     background-color: #007bff;
@@ -47,26 +51,182 @@
 }
 
 .profession-body p {
-    margin: 0.5rem 0;
+    margin: 0.5rem 0 0 0;
+    font-size: 0.9rem;
 }
 
-.xp-bar-container {
-    background-color: #e9ecef;
-    border-radius: 4px;
-    height: 10px;
-    overflow: hidden;
+
+/* --- 下半部分：技能配置 --- */
+.skill-management-area h3 {
+    margin-bottom: 1.5rem;
+}
+
+.skill-layout-grid {
+    display: grid;
+    grid-template-columns: 250px 1fr 350px; /* 左-中-右 */
+    gap: 1.5rem;
+    min-height: 400px;
+}
+
+/* 左栏：已装备 */
+.equipped-skills-column h4, .skill-tree-column h4, .skill-detail-column h4 {
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #eee;
+}
+
+.equipped-list-compact {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.equipped-skill-item {
+    padding: 0.75rem 1rem;
+    border-radius: 5px;
+    font-weight: bold;
+    color: white;
+    cursor: pointer;
+    text-align: center;
+    border: 1px solid transparent;
+}
+
+    .equipped-skill-item.profession {
+        background-color: #007bff;
+        border-color: #0056b3;
+    }
+
+    .equipped-skill-item.shared {
+        background-color: #6f42c1;
+        border-color: #5a379c;
+    }
+
+    .equipped-skill-item.fixed {
+        background-color: #6c757d;
+        border-color: #5a6268;
+        cursor: default;
+    }
+
+    .equipped-skill-item.empty-slot {
+        background-color: #f8f9fa;
+        border: 1px dashed #ccc;
+        color: #aaa;
+        cursor: default;
+    }
+
+
+/* 中栏：技能池 */
+.skill-tree-column {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.skill-list-full {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.skill-list-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.6rem 1rem;
+    border-radius: 5px;
+    background-color: white;
     border: 1px solid #ddd;
+    cursor: pointer;
+    transition: background-color 0.2s;
 }
 
-.xp-bar {
-    background-color: #28a745;
+    .skill-list-item:hover {
+        background-color: #eef;
+    }
+
+    .skill-list-item.active {
+        background-color: #dbeaff;
+        border-color: #007bff;
+    }
+
+    .skill-list-item .skill-name {
+        font-weight: 500;
+    }
+
+    .skill-list-item .skill-level-req {
+        font-size: 0.85rem;
+        color: #666;
+    }
+
+    .skill-list-item.locked {
+        color: #aaa;
+        background-color: #f9f9f9;
+        cursor: not-allowed;
+    }
+
+        .skill-list-item.locked:hover {
+            background-color: #f9f9f9;
+        }
+
+
+/* 右栏：技能详情 */
+.detail-card, .detail-card-placeholder {
+    padding: 1.5rem;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    background-color: #fff;
     height: 100%;
-    transition: width 0.2s;
 }
 
-.xp-text {
+.detail-card-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #888;
+}
+
+.detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+    .detail-header h5 {
+        margin: 0;
+    }
+
+.skill-type-badge {
     font-size: 0.8rem;
-    color: #6c757d;
-    text-align: right;
-    display: block;
+    padding: 0.2rem 0.5rem;
+    border-radius: 10px;
+    color: white;
+}
+
+    .skill-type-badge.profession {
+        background-color: #007bff;
+    }
+
+    .skill-type-badge.shared {
+        background-color: #6f42c1;
+    }
+
+    .skill-type-badge.fixed {
+        background-color: #6c757d;
+    }
+
+.detail-description {
+    margin: 1rem 0;
+    font-size: 0.95rem;
+}
+
+.detail-footer p {
+    font-size: 0.9rem;
+    margin: 0.25rem 0;
+}
+
+.detail-card button {
+    width: 100%;
+    margin-top: 1rem;
+    padding: 0.5rem;
+    font-weight: bold;
 }

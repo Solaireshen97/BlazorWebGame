@@ -4,48 +4,192 @@
 @inject GameStateService GameState
 @implements IDisposable
 
-<PageTitle>职业管理</PageTitle>
+<PageTitle>职业与技能</PageTitle>
 
-<h3>战斗职业</h3>
-<p>在这里选择你当前要使用的战斗职业。选中的职业将在战斗中获得经验值。</p>
+@if (GameState.Player != null)
+{
+    <!-- 上半部分：职业选择 -->
+    <div class="profession-selection-area">
+        <h3>选择职业</h3>
+        <div class="profession-grid">
+            @foreach (var prof in GameState.Player.BattleProfessionXP.OrderBy(p => p.Key.ToString()))
+            {
+                var profession = prof.Key;
+                var currentXP = prof.Value;
+                var currentLevel = GameState.Player.GetLevel(currentXP);
 
-<div class="profession-grid">
-    @foreach (var prof in GameState.Player.BattleProfessionXP.OrderBy(p => p.Key.ToString()))
-    {
-        var profession = prof.Key;
-        var currentXP = prof.Value;
-        var currentLevel = GameState.Player.GetLevel(currentXP);
-        var xpForNextLevel = (currentLevel) * 100;
-        var xpInCurrentLevel = currentXP - ((currentLevel - 1) * 100);
-        var progressPercentage = xpForNextLevel > 0 ? (double)xpInCurrentLevel / 100 * 100 : 0;
+                <div class="profession-card @(GameState.Player.SelectedBattleProfession == profession ? "selected" : "")"
+                     @onclick="() => SelectProfession(profession)">
+                    <div class="profession-header">
+                        <h4>@profession.ToChineseString()</h4>
+                        @if (GameState.Player.SelectedBattleProfession == profession)
+                        {
+                            <span class="selected-badge">已选择</span>
+                        }
+                    </div>
+                    <div class="profession-body">
+                        <p>等级: <strong>@currentLevel</strong> (XP: @currentXP)</p>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
 
-        <div class="profession-card @(GameState.Player.SelectedBattleProfession == profession ? "selected" : "")"
-             @onclick="() => GameState.SetBattleProfession(profession)">
+    <!-- 下半部分：技能配置 -->
+    <div class="skill-management-area">
+        <h3>技能配置 - @GameState.Player.SelectedBattleProfession.ToChineseString()</h3>
+        <div class="skill-layout-grid">
 
-            <div class="profession-header">
-                <h4>@profession.ToChineseString()</h4>
-                @if (GameState.Player.SelectedBattleProfession == profession)
+            <!-- 左栏：已装备技能 -->
+            <div class="equipped-skills-column">
+                <h4>已装备</h4>
+                <div class="equipped-list-compact">
+                    @foreach (var skill in GetEquippedSkills())
+                    {
+                        <div class="equipped-skill-item @(skill.Type.ToString().ToLower())" @onclick="() => SelectSkillForDetailView(skill)">
+                            @skill.Name
+                        </div>
+                    }
+                    @for (int i = GetEquippedSkills().Count(s => s.Type != SkillType.Fixed); i < GameStateService.MaxEquippedSkills; i++)
+                    {
+                        <div class="equipped-skill-item empty-slot">空栏位</div>
+                    }
+                </div>
+            </div>
+
+            <!-- 中栏：技能树/池 -->
+            <div class="skill-tree-column">
+                <h4>技能池</h4>
+                <div class="skill-list-full">
+                    @foreach (var skill in GetPlayerLearnableSkills())
+                    {
+                        var isUnlocked = IsSkillUnlocked(skill);
+                        <div class="skill-list-item @(isUnlocked ? "" : "locked") @(_selectedSkillForDetailView?.Id == skill.Id ? "active" : "")"
+                             @onclick="() => SelectSkillForDetailView(skill)">
+                            <span class="skill-name">@skill.Name</span>
+                            <span class="skill-level-req">Lv.@skill.RequiredLevel</span>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- 右栏：技能详情 -->
+            <div class="skill-detail-column">
+                <h4>技能详情</h4>
+                @if (_selectedSkillForDetailView != null)
                 {
-                    <span class="selected-badge">已选择</span>
+                    <div class="detail-card">
+                        <div class="detail-header">
+                            <h5>@_selectedSkillForDetailView.Name</h5>
+                            <span class="skill-type-badge @(_selectedSkillForDetailView.Type.ToString().ToLower())">@_selectedSkillForDetailView.Type.ToString()</span>
+                        </div>
+                        <p class="detail-description">@_selectedSkillForDetailView.Description</p>
+                        <hr />
+                        <div class="detail-footer">
+                            <!-- 修正点 1：处理 nullable 类型 -->
+                            <p><strong>职业:</strong> @(_selectedSkillForDetailView.RequiredProfession.HasValue? _selectedSkillForDetailView.RequiredProfession.Value.ToChineseString() : "怪物/通用")</p>
+                            <p><strong>等级要求:</strong> @_selectedSkillForDetailView.RequiredLevel</p>
+                            <p><strong>初始冷却:</strong> @_selectedSkillForDetailView.InitialCooldownRounds 回合</p>
+                            <p><strong>冷却时间:</strong> @_selectedSkillForDetailView.CooldownRounds 回合</p>
+                        </div>
+
+                        @if (IsSkillUnlocked(_selectedSkillForDetailView) && _selectedSkillForDetailView.Type != SkillType.Fixed)
+                        {
+                            if (IsSkillEquipped(_selectedSkillForDetailView.Id))
+                            {
+                                <button class="btn btn-danger" @onclick="() => GameState.UnequipSkill(_selectedSkillForDetailView.Id)">卸下技能</button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-success" @onclick="() => GameState.EquipSkill(_selectedSkillForDetailView.Id)">装备技能</button>
+                            }
+                        }
+                        else if (_selectedSkillForDetailView.Type == SkillType.Fixed)
+                        {
+                            <button class="btn btn-secondary" disabled>固定技能</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-secondary" disabled>等级不足</button>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="detail-card-placeholder">
+                        <p>从中间的技能池选择一个技能以查看详情。</p>
+                    </div>
                 }
             </div>
-
-            <div class="profession-body">
-                <p>等级: <strong>@currentLevel</strong></p>
-                <p>经验: @currentXP</p>
-                <div class="xp-bar-container">
-                    <div class="xp-bar" style="width: @(progressPercentage)%;"></div>
-                </div>
-                <small class="xp-text">@xpInCurrentLevel / 100</small>
-            </div>
         </div>
-    }
-</div>
+    </div>
+}
 
 @code {
+    private Skill? _selectedSkillForDetailView;
+
     protected override void OnInitialized()
     {
         GameState.OnStateChanged += StateHasChanged;
+    }
+
+    private void SelectProfession(BattleProfession profession)
+    {
+        GameState.SetBattleProfession(profession);
+        _selectedSkillForDetailView = null;
+    }
+
+    private void SelectSkillForDetailView(Skill skill)
+    {
+        _selectedSkillForDetailView = skill;
+    }
+
+    private List<Skill> GetEquippedSkills()
+    {
+        if (GameState.Player == null) return new List<Skill>();
+        var profession = GameState.Player.SelectedBattleProfession;
+        if (!GameState.Player.EquippedSkills.ContainsKey(profession)) return new List<Skill>();
+
+        return GameState.Player.EquippedSkills[profession]
+            .Select(id => SkillData.GetSkillById(id))
+            .Where(s => s != null)
+            .OrderBy(s => s.Type)
+            .ToList()!;
+    }
+
+    // 修正点 2：方法重命名并确保只获取玩家可学技能
+    private List<Skill> GetPlayerLearnableSkills()
+    {
+        if (GameState.Player == null) return new List<Skill>();
+        var profession = GameState.Player.SelectedBattleProfession;
+        return SkillData.AllSkills
+            // 确保只选择有职业要求的技能
+            .Where(s => s.RequiredProfession.HasValue && (s.RequiredProfession.Value == profession || s.Type == SkillType.Shared))
+            .OrderBy(s => s.RequiredLevel)
+            .ThenBy(s => s.Name)
+            .ToList();
+    }
+
+    // 修正点 3：修复 IsSkillUnlocked 逻辑
+    private bool IsSkillUnlocked(Skill skill)
+    {
+        if (GameState.Player == null || !skill.RequiredProfession.HasValue)
+        {
+            // 如果技能没有职业要求（是怪物技能），则玩家永远无法解锁
+            return false;
+        }
+
+        var profession = skill.RequiredProfession.Value;
+        var requiredLevel = skill.RequiredLevel;
+        var playerLevel = GameState.Player.GetLevel(profession);
+        return playerLevel >= requiredLevel;
+    }
+
+    private bool IsSkillEquipped(string skillId)
+    {
+        if (GameState.Player == null) return false;
+        var profession = GameState.Player.SelectedBattleProfession;
+        return GameState.Player.EquippedSkills[profession].Contains(skillId);
     }
 
     public void Dispose()

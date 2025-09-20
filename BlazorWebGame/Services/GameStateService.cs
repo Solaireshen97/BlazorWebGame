@@ -44,7 +44,6 @@ public class GameStateService : IAsyncDisposable
             Player = loadedPlayer;
         }
 
-        // 游戏启动时，为玩家初始化/检查所有技能
         InitializePlayerState();
 
         if (CurrentEnemy == null && AvailableMonsters.Any())
@@ -105,8 +104,35 @@ public class GameStateService : IAsyncDisposable
     {
         if (Player == null || CurrentEnemy == null) return;
 
+        var equippedSkillIds = Player.EquippedSkills[Player.SelectedBattleProfession];
+
+        // 1. 遍历所有装备的技能
+        foreach (var skillId in equippedSkillIds)
+        {
+            var currentCooldown = Player.SkillCooldowns.GetValueOrDefault(skillId);
+
+            // 2. 检查技能是否冷却完毕
+            if (currentCooldown <= 0)
+            {
+                // 是 -> 触发技能并重置冷却
+                var skill = SkillData.GetSkillById(skillId);
+                if (skill != null)
+                {
+                    ApplySkillEffect(skill, isPlayerSkill: true);
+                    Player.SkillCooldowns[skillId] = skill.CooldownRounds;
+                }
+            }
+            else
+            {
+                // 否 -> 冷却时间减1
+                Player.SkillCooldowns[skillId]--;
+            }
+        }
+
+        // 3. 执行玩家的普通攻击
         CurrentEnemy.Health -= Player.GetTotalAttackPower();
 
+        // 4. 检查敌人是否死亡
         if (CurrentEnemy.Health <= 0)
         {
             Player.Gold += CurrentEnemy.GetGoldDropAmount();
@@ -118,7 +144,6 @@ public class GameStateService : IAsyncDisposable
 
             if (newLevel > oldLevel)
             {
-                // 升级时，只检查新等级的技能即可
                 CheckForNewSkillUnlocks(profession, newLevel);
             }
 
@@ -129,6 +154,30 @@ public class GameStateService : IAsyncDisposable
     private void EnemyAttackPlayer()
     {
         if (Player == null || CurrentEnemy == null) return;
+
+        // 1. 遍历怪物所有技能
+        foreach (var skillId in CurrentEnemy.SkillIds)
+        {
+            var currentCooldown = CurrentEnemy.SkillCooldowns.GetValueOrDefault(skillId);
+
+            // 2. 检查技能是否冷却完毕
+            if (currentCooldown <= 0)
+            {
+                var skill = SkillData.GetSkillById(skillId);
+                if (skill != null)
+                {
+                    ApplySkillEffect(skill, isPlayerSkill: false);
+                    CurrentEnemy.SkillCooldowns[skillId] = skill.CooldownRounds;
+                }
+            }
+            else
+            {
+                // 否 -> 冷却时间减1
+                CurrentEnemy.SkillCooldowns[skillId]--;
+            }
+        }
+
+        // 3. 执行怪物普通攻击
         Player.Health -= CurrentEnemy.AttackPower;
         if (Player.Health <= 0)
         {
@@ -136,42 +185,62 @@ public class GameStateService : IAsyncDisposable
         }
     }
 
-    /// <summary>
-    /// 初始化或验证玩家状态，确保拥有所有应得的技能。
-    /// 在游戏加载或玩家复活后调用。
-    /// </summary>
+    private void ApplySkillEffect(Skill skill, bool isPlayerSkill)
+    {
+        if (Player == null || CurrentEnemy == null) return;
+
+        var caster = isPlayerSkill ? (object)Player : CurrentEnemy;
+        var target = isPlayerSkill ? (object)CurrentEnemy : Player;
+
+        switch (skill.EffectType)
+        {
+            case SkillEffectType.DirectDamage:
+                if (target is Player p) p.Health -= (int)skill.EffectValue;
+                if (target is Enemy e) e.Health -= (int)skill.EffectValue;
+                break;
+            case SkillEffectType.Heal:
+                if (caster is Player pCaster)
+                {
+                    var healAmount = skill.EffectValue < 1.0 ? (int)(pCaster.MaxHealth * skill.EffectValue) : (int)skill.EffectValue;
+                    pCaster.Health = Math.Min(pCaster.MaxHealth, pCaster.Health + healAmount);
+                }
+                if (caster is Enemy eCaster)
+                {
+                    var healAmount = skill.EffectValue < 1.0 ? (int)(eCaster.MaxHealth * skill.EffectValue) : (int)skill.EffectValue;
+                    eCaster.Health = Math.Min(eCaster.MaxHealth, eCaster.Health + healAmount);
+                }
+                break;
+        }
+    }
+
     private void InitializePlayerState()
     {
         if (Player == null) return;
 
-        // 遍历所有战斗职业
         foreach (var profession in (BattleProfession[])Enum.GetValues(typeof(BattleProfession)))
         {
             var currentLevel = Player.GetLevel(profession);
-            // 检查并补发该职业在当前等级下应该拥有的所有技能
             CheckForNewSkillUnlocks(profession, currentLevel, true);
         }
+
+        // 修正点：将技能冷却重置逻辑提取到单独的方法中
+        ResetPlayerSkillCooldowns();
+
         NotifyStateChanged();
     }
 
-    /// <summary>
-    /// 检查并解锁技能
-    /// </summary>
-    /// <param name="profession">要检查的职业</param>
-    /// <param name="level">要检查的等级</param>
-    /// <param name="checkAllLevels">如果为true，则检查所有低于等于该等级的技能（用于初始化）；否则只检查该等级的技能（用于升级）</param>
     private void CheckForNewSkillUnlocks(BattleProfession profession, int level, bool checkAllLevels = false)
     {
+        if (Player == null) return;
+
         var skillsToLearnQuery = SkillData.AllSkills.Where(s => s.RequiredProfession == profession);
 
         if (checkAllLevels)
         {
-            // 初始化时：检查所有 <= level 的技能
             skillsToLearnQuery = skillsToLearnQuery.Where(s => s.RequiredLevel <= level);
         }
         else
         {
-            // 升级时：只检查 == level 的技能
             skillsToLearnQuery = skillsToLearnQuery.Where(s => s.RequiredLevel == level);
         }
 
@@ -196,6 +265,7 @@ public class GameStateService : IAsyncDisposable
 
     private void HandlePlayerDeath()
     {
+        if (Player == null) return;
         IsPlayerDead = true;
         Player.Health = 0;
         RevivalTimeRemaining = RevivalDuration;
@@ -210,7 +280,7 @@ public class GameStateService : IAsyncDisposable
         }
         RevivalTimeRemaining = 0;
 
-        // 玩家复活后，也检查一下技能状态，以防万一
+        // 修正点：玩家复活时，调用完整的初始化和冷却重置逻辑
         InitializePlayerState();
     }
 
@@ -225,8 +295,23 @@ public class GameStateService : IAsyncDisposable
 
     public void SpawnNewEnemy(Enemy enemyTemplate)
     {
+        // 1. 从静态模板列表中找到正确的原始模板
         var originalTemplate = AvailableMonsters.FirstOrDefault(m => m.Name == enemyTemplate.Name) ?? enemyTemplate;
+
+        // 2. 使用我们修正后的 Clone() 方法创建一个干净的深拷贝实例
         CurrentEnemy = originalTemplate.Clone();
+
+        // 3. 重置新怪物的技能冷却
+        CurrentEnemy.SkillCooldowns.Clear();
+        foreach (var skillId in CurrentEnemy.SkillIds)
+        {
+            var skill = SkillData.GetSkillById(skillId);
+            if (skill != null)
+            {
+                CurrentEnemy.SkillCooldowns[skillId] = skill.InitialCooldownRounds;
+            }
+        }
+
         if (CurrentEnemy != null)
         {
             _enemyAttackCooldown = 1.0 / CurrentEnemy.AttacksPerSecond;
@@ -234,9 +319,6 @@ public class GameStateService : IAsyncDisposable
         NotifyStateChanged();
     }
 
-    /// <summary>
-    /// 玩家装备一个技能
-    /// </summary>
     public void EquipSkill(string skillId)
     {
         if (Player == null) return;
@@ -244,8 +326,7 @@ public class GameStateService : IAsyncDisposable
         var equipped = Player.EquippedSkills[profession];
         var skill = SkillData.GetSkillById(skillId);
 
-        if (skill == null || skill.Type == SkillType.Fixed) return; // 不能装备不存在或固定技能
-
+        if (skill == null || skill.Type == SkillType.Fixed) return;
         if (equipped.Contains(skillId)) return;
 
         var currentSelectableSkills = equipped.Count(id => SkillData.GetSkillById(id)?.Type != SkillType.Fixed);
@@ -253,24 +334,42 @@ public class GameStateService : IAsyncDisposable
         if (currentSelectableSkills < MaxEquippedSkills)
         {
             equipped.Add(skillId);
+            // 装备新技能时，也应设置其初始冷却
+            Player.SkillCooldowns[skillId] = skill.InitialCooldownRounds;
             NotifyStateChanged();
         }
     }
 
-    /// <summary>
-    /// 玩家卸下一个技能
-    /// </summary>
     public void UnequipSkill(string skillId)
     {
         if (Player == null) return;
         var profession = Player.SelectedBattleProfession;
         var skill = SkillData.GetSkillById(skillId);
 
-        if (skill == null || skill.Type == SkillType.Fixed) return; // 不能卸下固定技能
+        if (skill == null || skill.Type == SkillType.Fixed) return;
 
         if (Player.EquippedSkills[profession].Remove(skillId))
         {
+            Player.SkillCooldowns.Remove(skillId);
             NotifyStateChanged();
+        }
+    }
+
+    /// <summary>
+    /// 新增：重置玩家所有已装备技能的冷却时间
+    /// </summary>
+    private void ResetPlayerSkillCooldowns()
+    {
+        if (Player == null) return;
+
+        Player.SkillCooldowns.Clear();
+        foreach (var skillId in Player.EquippedSkills.Values.SelectMany(s => s))
+        {
+            var skill = SkillData.GetSkillById(skillId);
+            if (skill != null)
+            {
+                Player.SkillCooldowns[skillId] = skill.InitialCooldownRounds;
+            }
         }
     }
 

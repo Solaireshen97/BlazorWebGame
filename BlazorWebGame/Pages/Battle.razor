@@ -59,8 +59,17 @@
                                 var skill = SkillData.GetSkillById(skillId);
                                 if (skill != null)
                                 {
-                                    <div class="skill-icon" title="@skill.Name: @skill.Description">
-                                        @skill.Name.Substring(0, 1)
+                                    var cooldown = GameState.Player.SkillCooldowns.GetValueOrDefault(skillId, 0);
+                                    <div class="skill-icon-container" title="@skill.Name: @skill.Description">
+                                        <div class="skill-icon">
+                                            @skill.Name.Substring(0, 1)
+                                        </div>
+                                        @if (cooldown > 0)
+                                        {
+                                            <div class="cooldown-overlay">
+                                                <span>@cooldown</span>
+                                            </div>
+                                        }
                                     </div>
                                 }
                             }
@@ -69,14 +78,37 @@
 
                     <!-- 敌人卡片 -->
                     <div class="character-card enemy-card">
-                        <div class="character-image-placeholder"><span>怪物头像</span></div>
-                        <h5>@GameState.CurrentEnemy.Name</h5>
+                        <h4>@GameState.CurrentEnemy.Name</h4>
+                        <div class="character-image-placeholder">敌人形象</div>
                         <div class="health-bar-container">
-                            <div class="health-bar enemy-health" style="width: @(GetEnemyHealthPercentage())%;"></div>
+                            <div class="health-bar enemy-health" style="width: @(100.0 * GameState.CurrentEnemy.Health / GameState.CurrentEnemy.MaxHealth)%;"></div>
                         </div>
-                        <p>@GameState.CurrentEnemy.Health / @GameState.CurrentEnemy.MaxHealth</p>
+                        <p>生命: @GameState.CurrentEnemy.Health / @GameState.CurrentEnemy.MaxHealth</p>
                         <div class="attack-progress-container">
                             <div class="attack-progress-bar" style="width: @(GameState.EnemyAttackProgress)%;"></div>
+                        </div>
+
+                        <!-- 新增：敌人技能显示 -->
+                        <div class="equipped-skills-display">
+                            @foreach (var skillId in GameState.CurrentEnemy.SkillIds)
+                            {
+                                var skill = SkillData.GetSkillById(skillId);
+                                if (skill != null)
+                                {
+                                    var cooldown = GameState.CurrentEnemy.SkillCooldowns.GetValueOrDefault(skillId, 0);
+                                    <div class="skill-icon-container" title="@skill.Name: @skill.Description">
+                                        <div class="skill-icon">
+                                            @skill.Name.Substring(0, 1)
+                                        </div>
+                                        @if (cooldown > 0)
+                                        {
+                                            <div class="cooldown-overlay">
+                                                <span>@cooldown</span>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            }
                         </div>
                     </div>
                 </div>

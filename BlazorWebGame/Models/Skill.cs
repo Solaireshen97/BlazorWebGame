@@ -24,34 +24,22 @@
     /// </summary>
     public class Skill
     {
-        /// <summary>
-        /// 唯一的技能ID
-        /// </summary>
         public string Id { get; set; } = string.Empty;
-
-        /// <summary>
-        /// 技能名称
-        /// </summary>
         public string Name { get; set; } = string.Empty;
-
-        /// <summary>
-        /// 技能描述
-        /// </summary>
         public string Description { get; set; } = string.Empty;
-
-        /// <summary>
-        /// 技能类型
-        /// </summary>
         public SkillType Type { get; set; }
 
         /// <summary>
-        /// 学习此技能所需的主要职业
+        /// 学习此技能所需的主要职业。
+        /// 如果为 null，则表示这是怪物专属技能。
         /// </summary>
-        public BattleProfession RequiredProfession { get; set; }
+        public BattleProfession? RequiredProfession { get; set; }
 
-        /// <summary>
-        /// 学习此技能所需的等级
-        /// </summary>
         public int RequiredLevel { get; set; }
+
+        public int InitialCooldownRounds { get; set; } = 0;
+        public int CooldownRounds { get; set; } = 1;
+        public SkillEffectType EffectType { get; set; }
+        public double EffectValue { get; set; } = 0;
     }
 }
