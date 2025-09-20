@@ -17,6 +17,11 @@ namespace BlazorWebGame.Models
 
         public Dictionary<string, int> SkillCooldowns { get; set; } = new();
 
+        /// <summary>
+        /// 战利品列表。Key: ItemId, Value: 掉落率 (0.0 to 1.0)
+        /// </summary>
+        public Dictionary<string, double> LootTable { get; set; } = new();
+
         public int GetGoldDropAmount()
         {
             return new System.Random().Next(MinGold, MaxGold + 1);

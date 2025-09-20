@@ -35,6 +35,17 @@ namespace BlazorWebGame.Models
         /// </summary>
         public Dictionary<string, int> SkillCooldowns { get; set; } = new();
 
+        // --- 新增属性 ---
+        /// <summary>
+        /// 玩家的库存。Key: ItemId, Value: 数量
+        /// </summary>
+        public Dictionary<string, int> Inventory { get; set; } = new();
+
+        /// <summary>
+        /// 玩家已穿戴的装备。Key: 装备槽位, Value: ItemId
+        /// </summary>
+        public Dictionary<EquipmentSlot, string> EquippedItems { get; set; } = new();
+
         public Player()
         {
             // 初始化职业
@@ -68,10 +79,36 @@ namespace BlazorWebGame.Models
         /// </summary>
         public int GetLevel(int xp) => 1 + (xp / 100);
 
+        /// <summary>
+        /// 获取玩家的总攻击力（基础攻击力 + 装备加成）
+        /// </summary>
         public int GetTotalAttackPower()
         {
-            // 未来可以根据技能加成
-            return BaseAttackPower;
+            int equipmentBonus = 0;
+            foreach (var itemId in EquippedItems.Values)
+            {
+                if (ItemData.GetItemById(itemId) is Equipment eq)
+                {
+                    equipmentBonus += eq.AttackBonus;
+                }
+            }
+            return this.BaseAttackPower + equipmentBonus;
+        }
+
+        /// <summary>
+        /// 获取玩家的总生命值上限（基础生命值 + 装备加成）
+        /// </summary>
+        public int GetTotalMaxHealth()
+        {
+            int equipmentBonus = 0;
+            foreach (var itemId in EquippedItems.Values)
+            {
+                if (ItemData.GetItemById(itemId) is Equipment eq)
+                {
+                    equipmentBonus += eq.HealthBonus;
+                }
+            }
+            return this.MaxHealth + equipmentBonus;
         }
     }
 }

@@ -1,0 +1,125 @@
+﻿@page "/backpack"
+@page "/"
+@using BlazorWebGame.Models
+@using BlazorWebGame.Services
+@inject GameStateService GameState
+@implements IDisposable
+
+<PageTitle>背包</PageTitle>
+
+@if (GameState.Player != null)
+{
+    <div class="inventory-container">
+        <!-- 左侧：装备栏 -->
+        <div class="equipment-panel">
+            <h3>装备</h3>
+            <div class="player-stats">
+                <p>生命值: @GameState.Player.Health / @GameState.Player.GetTotalMaxHealth()</p>
+                <p>攻击力: @GameState.Player.GetTotalAttackPower()</p>
+                <p>金币: @GameState.Player.Gold</p>
+            </div>
+            <div class="equipment-slots">
+                @foreach (var slot in (EquipmentSlot[])Enum.GetValues(typeof(EquipmentSlot)))
+                {
+                    <div class="equipment-slot" @onclick="() => OnSlotClick(slot)">
+                        <span class="slot-name">@slot.ToString()</span>
+                        @if (GameState.Player.EquippedItems.TryGetValue(slot, out var itemId))
+                        {
+                            var item = (Equipment)ItemData.GetItemById(itemId)!;
+                            <div class="item-display equipped">
+                                @item.Name
+                                <div class="item-tooltip">
+                                    <strong>@item.Name</strong><br />
+                                    <small>@item.Slot</small><hr />
+                                    @if (item.AttackBonus > 0)
+                                    {
+                                        <span>攻击力 +@item.AttackBonus<br /></span>
+                                    }
+                                    @if (item.HealthBonus > 0)
+                                    {
+                                        <span>生命值 +@item.HealthBonus<br /></span>
+                                    }
+                                    <hr /><em>@item.Description</em>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="item-display empty">空</div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- 右侧：库存 -->
+        <div class="inventory-panel">
+            <h3>库存</h3>
+            <div class="inventory-grid">
+                @foreach (var inventoryItem in GameState.Player.Inventory)
+                {
+                    var item = ItemData.GetItemById(inventoryItem.Key)!;
+                    <div class="inventory-item" @onclick="() => OnItemClick(item)">
+                        @item.Name
+                        @if (item.IsStackable && inventoryItem.Value > 1)
+                        {
+                            <span class="item-quantity">x@inventoryItem.Value</span>
+                        }
+                        <div class="item-tooltip">
+                            <strong>@item.Name</strong><br />
+                            @if (item is Equipment eq)
+                            {
+                                <small>@eq.Slot</small>
+                    
+                                <hr />
+                                @if (eq.AttackBonus > 0)
+                                {
+                                    <span>攻击力 +@eq.AttackBonus<br /></span>
+                                }
+                                @if (eq.HealthBonus > 0)
+                                {
+                                    <span>生命值 +@eq.HealthBonus<br /></span>
+                                }
+                            }
+                            <hr /><em>@item.Description</em>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <p>正在加载玩家数据...</p>
+}
+
+
+@code {
+    protected override void OnInitialized()
+    {
+        GameState.OnStateChanged += StateHasChanged;
+    }
+
+    private void OnItemClick(Item item)
+    {
+        if (item is Equipment eq)
+        {
+            GameState.EquipItem(eq.Id);
+        }
+        // 未来可以处理消耗品的使用等
+    }
+
+    private void OnSlotClick(EquipmentSlot slot)
+    {
+        if (GameState.Player.EquippedItems.ContainsKey(slot))
+        {
+            GameState.UnequipItem(slot);
+        }
+    }
+
+    public void Dispose()
+    {
+        GameState.OnStateChanged -= StateHasChanged;
+    }
+}

@@ -129,14 +129,24 @@ public class GameStateService : IAsyncDisposable
             }
         }
 
-        // 3. 执行玩家的普通攻击
         CurrentEnemy.Health -= Player.GetTotalAttackPower();
 
-        // 4. 检查敌人是否死亡
         if (CurrentEnemy.Health <= 0)
         {
+            // --- 战利品掉落逻辑 ---
             Player.Gold += CurrentEnemy.GetGoldDropAmount();
 
+            // 1. 处理物品掉落
+            var random = new Random();
+            foreach (var lootItem in CurrentEnemy.LootTable)
+            {
+                if (random.NextDouble() <= lootItem.Value) // random.NextDouble() 返回 0.0 到 1.0 之间的数
+                {
+                    AddItemToInventory(lootItem.Key, 1);
+                }
+            }
+
+            // 2. 处理经验值和升级
             var profession = Player.SelectedBattleProfession;
             var oldLevel = Player.GetLevel(profession);
             Player.AddBattleXP(profession, CurrentEnemy.XpReward);
@@ -276,12 +286,83 @@ public class GameStateService : IAsyncDisposable
         IsPlayerDead = false;
         if (Player != null)
         {
-            Player.Health = Player.MaxHealth;
+            Player.Health = Player.GetTotalMaxHealth();
         }
         RevivalTimeRemaining = 0;
 
         // 修正点：玩家复活时，调用完整的初始化和冷却重置逻辑
         InitializePlayerState();
+    }
+
+    /// <summary>
+    /// 向玩家库存中添加物品
+    /// </summary>
+    public void AddItemToInventory(string itemId, int quantity)
+    {
+        if (Player == null) return;
+        var item = ItemData.GetItemById(itemId);
+        if (item == null) return;
+
+        if (Player.Inventory.ContainsKey(itemId))
+        {
+            Player.Inventory[itemId] += quantity;
+        }
+        else
+        {
+            Player.Inventory[itemId] = quantity;
+        }
+        NotifyStateChanged();
+    }
+
+    /// <summary>
+    /// 从库存中穿戴一件装备
+    /// </summary>
+    public void EquipItem(string itemId)
+    {
+        if (Player == null) return;
+        if (!Player.Inventory.ContainsKey(itemId)) return;
+        if (ItemData.GetItemById(itemId) is not Equipment equipmentToEquip) return;
+
+        // 检查目标槽位是否已有装备，如果有，则先卸下
+        if (Player.EquippedItems.TryGetValue(equipmentToEquip.Slot, out var currentItemId))
+        {
+            UnequipItem(equipmentToEquip.Slot);
+        }
+
+        // 从库存中移除
+        Player.Inventory[itemId]--;
+        if (Player.Inventory[itemId] <= 0)
+        {
+            Player.Inventory.Remove(itemId);
+        }
+
+        // 穿上新装备
+        Player.EquippedItems[equipmentToEquip.Slot] = itemId;
+
+        // 装备可能影响最大生命值，更新当前生命值
+        Player.Health = Math.Min(Player.Health, Player.GetTotalMaxHealth());
+
+        NotifyStateChanged();
+    }
+
+    /// <summary>
+    /// 卸下一件装备到库存
+    /// </summary>
+    public void UnequipItem(EquipmentSlot slot)
+    {
+        if (Player == null) return;
+        if (!Player.EquippedItems.TryGetValue(slot, out var itemIdToUnequip)) return;
+
+        // 从装备栏移除
+        Player.EquippedItems.Remove(slot);
+
+        // 添加回库存
+        AddItemToInventory(itemIdToUnequip, 1);
+
+        // 装备可能影响最大生命值，更新当前生命值
+        Player.Health = Math.Min(Player.Health, Player.GetTotalMaxHealth());
+
+        NotifyStateChanged();
     }
 
     public void SetBattleProfession(BattleProfession profession)
