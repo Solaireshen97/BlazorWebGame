@@ -18,10 +18,15 @@ namespace BlazorWebGame.Models
         public Dictionary<GatheringProfession, int> GatheringProfessionXP { get; set; } = new();
         public Dictionary<ProductionProfession, int> ProductionProfessionXP { get; set; } = new();
 
-        // --- 技能系统字段 ---
+        // --- 系统字段 ---
 
         /// <summary>
-        /// 玩家已经解锁的所有共享技能ID
+        /// 激活的增益效果列表
+        /// </summary>
+        public List<Buff> ActiveBuffs { get; set; } = new();
+
+        /// <summary>
+        /// 已经学会的共享技能ID
         /// </summary>
         public HashSet<string> LearnedSharedSkills { get; set; } = new();
 
@@ -31,22 +36,22 @@ namespace BlazorWebGame.Models
         public Dictionary<BattleProfession, List<string>> EquippedSkills { get; set; } = new();
 
         /// <summary>
-        /// 追踪技能的当前冷却回合数。Key: SkillId, Value: 剩余回合
+        /// 追踪技能的当前冷却回合数. Key: SkillId, Value: 剩余回合
         /// </summary>
         public Dictionary<string, int> SkillCooldowns { get; set; } = new();
 
         /// <summary>
-        /// 玩家的库存，列表的索引直接对应背包格子的位置。
+        /// 玩家的背包，列表索引直接对应物品栏的位置。
         /// </summary>
         public List<InventorySlot> Inventory { get; set; } = new();
 
         /// <summary>
-        /// 玩家已穿戴的装备。Key: 装备槽位, Value: ItemId
+        /// 已穿戴的装备. Key: 装备位置, Value: ItemId
         /// </summary>
         public Dictionary<EquipmentSlot, string> EquippedItems { get; set; } = new();
 
         /// <summary>
-        /// 存放需要自动出售的物品ID
+        /// 需要自动出售的物品ID
         /// </summary>
         public HashSet<string> AutoSellItemIds { get; set; } = new();
 
@@ -84,12 +89,12 @@ namespace BlazorWebGame.Models
         }
 
         /// <summary>
-        /// 根据经验值计算等级（通常用于UI显示或内部计算）
+        /// 根据经验值获取等级（通用UI显示，非内部逻辑）
         /// </summary>
         public int GetLevel(int xp) => 1 + (xp / 100);
 
         /// <summary>
-        /// 获取玩家的总攻击力（基础攻击力 + 装备加成）
+        /// 获取玩家的总攻击力 (基础 + 装备 + Buff)
         /// </summary>
         public int GetTotalAttackPower()
         {
@@ -101,11 +106,12 @@ namespace BlazorWebGame.Models
                     equipmentBonus += eq.AttackBonus;
                 }
             }
-            return this.BaseAttackPower + equipmentBonus;
+            int buffBonus = ActiveBuffs.Where(b => b.BuffType == StatBuffType.AttackPower).Sum(b => b.BuffValue);
+            return this.BaseAttackPower + equipmentBonus + buffBonus;
         }
 
         /// <summary>
-        /// 获取玩家的总生命值上限（基础生命值 + 装备加成）
+        /// 获取玩家的总最大生命值 (基础 + 装备 + Buff)
         /// </summary>
         public int GetTotalMaxHealth()
         {
@@ -117,7 +123,8 @@ namespace BlazorWebGame.Models
                     equipmentBonus += eq.HealthBonus;
                 }
             }
-            return this.MaxHealth + equipmentBonus;
+            int buffBonus = ActiveBuffs.Where(b => b.BuffType == StatBuffType.MaxHealth).Sum(b => b.BuffValue);
+            return this.MaxHealth + equipmentBonus + buffBonus;
         }
     }
 }

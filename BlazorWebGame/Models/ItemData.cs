@@ -17,6 +17,28 @@ namespace BlazorWebGame.Models
                 Value = 100 // 它的卖出价也很高
             },
 
+            // --- 消耗品 ---
+            new Consumable
+            {
+                Id = "CON_HP_POTION_1", Name = "初级治疗药水",
+                Description = "立即恢复50点生命值。",
+                Value = 25, // 售价
+                Effect = ConsumableEffectType.Heal,
+                EffectValue = 50,
+                ShopPurchaseInfo = new PurchaseInfo { ShopCategory = "消耗品", Price = 50 }
+            },
+            new Consumable
+            {
+                Id = "CON_FOOD_ATK_1", Name = "烤狼肉",
+                Description = "在60秒内，提高5点攻击力。",
+                Value = 15,
+                Effect = ConsumableEffectType.StatBuff,
+                BuffType = StatBuffType.AttackPower,
+                EffectValue = 5,
+                DurationSeconds = 60,
+                ShopPurchaseInfo = new PurchaseInfo { ShopCategory = "消耗品", Price = 30 }
+            },
+
             // --- 武器 ---
             new Equipment
             {
@@ -34,7 +56,6 @@ namespace BlazorWebGame.Models
                 Slot = EquipmentSlot.Weapon,
                 AttackBonus = 5,
                 Value = 10
-                // 这个物品怪物掉落，但商店不出售，所以 ShopPurchaseInfo 为 null
             },
             new Equipment
             {

@@ -68,6 +68,14 @@
                             <button class="btn btn-warning" @onclick="() => SellSelectedItem()">出售</button>
                         </div>
                     }
+                    else if (_selectedItemForDetailView is Consumable con)
+                    {
+                        <hr />
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-info" @onclick="() => UseSelectedItem()">使用</button>
+                            <button class="btn btn-warning" @onclick="() => SellSelectedItem()">出售</button>
+                        </div>
+                    }
                     else
                     {
                         <hr />
@@ -160,9 +168,23 @@ else
     {
         if (_selectedItemForDetailView != null)
         {
-            // 默认一次卖一个
             GameState.SellItem(_selectedItemForDetailView.Id, 1);
-            _selectedItemForDetailView = null; // 出售后清空详情显示
+            _selectedItemForDetailView = null;
+        }
+    }
+
+    private void UseSelectedItem()
+    {
+        if (_selectedItemForDetailView != null)
+        {
+            GameState.UseItem(_selectedItemForDetailView.Id);
+
+            // 使用后，如果物品没了，就清空详情显示
+            var slot = GameState.Player.Inventory.FirstOrDefault(s => s.ItemId == _selectedItemForDetailView.Id);
+            if (slot == null || slot.IsEmpty)
+            {
+                _selectedItemForDetailView = null;
+            }
         }
     }
 

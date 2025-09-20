@@ -1,20 +1,57 @@
 .player-status-bar {
-    background-color: #343a40; /* 深色背景 */
+    background-color: #343a40; /* 深灰色 */
     color: white;
     padding: 0.5rem 1.5rem;
     border-bottom: 2px solid #495057;
-    font-size: 1.1rem;
+    font-size: 1rem; /* 稍微缩小字体 */
     transition: background-color 0.5s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-.player-status-bar.player-dead {
-    background-color: #dc3545; /* 死亡时背景变红 */
+    .player-status-bar.player-dead {
+        background-color: #dc3545; /* 死亡时红色 */
+    }
+
+    .player-status-bar strong {
+        color: #ffc107; /* 金色 */
+    }
+
+    .player-status-bar.player-dead strong {
+        color: #fff;
+    }
+
+.status-right {
+    display: flex;
+    gap: 0.5rem;
 }
 
-.player-status-bar strong {
-    color: #ffc107; /* 金币颜色 */
+.buff-icon {
+    position: relative;
+    width: 32px;
+    height: 32px;
+    background-color: #0d6efd;
+    border: 1px solid #0a58ca;
+    border-radius: 5px;
+    color: white;
+    cursor: help;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.player-status-bar.player-dead strong {
-    color: #fff;
+.buff-icon-text {
+    font-weight: bold;
+}
+
+.buff-timer {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    font-size: 0.7rem;
+    background-color: rgba(0, 0, 0, 0.7);
+    padding: 0 3px;
+    border-radius: 3px;
+    line-height: 1.2;
 }

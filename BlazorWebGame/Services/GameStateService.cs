@@ -61,6 +61,9 @@ public class GameStateService : IAsyncDisposable
     {
         double elapsedSeconds = GameLoopIntervalMs / 1000.0;
 
+        // 处理Buff持续时间
+        UpdateBuffs(elapsedSeconds);
+
         if (IsPlayerDead)
         {
             RevivalTimeRemaining -= elapsedSeconds;
@@ -92,6 +95,29 @@ public class GameStateService : IAsyncDisposable
         NotifyStateChanged();
     }
 
+    private void UpdateBuffs(double elapsedSeconds)
+    {
+        if (Player == null || !Player.ActiveBuffs.Any()) return;
+
+        bool buffsChanged = false;
+        for (int i = Player.ActiveBuffs.Count - 1; i >= 0; i--)
+        {
+            var buff = Player.ActiveBuffs[i];
+            buff.TimeRemainingSeconds -= elapsedSeconds;
+            if (buff.TimeRemainingSeconds <= 0)
+            {
+                Player.ActiveBuffs.RemoveAt(i);
+                buffsChanged = true;
+            }
+        }
+
+        if (buffsChanged)
+        {
+            // 如果Buff消失导致最大生命值变化，需要修正当前生命值
+            Player.Health = Math.Min(Player.Health, Player.GetTotalMaxHealth());
+        }
+    }
+
     private double GetAttackProgress(double currentCooldown, double attacksPerSecond)
     {
         if (attacksPerSecond <= 0) return 0;
@@ -106,15 +132,11 @@ public class GameStateService : IAsyncDisposable
 
         var equippedSkillIds = Player.EquippedSkills[Player.SelectedBattleProfession];
 
-        // 1. 遍历装备的技能
         foreach (var skillId in equippedSkillIds)
         {
             var currentCooldown = Player.SkillCooldowns.GetValueOrDefault(skillId);
-
-            // 2. 检查技能是否冷却完毕
             if (currentCooldown <= 0)
             {
-                //  -> 冷却完毕，释放技能
                 var skill = SkillData.GetSkillById(skillId);
                 if (skill != null)
                 {
@@ -124,7 +146,6 @@ public class GameStateService : IAsyncDisposable
             }
             else
             {
-                //  -> 冷却中，冷却时间-1
                 Player.SkillCooldowns[skillId]--;
             }
         }
@@ -133,30 +154,23 @@ public class GameStateService : IAsyncDisposable
 
         if (CurrentEnemy.Health <= 0)
         {
-            // --- 战利品逻辑 ---
             Player.Gold += CurrentEnemy.GetGoldDropAmount();
-
-            // 1. 掉落物品
             var random = new Random();
             foreach (var lootItem in CurrentEnemy.LootTable)
             {
-                if (random.NextDouble() <= lootItem.Value) // random.NextDouble() 在 0.0 和 1.0 之间
+                if (random.NextDouble() <= lootItem.Value)
                 {
                     AddItemToInventory(lootItem.Key, 1);
                 }
             }
-
-            // 2. 获得经验值
             var profession = Player.SelectedBattleProfession;
             var oldLevel = Player.GetLevel(profession);
             Player.AddBattleXP(profession, CurrentEnemy.XpReward);
             var newLevel = Player.GetLevel(profession);
-
             if (newLevel > oldLevel)
             {
                 CheckForNewSkillUnlocks(profession, newLevel);
             }
-
             SpawnNewEnemy(CurrentEnemy);
         }
     }
@@ -164,13 +178,9 @@ public class GameStateService : IAsyncDisposable
     private void EnemyAttackPlayer()
     {
         if (Player == null || CurrentEnemy == null) return;
-
-        // 1. 遍历怪物的技能
         foreach (var skillId in CurrentEnemy.SkillIds)
         {
             var currentCooldown = CurrentEnemy.SkillCooldowns.GetValueOrDefault(skillId);
-
-            // 2. 检查技能是否冷却完毕
             if (currentCooldown <= 0)
             {
                 var skill = SkillData.GetSkillById(skillId);
@@ -182,12 +192,9 @@ public class GameStateService : IAsyncDisposable
             }
             else
             {
-                //  -> 冷却中，冷却时间-1
                 CurrentEnemy.SkillCooldowns[skillId]--;
             }
         }
-
-        // 3. 执行普通攻击
         Player.Health -= CurrentEnemy.AttackPower;
         if (Player.Health <= 0)
         {
@@ -198,10 +205,8 @@ public class GameStateService : IAsyncDisposable
     private void ApplySkillEffect(Skill skill, bool isPlayerSkill)
     {
         if (Player == null || CurrentEnemy == null) return;
-
         var caster = isPlayerSkill ? (object)Player : CurrentEnemy;
         var target = isPlayerSkill ? (object)CurrentEnemy : Player;
-
         switch (skill.EffectType)
         {
             case SkillEffectType.DirectDamage:
@@ -226,24 +231,19 @@ public class GameStateService : IAsyncDisposable
     private void InitializePlayerState()
     {
         if (Player == null) return;
-
         foreach (var profession in (BattleProfession[])Enum.GetValues(typeof(BattleProfession)))
         {
             var currentLevel = Player.GetLevel(profession);
             CheckForNewSkillUnlocks(profession, currentLevel, true);
         }
-
         ResetPlayerSkillCooldowns();
-
         NotifyStateChanged();
     }
 
     private void CheckForNewSkillUnlocks(BattleProfession profession, int level, bool checkAllLevels = false)
     {
         if (Player == null) return;
-
         var skillsToLearnQuery = SkillData.AllSkills.Where(s => s.RequiredProfession == profession);
-
         if (checkAllLevels)
         {
             skillsToLearnQuery = skillsToLearnQuery.Where(s => s.RequiredLevel <= level);
@@ -252,16 +252,13 @@ public class GameStateService : IAsyncDisposable
         {
             skillsToLearnQuery = skillsToLearnQuery.Where(s => s.RequiredLevel == level);
         }
-
         var newlyLearnedSkills = skillsToLearnQuery.ToList();
-
         foreach (var skill in newlyLearnedSkills)
         {
             if (skill.Type == SkillType.Shared)
             {
                 Player.LearnedSharedSkills.Add(skill.Id);
             }
-
             if (skill.Type == SkillType.Fixed)
             {
                 if (!Player.EquippedSkills.TryGetValue(profession, out var equipped) || !equipped.Contains(skill.Id))
@@ -278,6 +275,7 @@ public class GameStateService : IAsyncDisposable
         IsPlayerDead = true;
         Player.Health = 0;
         RevivalTimeRemaining = RevivalDuration;
+        Player.ActiveBuffs.Clear(); // 死亡时清除所有Buff
     }
 
     private void RevivePlayer()
@@ -288,7 +286,6 @@ public class GameStateService : IAsyncDisposable
             Player.Health = Player.GetTotalMaxHealth();
         }
         RevivalTimeRemaining = 0;
-
         InitializePlayerState();
     }
 
@@ -297,14 +294,12 @@ public class GameStateService : IAsyncDisposable
         if (Player == null) return;
         var itemToAdd = ItemData.GetItemById(itemId);
         if (itemToAdd == null) return;
-
         if (Player.AutoSellItemIds.Contains(itemId))
         {
             Player.Gold += itemToAdd.Value * quantity;
             NotifyStateChanged();
             return;
         }
-
         if (itemToAdd.IsStackable)
         {
             var existingSlot = Player.Inventory.FirstOrDefault(s => s.ItemId == itemId && s.Quantity < 99);
@@ -315,16 +310,11 @@ public class GameStateService : IAsyncDisposable
                 return;
             }
         }
-
         var emptySlot = Player.Inventory.FirstOrDefault(s => s.IsEmpty);
         if (emptySlot != null)
         {
             emptySlot.ItemId = itemId;
             emptySlot.Quantity = quantity;
-        }
-        else
-        {
-            // 背包满了，暂时不处理
         }
         NotifyStateChanged();
     }
@@ -334,22 +324,17 @@ public class GameStateService : IAsyncDisposable
         if (Player == null) return;
         var slotToEquipFrom = Player.Inventory.FirstOrDefault(s => s.ItemId == itemId);
         if (slotToEquipFrom == null) return;
-
         if (ItemData.GetItemById(itemId) is not Equipment equipmentToEquip) return;
-
         if (Player.EquippedItems.TryGetValue(equipmentToEquip.Slot, out var currentItemId))
         {
             UnequipItem(equipmentToEquip.Slot);
         }
-
         slotToEquipFrom.Quantity--;
         if (slotToEquipFrom.Quantity <= 0)
         {
             slotToEquipFrom.ItemId = null;
         }
-
         Player.EquippedItems[equipmentToEquip.Slot] = itemId;
-
         Player.Health = Math.Min(Player.Health, Player.GetTotalMaxHealth());
         NotifyStateChanged();
     }
@@ -358,11 +343,8 @@ public class GameStateService : IAsyncDisposable
     {
         if (Player == null) return;
         if (!Player.EquippedItems.TryGetValue(slot, out var itemIdToUnequip)) return;
-
         Player.EquippedItems.Remove(slot);
-
         AddItemToInventory(itemIdToUnequip, 1);
-
         Player.Health = Math.Min(Player.Health, Player.GetTotalMaxHealth());
         NotifyStateChanged();
     }
@@ -370,12 +352,9 @@ public class GameStateService : IAsyncDisposable
     public void SellItem(string itemId, int quantity = 1)
     {
         if (Player == null) return;
-
         var itemData = ItemData.GetItemById(itemId);
         if (itemData == null) return;
-
         RemoveItemFromInventory(itemId, quantity, out int soldCount);
-
         if (soldCount > 0)
         {
             Player.Gold += itemData.Value * soldCount;
@@ -383,18 +362,12 @@ public class GameStateService : IAsyncDisposable
         }
     }
 
-    /// <summary>
-    /// 从商店购买物品（重构版）
-    /// </summary>
     public bool BuyItem(string itemId)
     {
         if (Player == null) return false;
-
         var itemToBuy = ItemData.GetItemById(itemId);
         var purchaseInfo = itemToBuy?.ShopPurchaseInfo;
-        if (purchaseInfo == null) return false; // 物品不可购买
-
-        // 检查并支付货币
+        if (purchaseInfo == null) return false;
         bool canAfford = false;
         switch (purchaseInfo.Currency)
         {
@@ -405,72 +378,100 @@ public class GameStateService : IAsyncDisposable
                     canAfford = true;
                 }
                 break;
-
             case CurrencyType.Item:
                 if (!string.IsNullOrEmpty(purchaseInfo.CurrencyItemId))
                 {
-                    // 检查玩家是否有足够的物品
-                    int ownedAmount = Player.Inventory
-                        .Where(s => s.ItemId == purchaseInfo.CurrencyItemId)
-                        .Sum(s => s.Quantity);
-
+                    int ownedAmount = Player.Inventory.Where(s => s.ItemId == purchaseInfo.CurrencyItemId).Sum(s => s.Quantity);
                     if (ownedAmount >= purchaseInfo.Price)
                     {
-                        // 从背包移除作为货币的物品
                         RemoveItemFromInventory(purchaseInfo.CurrencyItemId, purchaseInfo.Price, out _);
                         canAfford = true;
                     }
                 }
                 break;
         }
-
         if (canAfford)
         {
             AddItemToInventory(itemId, 1);
             NotifyStateChanged();
             return true;
         }
-
-        return false; // 货币不足
+        return false;
     }
 
-    /// <summary>
-    /// 从背包中移除指定数量的物品
-    /// </summary>
     private bool RemoveItemFromInventory(string itemId, int quantityToRemove, out int actuallyRemoved)
     {
         actuallyRemoved = 0;
         if (Player == null) return false;
-
         for (int i = Player.Inventory.Count - 1; i >= 0; i--)
         {
             var slot = Player.Inventory[i];
             if (slot.ItemId == itemId)
             {
                 int amountToRemoveFromSlot = Math.Min(quantityToRemove - actuallyRemoved, slot.Quantity);
-
                 slot.Quantity -= amountToRemoveFromSlot;
                 actuallyRemoved += amountToRemoveFromSlot;
-
                 if (slot.Quantity <= 0)
                 {
                     slot.ItemId = null;
                 }
-
                 if (actuallyRemoved >= quantityToRemove)
                 {
                     break;
                 }
             }
         }
-
         return actuallyRemoved > 0;
+    }
+
+    /// <summary>
+    /// 使用一个消耗品
+    /// </summary>
+    public void UseItem(string itemId)
+    {
+        if (Player == null) return;
+        var item = ItemData.GetItemById(itemId);
+        if (item is not Consumable consumable) return;
+
+        // 从背包中移除一个
+        RemoveItemFromInventory(itemId, 1, out int removedCount);
+        if (removedCount <= 0) return; // 背包里没有这个物品
+
+        // 应用效果
+        switch (consumable.Effect)
+        {
+            case ConsumableEffectType.Heal:
+                Player.Health = Math.Min(Player.GetTotalMaxHealth(), Player.Health + (int)consumable.EffectValue);
+                break;
+            case ConsumableEffectType.StatBuff:
+                if (consumable.BuffType.HasValue && consumable.DurationSeconds.HasValue)
+                {
+                    // 如果是同类Buff，则刷新持续时间，不叠加效果
+                    var existingBuff = Player.ActiveBuffs.FirstOrDefault(b => b.BuffType == consumable.BuffType.Value);
+                    if (existingBuff != null)
+                    {
+                        existingBuff.TimeRemainingSeconds = consumable.DurationSeconds.Value;
+                    }
+                    else
+                    {
+                        Player.ActiveBuffs.Add(new Buff
+                        {
+                            SourceItemId = consumable.Id,
+                            BuffType = consumable.BuffType.Value,
+                            BuffValue = (int)consumable.EffectValue,
+                            TimeRemainingSeconds = consumable.DurationSeconds.Value
+                        });
+                    }
+                }
+                break;
+        }
+
+        NotifyStateChanged();
     }
 
     public void ToggleAutoSellItem(string itemId)
     {
         if (Player == null) return;
-
         if (Player.AutoSellItemIds.Contains(itemId))
         {
             Player.AutoSellItemIds.Remove(itemId);
@@ -494,9 +495,7 @@ public class GameStateService : IAsyncDisposable
     public void SpawnNewEnemy(Enemy enemyTemplate)
     {
         var originalTemplate = AvailableMonsters.FirstOrDefault(m => m.Name == enemyTemplate.Name) ?? enemyTemplate;
-
         CurrentEnemy = originalTemplate.Clone();
-
         CurrentEnemy.SkillCooldowns.Clear();
         foreach (var skillId in CurrentEnemy.SkillIds)
         {
@@ -506,7 +505,6 @@ public class GameStateService : IAsyncDisposable
                 CurrentEnemy.SkillCooldowns[skillId] = skill.InitialCooldownRounds;
             }
         }
-
         if (CurrentEnemy != null)
         {
             _enemyAttackCooldown = 1.0 / CurrentEnemy.AttacksPerSecond;
@@ -520,12 +518,9 @@ public class GameStateService : IAsyncDisposable
         var profession = Player.SelectedBattleProfession;
         var equipped = Player.EquippedSkills[profession];
         var skill = SkillData.GetSkillById(skillId);
-
         if (skill == null || skill.Type == SkillType.Fixed) return;
         if (equipped.Contains(skillId)) return;
-
         var currentSelectableSkills = equipped.Count(id => SkillData.GetSkillById(id)?.Type != SkillType.Fixed);
-
         if (currentSelectableSkills < MaxEquippedSkills)
         {
             equipped.Add(skillId);
@@ -539,9 +534,7 @@ public class GameStateService : IAsyncDisposable
         if (Player == null) return;
         var profession = Player.SelectedBattleProfession;
         var skill = SkillData.GetSkillById(skillId);
-
         if (skill == null || skill.Type == SkillType.Fixed) return;
-
         if (Player.EquippedSkills[profession].Remove(skillId))
         {
             Player.SkillCooldowns.Remove(skillId);
@@ -552,7 +545,6 @@ public class GameStateService : IAsyncDisposable
     private void ResetPlayerSkillCooldowns()
     {
         if (Player == null) return;
-
         Player.SkillCooldowns.Clear();
         foreach (var skillId in Player.EquippedSkills.Values.SelectMany(s => s))
         {

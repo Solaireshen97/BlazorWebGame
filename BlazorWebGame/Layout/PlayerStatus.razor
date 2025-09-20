@@ -8,16 +8,31 @@
     {
         @if (GameState.IsPlayerDead)
         {
-            <span>状态: <strong>被击败...</strong></span>
+            <span>状态: <strong>阵亡...</strong></span>
         }
         else
         {
-            <span>
-                职业: <strong>@GameState.Player.SelectedBattleProfession.ToChineseString()</strong>
-                (Lv.<strong>@GameState.Player.GetLevel(GameState.Player.BattleProfessionXP[GameState.Player.SelectedBattleProfession])</strong>)
-            </span>
-            <span class="ms-4">金币: <strong>@GameState.Player.Gold</strong></span>
-            <span class="ms-4">生命值: <strong>@GameState.Player.Health / @GameState.Player.MaxHealth</strong></span>
+            <div class="status-left">
+                <span>
+                    职业: <strong>@GameState.Player.SelectedBattleProfession.ToChineseString()</strong>
+                    (Lv.<strong>@GameState.Player.GetLevel(GameState.Player.BattleProfessionXP[GameState.Player.SelectedBattleProfession])</strong>)
+                </span>
+                <span class="ms-4">金币: <strong>@GameState.Player.Gold</strong></span>
+                <span class="ms-4">生命值: <strong>@GameState.Player.Health / @GameState.Player.GetTotalMaxHealth()</strong></span>
+            </div>
+            <div class="status-right">
+                @foreach (var buff in GameState.Player.ActiveBuffs)
+                {
+                    var item = ItemData.GetItemById(buff.SourceItemId);
+                    if (item != null)
+                    {
+                        <div class="buff-icon" title="@item.Name: @item.Description">
+                            <span class="buff-icon-text">@item.Name.Substring(0, 1)</span>
+                            <span class="buff-timer">@((int)buff.TimeRemainingSeconds)</span>
+                        </div>
+                    }
+                }
+            </div>
         }
     }
 </div>
