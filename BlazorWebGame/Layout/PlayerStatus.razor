@@ -1,17 +1,24 @@
 @using BlazorWebGame.Services
+@using BlazorWebGame.Models
 @inject GameStateService GameState
 @implements IDisposable
 
 <div class="player-status-bar @(GameState.IsPlayerDead ? "player-dead" : "")">
-    @if (GameState.IsPlayerDead)
+    @if (GameState.Player != null)
     {
-        <span>状态: <strong>已阵亡</strong></span>
-    }
-    else
-    {
-        <span>金币: <strong>@GameState.Player.Gold</strong></span>
-        <span class="ms-4">生命值: <strong>@GameState.Player.Health / @GameState.Player.MaxHealth</strong></span>
-        <span class="ms-4">攻击力: <strong>@GameState.Player.GetTotalAttackPower()</strong></span>
+        @if (GameState.IsPlayerDead)
+        {
+            <span>状态: <strong>被击败...</strong></span>
+        }
+        else
+        {
+            <span>
+                职业: <strong>@GameState.Player.SelectedBattleProfession.ToChineseString()</strong>
+                (Lv.<strong>@GameState.Player.GetLevel(GameState.Player.BattleProfessionXP[GameState.Player.SelectedBattleProfession])</strong>)
+            </span>
+            <span class="ms-4">金币: <strong>@GameState.Player.Gold</strong></span>
+            <span class="ms-4">生命值: <strong>@GameState.Player.Health / @GameState.Player.MaxHealth</strong></span>
+        }
     }
 </div>
 

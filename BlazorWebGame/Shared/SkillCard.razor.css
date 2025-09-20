@@ -1,0 +1,74 @@
+﻿.skill-card {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 1rem;
+    background-color: white;
+    transition: all 0.2s;
+    cursor: pointer;
+    border-left-width: 5px;
+}
+
+    .skill-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    }
+
+    /* 根据技能类型显示不同颜色的左边框 */
+    .skill-card.profession {
+        border-left-color: #007bff;
+    }
+    /* 蓝色 */
+    .skill-card.shared {
+        border-left-color: #6f42c1;
+    }
+    /* 紫色 */
+    .skill-card.fixed {
+        border-left-color: #6c757d;
+        cursor: not-allowed;
+    }
+    /* 灰色 */
+
+
+    .skill-card.equipped {
+        background-color: #f0f8ff;
+    }
+
+.skill-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.skill-name {
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.skill-badge {
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: white;
+}
+
+    .skill-badge.fixed {
+        background-color: #6c757d;
+    }
+
+    .skill-badge.equipped-badge {
+        background-color: #28a745;
+    }
+
+.skill-description {
+    font-size: 0.9rem;
+    color: #555;
+    margin-bottom: 1rem;
+}
+
+.skill-footer {
+    font-size: 0.8rem;
+    color: #888;
+    text-align: right;
+}

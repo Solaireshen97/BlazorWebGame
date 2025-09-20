@@ -1,18 +1,19 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using System.Timers;
-using BlazorWebGame.Utils;
 using BlazorWebGame.Models;
+using BlazorWebGame.Utils;
 
 namespace BlazorWebGame.Services;
 
-/// <summary>
-/// 管理全局游戏状态和后台逻辑的单例服务
-/// </summary>
 public class GameStateService : IAsyncDisposable
 {
     private readonly GameStorage _gameStorage;
     private System.Timers.Timer? _gameLoopTimer;
-    private const int GameLoopIntervalMs = 100; // 游戏循环间隔（毫秒），越小越精确
-    private const double RevivalDuration = 60; // 复活所需时间（秒）
+    private const int GameLoopIntervalMs = 100;
+    private const double RevivalDuration = 60;
 
     private double _playerAttackCooldown = 0;
     private double _enemyAttackCooldown = 0;
@@ -22,12 +23,11 @@ public class GameStateService : IAsyncDisposable
     public bool IsPlayerDead { get; private set; } = false;
     public double RevivalTimeRemaining { get; private set; } = 0;
 
-    // 新增：用于UI绑定的攻击进度
     public double PlayerAttackProgress => GetAttackProgress(_playerAttackCooldown, Player.AttacksPerSecond);
     public double EnemyAttackProgress => CurrentEnemy == null ? 0 : GetAttackProgress(_enemyAttackCooldown, CurrentEnemy.AttacksPerSecond);
 
-    // 新增：可供选择的怪物列表
     public List<Enemy> AvailableMonsters => MonsterTemplates.All;
+    public const int MaxEquippedSkills = 4;
 
     public event Action? OnStateChanged;
 
@@ -44,9 +44,11 @@ public class GameStateService : IAsyncDisposable
             Player = loadedPlayer;
         }
 
-        if (CurrentEnemy == null)
+        // 游戏启动时，为玩家初始化/检查所有技能
+        InitializePlayerState();
+
+        if (CurrentEnemy == null && AvailableMonsters.Any())
         {
-            // 默认生成第一个模板的怪物
             SpawnNewEnemy(AvailableMonsters.First());
         }
 
@@ -60,7 +62,6 @@ public class GameStateService : IAsyncDisposable
     {
         double elapsedSeconds = GameLoopIntervalMs / 1000.0;
 
-        // 1. 处理玩家死亡和复活
         if (IsPlayerDead)
         {
             RevivalTimeRemaining -= elapsedSeconds;
@@ -69,26 +70,23 @@ public class GameStateService : IAsyncDisposable
                 RevivePlayer();
             }
             NotifyStateChanged();
-            return; // 玩家死亡时，停止所有其他逻辑
+            return;
         }
 
-        // 2. 自动战斗逻辑
-        if (CurrentEnemy != null)
+        if (Player != null && CurrentEnemy != null)
         {
-            // 玩家攻击
             _playerAttackCooldown -= elapsedSeconds;
             if (_playerAttackCooldown <= 0)
             {
                 PlayerAttackEnemy();
-                _playerAttackCooldown += 1.0 / Player.AttacksPerSecond; // 根据攻速重置冷却
+                _playerAttackCooldown += 1.0 / Player.AttacksPerSecond;
             }
 
-            // 敌人攻击
             _enemyAttackCooldown -= elapsedSeconds;
             if (_enemyAttackCooldown <= 0)
             {
                 EnemyAttackPlayer();
-                _enemyAttackCooldown += 1.0 / CurrentEnemy.AttacksPerSecond; // 根据攻速重置冷却
+                _enemyAttackCooldown += 1.0 / CurrentEnemy.AttacksPerSecond;
             }
         }
 
@@ -105,27 +103,94 @@ public class GameStateService : IAsyncDisposable
 
     private void PlayerAttackEnemy()
     {
-        if (CurrentEnemy == null) return;
+        if (Player == null || CurrentEnemy == null) return;
 
         CurrentEnemy.Health -= Player.GetTotalAttackPower();
 
         if (CurrentEnemy.Health <= 0)
         {
             Player.Gold += CurrentEnemy.GetGoldDropAmount();
-            // 击败后重生同一个敌人
+
+            var profession = Player.SelectedBattleProfession;
+            var oldLevel = Player.GetLevel(profession);
+            Player.AddBattleXP(profession, CurrentEnemy.XpReward);
+            var newLevel = Player.GetLevel(profession);
+
+            if (newLevel > oldLevel)
+            {
+                // 升级时，只检查新等级的技能即可
+                CheckForNewSkillUnlocks(profession, newLevel);
+            }
+
             SpawnNewEnemy(CurrentEnemy);
         }
     }
 
     private void EnemyAttackPlayer()
     {
-        if (CurrentEnemy == null) return;
-
+        if (Player == null || CurrentEnemy == null) return;
         Player.Health -= CurrentEnemy.AttackPower;
-
         if (Player.Health <= 0)
         {
             HandlePlayerDeath();
+        }
+    }
+
+    /// <summary>
+    /// 初始化或验证玩家状态，确保拥有所有应得的技能。
+    /// 在游戏加载或玩家复活后调用。
+    /// </summary>
+    private void InitializePlayerState()
+    {
+        if (Player == null) return;
+
+        // 遍历所有战斗职业
+        foreach (var profession in (BattleProfession[])Enum.GetValues(typeof(BattleProfession)))
+        {
+            var currentLevel = Player.GetLevel(profession);
+            // 检查并补发该职业在当前等级下应该拥有的所有技能
+            CheckForNewSkillUnlocks(profession, currentLevel, true);
+        }
+        NotifyStateChanged();
+    }
+
+    /// <summary>
+    /// 检查并解锁技能
+    /// </summary>
+    /// <param name="profession">要检查的职业</param>
+    /// <param name="level">要检查的等级</param>
+    /// <param name="checkAllLevels">如果为true，则检查所有低于等于该等级的技能（用于初始化）；否则只检查该等级的技能（用于升级）</param>
+    private void CheckForNewSkillUnlocks(BattleProfession profession, int level, bool checkAllLevels = false)
+    {
+        var skillsToLearnQuery = SkillData.AllSkills.Where(s => s.RequiredProfession == profession);
+
+        if (checkAllLevels)
+        {
+            // 初始化时：检查所有 <= level 的技能
+            skillsToLearnQuery = skillsToLearnQuery.Where(s => s.RequiredLevel <= level);
+        }
+        else
+        {
+            // 升级时：只检查 == level 的技能
+            skillsToLearnQuery = skillsToLearnQuery.Where(s => s.RequiredLevel == level);
+        }
+
+        var newlyLearnedSkills = skillsToLearnQuery.ToList();
+
+        foreach (var skill in newlyLearnedSkills)
+        {
+            if (skill.Type == SkillType.Shared)
+            {
+                Player.LearnedSharedSkills.Add(skill.Id);
+            }
+
+            if (skill.Type == SkillType.Fixed)
+            {
+                if (!Player.EquippedSkills.TryGetValue(profession, out var equipped) || !equipped.Contains(skill.Id))
+                {
+                    Player.EquippedSkills[profession].Insert(0, skill.Id);
+                }
+            }
         }
     }
 
@@ -139,17 +204,29 @@ public class GameStateService : IAsyncDisposable
     private void RevivePlayer()
     {
         IsPlayerDead = false;
-        Player.Health = Player.MaxHealth;
+        if (Player != null)
+        {
+            Player.Health = Player.MaxHealth;
+        }
         RevivalTimeRemaining = 0;
+
+        // 玩家复活后，也检查一下技能状态，以防万一
+        InitializePlayerState();
     }
 
-    /// <summary>
-    /// 根据模板生成一个新敌人
-    /// </summary>
+    public void SetBattleProfession(BattleProfession profession)
+    {
+        if (Player != null)
+        {
+            Player.SelectedBattleProfession = profession;
+            NotifyStateChanged();
+        }
+    }
+
     public void SpawnNewEnemy(Enemy enemyTemplate)
     {
-        CurrentEnemy = enemyTemplate.Clone();
-        // 重置攻击冷却
+        var originalTemplate = AvailableMonsters.FirstOrDefault(m => m.Name == enemyTemplate.Name) ?? enemyTemplate;
+        CurrentEnemy = originalTemplate.Clone();
         if (CurrentEnemy != null)
         {
             _enemyAttackCooldown = 1.0 / CurrentEnemy.AttacksPerSecond;
@@ -157,17 +234,63 @@ public class GameStateService : IAsyncDisposable
         NotifyStateChanged();
     }
 
+    /// <summary>
+    /// 玩家装备一个技能
+    /// </summary>
+    public void EquipSkill(string skillId)
+    {
+        if (Player == null) return;
+        var profession = Player.SelectedBattleProfession;
+        var equipped = Player.EquippedSkills[profession];
+        var skill = SkillData.GetSkillById(skillId);
+
+        if (skill == null || skill.Type == SkillType.Fixed) return; // 不能装备不存在或固定技能
+
+        if (equipped.Contains(skillId)) return;
+
+        var currentSelectableSkills = equipped.Count(id => SkillData.GetSkillById(id)?.Type != SkillType.Fixed);
+
+        if (currentSelectableSkills < MaxEquippedSkills)
+        {
+            equipped.Add(skillId);
+            NotifyStateChanged();
+        }
+    }
+
+    /// <summary>
+    /// 玩家卸下一个技能
+    /// </summary>
+    public void UnequipSkill(string skillId)
+    {
+        if (Player == null) return;
+        var profession = Player.SelectedBattleProfession;
+        var skill = SkillData.GetSkillById(skillId);
+
+        if (skill == null || skill.Type == SkillType.Fixed) return; // 不能卸下固定技能
+
+        if (Player.EquippedSkills[profession].Remove(skillId))
+        {
+            NotifyStateChanged();
+        }
+    }
+
     public async Task SaveStateAsync()
     {
-        await _gameStorage.SavePlayerAsync(Player);
+        if (Player != null)
+        {
+            await _gameStorage.SavePlayerAsync(Player);
+        }
     }
 
     private void NotifyStateChanged() => OnStateChanged?.Invoke();
 
     public async ValueTask DisposeAsync()
     {
-        _gameLoopTimer?.Stop();
-        _gameLoopTimer?.Dispose();
+        if (_gameLoopTimer != null)
+        {
+            _gameLoopTimer.Stop();
+            _gameLoopTimer.Dispose();
+        }
         await SaveStateAsync();
     }
 }

@@ -1,53 +1,72 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
 namespace BlazorWebGame.Models
 {
-    /// <summary>
-    /// 代表玩家的核心数据
-    /// </summary>
     public class Player
     {
-        /// <summary>
-        /// 玩家名称
-        /// </summary>
         public string Name { get; set; } = "英雄";
-
-        /// <summary>
-        /// 金币数量
-        /// </summary>
         public int Gold { get; set; } = 0;
-
-        /// <summary>
-        /// 当前生命值
-        /// </summary>
         public int Health { get; set; } = 100;
-
-        /// <summary>
-        /// 最大生命值
-        /// </summary>
         public int MaxHealth { get; set; } = 100;
-
-        /// <summary>
-        /// 基础攻击力
-        /// </summary>
         public int BaseAttackPower { get; set; } = 10;
-
-        /// <summary>
-        /// 攻击速度（每秒攻击次数）
-        /// </summary>
         public double AttacksPerSecond { get; set; } = 1.0;
 
-        // 预留扩展
-        // public List<Item> Items { get; set; } = new List<Item>();
-        // public Dictionary<EquipmentSlot, Equipment> EquippedItems { get; set; } = new Dictionary<EquipmentSlot, Equipment>();
+        public BattleProfession SelectedBattleProfession { get; set; } = BattleProfession.Warrior;
+        public Dictionary<BattleProfession, int> BattleProfessionXP { get; set; } = new();
+        public Dictionary<GatheringProfession, int> GatheringProfessionXP { get; set; } = new();
+        public Dictionary<ProductionProfession, int> ProductionProfessionXP { get; set; } = new();
+
+        // --- 技能系统字段 ---
 
         /// <summary>
-        /// 计算总攻击力（基础攻击力 + 装备加成等）
+        /// 玩家已经解锁的所有共享技能ID
         /// </summary>
+        public HashSet<string> LearnedSharedSkills { get; set; } = new();
+
+        /// <summary>
+        /// 每个职业装备的技能ID列表。Key是职业，Value是装备的技能ID列表
+        /// </summary>
+        public Dictionary<BattleProfession, List<string>> EquippedSkills { get; set; } = new();
+
+        public Player()
+        {
+            // 初始化职业
+            foreach (var profession in (BattleProfession[])Enum.GetValues(typeof(BattleProfession)))
+            {
+                BattleProfessionXP.TryAdd(profession, 0);
+                EquippedSkills.TryAdd(profession, new List<string>());
+            }
+            GatheringProfessionXP.TryAdd(GatheringProfession.Miner, 0);
+            ProductionProfessionXP.TryAdd(ProductionProfession.Tailor, 0);
+        }
+
+        public void AddBattleXP(BattleProfession profession, int amount)
+        {
+            if (BattleProfessionXP.ContainsKey(profession))
+            {
+                BattleProfessionXP[profession] += amount;
+            }
+        }
+
+        /// <summary>
+        /// 获取指定战斗职业的等级
+        /// </summary>
+        public int GetLevel(BattleProfession profession)
+        {
+            return BattleProfessionXP.TryGetValue(profession, out var xp) ? 1 + (xp / 100) : 1;
+        }
+
+        /// <summary>
+        /// 根据经验值计算等级（通常用于UI显示或内部计算）
+        /// </summary>
+        public int GetLevel(int xp) => 1 + (xp / 100);
+
         public int GetTotalAttackPower()
         {
-            int total = BaseAttackPower;
-            // 未来可以加上装备的攻击力
-            // total += EquippedItems.Values.Sum(eq => eq.AttackBonus);
-            return total;
+            // 未来可以根据技能加成
+            return BaseAttackPower;
         }
     }
 }

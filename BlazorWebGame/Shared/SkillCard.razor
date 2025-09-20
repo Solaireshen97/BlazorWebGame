@@ -1,0 +1,25 @@
+﻿@using BlazorWebGame.Models
+
+<div class="skill-card @(Skill.Type.ToString().ToLower()) @(IsEquipped ? "equipped" : "")" @onclick="() => OnClick.InvokeAsync(Skill)">
+    <div class="skill-header">
+        <span class="skill-name">@Skill.Name</span>
+        @if (Skill.Type == SkillType.Fixed)
+        {
+            <span class="skill-badge fixed">固定</span>
+        }
+        else if (IsEquipped)
+        {
+            <span class="skill-badge equipped-badge">已装备</span>
+        }
+    </div>
+    <p class="skill-description">@Skill.Description</p>
+    <div class="skill-footer">
+        <small>@Skill.Type.ToString() - @Skill.RequiredProfession.ToChineseString() Lv.@Skill.RequiredLevel</small>
+    </div>
+</div>
+
+@code {
+    [Parameter] public Skill Skill { get; set; } = new();
+    [Parameter] public bool IsEquipped { get; set; }
+    [Parameter] public EventCallback<Skill> OnClick { get; set; }
+}

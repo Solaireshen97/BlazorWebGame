@@ -1,13 +1,12 @@
 .battle-page-layout {
     display: flex;
     flex-direction: column;
-    gap: 1.5rem; /* 各区域之间的间距 */
-    /* 让布局占据整个可用垂直空间 */
+    gap: 1.5rem;
     height: 100%;
-    min-height: calc(100vh - 200px); /* 减去顶部和底部导航栏的大约高度，确保内容不会被截断 */
+    min-height: calc(100vh - 200px);
 }
 
-/* 上：怪物选择区 */
+/* 怪物选择区域 */
 .monster-selection-area {
     display: flex;
     gap: 1rem;
@@ -36,11 +35,9 @@
         border-color: #007bff;
     }
 
-/* 中：战斗核心区 */
+/* 核心战斗区域 */
 .battle-core-area {
-    /* 关键：让此区域占据所有剩余的垂直空间 */
     flex-grow: 1;
-    /* 关键：使用flex将内容垂直居中 */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -62,7 +59,7 @@
     justify-content: space-around;
     gap: 2rem;
     flex-wrap: wrap;
-    width: 100%; /* 确保容器宽度正确 */
+    width: 100%;
 }
 
 .character-card {
@@ -75,14 +72,13 @@
     background-color: white;
 }
 
-/* 新增：图像占位符样式 */
 .character-image-placeholder {
     width: 120px;
     height: 120px;
     background-color: #e9ecef;
     border: 2px dashed #ccc;
-    border-radius: 50%; /* 圆形占位符 */
-    margin: 0 auto 1rem auto; /* 水平居中并与下方内容隔开 */
+    border-radius: 50%;
+    margin: 0 auto 1rem auto;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -127,7 +123,7 @@
     transition: width 0.1s linear;
 }
 
-/* 下：详细信息区 */
+/* 底部详细信息区域 */
 .details-area {
     display: flex;
     justify-content: space-around;
@@ -151,3 +147,41 @@
         padding-bottom: 0.5rem;
         margin-bottom: 1rem;
     }
+
+/* 简化后的职业显示样式 */
+.profession-display {
+    background-color: #f0f0f0;
+    border-radius: 15px;
+    padding: 0.4rem 1rem;
+    margin-bottom: 1rem;
+    display: inline-block;
+    font-weight: bold;
+    border: 1px solid #ddd;
+}
+
+    .profession-display span:first-child {
+        margin-right: 0.5rem;
+    }
+
+.equipped-skills-display {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+}
+
+.skill-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 5px;
+    background-color: #6c757d;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: help;
+}

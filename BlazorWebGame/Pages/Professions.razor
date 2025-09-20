@@ -1,0 +1,55 @@
+﻿@page "/professions"
+@using BlazorWebGame.Services
+@using BlazorWebGame.Models
+@inject GameStateService GameState
+@implements IDisposable
+
+<PageTitle>职业管理</PageTitle>
+
+<h3>战斗职业</h3>
+<p>在这里选择你当前要使用的战斗职业。选中的职业将在战斗中获得经验值。</p>
+
+<div class="profession-grid">
+    @foreach (var prof in GameState.Player.BattleProfessionXP.OrderBy(p => p.Key.ToString()))
+    {
+        var profession = prof.Key;
+        var currentXP = prof.Value;
+        var currentLevel = GameState.Player.GetLevel(currentXP);
+        var xpForNextLevel = (currentLevel) * 100;
+        var xpInCurrentLevel = currentXP - ((currentLevel - 1) * 100);
+        var progressPercentage = xpForNextLevel > 0 ? (double)xpInCurrentLevel / 100 * 100 : 0;
+
+        <div class="profession-card @(GameState.Player.SelectedBattleProfession == profession ? "selected" : "")"
+             @onclick="() => GameState.SetBattleProfession(profession)">
+
+            <div class="profession-header">
+                <h4>@profession.ToChineseString()</h4>
+                @if (GameState.Player.SelectedBattleProfession == profession)
+                {
+                    <span class="selected-badge">已选择</span>
+                }
+            </div>
+
+            <div class="profession-body">
+                <p>等级: <strong>@currentLevel</strong></p>
+                <p>经验: @currentXP</p>
+                <div class="xp-bar-container">
+                    <div class="xp-bar" style="width: @(progressPercentage)%;"></div>
+                </div>
+                <small class="xp-text">@xpInCurrentLevel / 100</small>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        GameState.OnStateChanged += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        GameState.OnStateChanged -= StateHasChanged;
+    }
+}
