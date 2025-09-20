@@ -106,15 +106,15 @@ public class GameStateService : IAsyncDisposable
 
         var equippedSkillIds = Player.EquippedSkills[Player.SelectedBattleProfession];
 
-        // 1. װļ
+        // 1. 遍历装备的技能
         foreach (var skillId in equippedSkillIds)
         {
             var currentCooldown = Player.SkillCooldowns.GetValueOrDefault(skillId);
 
-            // 2. 鼼Ƿȴ
+            // 2. 检查技能是否冷却完毕
             if (currentCooldown <= 0)
             {
-                //  -> ܲȴ
+                //  -> 冷却完毕，释放技能
                 var skill = SkillData.GetSkillById(skillId);
                 if (skill != null)
                 {
@@ -124,7 +124,7 @@ public class GameStateService : IAsyncDisposable
             }
             else
             {
-                //  -> ȴʱ1
+                //  -> 冷却中，冷却时间-1
                 Player.SkillCooldowns[skillId]--;
             }
         }
@@ -133,20 +133,20 @@ public class GameStateService : IAsyncDisposable
 
         if (CurrentEnemy.Health <= 0)
         {
-            // --- սƷ߼ ---
+            // --- 战利品逻辑 ---
             Player.Gold += CurrentEnemy.GetGoldDropAmount();
 
-            // 1. Ʒ
+            // 1. 掉落物品
             var random = new Random();
             foreach (var lootItem in CurrentEnemy.LootTable)
             {
-                if (random.NextDouble() <= lootItem.Value) // random.NextDouble()  0.0  1.0 ֮
+                if (random.NextDouble() <= lootItem.Value) // random.NextDouble() 在 0.0 和 1.0 之间
                 {
                     AddItemToInventory(lootItem.Key, 1);
                 }
             }
 
-            // 2. ֵ
+            // 2. 获得经验值
             var profession = Player.SelectedBattleProfession;
             var oldLevel = Player.GetLevel(profession);
             Player.AddBattleXP(profession, CurrentEnemy.XpReward);
@@ -165,12 +165,12 @@ public class GameStateService : IAsyncDisposable
     {
         if (Player == null || CurrentEnemy == null) return;
 
-        // 1. м
+        // 1. 遍历怪物的技能
         foreach (var skillId in CurrentEnemy.SkillIds)
         {
             var currentCooldown = CurrentEnemy.SkillCooldowns.GetValueOrDefault(skillId);
 
-            // 2. 鼼Ƿȴ
+            // 2. 检查技能是否冷却完毕
             if (currentCooldown <= 0)
             {
                 var skill = SkillData.GetSkillById(skillId);
@@ -182,12 +182,12 @@ public class GameStateService : IAsyncDisposable
             }
             else
             {
-                //  -> ȴʱ1
+                //  -> 冷却中，冷却时间-1
                 CurrentEnemy.SkillCooldowns[skillId]--;
             }
         }
 
-        // 3. ִйͨ
+        // 3. 执行普通攻击
         Player.Health -= CurrentEnemy.AttackPower;
         if (Player.Health <= 0)
         {
@@ -211,8 +211,8 @@ public class GameStateService : IAsyncDisposable
             case SkillEffectType.Heal:
                 if (caster is Player pCaster)
                 {
-                    var healAmount = skill.EffectValue < 1.0 ? (int)(pCaster.MaxHealth * skill.EffectValue) : (int)skill.EffectValue;
-                    pCaster.Health = Math.Min(pCaster.MaxHealth, pCaster.Health + healAmount);
+                    var healAmount = skill.EffectValue < 1.0 ? (int)(pCaster.GetTotalMaxHealth() * skill.EffectValue) : (int)skill.EffectValue;
+                    pCaster.Health = Math.Min(pCaster.GetTotalMaxHealth(), pCaster.Health + healAmount);
                 }
                 if (caster is Enemy eCaster)
                 {
@@ -233,7 +233,6 @@ public class GameStateService : IAsyncDisposable
             CheckForNewSkillUnlocks(profession, currentLevel, true);
         }
 
-        // 㣺ȴ߼ȡķ
         ResetPlayerSkillCooldowns();
 
         NotifyStateChanged();
@@ -290,32 +289,25 @@ public class GameStateService : IAsyncDisposable
         }
         RevivalTimeRemaining = 0;
 
-        // 㣺Ҹʱĳʼȴ߼
         InitializePlayerState();
     }
 
-    /// <summary>
-    /// ҿƷ (ع)
-    /// </summary>
     public void AddItemToInventory(string itemId, int quantity)
     {
         if (Player == null) return;
         var itemToAdd = ItemData.GetItemById(itemId);
         if (itemToAdd == null) return;
 
-        // ƷǷԶб
         if (Player.AutoSellItemIds.Contains(itemId))
         {
             Player.Gold += itemToAdd.Value * quantity;
             NotifyStateChanged();
-            return; // ֱӳۣӵ
+            return;
         }
 
-        // 1. ƷǿɶѵģԶѵ
         if (itemToAdd.IsStackable)
         {
-            // ѰѴڵġδĶѵ
-            var existingSlot = Player.Inventory.FirstOrDefault(s => s.ItemId == itemId && s.Quantity < 99); // ѵΪ99
+            var existingSlot = Player.Inventory.FirstOrDefault(s => s.ItemId == itemId && s.Quantity < 99);
             if (existingSlot != null)
             {
                 existingSlot.Quantity += quantity;
@@ -324,7 +316,6 @@ public class GameStateService : IAsyncDisposable
             }
         }
 
-        // 2. ޷ѵƷװѰһո
         var emptySlot = Player.Inventory.FirstOrDefault(s => s.IsEmpty);
         if (emptySlot != null)
         {
@@ -333,14 +324,11 @@ public class GameStateService : IAsyncDisposable
         }
         else
         {
-            // ˣδڴʾ
+            // 背包满了，暂时不处理
         }
         NotifyStateChanged();
     }
 
-    /// <summary>
-    /// ӿдһװ (ع)
-    /// </summary>
     public void EquipItem(string itemId)
     {
         if (Player == null) return;
@@ -349,47 +337,36 @@ public class GameStateService : IAsyncDisposable
 
         if (ItemData.GetItemById(itemId) is not Equipment equipmentToEquip) return;
 
-        // ĿλǷװУж
         if (Player.EquippedItems.TryGetValue(equipmentToEquip.Slot, out var currentItemId))
         {
             UnequipItem(equipmentToEquip.Slot);
         }
 
-        // ӿƳ
         slotToEquipFrom.Quantity--;
         if (slotToEquipFrom.Quantity <= 0)
         {
             slotToEquipFrom.ItemId = null;
         }
 
-        // װ
         Player.EquippedItems[equipmentToEquip.Slot] = itemId;
 
         Player.Health = Math.Min(Player.Health, Player.GetTotalMaxHealth());
         NotifyStateChanged();
     }
 
-    /// <summary>
-    /// жһװ (ع)
-    /// </summary>
     public void UnequipItem(EquipmentSlot slot)
     {
         if (Player == null) return;
         if (!Player.EquippedItems.TryGetValue(slot, out var itemIdToUnequip)) return;
 
-        // װƳ
         Player.EquippedItems.Remove(slot);
 
-        // ӻؿ
         AddItemToInventory(itemIdToUnequip, 1);
 
         Player.Health = Math.Min(Player.Health, Player.GetTotalMaxHealth());
         NotifyStateChanged();
     }
 
-    /// <summary>
-    /// ۱еƷ
-    /// </summary>
     public void SellItem(string itemId, int quantity = 1)
     {
         if (Player == null) return;
@@ -397,49 +374,99 @@ public class GameStateService : IAsyncDisposable
         var itemData = ItemData.GetItemById(itemId);
         if (itemData == null) return;
 
-        var inventorySlot = Player.Inventory.FirstOrDefault(s => s.ItemId == itemId);
-        if (inventorySlot == null) return;
+        RemoveItemFromInventory(itemId, quantity, out int soldCount);
 
-        int sellCount = Math.Min(inventorySlot.Quantity, quantity);
-        if (sellCount <= 0) return;
-
-        inventorySlot.Quantity -= sellCount;
-        if (inventorySlot.Quantity <= 0)
+        if (soldCount > 0)
         {
-            inventorySlot.ItemId = null;
+            Player.Gold += itemData.Value * soldCount;
+            NotifyStateChanged();
         }
-
-        Player.Gold += itemData.Value * sellCount;
-        NotifyStateChanged();
     }
 
     /// <summary>
-    /// 从商店购买物品
+    /// 从商店购买物品（重构版）
     /// </summary>
     public bool BuyItem(string itemId)
     {
         if (Player == null) return false;
 
         var itemToBuy = ItemData.GetItemById(itemId);
-        if (itemToBuy == null) return false;
+        var purchaseInfo = itemToBuy?.ShopPurchaseInfo;
+        if (purchaseInfo == null) return false; // 物品不可购买
 
-        // 物品的 "Value" 既是售价也是买价
-        int price = itemToBuy.Value;
-
-        if (Player.Gold >= price)
+        // 检查并支付货币
+        bool canAfford = false;
+        switch (purchaseInfo.Currency)
         {
-            Player.Gold -= price;
+            case CurrencyType.Gold:
+                if (Player.Gold >= purchaseInfo.Price)
+                {
+                    Player.Gold -= purchaseInfo.Price;
+                    canAfford = true;
+                }
+                break;
+
+            case CurrencyType.Item:
+                if (!string.IsNullOrEmpty(purchaseInfo.CurrencyItemId))
+                {
+                    // 检查玩家是否有足够的物品
+                    int ownedAmount = Player.Inventory
+                        .Where(s => s.ItemId == purchaseInfo.CurrencyItemId)
+                        .Sum(s => s.Quantity);
+
+                    if (ownedAmount >= purchaseInfo.Price)
+                    {
+                        // 从背包移除作为货币的物品
+                        RemoveItemFromInventory(purchaseInfo.CurrencyItemId, purchaseInfo.Price, out _);
+                        canAfford = true;
+                    }
+                }
+                break;
+        }
+
+        if (canAfford)
+        {
             AddItemToInventory(itemId, 1);
             NotifyStateChanged();
             return true;
         }
 
-        return false; // 金币不足
+        return false; // 货币不足
     }
 
     /// <summary>
-    /// лƷԶ״̬
+    /// 从背包中移除指定数量的物品
     /// </summary>
+    private bool RemoveItemFromInventory(string itemId, int quantityToRemove, out int actuallyRemoved)
+    {
+        actuallyRemoved = 0;
+        if (Player == null) return false;
+
+        for (int i = Player.Inventory.Count - 1; i >= 0; i--)
+        {
+            var slot = Player.Inventory[i];
+            if (slot.ItemId == itemId)
+            {
+                int amountToRemoveFromSlot = Math.Min(quantityToRemove - actuallyRemoved, slot.Quantity);
+
+                slot.Quantity -= amountToRemoveFromSlot;
+                actuallyRemoved += amountToRemoveFromSlot;
+
+                if (slot.Quantity <= 0)
+                {
+                    slot.ItemId = null;
+                }
+
+                if (actuallyRemoved >= quantityToRemove)
+                {
+                    break;
+                }
+            }
+        }
+
+        return actuallyRemoved > 0;
+    }
+
     public void ToggleAutoSellItem(string itemId)
     {
         if (Player == null) return;
@@ -466,13 +493,10 @@ public class GameStateService : IAsyncDisposable
 
     public void SpawnNewEnemy(Enemy enemyTemplate)
     {
-        // 1. Ӿ̬ģбҵȷԭʼģ
         var originalTemplate = AvailableMonsters.FirstOrDefault(m => m.Name == enemyTemplate.Name) ?? enemyTemplate;
 
-        // 2. ʹ Clone() һɾʵ
         CurrentEnemy = originalTemplate.Clone();
 
-        // 3. ¹ļȴ
         CurrentEnemy.SkillCooldowns.Clear();
         foreach (var skillId in CurrentEnemy.SkillIds)
         {
@@ -505,7 +529,6 @@ public class GameStateService : IAsyncDisposable
         if (currentSelectableSkills < MaxEquippedSkills)
         {
             equipped.Add(skillId);
-            // װ¼ʱҲӦʼȴ
             Player.SkillCooldowns[skillId] = skill.InitialCooldownRounds;
             NotifyStateChanged();
         }
@@ -526,9 +549,6 @@ public class GameStateService : IAsyncDisposable
         }
     }
 
-    /// <summary>
-    /// װܵȴʱ
-    /// </summary>
     private void ResetPlayerSkillCooldowns()
     {
         if (Player == null) return;

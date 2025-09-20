@@ -8,51 +8,192 @@
 
 @if (GameState.Player != null)
 {
-    <div class="shop-container">
-        <h3>欢迎来到商店！</h3>
-        <p>你当前拥有: <strong class="gold-text">@GameState.Player.Gold G</strong></p>
-
-        <div class="item-list">
-            @foreach (var itemId in ShopData.ForSaleItemIds)
-            {
-                var item = ItemData.GetItemById(itemId);
-                if (item != null)
+    <div class="shop-layout">
+        <!-- 左侧：商品分类和列表 -->
+        <div class="shop-left-panel">
+            <div class="shop-tabs">
+                @foreach (var category in _shopCategories)
                 {
-                    <div class="item-card">
-                        <div class="item-card-header">
-                            <h5>@item.Name</h5>
-                            <span class="item-price">@item.Value G</span>
-                        </div>
-                        <p class="item-card-description">@item.Description</p>
-                        <div class="item-card-footer">
-                            <button class="btn btn-primary"
-                                    @onclick="() => BuyItem(item.Id)"
-                                    disabled="@(GameState.Player.Gold < item.Value)">
-                                购买
-                            </button>
-                        </div>
+                    <button class="tab-button @(category == _selectedCategory ? "active" : "")"
+                            @onclick="() => SelectCategory(category)">
+                        @category
+                    </button>
+                }
+            </div>
+            <div class="shop-item-list">
+                @foreach (var item in GetItemsForCurrentCategory())
+                {
+                    <div class="shop-item-row @(_selectedItem?.Id == item.Id ? "selected" : "")"
+                         @onclick="() => SelectItem(item)">
+                        <span>@item.Name</span>
+                        <span class="item-price">@GetPriceString(item.ShopPurchaseInfo!)</span>
                     </div>
                 }
+            </div>
+        </div>
+
+        <!-- 右侧：商品详情 -->
+        <div class="shop-right-panel">
+            @if (_selectedItem != null)
+            {
+                <div class="detail-card">
+                    <div class="detail-header">
+                        <h5>@_selectedItem.Name</h5>
+                        @if (_selectedItem is Equipment eq)
+                        {
+                            <span class="item-type-badge">@eq.Slot</span>
+                        }
+                    </div>
+                    <p class="detail-description">@_selectedItem.Description</p>
+                    <hr />
+
+                    @if (_selectedItem is Equipment equip)
+                    {
+                        <div class="detail-stats">
+                            @if (equip.AttackBonus > 0)
+                            {
+                                <p><strong>攻击力:</strong> <span class="stat-bonus">+@equip.AttackBonus</span></p>
+                            }
+                            @if (equip.HealthBonus > 0)
+                            {
+                                <p><strong>生命值:</strong> <span class="stat-bonus">+@equip.HealthBonus</span></p>
+                            }
+                        </div>
+                        <hr />
+                    }
+
+                    <div class="purchase-section">
+                        <div class="price-display">
+                            <span>价格:</span>
+                            <strong>@GetPriceString(_selectedItem.ShopPurchaseInfo!)</strong>
+                        </div>
+                        <button class="btn btn-success" @onclick="() => BuySelectedItem()" disabled="@(!CanAfford(_selectedItem))">
+                            购买
+                        </button>
+                    </div>
+                    @if (_purchaseMessage != null)
+                    {
+                        <p class="purchase-message @_purchaseMessageCssClass">@_purchaseMessage</p>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="detail-placeholder">
+                    <p>从左侧选择一件商品查看详情。</p>
+                </div>
             }
         </div>
     </div>
 }
-else
-{
-    <p>正在加载玩家数据...</p>
-}
-
 
 @code {
+    private List<string> _shopCategories = new();
+    private string? _selectedCategory;
+    private Item? _selectedItem;
+
+    private string? _purchaseMessage;
+    private string? _purchaseMessageCssClass;
+
     protected override void OnInitialized()
     {
         GameState.OnStateChanged += StateHasChanged;
+        LoadShopCategories();
+        if (_shopCategories.Any())
+        {
+            SelectCategory(_shopCategories.First());
+        }
     }
 
-    private void BuyItem(string itemId)
+    private void LoadShopCategories()
     {
-        GameState.BuyItem(itemId);
-        // 可以在这里添加购买成功或失败的提示
+        _shopCategories = ItemData.AllItems
+            .Where(i => i.ShopPurchaseInfo != null)
+            .Select(i => i.ShopPurchaseInfo!.ShopCategory)
+            .Distinct()
+            .OrderBy(c => c)
+            .ToList();
+    }
+
+    private void SelectCategory(string category)
+    {
+        _selectedCategory = category;
+        _selectedItem = GetItemsForCurrentCategory().FirstOrDefault();
+        ClearPurchaseMessage();
+    }
+
+    private void SelectItem(Item item)
+    {
+        _selectedItem = item;
+        ClearPurchaseMessage();
+    }
+
+    private List<Item> GetItemsForCurrentCategory()
+    {
+        return ItemData.AllItems
+            .Where(i => i.ShopPurchaseInfo?.ShopCategory == _selectedCategory)
+            .OrderBy(i => i.Name)
+            .ToList();
+    }
+
+    private string GetPriceString(PurchaseInfo info)
+    {
+        if (info.Currency == CurrencyType.Gold)
+        {
+            return $"{info.Price} 金币";
+        }
+        else
+        {
+            var currencyItem = ItemData.GetItemById(info.CurrencyItemId!);
+            return $"{info.Price} {currencyItem?.Name ?? "未知物品"}";
+        }
+    }
+
+    private bool CanAfford(Item? item)
+    {
+        if (item?.ShopPurchaseInfo == null || GameState.Player == null) return false;
+
+        var info = item.ShopPurchaseInfo;
+        if (info.Currency == CurrencyType.Gold)
+        {
+            return GameState.Player.Gold >= info.Price;
+        }
+        else
+        {
+            int ownedAmount = GameState.Player.Inventory
+                .Where(s => s.ItemId == info.CurrencyItemId)
+                .Sum(s => s.Quantity);
+            return ownedAmount >= info.Price;
+        }
+    }
+
+    private async void BuySelectedItem()
+    {
+        if (_selectedItem == null) return;
+
+        bool success = GameState.BuyItem(_selectedItem.Id);
+
+        if (success)
+        {
+            _purchaseMessage = "购买成功！";
+            _purchaseMessageCssClass = "success";
+        }
+        else
+        {
+            _purchaseMessage = "货币不足，无法购买。";
+            _purchaseMessageCssClass = "error";
+        }
+
+        await InvokeAsync(StateHasChanged);
+        await Task.Delay(2000); // 2秒后清除消息
+        ClearPurchaseMessage();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void ClearPurchaseMessage()
+    {
+        _purchaseMessage = null;
+        _purchaseMessageCssClass = null;
     }
 
     public void Dispose()

@@ -15,5 +15,10 @@
         public ItemType Type { get; set; }
         public bool IsStackable { get; set; } = false; // 是否可堆叠
         public int Value { get; set; } = 1; // 物品的售出价格
+
+        /// <summary>
+        /// 物品在商店中的购买信息。如果为null，表示该物品不出售。
+        /// </summary>
+        public PurchaseInfo? ShopPurchaseInfo { get; set; }
     }
 }
