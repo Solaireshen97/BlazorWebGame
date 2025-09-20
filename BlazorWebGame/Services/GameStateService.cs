@@ -295,32 +295,50 @@ public class GameStateService : IAsyncDisposable
     }
 
     /// <summary>
-    /// 向玩家库存中添加物品
+    /// 向玩家库存中添加物品 (已重构)
     /// </summary>
     public void AddItemToInventory(string itemId, int quantity)
     {
         if (Player == null) return;
-        var item = ItemData.GetItemById(itemId);
-        if (item == null) return;
+        var itemToAdd = ItemData.GetItemById(itemId);
+        if (itemToAdd == null) return;
 
-        if (Player.Inventory.ContainsKey(itemId))
+        // 1. 如果物品是可堆叠的，尝试堆叠
+        if (itemToAdd.IsStackable)
         {
-            Player.Inventory[itemId] += quantity;
+            // 寻找已存在的、未满的堆叠
+            var existingSlot = Player.Inventory.FirstOrDefault(s => s.ItemId == itemId && s.Quantity < 99); // 假设最大堆叠为99
+            if (existingSlot != null)
+            {
+                existingSlot.Quantity += quantity;
+                NotifyStateChanged();
+                return;
+            }
+        }
+
+        // 2. 如果无法堆叠（或物品是装备），寻找一个空格子
+        var emptySlot = Player.Inventory.FirstOrDefault(s => s.IsEmpty);
+        if (emptySlot != null)
+        {
+            emptySlot.ItemId = itemId;
+            emptySlot.Quantity = quantity;
         }
         else
         {
-            Player.Inventory[itemId] = quantity;
+            // 背包满了！未来可以在此添加提示。
         }
         NotifyStateChanged();
     }
 
     /// <summary>
-    /// 从库存中穿戴一件装备
+    /// 从库存中穿戴一件装备 (已重构)
     /// </summary>
     public void EquipItem(string itemId)
     {
         if (Player == null) return;
-        if (!Player.Inventory.ContainsKey(itemId)) return;
+        var slotToEquipFrom = Player.Inventory.FirstOrDefault(s => s.ItemId == itemId);
+        if (slotToEquipFrom == null) return;
+
         if (ItemData.GetItemById(itemId) is not Equipment equipmentToEquip) return;
 
         // 检查目标槽位是否已有装备，如果有，则先卸下
@@ -329,24 +347,22 @@ public class GameStateService : IAsyncDisposable
             UnequipItem(equipmentToEquip.Slot);
         }
 
-        // 从库存中移除
-        Player.Inventory[itemId]--;
-        if (Player.Inventory[itemId] <= 0)
+        // 从库存格子中移除
+        slotToEquipFrom.Quantity--;
+        if (slotToEquipFrom.Quantity <= 0)
         {
-            Player.Inventory.Remove(itemId);
+            slotToEquipFrom.ItemId = null;
         }
 
         // 穿上新装备
         Player.EquippedItems[equipmentToEquip.Slot] = itemId;
 
-        // 装备可能影响最大生命值，更新当前生命值
         Player.Health = Math.Min(Player.Health, Player.GetTotalMaxHealth());
-
         NotifyStateChanged();
     }
 
     /// <summary>
-    /// 卸下一件装备到库存
+    /// 卸下一件装备到库存 (已重构)
     /// </summary>
     public void UnequipItem(EquipmentSlot slot)
     {
@@ -359,9 +375,7 @@ public class GameStateService : IAsyncDisposable
         // 添加回库存
         AddItemToInventory(itemIdToUnequip, 1);
 
-        // 装备可能影响最大生命值，更新当前生命值
         Player.Health = Math.Min(Player.Health, Player.GetTotalMaxHealth());
-
         NotifyStateChanged();
     }
 

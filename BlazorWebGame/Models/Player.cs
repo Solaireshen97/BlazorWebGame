@@ -35,11 +35,10 @@ namespace BlazorWebGame.Models
         /// </summary>
         public Dictionary<string, int> SkillCooldowns { get; set; } = new();
 
-        // --- 新增属性 ---
         /// <summary>
-        /// 玩家的库存。Key: ItemId, Value: 数量
+        /// 玩家的库存，列表的索引直接对应背包格子的位置。
         /// </summary>
-        public Dictionary<string, int> Inventory { get; set; } = new();
+        public List<InventorySlot> Inventory { get; set; } = new();
 
         /// <summary>
         /// 玩家已穿戴的装备。Key: 装备槽位, Value: ItemId
@@ -56,6 +55,11 @@ namespace BlazorWebGame.Models
             }
             GatheringProfessionXP.TryAdd(GatheringProfession.Miner, 0);
             ProductionProfessionXP.TryAdd(ProductionProfession.Tailor, 0);
+
+            for (int i = 0; i < 20; i++)
+            {
+                Inventory.Add(new InventorySlot());
+            }
         }
 
         public void AddBattleXP(BattleProfession profession, int amount)

@@ -9,8 +9,72 @@
 
 @if (GameState.Player != null)
 {
-    <div class="inventory-container">
-        <!-- 左侧：装备栏 -->
+    <div class="backpack-container">
+        <!-- 左侧：背包网格 -->
+        <div class="inventory-panel">
+            <h3>背包</h3>
+            <div class="inventory-grid">
+                @foreach (var slot in GameState.Player.Inventory)
+                {
+                    @if (!slot.IsEmpty)
+                    {
+                        var item = ItemData.GetItemById(slot.ItemId!)!;
+                        <div class="item-slot @(_selectedItemForDetailView?.Id == item.Id ? "selected" : "")" @onclick="() => SelectItemForDetail(item)">
+                            <div class="item-icon">@item.Name.Substring(0, 1)</div>
+                            @if (item.IsStackable && slot.Quantity > 1)
+                            {
+                                <span class="item-quantity">@slot.Quantity</span>
+                            }
+                            <div class="item-tooltip">@item.Name</div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="item-slot empty"></div>
+                    }
+                }
+            </div>
+        </div>
+
+        <!-- 中间：物品详情 -->
+        <div class="item-detail-panel">
+            <h3>物品详情</h3>
+            @if (_selectedItemForDetailView != null)
+            {
+                <div class="detail-card">
+                    <div class="detail-header">
+                        <h5>@_selectedItemForDetailView.Name</h5>
+                    </div>
+                    <p class="detail-description">@_selectedItemForDetailView.Description</p>
+
+                    @if (_selectedItemForDetailView is Equipment eq)
+                    {
+                        <hr />
+                        <div class="detail-stats">
+                            <p><strong>类型:</strong> @eq.Slot.ToString()</p>
+                            @if (eq.AttackBonus > 0)
+                            {
+                                <p><strong>攻击力:</strong> <span class="stat-bonus">+@eq.AttackBonus</span></p>
+                            }
+                            @if (eq.HealthBonus > 0)
+                            {
+                                <p><strong>生命值:</strong> <span class="stat-bonus">+@eq.HealthBonus</span></p>
+                            }
+                        </div>
+                        <hr />
+                        <button class="btn btn-success" @onclick="() => GameState.EquipItem(eq.Id)">装备</button>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="detail-card-placeholder">
+                    <p>从左侧背包中选择一件物品查看详情。</p>
+                </div>
+            }
+        </div>
+
+        <!-- 右侧：装备栏 (修正点：将此部分代码加回来) -->
         <div class="equipment-panel">
             <h3>装备</h3>
             <div class="player-stats">
@@ -21,7 +85,7 @@
             <div class="equipment-slots">
                 @foreach (var slot in (EquipmentSlot[])Enum.GetValues(typeof(EquipmentSlot)))
                 {
-                    <div class="equipment-slot" @onclick="() => OnSlotClick(slot)">
+                    <div class="equipment-slot-display" @onclick="() => OnSlotClick(slot)">
                         <span class="slot-name">@slot.ToString()</span>
                         @if (GameState.Player.EquippedItems.TryGetValue(slot, out var itemId))
                         {
@@ -51,42 +115,6 @@
                 }
             </div>
         </div>
-
-        <!-- 右侧：库存 -->
-        <div class="inventory-panel">
-            <h3>库存</h3>
-            <div class="inventory-grid">
-                @foreach (var inventoryItem in GameState.Player.Inventory)
-                {
-                    var item = ItemData.GetItemById(inventoryItem.Key)!;
-                    <div class="inventory-item" @onclick="() => OnItemClick(item)">
-                        @item.Name
-                        @if (item.IsStackable && inventoryItem.Value > 1)
-                        {
-                            <span class="item-quantity">x@inventoryItem.Value</span>
-                        }
-                        <div class="item-tooltip">
-                            <strong>@item.Name</strong><br />
-                            @if (item is Equipment eq)
-                            {
-                                <small>@eq.Slot</small>
-                    
-                                <hr />
-                                @if (eq.AttackBonus > 0)
-                                {
-                                    <span>攻击力 +@eq.AttackBonus<br /></span>
-                                }
-                                @if (eq.HealthBonus > 0)
-                                {
-                                    <span>生命值 +@eq.HealthBonus<br /></span>
-                                }
-                            }
-                            <hr /><em>@item.Description</em>
-                        </div>
-                    </div>
-                }
-            </div>
-        </div>
     </div>
 }
 else
@@ -96,25 +124,24 @@ else
 
 
 @code {
+    private Item? _selectedItemForDetailView;
+
     protected override void OnInitialized()
     {
         GameState.OnStateChanged += StateHasChanged;
     }
 
-    private void OnItemClick(Item item)
+    private void SelectItemForDetail(Item item)
     {
-        if (item is Equipment eq)
-        {
-            GameState.EquipItem(eq.Id);
-        }
-        // 未来可以处理消耗品的使用等
+        _selectedItemForDetailView = item;
     }
 
     private void OnSlotClick(EquipmentSlot slot)
     {
-        if (GameState.Player.EquippedItems.ContainsKey(slot))
+        if (GameState.Player != null && GameState.Player.EquippedItems.ContainsKey(slot))
         {
-            GameState.UnequipItem(slot);
+            var itemId = GameState.Player.EquippedItems[slot];
+            _selectedItemForDetailView = ItemData.GetItemById(itemId);
         }
     }
 
