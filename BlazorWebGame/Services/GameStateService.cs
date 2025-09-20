@@ -43,14 +43,11 @@ public class GameStateService : IAsyncDisposable
         {
             Player = loadedPlayer;
         }
-
         InitializePlayerState();
-
         if (CurrentEnemy == null && AvailableMonsters.Any())
         {
             SpawnNewEnemy(AvailableMonsters.First());
         }
-
         _gameLoopTimer = new System.Timers.Timer(GameLoopIntervalMs);
         _gameLoopTimer.Elapsed += GameLoopTick;
         _gameLoopTimer.AutoReset = true;
@@ -60,9 +57,8 @@ public class GameStateService : IAsyncDisposable
     private void GameLoopTick(object? sender, ElapsedEventArgs e)
     {
         double elapsedSeconds = GameLoopIntervalMs / 1000.0;
-
-        // 处理Buff持续时间
         UpdateBuffs(elapsedSeconds);
+        UpdateConsumableCooldowns(elapsedSeconds);
 
         if (IsPlayerDead)
         {
@@ -75,6 +71,8 @@ public class GameStateService : IAsyncDisposable
             return;
         }
 
+        ProcessAutoConsumables();
+
         if (Player != null && CurrentEnemy != null)
         {
             _playerAttackCooldown -= elapsedSeconds;
@@ -83,7 +81,6 @@ public class GameStateService : IAsyncDisposable
                 PlayerAttackEnemy();
                 _playerAttackCooldown += 1.0 / Player.AttacksPerSecond;
             }
-
             _enemyAttackCooldown -= elapsedSeconds;
             if (_enemyAttackCooldown <= 0)
             {
@@ -91,14 +88,12 @@ public class GameStateService : IAsyncDisposable
                 _enemyAttackCooldown += 1.0 / CurrentEnemy.AttacksPerSecond;
             }
         }
-
         NotifyStateChanged();
     }
 
     private void UpdateBuffs(double elapsedSeconds)
     {
         if (Player == null || !Player.ActiveBuffs.Any()) return;
-
         bool buffsChanged = false;
         for (int i = Player.ActiveBuffs.Count - 1; i >= 0; i--)
         {
@@ -110,11 +105,138 @@ public class GameStateService : IAsyncDisposable
                 buffsChanged = true;
             }
         }
-
         if (buffsChanged)
         {
-            // 如果Buff消失导致最大生命值变化，需要修正当前生命值
             Player.Health = Math.Min(Player.Health, Player.GetTotalMaxHealth());
+        }
+    }
+
+    private void UpdateConsumableCooldowns(double elapsedSeconds)
+    {
+        if (Player == null || !Player.ConsumableCooldowns.Any()) return;
+        var keys = Player.ConsumableCooldowns.Keys.ToList();
+        foreach (var key in keys)
+        {
+            Player.ConsumableCooldowns[key] -= elapsedSeconds;
+            if (Player.ConsumableCooldowns[key] <= 0)
+            {
+                Player.ConsumableCooldowns.Remove(key);
+            }
+        }
+    }
+
+    private void ProcessAutoConsumables()
+    {
+        if (Player == null || !Player.QuickSlots.Any()) return;
+
+        foreach (var slot in Player.QuickSlots)
+        {
+            var itemId = slot.Value;
+            if (string.IsNullOrEmpty(itemId)) continue;
+
+            if (Player.ConsumableCooldowns.ContainsKey(itemId)) continue;
+
+            var item = ItemData.GetItemById(itemId) as Consumable;
+            if (item == null) continue;
+
+            bool shouldUse = false;
+            switch (item.SubType)
+            {
+                case ConsumableSubType.Potion:
+                    if ((double)Player.Health / Player.GetTotalMaxHealth() < 0.7)
+                    {
+                        shouldUse = true;
+                    }
+                    break;
+                case ConsumableSubType.Food:
+                    if (!Player.ActiveBuffs.Any(b => b.BuffType == item.BuffType))
+                    {
+                        shouldUse = true;
+                    }
+                    break;
+            }
+
+            if (shouldUse)
+            {
+                if (RemoveItemFromInventory(itemId, 1, out int removedCount) && removedCount > 0)
+                {
+                    ApplyConsumableEffect(item);
+                }
+            }
+        }
+    }
+
+    private void ApplyConsumableEffect(Consumable consumable)
+    {
+        switch (consumable.Effect)
+        {
+            case ConsumableEffectType.Heal:
+                Player.Health = Math.Min(Player.GetTotalMaxHealth(), Player.Health + (int)consumable.EffectValue);
+                break;
+            case ConsumableEffectType.StatBuff:
+                if (consumable.BuffType.HasValue && consumable.DurationSeconds.HasValue)
+                {
+                    var existingBuff = Player.ActiveBuffs.FirstOrDefault(b => b.BuffType == consumable.BuffType.Value);
+                    if (existingBuff != null)
+                    {
+                        existingBuff.TimeRemainingSeconds = consumable.DurationSeconds.Value;
+                    }
+                    else
+                    {
+                        Player.ActiveBuffs.Add(new Buff
+                        {
+                            SourceItemId = consumable.Id,
+                            BuffType = consumable.BuffType.Value,
+                            BuffValue = (int)consumable.EffectValue,
+                            TimeRemainingSeconds = consumable.DurationSeconds.Value
+                        });
+                    }
+                }
+                break;
+        }
+
+        Player.ConsumableCooldowns[consumable.Id] = consumable.CooldownSeconds;
+        NotifyStateChanged();
+    }
+
+    /// <summary>
+    /// 设置快捷栏物品，并处理互斥逻辑
+    /// </summary>
+    public void SetQuickSlotItem(int slotId, string itemId)
+    {
+        if (Player == null) return;
+        var item = ItemData.GetItemById(itemId) as Consumable;
+        if (item == null) return;
+
+        bool isValidSlot = (item.SubType == ConsumableSubType.Potion && slotId >= 0 && slotId <= 1) ||
+                           (item.SubType == ConsumableSubType.Food && slotId >= 2 && slotId <= 3);
+
+        if (!isValidSlot) return;
+
+        // 互斥逻辑：检查其他快捷栏位是否已设置了相同的物品
+        var otherSlots = Player.QuickSlots.Where(kv => kv.Value == itemId && kv.Key != slotId).ToList();
+        foreach (var otherSlot in otherSlots)
+        {
+            // 检查栏位类型是否相同
+            bool isSameType = (item.SubType == ConsumableSubType.Potion && otherSlot.Key <= 1) ||
+                              (item.SubType == ConsumableSubType.Food && otherSlot.Key >= 2);
+            if (isSameType)
+            {
+                Player.QuickSlots.Remove(otherSlot.Key);
+            }
+        }
+
+        // 设置新栏位
+        Player.QuickSlots[slotId] = itemId;
+        NotifyStateChanged();
+    }
+
+    public void ClearQuickSlotItem(int slotId)
+    {
+        if (Player != null)
+        {
+            Player.QuickSlots.Remove(slotId);
+            NotifyStateChanged();
         }
     }
 
@@ -275,7 +397,19 @@ public class GameStateService : IAsyncDisposable
         IsPlayerDead = true;
         Player.Health = 0;
         RevivalTimeRemaining = RevivalDuration;
-        Player.ActiveBuffs.Clear(); // 死亡时清除所有Buff
+
+        // 移除所有非食物来源的Buff
+        Player.ActiveBuffs.RemoveAll(buff =>
+        {
+            var item = ItemData.GetItemById(buff.SourceItemId);
+            if (item is Consumable consumable)
+            {
+                // 如果是消耗品，只有当它不是食物时才移除
+                return consumable.SubType != ConsumableSubType.Food;
+            }
+            // 如果Buff来源不是消耗品（例如来自未来可能的技能Buff），则默认移除
+            return true;
+        });
     }
 
     private void RevivePlayer()

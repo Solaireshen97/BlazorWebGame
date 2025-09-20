@@ -206,3 +206,128 @@
     font-weight: bold;
     border-radius: 5px;
 }
+
+/* 新增或修改的样式 */
+.action-bar {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+}
+
+.equipped-skills-display {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem; /* 与消耗品栏拉开距离 */
+}
+
+.consumable-quick-slots {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.quick-slot {
+    width: 40px;
+    height: 40px;
+    border-radius: 5px;
+    border: 1px dashed #ccc;
+    cursor: pointer;
+}
+
+.quick-slot-empty {
+    width: 100%;
+    height: 100%;
+}
+
+.quick-slot-item {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    background-color: #fff;
+    border: 1px solid #adb5bd;
+    border-radius: 5px;
+}
+
+    .quick-slot-item .item-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        font-weight: bold;
+        font-size: 1rem;
+    }
+
+    .quick-slot-item .item-count {
+        position: absolute;
+        bottom: 1px;
+        right: 2px;
+        font-size: 0.75rem;
+        font-weight: bold;
+        color: #212529;
+        text-shadow: 0 0 2px white;
+    }
+
+    .quick-slot-item.depleted .item-icon {
+        color: #dee2e6; /* 耗尽时图标变灰 */
+    }
+
+/* 快捷栏选择弹窗样式 */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1040;
+}
+
+.quick-slot-picker {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 300px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    z-index: 1050;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.picker-item-list {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #eee;
+    border-radius: 5px;
+}
+
+.picker-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center; /* 垂直居中 */
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+    .picker-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .picker-item:last-child {
+        border-bottom: none;
+    }
+
+.picker-item-name, .picker-item-count {
+    white-space: nowrap; /* 防止文本换行 */
+}
+
+.picker-item-count {
+    color: #6c757d;
+    font-size: 0.9em;
+}

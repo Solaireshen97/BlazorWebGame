@@ -9,7 +9,7 @@
 @if (GameState.Player != null)
 {
     <div class="battle-page-layout">
-        <!-- 怪物选择区域 -->
+        <!-- 怪物选择 -->
         <div class="monster-selection-area">
             @foreach (var monsterTemplate in GameState.AvailableMonsters)
             {
@@ -21,7 +21,7 @@
             }
         </div>
 
-        <!-- 核心战斗区域 -->
+        <!-- 战斗核心 -->
         <div class="battle-core-area">
             @if (GameState.IsPlayerDead)
             {
@@ -33,12 +33,11 @@
             else if (GameState.CurrentEnemy != null)
             {
                 <div class="battle-container">
-                    <!-- 玩家卡片 (已简化) -->
+                    <!-- 玩家卡片 -->
                     <div class="character-card player-card">
-                        <div class="character-image-placeholder"><span>玩家头像</span></div>
+                        <div class="character-image-placeholder"><span>头像</span></div>
                         <h5>@GameState.Player.Name</h5>
 
-                        <!-- 只显示当前职业和等级 -->
                         <div class="profession-display">
                             <span>@GameState.Player.SelectedBattleProfession.ToChineseString()</span>
                             <span>Lv. @GameState.Player.GetLevel(GameState.Player.BattleProfessionXP[GameState.Player.SelectedBattleProfession])</span>
@@ -47,48 +46,78 @@
                         <div class="health-bar-container">
                             <div class="health-bar player-health" style="width: @(GetPlayerHealthPercentage())%;"></div>
                         </div>
-                        <p>@GameState.Player.Health / @GameState.Player.MaxHealth</p>
+                        <p>@GameState.Player.Health / @GameState.Player.GetTotalMaxHealth()</p>
 
                         <div class="attack-progress-container">
                             <div class="attack-progress-bar" style="width: @(GameState.PlayerAttackProgress)%;"></div>
                         </div>
-                        <!-- 新增：已装备技能显示 -->
-                        <div class="equipped-skills-display">
-                            @foreach (var skillId in GameState.Player.EquippedSkills[GameState.Player.SelectedBattleProfession])
-                            {
-                                var skill = SkillData.GetSkillById(skillId);
-                                if (skill != null)
+
+                        <!-- 技能 & 消耗品快捷栏 -->
+                        <div class="action-bar">
+                            <!-- 技能 -->
+                            <div class="equipped-skills-display">
+                                @foreach (var skillId in GameState.Player.EquippedSkills[GameState.Player.SelectedBattleProfession])
                                 {
-                                    var cooldown = GameState.Player.SkillCooldowns.GetValueOrDefault(skillId, 0);
-                                    <div class="skill-icon-container" title="@skill.Name: @skill.Description">
-                                        <div class="skill-icon">
-                                            @skill.Name.Substring(0, 1)
+                                    var skill = SkillData.GetSkillById(skillId);
+                                    if (skill != null)
+                                    {
+                                        var cooldown = GameState.Player.SkillCooldowns.GetValueOrDefault(skillId, 0);
+                                        <div class="skill-icon-container" title="@skill.Name: @skill.Description">
+                                            <div class="skill-icon">@skill.Name.Substring(0, 1)</div>
+                                            @if (cooldown > 0)
+                                            {
+                                                <div class="cooldown-overlay"><span>@cooldown</span></div>
+                                            }
                                         </div>
-                                        @if (cooldown > 0)
+                                    }
+                                }
+                            </div>
+                            <!-- 消耗品 -->
+                            <div class="consumable-quick-slots">
+                                @for (int i = 0; i < 4; i++)
+                                {
+                                    var slotId = i; // 捕获循环变量
+                                                    <div class="quick-slot"
+                                                         @onclick="() => OpenQuickSlotPicker(slotId)"
+                                                         @oncontextmenu="() => ClearQuickSlot(slotId)"
+                                                         @oncontextmenu:preventDefault>
+                                        @if (GameState.Player.QuickSlots.TryGetValue(slotId, out var itemId) && !string.IsNullOrEmpty(itemId))
                                         {
-                                            <div class="cooldown-overlay">
-                                                <span>@cooldown</span>
+                                            var item = ItemData.GetItemById(itemId);
+                                            var cooldown = GameState.Player.ConsumableCooldowns.GetValueOrDefault(itemId, 0);
+                                            var count = GameState.Player.Inventory.Where(s => s.ItemId == itemId).Sum(s => s.Quantity);
+
+                                            <div class="quick-slot-item @(count == 0 ? "depleted" : "")" title="@item.Name (@count) - 右键清空">
+                                                <div class="item-icon">@item.Name.Substring(0, 1)</div>
+                                                <span class="item-count">@count</span>
+                                                @if (cooldown > 0)
+                                                {
+                                                    <div class="cooldown-overlay"><span>@((int)cooldown)</span></div>
+                                                }
                                             </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="quick-slot-empty" title="点击设置"></div>
                                         }
                                     </div>
                                 }
-                            }
+                            </div>
                         </div>
                     </div>
 
                     <!-- 敌人卡片 -->
                     <div class="character-card enemy-card">
                         <h4>@GameState.CurrentEnemy.Name</h4>
-                        <div class="character-image-placeholder">敌人形象</div>
+                        <div class="character-image-placeholder"></div>
                         <div class="health-bar-container">
                             <div class="health-bar enemy-health" style="width: @(100.0 * GameState.CurrentEnemy.Health / GameState.CurrentEnemy.MaxHealth)%;"></div>
                         </div>
-                        <p>生命: @GameState.CurrentEnemy.Health / @GameState.CurrentEnemy.MaxHealth</p>
+                        <p>生命值: @GameState.CurrentEnemy.Health / @GameState.CurrentEnemy.MaxHealth</p>
                         <div class="attack-progress-container">
                             <div class="attack-progress-bar" style="width: @(GameState.EnemyAttackProgress)%;"></div>
                         </div>
 
-                        <!-- 新增：敌人技能显示 -->
                         <div class="equipped-skills-display">
                             @foreach (var skillId in GameState.CurrentEnemy.SkillIds)
                             {
@@ -97,14 +126,10 @@
                                 {
                                     var cooldown = GameState.CurrentEnemy.SkillCooldowns.GetValueOrDefault(skillId, 0);
                                     <div class="skill-icon-container" title="@skill.Name: @skill.Description">
-                                        <div class="skill-icon">
-                                            @skill.Name.Substring(0, 1)
-                                        </div>
+                                        <div class="skill-icon">@skill.Name.Substring(0, 1)</div>
                                         @if (cooldown > 0)
                                         {
-                                            <div class="cooldown-overlay">
-                                                <span>@cooldown</span>
-                                            </div>
+                                            <div class="cooldown-overlay"><span>@cooldown</span></div>
                                         }
                                     </div>
                                 }
@@ -115,11 +140,11 @@
             }
             else
             {
-                <p>请选择一个怪物开始战斗。</p>
+                <p>选择一个怪物开始战斗！</p>
             }
         </div>
 
-        <!-- 底部详细信息区域 -->
+        <!-- 装备及细节信息 (已恢复) -->
         <div class="details-area">
             <div class="details-card">
                 <h5>玩家属性</h5>
@@ -133,7 +158,7 @@
                     <h5>@GameState.CurrentEnemy.Name 属性</h5>
                     <p>攻击力: @GameState.CurrentEnemy.AttackPower</p>
                     <p>攻击速度: @GameState.CurrentEnemy.AttacksPerSecond.ToString("F2") 次/秒</p>
-                    <p>经验掉落: @GameState.CurrentEnemy.XpReward</p>
+                    <p>经验奖励: @GameState.CurrentEnemy.XpReward</p>
                     <hr />
                     <h6>可能掉落</h6>
                     <div class="loot-table">
@@ -158,14 +183,30 @@
             }
         </div>
     </div>
-}
-else
-{
-    <p>正在加载游戏...</p>
-}
 
+    @if (_isPickerVisible)
+    {
+        <div class="modal-backdrop" @onclick="CloseQuickSlotPicker"></div>
+        <div class="quick-slot-picker">
+            <h5>选择一个物品</h5>
+            <div class="picker-item-list">
+                @foreach (var item in GetAvailableConsumablesForPicker())
+                {
+                    <div class="picker-item" @onclick="() => SetQuickSlot(item.Id)">
+                        <span class="picker-item-name">@item.Name</span>
+                        <span class="picker-item-count">(x@(GetItemCountInInventory(item.Id)))</span>
+                    </div>
+                }
+            </div>
+            <button class="btn btn-secondary mt-2" @onclick="CloseQuickSlotPicker">关闭</button>
+        </div>
+    }
+}
 
 @code {
+    private bool _isPickerVisible = false;
+    private int _managingSlotId;
+
     protected override void OnInitialized()
     {
         GameState.OnStateChanged += StateHasChanged;
@@ -177,8 +218,49 @@ else
 
     private void SelectEnemy(Enemy enemyTemplate) => GameState.SpawnNewEnemy(enemyTemplate);
     private bool IsCurrentEnemy(Enemy enemyTemplate) => GameState.CurrentEnemy?.Name == enemyTemplate.Name;
-    private double GetPlayerHealthPercentage() => GameState.Player?.MaxHealth > 0 ? (double)Math.Max(0, GameState.Player.Health) / GameState.Player.MaxHealth * 100 : 0;
-    private double GetEnemyHealthPercentage() => GameState.CurrentEnemy?.MaxHealth > 0 ? (double)Math.Max(0, GameState.CurrentEnemy.Health) / GameState.CurrentEnemy.MaxHealth * 100 : 0;
+    private double GetPlayerHealthPercentage() => GameState.Player?.GetTotalMaxHealth() > 0 ? (double)Math.Max(0, GameState.Player.Health) / GameState.Player.GetTotalMaxHealth() * 100 : 0;
+
+    private void OpenQuickSlotPicker(int slotId)
+    {
+        _managingSlotId = slotId;
+        _isPickerVisible = true;
+    }
+
+    private void CloseQuickSlotPicker()
+    {
+        _isPickerVisible = false;
+    }
+
+    private void SetQuickSlot(string itemId)
+    {
+        GameState.SetQuickSlotItem(_managingSlotId, itemId);
+        CloseQuickSlotPicker();
+    }
+
+    private void ClearQuickSlot(int slotId)
+    {
+        GameState.ClearQuickSlotItem(slotId);
+    }
+
+    private List<Consumable> GetAvailableConsumablesForPicker()
+    {
+        var targetType = (_managingSlotId <= 1) ? ConsumableSubType.Potion : ConsumableSubType.Food;
+
+        var itemIdsInInventory = GameState.Player.Inventory
+            .Where(s => !s.IsEmpty)
+            .Select(s => s.ItemId)
+            .Distinct();
+
+        return ItemData.AllItems
+            .OfType<Consumable>()
+            .Where(c => c.SubType == targetType && itemIdsInInventory.Contains(c.Id))
+            .ToList();
+    }
+
+    private int GetItemCountInInventory(string itemId)
+    {
+        return GameState.Player.Inventory.Where(s => s.ItemId == itemId).Sum(s => s.Quantity);
+    }
 
     public void Dispose()
     {

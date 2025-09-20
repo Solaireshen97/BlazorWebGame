@@ -20,44 +20,27 @@ namespace BlazorWebGame.Models
 
         // --- 系统字段 ---
 
-        /// <summary>
-        /// 激活的增益效果列表
-        /// </summary>
         public List<Buff> ActiveBuffs { get; set; } = new();
-
-        /// <summary>
-        /// 已经学会的共享技能ID
-        /// </summary>
         public HashSet<string> LearnedSharedSkills { get; set; } = new();
-
-        /// <summary>
-        /// 每个职业装备的技能ID列表
-        /// </summary>
         public Dictionary<BattleProfession, List<string>> EquippedSkills { get; set; } = new();
-
-        /// <summary>
-        /// 追踪技能的当前冷却回合数. Key: SkillId, Value: 剩余回合
-        /// </summary>
         public Dictionary<string, int> SkillCooldowns { get; set; } = new();
-
-        /// <summary>
-        /// 玩家的背包，列表索引直接对应物品栏的位置。
-        /// </summary>
         public List<InventorySlot> Inventory { get; set; } = new();
-
-        /// <summary>
-        /// 已穿戴的装备. Key: 装备位置, Value: ItemId
-        /// </summary>
         public Dictionary<EquipmentSlot, string> EquippedItems { get; set; } = new();
+        public HashSet<string> AutoSellItemIds { get; set; } = new();
 
         /// <summary>
-        /// 需要自动出售的物品ID
+        /// 消耗品快捷栏。Key: 栏位ID (0-1 药剂, 2-3 食物), Value: ItemId
         /// </summary>
-        public HashSet<string> AutoSellItemIds { get; set; } = new();
+        public Dictionary<int, string> QuickSlots { get; set; } = new();
+
+        /// <summary>
+        /// 追踪消耗品的冷却时间。Key: ItemId, Value: 剩余冷却秒数
+        /// </summary>
+        public Dictionary<string, double> ConsumableCooldowns { get; set; } = new();
+
 
         public Player()
         {
-            // 初始化职业
             foreach (var profession in (BattleProfession[])Enum.GetValues(typeof(BattleProfession)))
             {
                 BattleProfessionXP.TryAdd(profession, 0);
@@ -80,49 +63,31 @@ namespace BlazorWebGame.Models
             }
         }
 
-        /// <summary>
-        /// 获取指定战斗职业的等级
-        /// </summary>
         public int GetLevel(BattleProfession profession)
         {
             return BattleProfessionXP.TryGetValue(profession, out var xp) ? 1 + (xp / 100) : 1;
         }
 
-        /// <summary>
-        /// 根据经验值获取等级（通用UI显示，非内部逻辑）
-        /// </summary>
         public int GetLevel(int xp) => 1 + (xp / 100);
 
-        /// <summary>
-        /// 获取玩家的总攻击力 (基础 + 装备 + Buff)
-        /// </summary>
         public int GetTotalAttackPower()
         {
-            int equipmentBonus = 0;
-            foreach (var itemId in EquippedItems.Values)
-            {
-                if (ItemData.GetItemById(itemId) is Equipment eq)
-                {
-                    equipmentBonus += eq.AttackBonus;
-                }
-            }
+            int equipmentBonus = EquippedItems.Values
+                .Select(itemId => ItemData.GetItemById(itemId) as Equipment)
+                .Where(eq => eq != null)
+                .Sum(eq => eq!.AttackBonus);
+
             int buffBonus = ActiveBuffs.Where(b => b.BuffType == StatBuffType.AttackPower).Sum(b => b.BuffValue);
             return this.BaseAttackPower + equipmentBonus + buffBonus;
         }
 
-        /// <summary>
-        /// 获取玩家的总最大生命值 (基础 + 装备 + Buff)
-        /// </summary>
         public int GetTotalMaxHealth()
         {
-            int equipmentBonus = 0;
-            foreach (var itemId in EquippedItems.Values)
-            {
-                if (ItemData.GetItemById(itemId) is Equipment eq)
-                {
-                    equipmentBonus += eq.HealthBonus;
-                }
-            }
+            int equipmentBonus = EquippedItems.Values
+                .Select(itemId => ItemData.GetItemById(itemId) as Equipment)
+                .Where(eq => eq != null)
+                .Sum(eq => eq!.HealthBonus);
+
             int buffBonus = ActiveBuffs.Where(b => b.BuffType == StatBuffType.MaxHealth).Sum(b => b.BuffValue);
             return this.MaxHealth + equipmentBonus + buffBonus;
         }

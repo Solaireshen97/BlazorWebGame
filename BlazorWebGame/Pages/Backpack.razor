@@ -47,10 +47,10 @@
                     </div>
                     <p class="detail-description">@_selectedItemForDetailView.Description</p>
                     <p><strong>售价:</strong> @_selectedItemForDetailView.Value 金币</p>
+                    <hr />
 
                     @if (_selectedItemForDetailView is Equipment eq)
                     {
-                        <hr />
                         <div class="detail-stats">
                             <p><strong>类型:</strong> @eq.Slot.ToString()</p>
                             @if (eq.AttackBonus > 0)
@@ -62,24 +62,14 @@
                                 <p><strong>生命值:</strong> <span class="stat-bonus">+@eq.HealthBonus</span></p>
                             }
                         </div>
-                        <hr />
-                        <div class="d-flex gap-2">
+                        <div class="d-flex gap-2 mt-3">
                             <button class="btn btn-success" @onclick="() => GameState.EquipItem(eq.Id)">装备</button>
-                            <button class="btn btn-warning" @onclick="() => SellSelectedItem()">出售</button>
-                        </div>
-                    }
-                    else if (_selectedItemForDetailView is Consumable con)
-                    {
-                        <hr />
-                        <div class="d-flex gap-2">
-                            <button class="btn btn-info" @onclick="() => UseSelectedItem()">使用</button>
                             <button class="btn btn-warning" @onclick="() => SellSelectedItem()">出售</button>
                         </div>
                     }
                     else
                     {
-                        <hr />
-                        <div class="d-flex gap-2">
+                        <div class="d-flex gap-2 mt-3">
                             <button class="btn btn-warning" @onclick="() => SellSelectedItem()">出售</button>
                         </div>
                     }
@@ -109,22 +99,7 @@
                         @if (GameState.Player.EquippedItems.TryGetValue(slot, out var itemId))
                         {
                             var item = (Equipment)ItemData.GetItemById(itemId)!;
-                            <div class="item-display equipped">
-                                @item.Name
-                                <div class="item-tooltip">
-                                    <strong>@item.Name</strong><br />
-                                    <small>@item.Slot</small><hr />
-                                    @if (item.AttackBonus > 0)
-                                    {
-                                        <span>攻击力 +@item.AttackBonus<br /></span>
-                                    }
-                                    @if (item.HealthBonus > 0)
-                                    {
-                                        <span>生命值 +@item.HealthBonus<br /></span>
-                                    }
-                                    <hr /><em>@item.Description</em>
-                                </div>
-                            </div>
+                            <div class="item-display equipped">@item.Name</div>
                         }
                         else
                         {
@@ -136,11 +111,6 @@
         </div>
     </div>
 }
-else
-{
-    <p>正在加载玩家数据...</p>
-}
-
 
 @code {
     private Item? _selectedItemForDetailView;
@@ -159,8 +129,7 @@ else
     {
         if (GameState.Player != null && GameState.Player.EquippedItems.ContainsKey(slot))
         {
-            var itemId = GameState.Player.EquippedItems[slot];
-            _selectedItemForDetailView = ItemData.GetItemById(itemId);
+            _selectedItemForDetailView = ItemData.GetItemById(GameState.Player.EquippedItems[slot]);
         }
     }
 
@@ -170,21 +139,6 @@ else
         {
             GameState.SellItem(_selectedItemForDetailView.Id, 1);
             _selectedItemForDetailView = null;
-        }
-    }
-
-    private void UseSelectedItem()
-    {
-        if (_selectedItemForDetailView != null)
-        {
-            GameState.UseItem(_selectedItemForDetailView.Id);
-
-            // 使用后，如果物品没了，就清空详情显示
-            var slot = GameState.Player.Inventory.FirstOrDefault(s => s.ItemId == _selectedItemForDetailView.Id);
-            if (slot == null || slot.IsEmpty)
-            {
-                _selectedItemForDetailView = null;
-            }
         }
     }
 

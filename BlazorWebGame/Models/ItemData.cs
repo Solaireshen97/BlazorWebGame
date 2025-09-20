@@ -14,7 +14,7 @@ namespace BlazorWebGame.Models
                 Description = "从强大恶魔身上收集到的能量核心，可以用来交换稀有物品。",
                 Type = ItemType.Material,
                 IsStackable = true,
-                Value = 100 // 它的卖出价也很高
+                Value = 100
             },
 
             // --- 消耗品 ---
@@ -22,24 +22,28 @@ namespace BlazorWebGame.Models
             {
                 Id = "CON_HP_POTION_1", Name = "初级治疗药水",
                 Description = "立即恢复50点生命值。",
-                Value = 25, // 售价
+                Value = 25,
+                SubType = ConsumableSubType.Potion,
                 Effect = ConsumableEffectType.Heal,
                 EffectValue = 50,
-                ShopPurchaseInfo = new PurchaseInfo { ShopCategory = "消耗品", Price = 50 }
+                CooldownSeconds = 20,
+                ShopPurchaseInfo = new PurchaseInfo { ShopCategory = "消耗品", Price = 1 }
             },
             new Consumable
             {
                 Id = "CON_FOOD_ATK_1", Name = "烤狼肉",
                 Description = "在60秒内，提高5点攻击力。",
                 Value = 15,
+                SubType = ConsumableSubType.Food,
                 Effect = ConsumableEffectType.StatBuff,
                 BuffType = StatBuffType.AttackPower,
                 EffectValue = 5,
                 DurationSeconds = 60,
+                CooldownSeconds = 60,
                 ShopPurchaseInfo = new PurchaseInfo { ShopCategory = "消耗品", Price = 30 }
             },
 
-            // --- 武器 ---
+            // ... 其他物品 ...
             new Equipment
             {
                 Id = "EQ_WEP_001", Name = "生锈的铁剑",
@@ -72,8 +76,6 @@ namespace BlazorWebGame.Models
                     CurrencyItemId = "MAT_DEMON_ESSENCE"
                 }
             },
-            
-            // --- 护甲 ---
             new Equipment
             {
                 Id = "EQ_CHEST_001", Name = "破旧的皮甲",
