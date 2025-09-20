@@ -45,6 +45,11 @@ namespace BlazorWebGame.Models
         /// </summary>
         public Dictionary<EquipmentSlot, string> EquippedItems { get; set; } = new();
 
+        /// <summary>
+        /// 存放需要自动出售的物品ID
+        /// </summary>
+        public HashSet<string> AutoSellItemIds { get; set; } = new();
+
         public Player()
         {
             // 初始化职业

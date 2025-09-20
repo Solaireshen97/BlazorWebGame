@@ -134,6 +134,26 @@
                     <p>攻击力: @GameState.CurrentEnemy.AttackPower</p>
                     <p>攻击速度: @GameState.CurrentEnemy.AttacksPerSecond.ToString("F2") 次/秒</p>
                     <p>经验掉落: @GameState.CurrentEnemy.XpReward</p>
+                    <hr />
+                    <h6>可能掉落</h6>
+                    <div class="loot-table">
+                        @foreach (var lootEntry in GameState.CurrentEnemy.LootTable)
+                        {
+                            var item = ItemData.GetItemById(lootEntry.Key);
+                            if (item != null)
+                            {
+                                <div class="loot-item">
+                                    <span>@item.Name (@((lootEntry.Value * 100).ToString("F0"))%)</span>
+                                    <label class="auto-sell-toggle">
+                                        <input type="checkbox"
+                                               checked="@(GameState.Player.AutoSellItemIds.Contains(item.Id))"
+                                               @onchange="() => GameState.ToggleAutoSellItem(item.Id)" />
+                                        自动出售
+                                    </label>
+                                </div>
+                            }
+                        }
+                    </div>
                 </div>
             }
         </div>

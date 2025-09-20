@@ -46,6 +46,7 @@
                         <h5>@_selectedItemForDetailView.Name</h5>
                     </div>
                     <p class="detail-description">@_selectedItemForDetailView.Description</p>
+                    <p><strong>售价:</strong> @_selectedItemForDetailView.Value 金币</p>
 
                     @if (_selectedItemForDetailView is Equipment eq)
                     {
@@ -62,7 +63,17 @@
                             }
                         </div>
                         <hr />
-                        <button class="btn btn-success" @onclick="() => GameState.EquipItem(eq.Id)">装备</button>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-success" @onclick="() => GameState.EquipItem(eq.Id)">装备</button>
+                            <button class="btn btn-warning" @onclick="() => SellSelectedItem()">出售</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <hr />
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-warning" @onclick="() => SellSelectedItem()">出售</button>
+                        </div>
                     }
                 </div>
             }
@@ -74,7 +85,7 @@
             }
         </div>
 
-        <!-- 右侧：装备栏 (修正点：将此部分代码加回来) -->
+        <!-- 右侧：装备栏 -->
         <div class="equipment-panel">
             <h3>装备</h3>
             <div class="player-stats">
@@ -142,6 +153,16 @@ else
         {
             var itemId = GameState.Player.EquippedItems[slot];
             _selectedItemForDetailView = ItemData.GetItemById(itemId);
+        }
+    }
+
+    private void SellSelectedItem()
+    {
+        if (_selectedItemForDetailView != null)
+        {
+            // 默认一次卖一个
+            GameState.SellItem(_selectedItemForDetailView.Id, 1);
+            _selectedItemForDetailView = null; // 出售后清空详情显示
         }
     }
 

@@ -13,7 +13,7 @@ public class GameStateService : IAsyncDisposable
     private readonly GameStorage _gameStorage;
     private System.Timers.Timer? _gameLoopTimer;
     private const int GameLoopIntervalMs = 100;
-    private const double RevivalDuration = 60;
+    private const double RevivalDuration = 2;
 
     private double _playerAttackCooldown = 0;
     private double _enemyAttackCooldown = 0;
@@ -303,6 +303,14 @@ public class GameStateService : IAsyncDisposable
         var itemToAdd = ItemData.GetItemById(itemId);
         if (itemToAdd == null) return;
 
+        // 检查物品是否在自动出售列表中
+        if (Player.AutoSellItemIds.Contains(itemId))
+        {
+            Player.Gold += itemToAdd.Value * quantity;
+            NotifyStateChanged();
+            return; // 直接出售，不添加到背包
+        }
+
         // 1. 如果物品是可堆叠的，尝试堆叠
         if (itemToAdd.IsStackable)
         {
@@ -376,6 +384,50 @@ public class GameStateService : IAsyncDisposable
         AddItemToInventory(itemIdToUnequip, 1);
 
         Player.Health = Math.Min(Player.Health, Player.GetTotalMaxHealth());
+        NotifyStateChanged();
+    }
+
+    /// <summary>
+    /// 出售背包中的物品
+    /// </summary>
+    public void SellItem(string itemId, int quantity = 1)
+    {
+        if (Player == null) return;
+
+        var itemData = ItemData.GetItemById(itemId);
+        if (itemData == null) return;
+
+        var inventorySlot = Player.Inventory.FirstOrDefault(s => s.ItemId == itemId);
+        if (inventorySlot == null) return;
+
+        int sellCount = Math.Min(inventorySlot.Quantity, quantity);
+        if (sellCount <= 0) return;
+
+        inventorySlot.Quantity -= sellCount;
+        if (inventorySlot.Quantity <= 0)
+        {
+            inventorySlot.ItemId = null;
+        }
+
+        Player.Gold += itemData.Value * sellCount;
+        NotifyStateChanged();
+    }
+
+    /// <summary>
+    /// 切换物品的自动出售状态
+    /// </summary>
+    public void ToggleAutoSellItem(string itemId)
+    {
+        if (Player == null) return;
+
+        if (Player.AutoSellItemIds.Contains(itemId))
+        {
+            Player.AutoSellItemIds.Remove(itemId);
+        }
+        else
+        {
+            Player.AutoSellItemIds.Add(itemId);
+        }
         NotifyStateChanged();
     }
 
