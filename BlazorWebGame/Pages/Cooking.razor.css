@@ -1,0 +1,302 @@
+﻿.production-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.header-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start; /* 修改为 flex-start 以对齐顶部 */
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.profession-info {
+    flex-grow: 1;
+}
+
+.profession-stats {
+    display: flex; /* 修改为 flex 以横向排列 */
+    gap: 2rem;
+    margin-top: .5rem;
+    font-size: .9rem;
+    color: #555;
+}
+
+.current-action-card, .action-blocked-card {
+    background-color: #e7f1ff;
+    border: 1px solid #b3d7ff;
+    border-radius: 8px;
+    padding: 1.5rem;
+    text-align: center;
+}
+
+.action-blocked-card {
+    background-color: #fff3cd;
+    border-color: #ffeeba;
+}
+
+.progress-bar-container {
+    background-color: #e9ecef;
+    border-radius: 4px;
+    height: 25px;
+    margin-top: 1rem;
+    overflow: hidden;
+    border: 1px solid #ddd;
+    position: relative;
+}
+
+.progress-bar {
+    background-color: #ff9800; /* 生产进度条用橙色 */
+    height: 100%;
+    transition: width 0.1s linear;
+}
+
+.progress-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #343a40;
+    font-weight: bold;
+    text-shadow: none;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.recipe-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1rem;
+}
+
+.recipe-card {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 1rem;
+    background-color: white;
+    display: flex;
+    flex-direction: column;
+}
+
+    .recipe-card.locked {
+        background-color: #f8f9fa;
+        opacity: 0.7;
+    }
+
+    .recipe-card.level-locked {
+        border-left: 5px solid #ffc107;
+    }
+
+.recipe-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+    .recipe-header h5 {
+        margin: 0;
+    }
+
+.recipe-level {
+    font-size: 0.9rem;
+    font-weight: bold;
+    color: #007bff;
+}
+
+.recipe-details {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    flex-grow: 1;
+}
+
+.recipe-materials, .recipe-output {
+    flex: 1;
+}
+
+    .recipe-materials h6, .recipe-output h6 {
+        margin-top: 0;
+        margin-bottom: 0.5rem;
+        font-weight: bold;
+    }
+
+    .recipe-materials ul {
+        list-style-type: none;
+        padding-left: 0;
+        margin: 0;
+    }
+
+    .recipe-materials li.missing-mats {
+        color: #dc3545;
+    }
+
+    .recipe-materials li.has-mats {
+        color: #28a745;
+    }
+
+.lock-reason {
+    background-color: #e9ecef;
+    text-align: center;
+    padding: 0.75rem;
+    border-radius: 5px;
+    font-weight: bold;
+    color: #6c757d;
+    margin-top: auto;
+}
+
+.recipe-card.level-locked .lock-reason {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+
+/* --- 以下是新增的样式，用于快捷栏和弹窗 --- */
+
+.consumable-bar {
+    background-color: transparent;
+    border: none;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+    .consumable-bar h5 {
+        margin-top: 0;
+        margin-bottom: 0.75rem;
+        text-align: center;
+        font-size: 1rem;
+        font-weight: 700;
+        color: #6c757d;
+    }
+
+.consumable-quick-slots {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.quick-slot {
+    width: 40px;
+    height: 40px;
+    border-radius: 5px;
+    border: 1px dashed #ccc;
+    cursor: pointer;
+    position: relative;
+}
+
+.quick-slot-empty {
+    width: 100%;
+    height: 100%;
+}
+
+.quick-slot-item {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    background-color: #fff;
+    border: 1px solid #adb5bd;
+    border-radius: 5px;
+}
+
+    .quick-slot-item .item-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        font-weight: 700;
+        font-size: 1rem;
+    }
+
+    .quick-slot-item .item-count {
+        position: absolute;
+        bottom: 1px;
+        right: 2px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #212529;
+        text-shadow: 0 0 2px #fff;
+    }
+
+    .quick-slot-item.depleted .item-icon {
+        color: #dee2e6;
+    }
+
+.cooldown-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: 700;
+    border-radius: 5px;
+}
+
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1040;
+}
+
+.quick-slot-picker {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 300px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+    z-index: 1050;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.picker-item-list {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #eee;
+    border-radius: 5px;
+}
+
+.picker-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: .5rem 1rem;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+    .picker-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .picker-item:last-child {
+        border-bottom: none;
+    }
+
+.picker-item-name, .picker-item-count {
+    white-space: nowrap;
+}
+
+.picker-item-count {
+    color: #6c757d;
+    font-size: .9em;
+}

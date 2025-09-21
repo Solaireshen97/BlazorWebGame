@@ -61,8 +61,6 @@
                             {
                                 <p><strong>生命值:</strong> <span class="stat-bonus">+@eq.HealthBonus</span></p>
                             }
-
-                            <!-- 新增的采集属性显示 -->
                             @if (eq.GatheringSpeedBonus > 0)
                             {
                                 <p><strong>采集速度:</strong> <span class="stat-bonus">+@((eq.GatheringSpeedBonus * 100).ToString("F0"))%</span></p>
@@ -80,6 +78,28 @@
                     else
                     {
                         <div class="d-flex gap-2 mt-3">
+                            @* 
+                                vvv 这是本次修改的核心逻辑 vvv
+                                1. 判断物品是否是消耗品 (Consumable)
+                                2. 进一步判断消耗品的类别是否是图纸 (Recipe)
+                            *@
+                            @if (_selectedItemForDetailView is Consumable consumable && consumable.Category == ConsumableCategory.Recipe)
+                            {
+                                // 检查这个图纸对应的配方ID是否已经被玩家学会
+                                bool isLearned = !string.IsNullOrEmpty(consumable.RecipeIdToLearn) && GameState.Player.LearnedRecipeIds.Contains(consumable.RecipeIdToLearn);
+
+                                if (isLearned)
+                                {
+                                    // 如果已经学会，显示一个禁用的灰色按钮
+                                    <button class="btn btn-secondary" disabled>已学会</button>
+                                }
+                                else
+                                {
+                                    // 如果还没学会，才显示“使用”按钮
+                                    <button class="btn btn-primary" @onclick="() => UseSelectedItem()">使用</button>
+                                }
+                            }
+
                             <button class="btn btn-warning" @onclick="() => SellSelectedItem()">出售</button>
                         </div>
                     }
@@ -93,7 +113,7 @@
             }
         </div>
 
-        <!-- 右侧：装备栏 -->
+        <!-- 右侧：装备栏 (保持不变) -->
         <div class="equipment-panel">
             <h3>装备</h3>
             <div class="player-stats">
@@ -140,6 +160,16 @@
         if (GameState.Player != null && GameState.Player.EquippedItems.ContainsKey(slot))
         {
             _selectedItemForDetailView = ItemData.GetItemById(GameState.Player.EquippedItems[slot]);
+        }
+    }
+
+    private void UseSelectedItem()
+    {
+        if (_selectedItemForDetailView != null)
+        {
+            GameState.UseItem(_selectedItemForDetailView.Id);
+            // 使用后（特别是图纸这类一次性物品），清空详情，避免界面残留
+            _selectedItemForDetailView = null;
         }
     }
 

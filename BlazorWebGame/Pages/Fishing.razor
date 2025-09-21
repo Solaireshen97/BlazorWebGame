@@ -91,6 +91,13 @@
                 <button class="btn btn-warning" @onclick="GameState.StopCurrentAction">停止战斗</button>
             </div>
         }
+        else if (GameState.Player.CurrentAction == PlayerActionState.Crafting)
+        {
+            <div class="action-blocked-card">
+                <p><strong>正在制作物品，无法钓鱼！</strong></p>
+                <button class="btn btn-warning" @onclick="GameState.StopCurrentAction">停止制作</button>
+            </div>
+        }
 
 
         <div class="node-list">

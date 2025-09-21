@@ -72,6 +72,55 @@ namespace BlazorWebGame.Models
                 CooldownSeconds = 120,
                 ShopPurchaseInfo = new PurchaseInfo { ShopCategory = "消耗品", Price = 75 }
             },
+            // --- 新增的图纸消耗品 ---
+            new Consumable
+            {
+                Id = "RECIPE_ITEM_GOBLIN_OMELETTE", Name = "食谱：哥布林煎蛋",
+                Description = "教会你如何制作哥布林煎蛋。",
+                Type = ItemType.Consumable, IsStackable = false, Value = 50,
+                Category = ConsumableCategory.Recipe,
+                Effect = ConsumableEffectType.LearnRecipe,
+                RecipeIdToLearn = "RECIPE_GOBLIN_OMELETTE",
+                ShopPurchaseInfo = new PurchaseInfo { ShopCategory = "消耗品", Price = 1 }
+            },
+
+            // --- 新增的烹饪食物 (*** 这是修正点 ***) ---
+            new Consumable
+            {
+                Id = "FOOD_COOKED_TROUT", Name = "烤鳟鱼",
+                Description = "简单的美味，食用后短时间内提高你的采集速度。",
+                Type = ItemType.Consumable, IsStackable = true, Value = 10,
+                Category = ConsumableCategory.Food, FoodType = FoodType.Gathering,
+                Effect = ConsumableEffectType.StatBuff,
+                BuffType = StatBuffType.GatheringSpeed, // 修正: BuffType -> StatBuffType
+                EffectValue = 5, // 5%采集速度
+                DurationSeconds = 300, CooldownSeconds = 5
+            },
+            new Consumable
+            {
+                Id = "FOOD_GOBLIN_OMELETTE", Name = "哥布林煎蛋",
+                Description = "味道很奇怪，但能让你在战斗中更勇猛。食用后提高攻击力。",
+                Type = ItemType.Consumable, IsStackable = true, Value = 25,
+                Category = ConsumableCategory.Food, FoodType = FoodType.Combat,
+                Effect = ConsumableEffectType.StatBuff,
+                BuffType = StatBuffType.AttackPower, // 修正: BuffType -> StatBuffType
+                EffectValue = 2, // 2点攻击力
+                DurationSeconds = 300, CooldownSeconds = 5
+            },
+            new Consumable
+            {
+                Id = "CON_FOOD_CRAFT_1", Name = "工匠蜜糖面包",
+                Description = "香甜的面包让你更加专注。在180秒内，提高10%的制作速度。",
+                Value = 25,
+                Category = ConsumableCategory.Food,
+                FoodType = FoodType.Production, // *** 使用新的食物类型 ***
+                Effect = ConsumableEffectType.StatBuff,
+                BuffType = StatBuffType.CraftingSpeed,
+                EffectValue = 10, // 10 代表 10%
+                DurationSeconds = 180,
+                CooldownSeconds = 180,
+                ShopPurchaseInfo = new PurchaseInfo { ShopCategory = "消耗品", Price = 60 }
+            },
             // --- 草药 (新增) ---
             new Item
             {
@@ -146,7 +195,8 @@ namespace BlazorWebGame.Models
                 Description = "哥布林常用的简陋武器。",
                 Slot = EquipmentSlot.Weapon,
                 AttackBonus = 5,
-                Value = 10
+                Value = 10,
+                ShopPurchaseInfo = new PurchaseInfo { ShopCategory = "武器", Price = 1 }
             },
             new Equipment
             {

@@ -63,9 +63,10 @@
             </div>
         </div>
 
-        <!-- *** 这是关键的逻辑修改 *** -->
         @if (GameState.Player.CurrentAction == PlayerActionState.Gathering && GameState.CurrentGatheringNode != null)
         {
+            @* vvv 这是本次修改的核心逻辑 vvv *@
+            <>
             @if (GameState.CurrentGatheringNode.RequiredProfession == GatheringProfession.Herbalist)
             {
                 <div class="current-action-card">
@@ -84,12 +85,21 @@
                     <button class="btn btn-warning" @onclick="GameState.StopCurrentAction">停止当前活动</button>
                 </div>
             }
+            </>
         }
         else if (GameState.Player.CurrentAction == PlayerActionState.Combat)
         {
             <div class="action-blocked-card">
                 <p><strong>战斗中无法采集！</strong></p>
                 <button class="btn btn-warning" @onclick="GameState.StopCurrentAction">停止战斗</button>
+            </div>
+        }
+        else if (GameState.Player.CurrentAction == PlayerActionState.Crafting)
+        {
+            <div class="action-blocked-card">
+                @* 修正了这里的文本错误 *@
+                <p><strong>正在制作物品，无法采集草药！</strong></p>
+                <button class="btn btn-warning" @onclick="GameState.StopCurrentAction">停止制作</button>
             </div>
         }
 
@@ -162,7 +172,7 @@
         {
             GatheringProfession.Miner => "采矿",
             GatheringProfession.Herbalist => "采集草药",
-            GatheringProfession.Fishing => "钓鱼", // 新增
+            GatheringProfession.Fishing => "钓鱼",
             _ => "进行其他采集"
         };
     }

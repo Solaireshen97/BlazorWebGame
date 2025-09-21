@@ -8,13 +8,14 @@ namespace BlazorWebGame.Models
     {
         Idle,
         Combat,
-        Gathering
+        Gathering,
+        Crafting
     }
 
     public class Player
     {
         public string Name { get; set; } = "英雄";
-        public int Gold { get; set; } = 0;
+        public int Gold { get; set; } = 10000;
         public int Health { get; set; } = 100;
         public int MaxHealth { get; set; } = 100;
         public int BaseAttackPower { get; set; } = 10;
@@ -36,11 +37,12 @@ namespace BlazorWebGame.Models
         public Dictionary<int, string> PotionQuickSlots { get; set; } = new();
         public Dictionary<int, string> CombatFoodQuickSlots { get; set; } = new();
         public Dictionary<int, string> GatheringFoodQuickSlots { get; set; } = new();
+        public Dictionary<int, string> ProductionFoodQuickSlots { get; set; } = new(); // *** 这是新增的行 ***
         public Dictionary<string, double> ConsumableCooldowns { get; set; } = new();
 
         public PlayerActionState CurrentAction { get; set; } = PlayerActionState.Idle;
         public HashSet<string> DefeatedMonsterIds { get; set; } = new();
-
+        public HashSet<string> LearnedRecipeIds { get; set; } = new();
         public Player()
         {
             // 构造函数现在只调用初始化方法
@@ -72,7 +74,11 @@ namespace BlazorWebGame.Models
             {
                 ProductionProfessionXP.TryAdd(profession, 0);
             }
-
+            // 确保默认配方已被学习
+            foreach (var recipe in RecipeData.AllRecipes.Where(r => r.IsDefault))
+            {
+                LearnedRecipeIds.Add(recipe.Id);
+            }
             // 初始化背包
             if (Inventory == null || !Inventory.Any())
             {
@@ -95,6 +101,7 @@ namespace BlazorWebGame.Models
             PotionQuickSlots ??= new();
             CombatFoodQuickSlots ??= new();
             GatheringFoodQuickSlots ??= new();
+            ProductionFoodQuickSlots ??= new();
         }
 
         /// <summary>
@@ -110,10 +117,60 @@ namespace BlazorWebGame.Models
         public void AddBattleXP(BattleProfession profession, int amount) { if (BattleProfessionXP.ContainsKey(profession)) { BattleProfessionXP[profession] += amount; } }
         public double GetTotalGatheringSpeedBonus() { double equipmentBonus = EquippedItems.Values.Select(itemId => ItemData.GetItemById(itemId) as Equipment).Where(eq => eq != null).Sum(eq => eq!.GatheringSpeedBonus); double buffBonus = ActiveBuffs.Where(b => b.BuffType == StatBuffType.GatheringSpeed).Sum(b => b.BuffValue / 100.0); return equipmentBonus + buffBonus; }
         public double GetTotalExtraLootChance() { double equipmentBonus = EquippedItems.Values.Select(itemId => ItemData.GetItemById(itemId) as Equipment).Where(eq => eq != null).Sum(eq => eq!.ExtraLootChanceBonus); double buffBonus = ActiveBuffs.Where(b => b.BuffType == StatBuffType.ExtraLootChance).Sum(b => b.BuffValue / 100.0); return equipmentBonus + buffBonus; }
+        /// <summary>
+        /// 获取总的制作速度加成（以小数形式，例如 0.1 代表 +10%）
+        /// </summary>
+        public double GetTotalCraftingSpeedBonus()
+        {
+            // 未来可以为装备增加制作速度加成
+            double equipmentBonus = 0.0;
+
+            // 从Buff中获取加成
+            double buffBonus = ActiveBuffs
+                .Where(b => b.BuffType == StatBuffType.CraftingSpeed)
+                .Sum(b => b.BuffValue / 100.0); // 将整数百分比 (如 15) 转换为小数 (0.15)
+
+            return equipmentBonus + buffBonus;
+        }
         public int GetLevel(BattleProfession profession) => BattleProfessionXP.TryGetValue(profession, out var xp) ? 1 + (xp / 100) : 1;
         public int GetLevel(GatheringProfession profession) => GatheringProfessionXP.TryGetValue(profession, out var xp) ? 1 + (xp / 100) : 1;
         public int GetLevel(int xp) => 1 + (xp / 100);
-        public int GetTotalAttackPower() { int equipmentBonus = EquippedItems.Values.Select(itemId => ItemData.GetItemById(itemId) as Equipment).Where(eq => eq != null).Sum(eq => eq!.AttackBonus); int buffBonus = ActiveBuffs.Where(b => b.BuffType == StatBuffType.AttackPower).Sum(b => b.BuffValue); return this.BaseAttackPower + equipmentBonus + buffBonus; }
-        public int GetTotalMaxHealth() { int equipmentBonus = EquippedItems.Values.Select(itemId => ItemData.GetItemById(itemId) as Equipment).Where(eq => eq != null).Sum(eq => eq!.HealthBonus); int buffBonus = ActiveBuffs.Where(b => b.BuffType == StatBuffType.MaxHealth).Sum(b => b.BuffValue); return this.MaxHealth + equipmentBonus + buffBonus; }
+
+        public int GetLevel(ProductionProfession profession)
+        {
+            var xp = ProductionProfessionXP.GetValueOrDefault(profession, 0);
+            return 1 + (xp / 100); // 修正：使用项目中已有的等级计算公式
+        }
+        // *** 这是修正点 ***
+        public int GetTotalAttackPower()
+        {
+            var baseAttack = 5;
+            var equipmentAttack = EquippedItems
+                .Select(kv => ItemData.GetItemById(kv.Value) as Equipment)
+                .Where(eq => eq != null)
+                .Sum(eq => eq!.AttackBonus); // 修正: AttackPower -> AttackBonus
+
+            var buffAttack = ActiveBuffs
+                .Where(b => b.BuffType == StatBuffType.AttackPower)
+                .Sum(b => b.BuffValue);
+
+            return baseAttack + equipmentAttack + (int)buffAttack;
+        }
+
+        // *** 这是修正点 ***
+        public int GetTotalMaxHealth()
+        {
+            var baseHealth = 100;
+            var equipmentHealth = EquippedItems
+                .Select(kv => ItemData.GetItemById(kv.Value) as Equipment)
+                .Where(eq => eq != null)
+                .Sum(eq => eq!.HealthBonus); // 修正: Health -> HealthBonus
+
+            var buffHealth = ActiveBuffs
+                .Where(b => b.BuffType == StatBuffType.MaxHealth)
+                .Sum(b => b.BuffValue);
+
+            return baseHealth + equipmentHealth + (int)buffHealth;
+        }
     }
 }

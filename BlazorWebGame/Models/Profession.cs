@@ -10,14 +10,14 @@
     // 采集职业
     public enum GatheringProfession
     {
-        Miner,    // 采矿
+        Miner,     // 采矿
         Herbalist, // 草药学
-        Fishing   // 钓鱼 (新增)
+        Fishing    // 钓鱼
     }
 
     // 生产职业
     public enum ProductionProfession
     {
-        Tailor   // 裁缝
+        Cooking // 烹饪 (新增)
     }
 }
