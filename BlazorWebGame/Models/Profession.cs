@@ -23,6 +23,7 @@
         Blacksmithing, // 锻造
         Jewelcrafting, // 珠宝加工
         Leatherworking, // 制皮
-        Tailoring      // <-- 添加这一行
+        Tailoring,     // 裁缝
+        Engineering    // <-- 添加这一行
     }
 }

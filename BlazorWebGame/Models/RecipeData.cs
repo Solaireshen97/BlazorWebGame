@@ -146,6 +146,24 @@ new Recipe
     XpReward = 12,
     IsDefault = true,
 },
+new Recipe
+{
+    Id = "RECIPE_ENG_ROUGH_BOMB",
+    Name = "制作劣质铜管炸弹",
+    RequiredProfession = ProductionProfession.Engineering,
+    RequiredLevel = 1,
+    Ingredients = new Dictionary<string, int>
+    {
+        { "BAR_COPPER", 1 },       // 1个铜锭制作外壳
+        { "MAT_ROUGH_STONE", 1 },  // 1个劣质的石头制作火药
+        { "MAT_LINEN_CLOTH", 1 }   // 1块亚麻布做引信
+    },
+    ResultingItemId = "CON_ENG_ROUGH_BOMB",
+    CraftingTimeSeconds = 7,
+    XpReward = 15,
+    IsDefault = false,
+    UnlockItemId = "RECIPE_ITEM_ENG_ROUGH_BOMB"
+},
     };
 
     public static List<Recipe> AllRecipes => _allRecipes;

@@ -285,6 +285,44 @@ new Equipment
     HealthBonus = 5,
     IsStackable = false
 },
+// --- 工程学材料 ---
+new Item
+{
+    Id = "MAT_ROUGH_STONE",
+    Name = "劣质的石头",
+    Description = "可以被磨成粉末，用于制作爆炸物。",
+    Type = ItemType.Material,
+    Value = 1,
+    IsStackable = true
+},
+// 我们将复用 "铜锭" (BAR_COPPER) 和 "亚麻布" (MAT_LINEN_CLOTH)
+
+// --- 工程学图纸 (消耗品) ---
+new Consumable
+{
+    Id = "RECIPE_ITEM_ENG_ROUGH_BOMB",
+    Name = "结构图：劣质铜管炸弹",
+    Description = "教会你如何制作劣质铜管炸弹。",
+    Type = ItemType.Consumable,
+    IsStackable = false,
+    Value = 30,
+    Category = ConsumableCategory.Recipe,
+    Effect = ConsumableEffectType.LearnRecipe,
+    RecipeIdToLearn = "RECIPE_ENG_ROUGH_BOMB" // 对应 RecipeData.cs 中的配方ID
+},
+
+// --- 工程学制作的物品 (战斗消耗品) ---
+new Consumable
+{
+    Id = "CON_ENG_ROUGH_BOMB",
+    Name = "劣质铜管炸弹",
+    Description = "一个不稳定的爆炸物，可以对敌人造成少量范围伤害。",
+    Type = ItemType.Consumable,
+    Value = 15,
+    IsStackable = true,
+    Category = ConsumableCategory.Potion, // 假设有一个"小工具"分类
+    // 后续可以添加 Effect = ConsumableEffectType.AreaDamage 等
+},
 
             // --- 新增装备 ---
             new Equipment
