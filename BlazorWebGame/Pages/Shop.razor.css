@@ -6,8 +6,8 @@
 
 /* --- 左侧面板 --- */
 .shop-left-panel {
-    width: 300px;
-    flex-shrink: 0;
+    flex: 3; /* 左侧占3份 */
+    min-width: 350px; /* 保证一个合适的最小宽度 */
     display: flex;
     flex-direction: column;
     background-color: #f8f9fa;
@@ -76,7 +76,8 @@
 
 /* --- 右侧面板 --- */
 .shop-right-panel {
-    flex-grow: 1;
+    flex: 2; /* 右侧占2份 */
+    min-width: 300px; /* 保证一个合适的最小宽度 */
 }
 
 .detail-card, .detail-placeholder {
