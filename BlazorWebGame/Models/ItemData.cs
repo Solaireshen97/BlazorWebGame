@@ -225,6 +225,42 @@ new Equipment
     HealthBonus = 5, // 和少量生命值
     IsStackable = false
 },
+
+// --- 制皮材料 ---
+new Item
+{
+    Id = "MAT_RUINED_LEATHER_SCRAPS",
+    Name = "破损的皮革碎片",
+    Description = "可以合成粗制皮革。",
+    Type = ItemType.Material,
+    Value = 1,
+    IsStackable = true,
+                        ShopPurchaseInfo = new PurchaseInfo { ShopCategory = "素材", Price = 50 }
+},
+new Item
+{
+    Id = "MAT_COARSE_THREAD",
+    Name = "粗线",
+    Description = "用于缝制皮革制品。",
+    Type = ItemType.Material,
+    Value = 2,
+    IsStackable = true,
+                        ShopPurchaseInfo = new PurchaseInfo { ShopCategory = "素材", Price = 50 }
+},
+
+// --- 制皮制作的装备 ---
+new Equipment
+{
+    Id = "EQ_HANDS_RAGGED_GLOVES",
+    Name = "破烂的皮手套",
+    Description = "用皮革碎片勉强缝合在一起的手套。",
+    Type = ItemType.Equipment,
+    Value = 20,
+    Slot = EquipmentSlot.Hands,
+    HealthBonus = 2,
+    IsStackable = false
+},
+
             // --- 新增装备 ---
             new Equipment
             {
