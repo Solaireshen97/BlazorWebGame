@@ -92,6 +92,20 @@ namespace BlazorWebGame.Models
                 Type = ItemType.Material, IsStackable = true, Value = 15
             },
 
+            // --- 新增：矿石 ---
+            new Item
+            {
+                Id = "ORE_COPPER", Name = "铜矿石",
+                Description = "一种基础的金属矿石，可以用于锻造。",
+                Type = ItemType.Material, IsStackable = true, Value = 4
+            },
+            new Item
+            {
+                Id = "ORE_IRON", Name = "铁矿石",
+                Description = "比铜更坚固的金属矿石。",
+                Type = ItemType.Material, IsStackable = true, Value = 10
+            },
+
             // --- 特殊货币 ---
             new Item
             {

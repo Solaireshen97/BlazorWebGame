@@ -7,6 +7,7 @@ namespace BlazorWebGame.Models
     {
         private static readonly List<GatheringNode> _allNodes = new()
         {
+            // --- 草药学节点 ---
             new GatheringNode
             {
                 Id = "NODE_PEACEBLOOM",
@@ -41,6 +42,30 @@ namespace BlazorWebGame.Models
                 RequiredProfession = GatheringProfession.Herbalist,
                 RequiredLevel = 15,
                 RequiredMonsterId = "GoblinElite" // 需要击败哥布林精英
+            },
+
+            // --- 新增：采矿节点 ---
+            new GatheringNode
+            {
+                Id = "NODE_COPPER_VEIN",
+                Name = "铜矿脉",
+                Description = "地表常见的铜矿，是锻造的入门材料。",
+                GatheringTimeSeconds = 7,
+                ResultingItemId = "ORE_COPPER",
+                XpReward = 7,
+                RequiredProfession = GatheringProfession.Miner,
+                RequiredLevel = 1
+            },
+            new GatheringNode
+            {
+                Id = "NODE_IRON_VEIN",
+                Name = "铁矿脉",
+                Description = "更为坚固的铁矿，通常隐藏在洞穴深处。",
+                GatheringTimeSeconds = 12,
+                ResultingItemId = "ORE_IRON",
+                XpReward = 15,
+                RequiredProfession = GatheringProfession.Miner,
+                RequiredLevel = 10
             }
         };
 

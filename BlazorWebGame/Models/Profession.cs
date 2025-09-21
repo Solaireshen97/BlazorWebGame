@@ -10,8 +10,8 @@
     // 采集职业
     public enum GatheringProfession
     {
-        Miner,    // 采矿
-        Herbalist // 草药学 (新增)
+        Miner,    // 采矿 (新增)
+        Herbalist // 草药学
     }
 
     // 生产职业
