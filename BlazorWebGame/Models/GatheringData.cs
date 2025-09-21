@@ -66,6 +66,29 @@ namespace BlazorWebGame.Models
                 XpReward = 15,
                 RequiredProfession = GatheringProfession.Miner,
                 RequiredLevel = 10
+            },
+            // --- 新增：钓鱼节点 ---
+            new GatheringNode
+            {
+                Id = "NODE_RIVER_FISHING",
+                Name = "河边钓点",
+                Description = "一个平静的河湾，适合新手垂钓。",
+                GatheringTimeSeconds = 10,
+                ResultingItemId = "FISH_TROUT",
+                XpReward = 8,
+                RequiredProfession = GatheringProfession.Fishing,
+                RequiredLevel = 1
+            },
+            new GatheringNode
+            {
+                Id = "NODE_LAKE_FISHING",
+                Name = "湖心钓点",
+                Description = "湖中心的深水区，据说有更大更稀有的鱼。",
+                GatheringTimeSeconds = 18,
+                ResultingItemId = "FISH_BASS",
+                XpReward = 20,
+                RequiredProfession = GatheringProfession.Fishing,
+                RequiredLevel = 10
             }
         };
 

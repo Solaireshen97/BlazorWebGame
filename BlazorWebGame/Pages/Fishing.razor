@@ -1,21 +1,21 @@
-﻿@page "/mining"
+﻿@page "/fishing"
 @using BlazorWebGame.Models
 @using BlazorWebGame.Services
 @inject GameStateService GameState
 @implements IDisposable
 
-<PageTitle>采矿</PageTitle>
+<PageTitle>钓鱼</PageTitle>
 
 @if (GameState.Player != null)
 {
     <div class="gathering-layout">
         <div class="header-section">
             <div class="profession-info">
-                <h3>采矿</h3>
+                <h3>钓鱼</h3>
                 <div class="profession-stats">
                     <p>
-                        等级: <strong>@GameState.Player.GetLevel(GatheringProfession.Miner)</strong>
-                        (XP: @(GameState.Player.GatheringProfessionXP.GetValueOrDefault(GatheringProfession.Miner)))
+                        等级: <strong>@GameState.Player.GetLevel(GatheringProfession.Fishing)</strong>
+                        (XP: @(GameState.Player.GatheringProfessionXP.GetValueOrDefault(GatheringProfession.Fishing)))
                     </p>
                     <p>
                         采集速度加成: <strong>@((GameState.Player.GetTotalGatheringSpeedBonus() * 100).ToString("F0"))%</strong>
@@ -63,24 +63,23 @@
             </div>
         </div>
 
-        <!-- *** 这是关键的逻辑修改 *** -->
         @if (GameState.Player.CurrentAction == PlayerActionState.Gathering && GameState.CurrentGatheringNode != null)
         {
-            @if (GameState.CurrentGatheringNode.RequiredProfession == GatheringProfession.Miner)
+            @if (GameState.CurrentGatheringNode.RequiredProfession == GatheringProfession.Fishing)
             {
                 <div class="current-action-card">
-                    <h4>正在开采: @GameState.CurrentGatheringNode.Name</h4>
+                    <h4>正在钓鱼: @GameState.CurrentGatheringNode.Name</h4>
                     <div class="progress-bar-container">
                         <div class="progress-bar" style="width: @GameState.GatheringProgress%;"></div>
                         <span class="progress-text">@GameState.GetCurrentGatheringTime().ToString("F1")s</span>
                     </div>
-                    <button class="btn btn-danger mt-3" @onclick="GameState.StopCurrentAction">停止开采</button>
+                    <button class="btn btn-danger mt-3" @onclick="GameState.StopCurrentAction">停止钓鱼</button>
                 </div>
             }
             else
             {
                 <div class="action-blocked-card">
-                    <p><strong>正在 @GetOtherGatheringActionName()，无法采矿！</strong></p>
+                    <p><strong>正在 @GetOtherGatheringActionName()，无法钓鱼！</strong></p>
                     <button class="btn btn-warning" @onclick="GameState.StopCurrentAction">停止当前活动</button>
                 </div>
             }
@@ -88,13 +87,14 @@
         else if (GameState.Player.CurrentAction == PlayerActionState.Combat)
         {
             <div class="action-blocked-card">
-                <p><strong>战斗中无法采矿！</strong></p>
+                <p><strong>战斗中无法钓鱼！</strong></p>
                 <button class="btn btn-warning" @onclick="GameState.StopCurrentAction">停止战斗</button>
             </div>
         }
 
+
         <div class="node-list">
-            @foreach (var node in GameState.AvailableGatheringNodes.Where(n => n.RequiredProfession == GatheringProfession.Miner))
+            @foreach (var node in GameState.AvailableGatheringNodes.Where(n => n.RequiredProfession == GatheringProfession.Fishing))
             {
                 var (isUnlocked, reason) = IsNodeUnlocked(node);
                 <div class="node-card @(isUnlocked ? "" : "locked")">
@@ -111,7 +111,7 @@
                     @if (isUnlocked)
                     {
                         <button class="btn btn-success" @onclick="() => GameState.StartGathering(node)" disabled="@(GameState.Player.CurrentAction != PlayerActionState.Idle)">
-                            @(GameState.Player.CurrentAction == PlayerActionState.Idle ? "开始开采" : "正在行动")
+                            @(GameState.Player.CurrentAction == PlayerActionState.Idle ? "开始钓鱼" : "正在行动")
                         </button>
                     }
                     else
@@ -159,9 +159,8 @@
     {
         return GameState.CurrentGatheringNode?.RequiredProfession switch
         {
-            GatheringProfession.Miner => "采矿",
             GatheringProfession.Herbalist => "采集草药",
-            GatheringProfession.Fishing => "钓鱼", // 新增
+            GatheringProfession.Miner => "采矿",
             _ => "进行其他采集"
         };
     }

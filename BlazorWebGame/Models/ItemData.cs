@@ -106,6 +106,20 @@ namespace BlazorWebGame.Models
                 Type = ItemType.Material, IsStackable = true, Value = 10
             },
 
+            // --- 新增：鱼类 ---
+            new Item
+            {
+                Id = "FISH_TROUT", Name = "生鳟鱼",
+                Description = "一条普通的河鱼，可以用于烹饪。",
+                Type = ItemType.Material, IsStackable = true, Value = 6
+            },
+            new Item
+            {
+                Id = "FISH_BASS", Name = "闪光鲈鱼",
+                Description = "在阳光下鳞片闪闪发光，似乎很值钱。",
+                Type = ItemType.Material, IsStackable = true, Value = 18
+            },
+
             // --- 特殊货币 ---
             new Item
             {

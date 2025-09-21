@@ -156,15 +156,15 @@
         GameState.OnStateChanged += StateHasChanged;
     }
 
-    // *** 新增辅助方法 ***
     private string GetOtherGatheringActionName()
     {
-        if (GameState.CurrentGatheringNode?.RequiredProfession == GatheringProfession.Miner)
+        return GameState.CurrentGatheringNode?.RequiredProfession switch
         {
-            return "采矿";
-        }
-        // 未来可以扩展其他专业
-        return "进行其他采集";
+            GatheringProfession.Miner => "采矿",
+            GatheringProfession.Herbalist => "采集草药",
+            GatheringProfession.Fishing => "钓鱼", // 新增
+            _ => "进行其他采集"
+        };
     }
 
     private void OpenQuickSlotPicker(ConsumableCategory category, int slotId, FoodType foodType)
