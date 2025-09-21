@@ -178,7 +178,53 @@ namespace BlazorWebGame.Models
                 IsStackable = true,
                 ShopPurchaseInfo = new PurchaseInfo { ShopCategory = "素材", Price = 50 }
             },
-    
+        // ... 在 _allItems 列表中添加以下新物品 ...
+
+// --- 珠宝加工材料 ---
+new Item
+{
+    Id = "GEM_ROUGH_TIGERSEYE",
+    Name = "劣质的虎眼石",
+    Description = "一块未经打磨的宝石，内部似乎有微光流动。",
+    Type = ItemType.Material,
+    Value = 10,
+    IsStackable = true,
+                    ShopPurchaseInfo = new PurchaseInfo { ShopCategory = "素材", Price = 50 }
+},
+new Item
+{
+    Id = "GEM_TIGERSEYE",
+    Name = "虎眼石",
+    Description = "经过精细切割的虎眼石，可以镶嵌在首饰上。",
+    Type = ItemType.Material,
+    Value = 25,
+    IsStackable = true,
+                    ShopPurchaseInfo = new PurchaseInfo { ShopCategory = "素材", Price = 50 }
+},
+new Item
+{
+    Id = "MAT_COPPER_WIRE",
+    Name = "铜丝",
+    Description = "由铜锭拉成的细丝，用于制作珠宝的基座。",
+    Type = ItemType.Material,
+    Value = 12,
+    IsStackable = true,
+                    ShopPurchaseInfo = new PurchaseInfo { ShopCategory = "素材", Price = 50 }
+},
+
+// --- 珠宝加工成品 ---
+new Equipment
+{
+    Id = "EQ_FINGER_TIGERSEYE_RING",
+    Name = "虎眼石戒指",
+    Description = "一枚简单的铜戒指，镶嵌着一颗虎眼石。",
+    Type = ItemType.Equipment,
+    Value = 75,
+    Slot = EquipmentSlot.Finger, // 使用我们新增的装备槽
+    AttackBonus = 2, // 假设提供少量攻击力
+    HealthBonus = 5, // 和少量生命值
+    IsStackable = false
+},
             // --- 新增装备 ---
             new Equipment
             {

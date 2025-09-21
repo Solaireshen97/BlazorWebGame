@@ -7,7 +7,9 @@
         Legs,
         Head,
         Feet,
-        Hands
+        Hands,
+        Finger, // *** 新增 ***
+        Neck    // *** 新增 ***
     }
 
     public class Equipment : Item

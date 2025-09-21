@@ -69,7 +69,51 @@ public static class RecipeData
             CraftingTimeSeconds = 12,
             XpReward = 15,
             IsDefault = true // 默认学会
-        }
+        },
+        // ... 在 _allRecipes 列表中添加以下新配方 ...
+
+// --- 珠宝加工配方 ---
+new Recipe
+{
+    Id = "RECIPE_CUT_TIGERSEYE",
+    Name = "切割劣质的虎眼石",
+    RequiredProfession = ProductionProfession.Jewelcrafting, // 专业
+    RequiredLevel = 1,
+    Ingredients = new Dictionary<string, int> { { "GEM_ROUGH_TIGERSEYE", 1 } }, // 1个劣质虎眼石
+    ResultingItemId = "GEM_TIGERSEYE", // 产出1个虎眼石
+    CraftingTimeSeconds = 4,
+    XpReward = 5,
+    IsDefault = true // 默认学会
+},
+new Recipe
+{
+    Id = "RECIPE_COPPER_WIRE",
+    Name = "制作铜丝",
+    RequiredProfession = ProductionProfession.Blacksmithing, // 这个配方属于锻造
+    RequiredLevel = 8, // 假设8级锻造可学
+    Ingredients = new Dictionary<string, int> { { "BAR_COPPER", 1 } }, // 1个铜锭
+    ResultingItemId = "MAT_COPPER_WIRE", // 产出2个铜丝
+    ResultingItemQuantity = 2,
+    CraftingTimeSeconds = 6,
+    XpReward = 8,
+    IsDefault = true // 默认学会
+},
+new Recipe
+{
+    Id = "RECIPE_TIGERSEYE_RING",
+    Name = "虎眼石戒指",
+    RequiredProfession = ProductionProfession.Jewelcrafting,
+    RequiredLevel = 1,
+    Ingredients = new Dictionary<string, int>
+    {
+        { "GEM_TIGERSEYE", 1 }, // 1个虎眼石
+        { "MAT_COPPER_WIRE", 2 }  // 2个铜丝
+    },
+    ResultingItemId = "EQ_FINGER_TIGERSEYE_RING",
+    CraftingTimeSeconds = 15,
+    XpReward = 20,
+    IsDefault = true // 默认学会
+}
     };
 
     public static List<Recipe> AllRecipes => _allRecipes;

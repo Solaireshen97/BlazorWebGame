@@ -20,6 +20,7 @@
     {
         Cooking,      // 烹饪
         Alchemy,      // 炼金
-        Blacksmithing // 锻造 (*** 新增 ***)
+        Blacksmithing, // 锻造
+        Jewelcrafting // 珠宝加工 (*** 新增 ***)
     }
 }
