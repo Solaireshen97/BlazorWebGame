@@ -8,7 +8,7 @@ namespace BlazorWebGame.Models
         {
             new Enemy
             {
-                Name = "哥布林",
+                Name = "Goblin",
                 Health = 50, MaxHealth = 50,
                 AttackPower = 5, AttacksPerSecond = 0.8,
                 XpReward = 15, MinGold = 2, MaxGold = 6,
@@ -20,7 +20,7 @@ namespace BlazorWebGame.Models
             },
             new Enemy
             {
-                Name = "史莱姆",
+                Name = "Slime",
                 Health = 40, MaxHealth = 40,
                 AttackPower = 3, AttacksPerSecond = 1.0,
                 XpReward = 10, MinGold = 1, MaxGold = 4,
@@ -29,7 +29,7 @@ namespace BlazorWebGame.Models
             },
             new Enemy
             {
-                Name = "哥布林精英",
+                Name = "GoblinElite",
                 Health = 80, MaxHealth = 80,
                 AttackPower = 7, AttacksPerSecond = 0.7,
                 XpReward = 25, MinGold = 5, MaxGold = 10,

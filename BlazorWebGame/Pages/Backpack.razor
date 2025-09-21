@@ -61,6 +61,16 @@
                             {
                                 <p><strong>生命值:</strong> <span class="stat-bonus">+@eq.HealthBonus</span></p>
                             }
+
+                            <!-- 新增的采集属性显示 -->
+                            @if (eq.GatheringSpeedBonus > 0)
+                            {
+                                <p><strong>采集速度:</strong> <span class="stat-bonus">+@((eq.GatheringSpeedBonus * 100).ToString("F0"))%</span></p>
+                            }
+                            @if (eq.ExtraLootChanceBonus > 0)
+                            {
+                                <p><strong>额外掉落:</strong> <span class="stat-bonus">+@((eq.ExtraLootChanceBonus * 100).ToString("F0"))%</span></p>
+                            }
                         </div>
                         <div class="d-flex gap-2 mt-3">
                             <button class="btn btn-success" @onclick="() => GameState.EquipItem(eq.Id)">装备</button>

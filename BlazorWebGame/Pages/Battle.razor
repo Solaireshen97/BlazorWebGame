@@ -1,6 +1,6 @@
 @page "/battle"
-@using BlazorWebGame.Services
 @using BlazorWebGame.Models
+@using BlazorWebGame.Services
 @inject GameStateService GameState
 @implements IDisposable
 
@@ -30,6 +30,13 @@
                     <p>复活倒计时: @GameState.RevivalTimeRemaining.ToString("F1")s</p>
                 </div>
             }
+            else if (GameState.Player.CurrentAction == PlayerActionState.Gathering)
+            {
+                <div class="action-blocked-card">
+                    <p><strong>正在采集中，无法战斗！</strong></p>
+                    <button class="btn btn-warning" @onclick="GameState.StopCurrentAction">停止采集</button>
+                </div>
+            }
             else if (GameState.CurrentEnemy != null)
             {
                 <div class="battle-container">
@@ -40,7 +47,7 @@
 
                         <div class="profession-display">
                             <span>@GameState.Player.SelectedBattleProfession.ToChineseString()</span>
-                            <span>Lv. @GameState.Player.GetLevel(GameState.Player.BattleProfessionXP[GameState.Player.SelectedBattleProfession])</span>
+                            <span>Lv. @GameState.Player.GetLevel(GameState.Player.SelectedBattleProfession)</span>
                         </div>
 
                         <div class="health-bar-container">
@@ -74,19 +81,19 @@
                             </div>
                             <!-- 消耗品 -->
                             <div class="consumable-quick-slots">
-                                @for (int i = 0; i < 4; i++)
+                                <!-- 药水栏 -->
+                                @for (int i = 0; i < 2; i++)
                                 {
-                                    var slotId = i; // 捕获循环变量
-                                                    <div class="quick-slot"
-                                                         @onclick="() => OpenQuickSlotPicker(slotId)"
-                                                         @oncontextmenu="() => ClearQuickSlot(slotId)"
-                                                         @oncontextmenu:preventDefault>
-                                        @if (GameState.Player.QuickSlots.TryGetValue(slotId, out var itemId) && !string.IsNullOrEmpty(itemId))
+                                    var slotId = i;
+                                    <div class="quick-slot"
+                                         @onclick="() => OpenQuickSlotPicker(ConsumableCategory.Potion, slotId, FoodType.None)"
+                                         @oncontextmenu="() => GameState.ClearQuickSlotItem(ConsumableCategory.Potion, slotId)"
+                                         @oncontextmenu:preventDefault>
+                                        @if (GameState.Player.PotionQuickSlots.TryGetValue(slotId, out var itemId) && !string.IsNullOrEmpty(itemId))
                                         {
                                             var item = ItemData.GetItemById(itemId);
                                             var cooldown = GameState.Player.ConsumableCooldowns.GetValueOrDefault(itemId, 0);
-                                            var count = GameState.Player.Inventory.Where(s => s.ItemId == itemId).Sum(s => s.Quantity);
-
+                                            var count = GetItemCountInInventory(itemId);
                                             <div class="quick-slot-item @(count == 0 ? "depleted" : "")" title="@item.Name (@count) - 右键清空">
                                                 <div class="item-icon">@item.Name.Substring(0, 1)</div>
                                                 <span class="item-count">@count</span>
@@ -98,7 +105,35 @@
                                         }
                                         else
                                         {
-                                            <div class="quick-slot-empty" title="点击设置"></div>
+                                            <div class="quick-slot-empty" title="点击设置药水"></div>
+                                        }
+                                    </div>
+                                }
+                                <!-- 战斗食物栏 -->
+                                @for (int i = 0; i < 2; i++)
+                                {
+                                    var slotId = i;
+                                    <div class="quick-slot"
+                                         @onclick="() => OpenQuickSlotPicker(ConsumableCategory.Food, slotId, FoodType.Combat)"
+                                         @oncontextmenu="() => GameState.ClearQuickSlotItem(ConsumableCategory.Food, slotId, FoodType.Combat)"
+                                         @oncontextmenu:preventDefault>
+                                        @if (GameState.Player.CombatFoodQuickSlots.TryGetValue(slotId, out var itemId) && !string.IsNullOrEmpty(itemId))
+                                        {
+                                            var item = ItemData.GetItemById(itemId);
+                                            var cooldown = GameState.Player.ConsumableCooldowns.GetValueOrDefault(itemId, 0);
+                                            var count = GetItemCountInInventory(itemId);
+                                            <div class="quick-slot-item @(count == 0 ? "depleted" : "")" title="@item.Name (@count) - 右键清空">
+                                                <div class="item-icon">@item.Name.Substring(0, 1)</div>
+                                                <span class="item-count">@count</span>
+                                                @if (cooldown > 0)
+                                                {
+                                                    <div class="cooldown-overlay"><span>@((int)cooldown)</span></div>
+                                                }
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="quick-slot-empty" title="点击设置战斗食物"></div>
                                         }
                                     </div>
                                 }
@@ -144,7 +179,7 @@
             }
         </div>
 
-        <!-- 装备及细节信息 (已恢复) -->
+        <!-- 装备及细节信息 -->
         <div class="details-area">
             <div class="details-card">
                 <h5>玩家属性</h5>
@@ -206,23 +241,25 @@
 @code {
     private bool _isPickerVisible = false;
     private int _managingSlotId;
+    private ConsumableCategory _managingCategory;
+    private FoodType _managingFoodType;
 
     protected override void OnInitialized()
     {
         GameState.OnStateChanged += StateHasChanged;
-        if (GameState.CurrentEnemy == null && GameState.AvailableMonsters.Any())
-        {
-            SelectEnemy(GameState.AvailableMonsters.First());
-        }
     }
 
-    private void SelectEnemy(Enemy enemyTemplate) => GameState.SpawnNewEnemy(enemyTemplate);
+    private void SelectEnemy(Enemy enemyTemplate) => GameState.StartCombat(enemyTemplate);
+
     private bool IsCurrentEnemy(Enemy enemyTemplate) => GameState.CurrentEnemy?.Name == enemyTemplate.Name;
+
     private double GetPlayerHealthPercentage() => GameState.Player?.GetTotalMaxHealth() > 0 ? (double)Math.Max(0, GameState.Player.Health) / GameState.Player.GetTotalMaxHealth() * 100 : 0;
 
-    private void OpenQuickSlotPicker(int slotId)
+    private void OpenQuickSlotPicker(ConsumableCategory category, int slotId, FoodType foodType)
     {
+        _managingCategory = category;
         _managingSlotId = slotId;
+        _managingFoodType = foodType;
         _isPickerVisible = true;
     }
 
@@ -233,28 +270,29 @@
 
     private void SetQuickSlot(string itemId)
     {
-        GameState.SetQuickSlotItem(_managingSlotId, itemId);
+        GameState.SetQuickSlotItem(_managingCategory, _managingSlotId, itemId);
         CloseQuickSlotPicker();
-    }
-
-    private void ClearQuickSlot(int slotId)
-    {
-        GameState.ClearQuickSlotItem(slotId);
     }
 
     private List<Consumable> GetAvailableConsumablesForPicker()
     {
-        var targetType = (_managingSlotId <= 1) ? ConsumableSubType.Potion : ConsumableSubType.Food;
-
         var itemIdsInInventory = GameState.Player.Inventory
             .Where(s => !s.IsEmpty)
             .Select(s => s.ItemId)
             .Distinct();
 
-        return ItemData.AllItems
-            .OfType<Consumable>()
-            .Where(c => c.SubType == targetType && itemIdsInInventory.Contains(c.Id))
-            .ToList();
+        var query = ItemData.AllItems.OfType<Consumable>();
+
+        if (_managingCategory == ConsumableCategory.Food)
+        {
+            query = query.Where(c => c.FoodType == _managingFoodType);
+        }
+        else
+        {
+            query = query.Where(c => c.Category == _managingCategory);
+        }
+
+        return query.Where(c => itemIdsInInventory.Contains(c.Id)).ToList();
     }
 
     private int GetItemCountInInventory(string itemId)
