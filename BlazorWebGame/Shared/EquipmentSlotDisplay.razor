@@ -1,0 +1,101 @@
+﻿@using BlazorWebGame.Models
+@using BlazorWebGame.Services
+@inject GameStateService GameState
+
+@* 
+    将整个组件包裹在一个根元素中，这是Blazor组件的最佳实践。
+    我们直接在这个根元素上应用所有动态类和事件。
+*@
+<div class="equipment-slot-display @(GetSlotClass())" @onclick="HandleClick">
+
+    @if (GetEquippedItem() is Equipment item)
+    {
+        // --- 槽位有装备时 ---
+
+        @* 1. 只显示物品名字 *@
+        <span class="item-name">@item.Name</span>
+
+        @* 2. 悬浮提示窗 (Tooltip) *@
+        <div class="item-tooltip">
+            <strong style="color: #00bfff;">@item.Name</strong>
+            <small> (@item.Slot.ToString())</small>
+            <hr />
+            <div class="tooltip-stats">
+                @if (item.HealthBonus > 0)
+                {
+                    <p>生命值: <span class="stat-bonus">+@item.HealthBonus</span></p>
+                }
+                @if (item.AttackBonus > 0)
+                {
+                    <p>攻击力: <span class="stat-bonus">+@item.AttackBonus</span></p>
+                }
+                @if (item.AttackSpeedBonus > 0)
+                {
+                    <p>攻击速度: <span class="stat-bonus">+@((item.AttackSpeedBonus * 100).ToString("F0"))%</span></p>
+                }
+                @if (item.GatheringSpeedBonus > 0)
+                {
+                    <p>采集速度: <span class="stat-bonus">+@((item.GatheringSpeedBonus * 100).ToString("F0"))%</span></p>
+                }
+                @if (item.ExtraLootChanceBonus > 0)
+                {
+                    <p>额外掉落: <span class="stat-bonus">+@((item.ExtraLootChanceBonus * 100).ToString("F0"))%</span></p>
+                }
+            </div>
+            @if (!string.IsNullOrEmpty(item.Description))
+            {
+                <hr />
+                <small>@item.Description</small>
+            }
+            <hr />
+            <small style="color: #888;">点击卸下</small>
+        </div>
+    }
+    else
+    {
+        // --- 槽位为空时 ---
+        <span>@Label</span>
+    }
+
+</div>
+
+@code {
+    [Parameter]
+    public EquipmentSlot Slot { get; set; }
+
+    [Parameter]
+    public string Label { get; set; } = "";
+
+    // 将逻辑封装到方法中，使模板更清晰
+    private Equipment? GetEquippedItem()
+    {
+        if (GameState.Player.EquippedItems.TryGetValue(Slot, out var itemId) && !string.IsNullOrEmpty(itemId))
+        {
+            return ItemData.GetItemById(itemId) as Equipment;
+        }
+        return null;
+    }
+
+    private string GetSlotClass()
+    {
+        return GetEquippedItem() != null ? "equipped" : "empty";
+    }
+
+    protected override void OnInitialized()
+    {
+        GameState.OnStateChanged += StateHasChanged;
+    }
+
+    private void HandleClick()
+    {
+        if (GetEquippedItem() != null)
+        {
+            GameState.UnequipItem(Slot);
+        }
+    }
+
+    public void Dispose()
+    {
+        GameState.OnStateChanged -= StateHasChanged;
+    }
+}

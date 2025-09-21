@@ -375,7 +375,81 @@ public class GameStateService : IAsyncDisposable
     private void InitializePlayerState() { if (Player == null) return; foreach (var profession in (BattleProfession[])Enum.GetValues(typeof(BattleProfession))) { var currentLevel = Player.GetLevel(profession); CheckForNewSkillUnlocks(profession, currentLevel, true); } ResetPlayerSkillCooldowns(); NotifyStateChanged(); }
     private void CheckForNewSkillUnlocks(BattleProfession profession, int level, bool checkAllLevels = false) { if (Player == null) return; var skillsToLearnQuery = SkillData.AllSkills.Where(s => s.RequiredProfession == profession); if (checkAllLevels) { skillsToLearnQuery = skillsToLearnQuery.Where(s => s.RequiredLevel <= level); } else { skillsToLearnQuery = skillsToLearnQuery.Where(s => s.RequiredLevel == level); } var newlyLearnedSkills = skillsToLearnQuery.ToList(); foreach (var skill in newlyLearnedSkills) { if (skill.Type == SkillType.Shared) { Player.LearnedSharedSkills.Add(skill.Id); } if (skill.Type == SkillType.Fixed) { if (!Player.EquippedSkills.TryGetValue(profession, out var equipped) || !equipped.Contains(skill.Id)) { Player.EquippedSkills[profession].Insert(0, skill.Id); } } } }
     public void AddItemToInventory(string itemId, int quantity) { if (Player == null) return; var itemToAdd = ItemData.GetItemById(itemId); if (itemToAdd == null) return; if (Player.AutoSellItemIds.Contains(itemId)) { Player.Gold += itemToAdd.Value * quantity; NotifyStateChanged(); return; } if (itemToAdd.IsStackable) { var existingSlot = Player.Inventory.FirstOrDefault(s => s.ItemId == itemId && s.Quantity < 99); if (existingSlot != null) { existingSlot.Quantity += quantity; NotifyStateChanged(); return; } } var emptySlot = Player.Inventory.FirstOrDefault(s => s.IsEmpty); if (emptySlot != null) { emptySlot.ItemId = itemId; emptySlot.Quantity = quantity; } NotifyStateChanged(); }
-    public void EquipItem(string itemId) { if (Player == null) return; var slotToEquipFrom = Player.Inventory.FirstOrDefault(s => s.ItemId == itemId); if (slotToEquipFrom == null) return; if (ItemData.GetItemById(itemId) is not Equipment equipmentToEquip) return; if (Player.EquippedItems.TryGetValue(equipmentToEquip.Slot, out var currentItemId)) { UnequipItem(equipmentToEquip.Slot); } slotToEquipFrom.Quantity--; if (slotToEquipFrom.Quantity <= 0) { slotToEquipFrom.ItemId = null; } Player.EquippedItems[equipmentToEquip.Slot] = itemId; Player.Health = Math.Min(Player.Health, Player.GetTotalMaxHealth()); NotifyStateChanged(); }
+    public void EquipItem(string itemId)
+    {
+        if (Player == null) return;
+        var slotToEquipFrom = Player.Inventory.FirstOrDefault(s => s.ItemId == itemId);
+        if (slotToEquipFrom == null) return;
+        if (ItemData.GetItemById(itemId) is not Equipment equipmentToEquip) return;
+
+        // --- vvv 这是新的核心逻辑 vvv ---
+
+        List<EquipmentSlot> targetSlots = new();
+
+        // 根据物品的“标识”槽位，决定它真正可以装备在哪些槽位上
+        switch (equipmentToEquip.Slot)
+        {
+            case EquipmentSlot.Finger1:
+            case EquipmentSlot.Finger2:
+                targetSlots.Add(EquipmentSlot.Finger1);
+                targetSlots.Add(EquipmentSlot.Finger2);
+                break;
+
+            case EquipmentSlot.Trinket1:
+            case EquipmentSlot.Trinket2:
+                targetSlots.Add(EquipmentSlot.Trinket1);
+                targetSlots.Add(EquipmentSlot.Trinket2);
+                break;
+
+            default:
+                // 对于所有其他单槽位物品，逻辑保持不变
+                targetSlots.Add(equipmentToEquip.Slot);
+                break;
+        }
+
+        // 寻找一个可用的目标槽位
+        EquipmentSlot? finalSlot = null;
+        // 1. 优先寻找空槽位
+        foreach (var slot in targetSlots)
+        {
+            if (!Player.EquippedItems.ContainsKey(slot))
+            {
+                finalSlot = slot;
+                break;
+            }
+        }
+
+        // 2. 如果没有空槽位，默认替换第一个槽位
+        if (finalSlot == null && targetSlots.Any())
+        {
+            finalSlot = targetSlots.First();
+        }
+
+        // 如果最终没有找到可装备的槽位，则直接返回
+        if (finalSlot == null) return;
+
+        // --- ^^^ 新逻辑结束 ^^^ ---
+
+        // 如果最终确定的槽位上已经有装备，则先卸下它
+        if (Player.EquippedItems.TryGetValue(finalSlot.Value, out var currentItemId))
+        {
+            UnequipItem(finalSlot.Value);
+        }
+
+        // 从背包中减少物品数量
+        slotToEquipFrom.Quantity--;
+        if (slotToEquipFrom.Quantity <= 0)
+        {
+            slotToEquipFrom.ItemId = null;
+        }
+
+        // 将新物品装备到最终确定的槽位上
+        Player.EquippedItems[finalSlot.Value] = itemId;
+
+        // 更新玩家状态
+        Player.Health = Math.Min(Player.Health, Player.GetTotalMaxHealth());
+        NotifyStateChanged();
+    }
     public void UnequipItem(EquipmentSlot slot) { if (Player == null) return; if (!Player.EquippedItems.TryGetValue(slot, out var itemIdToUnequip)) return; Player.EquippedItems.Remove(slot); AddItemToInventory(itemIdToUnequip, 1); Player.Health = Math.Min(Player.Health, Player.GetTotalMaxHealth()); NotifyStateChanged(); }
     public void SellItem(string itemId, int quantity = 1) { if (Player == null) return; var itemData = ItemData.GetItemById(itemId); if (itemData == null) return; RemoveItemFromInventory(itemId, quantity, out int soldCount); if (soldCount > 0) { Player.Gold += itemData.Value * soldCount; NotifyStateChanged(); } }
     public bool BuyItem(string itemId) { if (Player == null) return false; var itemToBuy = ItemData.GetItemById(itemId); var purchaseInfo = itemToBuy?.ShopPurchaseInfo; if (purchaseInfo == null) return false; bool canAfford = false; switch (purchaseInfo.Currency) { case CurrencyType.Gold: if (Player.Gold >= purchaseInfo.Price) { Player.Gold -= purchaseInfo.Price; canAfford = true; } break; case CurrencyType.Item: if (!string.IsNullOrEmpty(purchaseInfo.CurrencyItemId)) { int ownedAmount = Player.Inventory.Where(s => s.ItemId == purchaseInfo.CurrencyItemId).Sum(s => s.Quantity); if (ownedAmount >= purchaseInfo.Price) { RemoveItemFromInventory(purchaseInfo.CurrencyItemId, purchaseInfo.Price, out _); canAfford = true; } } break; } if (canAfford) { AddItemToInventory(itemId, 1); NotifyStateChanged(); return true; } return false; }

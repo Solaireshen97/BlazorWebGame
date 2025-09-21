@@ -1,12 +1,12 @@
 ﻿.backpack-container {
     display: flex;
     gap: 20px;
-    height: calc(100vh - 100px); /* 减去顶部导航等高度，可自行调整 */
+    height: calc(100vh - 100px);
 }
 
-/* --- 左栏：背包 --- */
+/* --- 左栏和中栏 (保持不变) --- */
 .inventory-panel {
-    width: 280px; /* 4个格子 + 间距 */
+    width: 280px;
     flex-shrink: 0;
 }
 
@@ -29,7 +29,7 @@
     position: relative;
     background-color: #e9ecef;
     transition: all 0.2s;
-    aspect-ratio: 1 / 1; /* 保持正方形 */
+    aspect-ratio: 1 / 1;
 }
 
     .item-slot:hover {
@@ -70,8 +70,6 @@
     text-shadow: 1px 1px 2px white;
 }
 
-
-/* --- 中栏：详情 --- */
 .item-detail-panel {
     flex-grow: 1;
 }
@@ -103,6 +101,11 @@
     font-weight: bold;
 }
 
+.action-bar {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+}
 
 /* --- 右栏：装备 --- */
 .equipment-panel {
@@ -117,58 +120,73 @@
     margin-bottom: 15px;
 }
 
-.equipment-slots {
+.equipment-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.equipment-column {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
 }
 
-.equipment-slot-display {
+.equipment-weapons {
+    display: grid; /* 从 flex 改为 grid */
+    grid-template-columns: repeat(2, 1fr); /* 新增，与上方网格对齐 */
+    gap: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #ddd;
+}
+
+
+/* --- vvv 核心修正：使用 ::deep 穿透CSS作用域 vvv --- */
+
+/* 
+  将所有针对子组件 .equipment-slot-display 的规则前面
+  加上 ::deep 伪元素。
+  这会告诉Blazor，这些样式需要应用到子组件的元素上。
+*/
+::deep .equipment-slot-display {
+    height: 50px;
+    border: 1px dashed #ccc;
+    border-radius: 5px;
     display: flex;
     align-items: center;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    padding: 5px;
+    justify-content: center;
     cursor: pointer;
     transition: background-color 0.2s;
+    position: relative; /* 为tooltip定位 */
 }
 
-    .equipment-slot-display:hover {
+    ::deep .equipment-slot-display:hover {
         background-color: #e9e9e9;
     }
 
-.slot-name {
-    width: 80px;
-    font-weight: bold;
-    color: #555;
-    text-align: right;
-    margin-right: 15px;
-}
-
-.item-display {
-    flex-grow: 1;
-    text-align: center;
-    padding: 10px 5px;
-    border-radius: 3px;
-    position: relative;
-}
-
-    .item-display.empty {
-        color: #999;
-        font-style: italic;
-    }
-
-    .item-display.equipped {
-        background-color: #d4edda;
-        border: 1px solid #c3e6cb;
-        color: #155724;
+    ::deep .equipment-slot-display .item-name {
         font-weight: bold;
     }
 
+    ::deep .equipment-slot-display.empty {
+        color: #aaa;
+    }
 
-    /* --- 通用 Tooltip --- */
-    .item-slot .item-tooltip,
-    .item-display .item-tooltip {
+    ::deep .equipment-slot-display.equipped {
+        background-color: #e7f1ff;
+        border-style: solid;
+        border-color: #b3d7ff;
+    }
+
+    /* --- 悬浮窗 Tooltip 规则也需要 ::deep --- */
+    /*
+  注意这里的写法: 父选择器和子选择器都需要 ::deep
+  来确保规则能正确应用
+*/
+    ::deep .item-slot .item-tooltip,
+    ::deep .equipment-slot-display .item-tooltip {
         visibility: hidden;
         width: max-content;
         min-width: 150px;
@@ -187,74 +205,27 @@
         pointer-events: none;
     }
 
-    .item-slot:hover .item-tooltip,
-    .item-display:hover .item-tooltip {
+    /* 悬停显示规则 */
+    ::deep .item-slot:hover .item-tooltip,
+    ::deep .equipment-slot-display:hover .item-tooltip {
         visibility: visible;
         opacity: 1;
     }
 
-.item-tooltip hr {
+/* Tooltip 内部样式 */
+::deep .item-tooltip hr {
     border-top: 1px solid #666;
     margin: 5px 0;
 }
 
-/* 新增或修改的样式 */
-.action-bar {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid #eee;
+::deep .item-tooltip .tooltip-stats p {
+    margin: 0;
+    font-size: 0.9em;
 }
 
-.equipped-skills-display {
-    display: flex;
-    justify-content: center;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem; /* 与消耗品栏拉开距离 */
+::deep .item-tooltip .tooltip-stats .stat-bonus {
+    color: #28a745;
+    font-weight: bold;
 }
 
-.consumable-quick-slots {
-    display: flex;
-    justify-content: center;
-    gap: 0.5rem;
-}
-
-.quick-slot, .quick-slot-empty {
-    width: 40px;
-    height: 40px;
-    border-radius: 5px;
-    border: 1px dashed #ccc;
-}
-
-.quick-slot-item {
-    width: 100%;
-    height: 100%;
-    position: relative;
-    background-color: #fff;
-    border: 1px solid #adb5bd;
-    border-radius: 5px;
-    cursor: help;
-}
-
-    .quick-slot-item .item-icon {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
-        height: 100%;
-        font-weight: bold;
-        font-size: 1rem;
-    }
-
-    .quick-slot-item .item-count {
-        position: absolute;
-        bottom: 1px;
-        right: 2px;
-        font-size: 0.75rem;
-        font-weight: bold;
-        color: #212529;
-        text-shadow: 0 0 2px white;
-    }
-
-    .quick-slot-item.depleted .item-icon {
-        color: #dee2e6; /* 耗尽时图标变灰 */
-    }
+/* ^^^ 核心修正结束 ^^^ */

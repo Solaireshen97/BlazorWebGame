@@ -2,6 +2,7 @@
 @page "/"
 @using BlazorWebGame.Models
 @using BlazorWebGame.Services
+@using BlazorWebGame.Shared
 @inject GameStateService GameState
 @implements IDisposable
 
@@ -10,7 +11,7 @@
 @if (GameState.Player != null)
 {
     <div class="backpack-container">
-        <!-- 左侧：背包网格 -->
+        <!-- 左侧：背包网格 (保持不变) -->
         <div class="inventory-panel">
             <h3>背包</h3>
             <div class="inventory-grid">
@@ -36,7 +37,7 @@
             </div>
         </div>
 
-        <!-- 中间：物品详情 -->
+        <!-- 中间：物品详情 (保持不变) -->
         <div class="item-detail-panel">
             <h3>物品详情</h3>
             @if (_selectedItemForDetailView != null)
@@ -53,22 +54,10 @@
                     {
                         <div class="detail-stats">
                             <p><strong>类型:</strong> @eq.Slot.ToString()</p>
-                            @if (eq.AttackBonus > 0)
-                            {
-                                <p><strong>攻击力:</strong> <span class="stat-bonus">+@eq.AttackBonus</span></p>
-                            }
-                            @if (eq.HealthBonus > 0)
-                            {
-                                <p><strong>生命值:</strong> <span class="stat-bonus">+@eq.HealthBonus</span></p>
-                            }
-                            @if (eq.GatheringSpeedBonus > 0)
-                            {
-                                <p><strong>采集速度:</strong> <span class="stat-bonus">+@((eq.GatheringSpeedBonus * 100).ToString("F0"))%</span></p>
-                            }
-                            @if (eq.ExtraLootChanceBonus > 0)
-                            {
-                                <p><strong>额外掉落:</strong> <span class="stat-bonus">+@((eq.ExtraLootChanceBonus * 100).ToString("F0"))%</span></p>
-                            }
+                            @if (eq.AttackBonus > 0) { <p><strong>攻击力:</strong> <span class="stat-bonus">+@eq.AttackBonus</span></p> }
+                            @if (eq.HealthBonus > 0) { <p><strong>生命值:</strong> <span class="stat-bonus">+@eq.HealthBonus</span></p> }
+                            @if (eq.GatheringSpeedBonus > 0) { <p><strong>采集速度:</strong> <span class="stat-bonus">+@((eq.GatheringSpeedBonus * 100).ToString("F0"))%</span></p> }
+                            @if (eq.ExtraLootChanceBonus > 0) { <p><strong>额外掉落:</strong> <span class="stat-bonus">+@((eq.ExtraLootChanceBonus * 100).ToString("F0"))%</span></p> }
                         </div>
                         <div class="d-flex gap-2 mt-3">
                             <button class="btn btn-success" @onclick="() => GameState.EquipItem(eq.Id)">装备</button>
@@ -78,28 +67,12 @@
                     else
                     {
                         <div class="d-flex gap-2 mt-3">
-                            @* 
-                                vvv 这是本次修改的核心逻辑 vvv
-                                1. 判断物品是否是消耗品 (Consumable)
-                                2. 进一步判断消耗品的类别是否是图纸 (Recipe)
-                            *@
                             @if (_selectedItemForDetailView is Consumable consumable && consumable.Category == ConsumableCategory.Recipe)
                             {
-                                // 检查这个图纸对应的配方ID是否已经被玩家学会
                                 bool isLearned = !string.IsNullOrEmpty(consumable.RecipeIdToLearn) && GameState.Player.LearnedRecipeIds.Contains(consumable.RecipeIdToLearn);
-
-                                if (isLearned)
-                                {
-                                    // 如果已经学会，显示一个禁用的灰色按钮
-                                    <button class="btn btn-secondary" disabled>已学会</button>
-                                }
-                                else
-                                {
-                                    // 如果还没学会，才显示“使用”按钮
-                                    <button class="btn btn-primary" @onclick="() => UseSelectedItem()">使用</button>
-                                }
+                                if (isLearned) { <button class="btn btn-secondary" disabled>已学会</button> }
+                                else { <button class="btn btn-primary" @onclick="() => UseSelectedItem()">使用</button> }
                             }
-
                             <button class="btn btn-warning" @onclick="() => SellSelectedItem()">出售</button>
                         </div>
                     }
@@ -107,13 +80,11 @@
             }
             else
             {
-                <div class="detail-card-placeholder">
-                    <p>从左侧背包中选择一件物品查看详情。</p>
-                </div>
+                <div class="detail-card-placeholder"><p>从左侧背包中选择一件物品查看详情。</p></div>
             }
         </div>
 
-        <!-- 右侧：装备栏 (保持不变) -->
+        <!-- 右侧：装备栏 (*** 核心修改区域 ***) -->
         <div class="equipment-panel">
             <h3>装备</h3>
             <div class="player-stats">
@@ -121,23 +92,33 @@
                 <p>攻击力: @GameState.Player.GetTotalAttackPower()</p>
                 <p>金币: @GameState.Player.Gold</p>
             </div>
-            <div class="equipment-slots">
-                @foreach (var slot in (EquipmentSlot[])Enum.GetValues(typeof(EquipmentSlot)))
-                {
-                    <div class="equipment-slot-display" @onclick="() => OnSlotClick(slot)">
-                        <span class="slot-name">@slot.ToString()</span>
-                        @if (GameState.Player.EquippedItems.TryGetValue(slot, out var itemId))
-                        {
-                            var item = (Equipment)ItemData.GetItemById(itemId)!;
-                            <div class="item-display equipped">@item.Name</div>
-                        }
-                        else
-                        {
-                            <div class="item-display empty">空</div>
-                        }
-                    </div>
-                }
+            
+            @* vvv 用新的网格布局替换旧的循环 vvv *@
+            <div class="equipment-grid">
+                <div class="equipment-column">
+                    <EquipmentSlotDisplay Slot="EquipmentSlot.Head" Label="头部" />
+                    <EquipmentSlotDisplay Slot="EquipmentSlot.Neck" Label="颈部" />
+                    <EquipmentSlotDisplay Slot="EquipmentSlot.Shoulder" Label="肩部" />
+                    <EquipmentSlotDisplay Slot="EquipmentSlot.Back" Label="背部" />
+                    <EquipmentSlotDisplay Slot="EquipmentSlot.Chest" Label="胸部" />
+                    <EquipmentSlotDisplay Slot="EquipmentSlot.Wrist" Label="手腕" />
+                </div>
+                <div class="equipment-column">
+                    <EquipmentSlotDisplay Slot="EquipmentSlot.Hands" Label="手部" />
+                    <EquipmentSlotDisplay Slot="EquipmentSlot.Waist" Label="腰部" />
+                    <EquipmentSlotDisplay Slot="EquipmentSlot.Legs" Label="腿部" />
+                    <EquipmentSlotDisplay Slot="EquipmentSlot.Feet" Label="脚部" />
+                    <EquipmentSlotDisplay Slot="EquipmentSlot.Finger1" Label="戒指1" />
+                    <EquipmentSlotDisplay Slot="EquipmentSlot.Finger2" Label="戒指2" />
+                    <EquipmentSlotDisplay Slot="EquipmentSlot.Trinket1" Label="饰品1" />
+                    <EquipmentSlotDisplay Slot="EquipmentSlot.Trinket2" Label="饰品2" />
+                </div>
             </div>
+            <div class="equipment-weapons">
+                <EquipmentSlotDisplay Slot="EquipmentSlot.MainHand" Label="主手" />
+                <EquipmentSlotDisplay Slot="EquipmentSlot.OffHand" Label="副手" />
+            </div>
+            @* ^^^ 新布局结束 ^^^ *@
         </div>
     </div>
 }
@@ -168,7 +149,6 @@
         if (_selectedItemForDetailView != null)
         {
             GameState.UseItem(_selectedItemForDetailView.Id);
-            // 使用后（特别是图纸这类一次性物品），清空详情，避免界面残留
             _selectedItemForDetailView = null;
         }
     }

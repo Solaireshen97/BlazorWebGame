@@ -220,7 +220,7 @@ new Equipment
     Description = "一枚简单的铜戒指，镶嵌着一颗虎眼石。",
     Type = ItemType.Equipment,
     Value = 75,
-    Slot = EquipmentSlot.Finger, // 使用我们新增的装备槽
+    Slot = EquipmentSlot.Finger1, // 使用我们新增的装备槽
     AttackBonus = 2, // 假设提供少量攻击力
     HealthBonus = 5, // 和少量生命值
     IsStackable = false
@@ -233,7 +233,7 @@ new Equipment
                 Description = "一把用铜打造的简易匕首，比新手武器要好一些。",
                 Type = ItemType.Equipment,
                 Value = 25,
-                Slot = EquipmentSlot.Weapon,
+                Slot = EquipmentSlot.MainHand,
                 AttackBonus = 3, // 假设比初始武器攻击力高
                 IsStackable = false
             },
@@ -266,7 +266,7 @@ new Equipment
             {
                 Id = "EQ_WEP_001", Name = "生锈的铁剑",
                 Description = "一把看起来饱经风霜的剑。",
-                Slot = EquipmentSlot.Weapon,
+                Slot = EquipmentSlot.MainHand,
                 AttackBonus = 3,
                 Value = 5,
                 ShopPurchaseInfo = new PurchaseInfo { ShopCategory = "武器", Price = 10 }
@@ -275,7 +275,7 @@ new Equipment
             {
                 Id = "EQ_WEP_002", Name = "哥布林棍棒",
                 Description = "哥布林常用的简陋武器。",
-                Slot = EquipmentSlot.Weapon,
+                Slot = EquipmentSlot.MainHand,
                 AttackBonus = 5,
                 Value = 10,
                 ShopPurchaseInfo = new PurchaseInfo { ShopCategory = "武器", Price = 1 }
@@ -284,7 +284,7 @@ new Equipment
             {
                 Id = "EQ_WEP_003", Name = "恶魔之刃",
                 Description = "一把燃烧着地狱之火的强大武器。",
-                Slot = EquipmentSlot.Weapon,
+                Slot = EquipmentSlot.MainHand,
                 AttackBonus = 15,
                 Value = 500,
                 ShopPurchaseInfo = new PurchaseInfo
