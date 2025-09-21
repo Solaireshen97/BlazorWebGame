@@ -4,9 +4,17 @@
     gap: 1.5rem;
 }
 
+/* --- 这是关键的样式修改 --- */
 .header-section {
-    padding-bottom: 1rem;
+    display: flex; /* 1. 设为 Flex 容器 */
+    justify-content: space-between; /* 2. 两端对齐 */
+    align-items: flex-start; /* 3. 顶部对齐 */
+    padding-bottom: 1.5rem;
     border-bottom: 1px solid #dee2e6;
+}
+
+.profession-info {
+    flex-grow: 1; /* 让左侧信息占据多余空间 */
 }
 
 .profession-stats {
@@ -18,10 +26,11 @@
 }
 
 .consumable-bar {
-    background-color: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    padding: 1rem;
+    /* 移除背景和边框，让它不再像一个独立的卡片 */
+    background-color: transparent;
+    border: none;
+    padding: 0;
+    flex-shrink: 0; /* 防止被压缩 */
 }
 
     .consumable-bar h5 {
@@ -32,6 +41,7 @@
         font-weight: bold;
         color: #6c757d;
     }
+/* --- 修改结束 --- */
 
 .consumable-quick-slots {
     display: flex;
@@ -59,23 +69,25 @@
     margin-top: 1rem;
     overflow: hidden;
     border: 1px solid #ddd;
+    position: relative;
 }
 
 .progress-bar {
     background-color: #28a745;
     height: 100%;
     transition: width 0.1s linear;
-    position: relative; /* 添加相对定位以容纳文本 */
 }
 
 .progress-text {
     position: absolute;
-    right: 10px;
     top: 50%;
-    transform: translateY(-50%);
-    color: white;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #343a40;
     font-weight: bold;
-    text-shadow: 1px 1px 2px black;
+    text-shadow: none;
+    z-index: 2;
+    pointer-events: none;
 }
 
 .node-list {
@@ -140,7 +152,6 @@
     color: #dc3545;
 }
 
-/* 弹窗样式 (与 Battle.razor 相同) */
 .modal-backdrop {
     position: fixed;
     top: 0;
@@ -199,15 +210,13 @@
     font-size: 0.9em;
 }
 
-/* --- 请将以下代码追加到文件末尾 --- */
-
 .quick-slot {
     width: 40px;
     height: 40px;
     border-radius: 5px;
     border: 1px dashed #ccc;
     cursor: pointer;
-    position: relative; /* 为冷却层定位 */
+    position: relative;
 }
 
 .quick-slot-empty {

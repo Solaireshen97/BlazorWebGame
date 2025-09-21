@@ -19,6 +19,9 @@ public class GameStateService : IAsyncDisposable
     private double _enemyAttackCooldown = 0;
     private double _gatheringCooldown = 0;
 
+    // --- 新增字段 ---
+    private Enemy? _lastEnemyBeforeDeath;
+
     public Player Player { get; private set; } = new();
     public Enemy? CurrentEnemy { get; private set; }
     public GatheringNode? CurrentGatheringNode { get; private set; }
@@ -76,22 +79,65 @@ public class GameStateService : IAsyncDisposable
         NotifyStateChanged();
     }
 
-    private void ProcessAutoConsumables()
+    // --- HandlePlayerDeath 方法修改 ---
+    private void HandlePlayerDeath()
     {
         if (Player == null) return;
 
-        // 合并所有快捷栏的物品进行处理
+        // 保存死亡前正在战斗的怪物
+        _lastEnemyBeforeDeath = CurrentEnemy;
+
+        IsPlayerDead = true;
+        Player.Health = 0;
+        RevivalTimeRemaining = RevivalDuration;
+        StopCurrentAction(); // 此处调用时 CurrentEnemy 会被设为 null
+
+        // 移除药水等非食物Buff
+        Player.ActiveBuffs.RemoveAll(buff =>
+        {
+            var item = ItemData.GetItemById(buff.SourceItemId);
+            if (item is Consumable consumable)
+            {
+                return consumable.Category != ConsumableCategory.Food;
+            }
+            return true;
+        });
+    }
+
+    // --- RevivePlayer 方法修改 ---
+    private void RevivePlayer()
+    {
+        IsPlayerDead = false;
+        if (Player != null)
+        {
+            Player.Health = Player.GetTotalMaxHealth();
+        }
+        RevivalTimeRemaining = 0;
+
+        // 如果死亡前有正在战斗的怪物，则自动重新开始战斗
+        if (_lastEnemyBeforeDeath != null)
+        {
+            StartCombat(_lastEnemyBeforeDeath);
+            _lastEnemyBeforeDeath = null; // 清除记录
+        }
+        else
+        {
+            // 如果没有，则正常初始化玩家状态
+            InitializePlayerState();
+        }
+    }
+
+    private void ProcessAutoConsumables()
+    {
+        if (Player == null) return;
         var allQuickSlotItems = Player.PotionQuickSlots
             .Concat(Player.CombatFoodQuickSlots)
             .Concat(Player.GatheringFoodQuickSlots);
-
         foreach (var slot in allQuickSlotItems)
         {
             var itemId = slot.Value;
             if (string.IsNullOrEmpty(itemId) || Player.ConsumableCooldowns.ContainsKey(itemId)) continue;
-
             if (ItemData.GetItemById(itemId) is not Consumable item) continue;
-
             bool shouldUse = false;
             switch (item.Category)
             {
@@ -99,7 +145,6 @@ public class GameStateService : IAsyncDisposable
                     if ((double)Player.Health / Player.GetTotalMaxHealth() < 0.7) shouldUse = true;
                     break;
                 case ConsumableCategory.Food:
-                    // 食物只有在对应活动中才自动使用
                     if (item.FoodType == FoodType.Combat && Player.CurrentAction == PlayerActionState.Combat ||
                         item.FoodType == FoodType.Gathering && Player.CurrentAction == PlayerActionState.Gathering)
                     {
@@ -107,7 +152,6 @@ public class GameStateService : IAsyncDisposable
                     }
                     break;
             }
-
             if (shouldUse && RemoveItemFromInventory(itemId, 1, out int removedCount) && removedCount > 0)
             {
                 ApplyConsumableEffect(item);
@@ -125,9 +169,7 @@ public class GameStateService : IAsyncDisposable
             case ConsumableEffectType.StatBuff:
                 if (consumable.BuffType.HasValue && consumable.DurationSeconds.HasValue)
                 {
-                    // 移除同食物类型、同属性的旧Buff
                     Player.ActiveBuffs.RemoveAll(b => b.FoodType == consumable.FoodType && b.BuffType == consumable.BuffType.Value);
-
                     Player.ActiveBuffs.Add(new Buff
                     {
                         SourceItemId = consumable.Id,
@@ -147,7 +189,6 @@ public class GameStateService : IAsyncDisposable
         if (Player == null) return;
         var item = ItemData.GetItemById(itemId) as Consumable;
         if (item == null || item.Category != category) return;
-
         Dictionary<int, string> targetSlots = category switch
         {
             ConsumableCategory.Potion => Player.PotionQuickSlots,
@@ -155,13 +196,9 @@ public class GameStateService : IAsyncDisposable
             ConsumableCategory.Food when item.FoodType == FoodType.Gathering => Player.GatheringFoodQuickSlots,
             _ => null
         };
-
         if (targetSlots == null) return;
-
-        // 清除其他相同物品的快捷键设置
         var otherItemSlots = targetSlots.Where(kv => kv.Value == itemId && kv.Key != slotId).ToList();
         foreach (var otherSlot in otherItemSlots) targetSlots.Remove(otherSlot.Key);
-
         targetSlots[slotId] = itemId;
         NotifyStateChanged();
     }
@@ -215,15 +252,12 @@ public class GameStateService : IAsyncDisposable
         _gatheringCooldown = GetCurrentGatheringTime();
     }
 
-    // ... (其他所有未修改的方法，如StartCombat, StopCurrentAction, PlayerAttackEnemy等，保持原样)
-    // ... 为了简洁，这里省略，请确保您的文件中保留了它们
+    // --- 以下是未作修改的既有方法，保持原样即可 ---
     private void ProcessCombat(double elapsedSeconds) { if (Player != null && CurrentEnemy != null) { _playerAttackCooldown -= elapsedSeconds; if (_playerAttackCooldown <= 0) { PlayerAttackEnemy(); _playerAttackCooldown += 1.0 / Player.AttacksPerSecond; } _enemyAttackCooldown -= elapsedSeconds; if (_enemyAttackCooldown <= 0) { EnemyAttackPlayer(); _enemyAttackCooldown += 1.0 / CurrentEnemy.AttacksPerSecond; } } }
     private void PlayerAttackEnemy() { if (Player == null || CurrentEnemy == null) return; var equippedSkillIds = Player.EquippedSkills[Player.SelectedBattleProfession]; foreach (var skillId in equippedSkillIds) { var currentCooldown = Player.SkillCooldowns.GetValueOrDefault(skillId); if (currentCooldown <= 0) { var skill = SkillData.GetSkillById(skillId); if (skill != null) { ApplySkillEffect(skill, isPlayerSkill: true); Player.SkillCooldowns[skillId] = skill.CooldownRounds; } } else { Player.SkillCooldowns[skillId]--; } } CurrentEnemy.Health -= Player.GetTotalAttackPower(); if (CurrentEnemy.Health <= 0) { Player.Gold += CurrentEnemy.GetGoldDropAmount(); var random = new Random(); foreach (var lootItem in CurrentEnemy.LootTable) { if (random.NextDouble() <= lootItem.Value) { AddItemToInventory(lootItem.Key, 1); } } var profession = Player.SelectedBattleProfession; var oldLevel = Player.GetLevel(profession); Player.AddBattleXP(profession, CurrentEnemy.XpReward); var newLevel = Player.GetLevel(profession); if (newLevel > oldLevel) { CheckForNewSkillUnlocks(profession, newLevel); } Player.DefeatedMonsterIds.Add(CurrentEnemy.Name); SpawnNewEnemy(CurrentEnemy); } }
     public void StartCombat(Enemy enemyTemplate) { if (Player.CurrentAction == PlayerActionState.Combat && CurrentEnemy?.Name == enemyTemplate.Name) return; StopCurrentAction(); Player.CurrentAction = PlayerActionState.Combat; SpawnNewEnemy(enemyTemplate); }
     public void StopCurrentAction() { Player.CurrentAction = PlayerActionState.Idle; CurrentEnemy = null; CurrentGatheringNode = null; _playerAttackCooldown = 0; _enemyAttackCooldown = 0; _gatheringCooldown = 0; NotifyStateChanged(); }
     private void SpawnNewEnemy(Enemy enemyTemplate) { var originalTemplate = AvailableMonsters.FirstOrDefault(m => m.Name == enemyTemplate.Name) ?? enemyTemplate; CurrentEnemy = originalTemplate.Clone(); CurrentEnemy.SkillCooldowns.Clear(); foreach (var skillId in CurrentEnemy.SkillIds) { var skill = SkillData.GetSkillById(skillId); if (skill != null) { CurrentEnemy.SkillCooldowns[skillId] = skill.InitialCooldownRounds; } } if (CurrentEnemy != null) { _enemyAttackCooldown = 1.0 / CurrentEnemy.AttacksPerSecond; } NotifyStateChanged(); }
-    private void HandlePlayerDeath() { if (Player == null) return; IsPlayerDead = true; Player.Health = 0; RevivalTimeRemaining = RevivalDuration; StopCurrentAction(); Player.ActiveBuffs.RemoveAll(buff => { var item = ItemData.GetItemById(buff.SourceItemId); if (item is Consumable consumable) { return consumable.Category != ConsumableCategory.Food; } return true; }); }
-    private void RevivePlayer() { IsPlayerDead = false; if (Player != null) { Player.Health = Player.GetTotalMaxHealth(); } RevivalTimeRemaining = 0; InitializePlayerState(); }
     private void UpdateBuffs(double elapsedSeconds) { if (Player == null || !Player.ActiveBuffs.Any()) return; bool buffsChanged = false; for (int i = Player.ActiveBuffs.Count - 1; i >= 0; i--) { var buff = Player.ActiveBuffs[i]; buff.TimeRemainingSeconds -= elapsedSeconds; if (buff.TimeRemainingSeconds <= 0) { Player.ActiveBuffs.RemoveAt(i); buffsChanged = true; } } if (buffsChanged) { Player.Health = Math.Min(Player.Health, Player.GetTotalMaxHealth()); } }
     private void UpdateConsumableCooldowns(double elapsedSeconds) { if (Player == null || !Player.ConsumableCooldowns.Any()) return; var keys = Player.ConsumableCooldowns.Keys.ToList(); foreach (var key in keys) { Player.ConsumableCooldowns[key] -= elapsedSeconds; if (Player.ConsumableCooldowns[key] <= 0) { Player.ConsumableCooldowns.Remove(key); } } }
     private double GetAttackProgress(double currentCooldown, double attacksPerSecond) { if (attacksPerSecond <= 0) return 0; var totalCooldown = 1.0 / attacksPerSecond; var progress = (totalCooldown - currentCooldown) / totalCooldown; return Math.Clamp(progress * 100, 0, 100); }

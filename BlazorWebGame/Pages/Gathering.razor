@@ -9,55 +9,60 @@
 @if (GameState.Player != null)
 {
     <div class="gathering-layout">
+        <!-- *** HTML 结构修改 *** -->
         <div class="header-section">
-            <h3>草药学</h3>
-            <div class="profession-stats">
-                <p>
-                    等级: <strong>@GameState.Player.GetLevel(GatheringProfession.Herbalist)</strong>
-                    (XP: @(GameState.Player.GatheringProfessionXP.GetValueOrDefault(GatheringProfession.Herbalist)))
-                </p>
-                <p>
-                    采集速度加成: <strong>@((GameState.Player.GetTotalGatheringSpeedBonus() * 100).ToString("F0"))%</strong>
-                </p>
-                <p>
-                    额外掉落几率: <strong>@((GameState.Player.GetTotalExtraLootChance() * 100).ToString("F0"))%</strong>
-                </p>
+            <!-- 左侧：职业信息 -->
+            <div class="profession-info">
+                <h3>草药学</h3>
+                <div class="profession-stats">
+                    <p>
+                        等级: <strong>@GameState.Player.GetLevel(GatheringProfession.Herbalist)</strong>
+                        (XP: @(GameState.Player.GatheringProfessionXP.GetValueOrDefault(GatheringProfession.Herbalist)))
+                    </p>
+                    <p>
+                        采集速度加成: <strong>@((GameState.Player.GetTotalGatheringSpeedBonus() * 100).ToString("F0"))%</strong>
+                    </p>
+                    <p>
+                        额外掉落几率: <strong>@((GameState.Player.GetTotalExtraLootChance() * 100).ToString("F0"))%</strong>
+                    </p>
+                </div>
             </div>
-        </div>
 
-        <div class="consumable-bar">
-            <h5>采集食物</h5>
-            <div class="consumable-quick-slots">
-                @for (int i = 0; i < 2; i++)
-                {
-                    var slotId = i;
-                    <div class="quick-slot"
-                         @onclick="() => OpenQuickSlotPicker(ConsumableCategory.Food, slotId, FoodType.Gathering)"
-                         @oncontextmenu="() => GameState.ClearQuickSlotItem(ConsumableCategory.Food, slotId, FoodType.Gathering)"
-                         @oncontextmenu:preventDefault>
-                        @if (GameState.Player.GatheringFoodQuickSlots != null && GameState.Player.GatheringFoodQuickSlots.TryGetValue(slotId, out var itemId) && !string.IsNullOrEmpty(itemId))
-                        {
-                            var item = ItemData.GetItemById(itemId);
-                            if (item != null)
+            <!-- 右侧：采集食物快捷栏 -->
+            <div class="consumable-bar">
+                <h5>采集食物</h5>
+                <div class="consumable-quick-slots">
+                    @for (int i = 0; i < 2; i++)
+                    {
+                        var slotId = i;
+                        <div class="quick-slot"
+                             @onclick="() => OpenQuickSlotPicker(ConsumableCategory.Food, slotId, FoodType.Gathering)"
+                             @oncontextmenu="() => GameState.ClearQuickSlotItem(ConsumableCategory.Food, slotId, FoodType.Gathering)"
+                             @oncontextmenu:preventDefault>
+                            @if (GameState.Player.GatheringFoodQuickSlots != null && GameState.Player.GatheringFoodQuickSlots.TryGetValue(slotId, out var itemId) && !string.IsNullOrEmpty(itemId))
                             {
-                                var cooldown = GameState.Player.ConsumableCooldowns.GetValueOrDefault(itemId, 0);
-                                var count = GetItemCountInInventory(itemId);
-                                <div class="quick-slot-item @(count == 0 ? "depleted" : "")" title="@item.Name (@count) - 右键清空">
-                                    <div class="item-icon">@item.Name.Substring(0, 1)</div>
-                                    <span class="item-count">@count</span>
-                                    @if (cooldown > 0)
-                                    {
-                                        <div class="cooldown-overlay"><span>@((int)cooldown)</span></div>
-                                    }
-                                </div>
+                                var item = ItemData.GetItemById(itemId);
+                                if (item != null)
+                                {
+                                    var cooldown = GameState.Player.ConsumableCooldowns.GetValueOrDefault(itemId, 0);
+                                    var count = GetItemCountInInventory(itemId);
+                                    <div class="quick-slot-item @(count == 0 ? "depleted" : "")" title="@item.Name (@count) - 右键清空">
+                                        <div class="item-icon">@item.Name.Substring(0, 1)</div>
+                                        <span class="item-count">@count</span>
+                                        @if (cooldown > 0)
+                                        {
+                                            <div class="cooldown-overlay"><span>@((int)cooldown)</span></div>
+                                        }
+                                    </div>
+                                }
                             }
-                        }
-                        else
-                        {
-                            <div class="quick-slot-empty" title="点击设置采集食物"></div>
-                        }
-                    </div>
-                }
+                            else
+                            {
+                                <div class="quick-slot-empty" title="点击设置采集食物"></div>
+                            }
+                        </div>
+                    }
+                </div>
             </div>
         </div>
 
@@ -66,9 +71,8 @@
             <div class="current-action-card">
                 <h4>正在采集: @GameState.CurrentGatheringNode.Name</h4>
                 <div class="progress-bar-container">
-                    <div class="progress-bar" style="width: @GameState.GatheringProgress%;">
-                        <span class="progress-text">@GameState.GetCurrentGatheringTime().ToString("F1")s</span>
-                    </div>
+                    <div class="progress-bar" style="width: @GameState.GatheringProgress%;"></div>
+                    <span class="progress-text">@GameState.GetCurrentGatheringTime().ToString("F1")s</span>
                 </div>
                 <button class="btn btn-danger mt-3" @onclick="GameState.StopCurrentAction">停止采集</button>
             </div>

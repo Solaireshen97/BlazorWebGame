@@ -59,7 +59,7 @@
                             <div class="attack-progress-bar" style="width: @(GameState.PlayerAttackProgress)%;"></div>
                         </div>
 
-                        <!-- 技能 & 消耗品快捷栏 -->
+                        <!-- 技能 & 消耗品 -->
                         <div class="action-bar">
                             <!-- 技能 -->
                             <div class="equipped-skills-display">
@@ -81,7 +81,7 @@
                             </div>
                             <!-- 消耗品 -->
                             <div class="consumable-quick-slots">
-                                <!-- 药水栏 -->
+                                <!-- 药水 -->
                                 @for (int i = 0; i < 2; i++)
                                 {
                                     var slotId = i;
@@ -109,7 +109,7 @@
                                         }
                                     </div>
                                 }
-                                <!-- 战斗食物栏 -->
+                                <!-- 战斗食物 -->
                                 @for (int i = 0; i < 2; i++)
                                 {
                                     var slotId = i;
@@ -153,22 +153,25 @@
                             <div class="attack-progress-bar" style="width: @(GameState.EnemyAttackProgress)%;"></div>
                         </div>
 
-                        <div class="equipped-skills-display">
-                            @foreach (var skillId in GameState.CurrentEnemy.SkillIds)
-                            {
-                                var skill = SkillData.GetSkillById(skillId);
-                                if (skill != null)
+                        <!-- *** 这是关键的修正点 *** -->
+                        <div class="action-bar">
+                            <div class="equipped-skills-display">
+                                @foreach (var skillId in GameState.CurrentEnemy.SkillIds)
                                 {
-                                    var cooldown = GameState.CurrentEnemy.SkillCooldowns.GetValueOrDefault(skillId, 0);
-                                    <div class="skill-icon-container" title="@skill.Name: @skill.Description">
-                                        <div class="skill-icon">@skill.Name.Substring(0, 1)</div>
-                                        @if (cooldown > 0)
-                                        {
-                                            <div class="cooldown-overlay"><span>@cooldown</span></div>
-                                        }
-                                    </div>
+                                    var skill = SkillData.GetSkillById(skillId);
+                                    if (skill != null)
+                                    {
+                                        var cooldown = GameState.CurrentEnemy.SkillCooldowns.GetValueOrDefault(skillId, 0);
+                                        <div class="skill-icon-container" title="@skill.Name: @skill.Description">
+                                            <div class="skill-icon">@skill.Name.Substring(0, 1)</div>
+                                            @if (cooldown > 0)
+                                            {
+                                                <div class="cooldown-overlay"><span>@cooldown</span></div>
+                                            }
+                                        </div>
+                                    }
                                 }
-                            }
+                            </div>
                         </div>
                     </div>
                 </div>
