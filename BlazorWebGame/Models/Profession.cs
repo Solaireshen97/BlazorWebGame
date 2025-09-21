@@ -18,6 +18,7 @@
     // 生产职业
     public enum ProductionProfession
     {
-        Cooking // 烹饪 (新增)
+        Cooking, // 烹饪
+        Alchemy  // 炼金 (*** 新增 ***)
     }
 }

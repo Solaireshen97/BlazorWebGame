@@ -32,6 +32,19 @@ public static class RecipeData
             XpReward = 25,
             IsDefault = false, // 非默认
             UnlockItemId = "RECIPE_ITEM_GOBLIN_OMELETTE" // 需要图纸解锁
+        },
+        new Recipe
+        {
+            Id = "RECIPE_MINOR_HEALING_POTION",
+            Name = "初级治疗药水",
+            RequiredProfession = ProductionProfession.Alchemy, // 专业为炼金
+            RequiredLevel = 1,
+            // 需要 1个宁神花 和 1个银叶草
+            Ingredients = new Dictionary<string, int> { { "HERB_PEACEBLOOM", 1 }, { "HERB_SILVERLEAF", 1 } },
+            ResultingItemId = "CON_HP_POTION_1", // 产出就是我们已有的初级治疗药水
+            CraftingTimeSeconds = 6,
+            XpReward = 8,
+            IsDefault = true // 默认学会
         }
     };
 

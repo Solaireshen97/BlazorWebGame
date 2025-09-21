@@ -126,13 +126,25 @@ namespace BlazorWebGame.Models
             {
                 Id = "HERB_PEACEBLOOM", Name = "宁神花",
                 Description = "一种常见的白色小花，散发着安宁的香气。",
-                Type = ItemType.Material, IsStackable = true, Value = 2
+                Type = ItemType.Material, IsStackable = true, Value = 2,
+                ShopPurchaseInfo = new PurchaseInfo
+                {
+                    ShopCategory = "素材",
+                    Currency = CurrencyType.Gold,
+                    Price = 10
+                }
             },
             new Item
             {
                 Id = "HERB_SILVERLEAF", Name = "银叶草",
                 Description = "叶片上带有银色纹路的植物，在月光下会微微发光。",
-                Type = ItemType.Material, IsStackable = true, Value = 5
+                Type = ItemType.Material, IsStackable = true, Value = 5,
+                ShopPurchaseInfo = new PurchaseInfo
+                {
+                    ShopCategory = "素材",
+                    Currency = CurrencyType.Gold,
+                    Price = 10
+                }
             },
             new Item
             {
