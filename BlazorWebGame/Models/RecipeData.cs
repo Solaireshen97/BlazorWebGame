@@ -129,7 +129,23 @@ new Recipe
     CraftingTimeSeconds = 8,
     XpReward = 10,
     IsDefault = true, // 这个配方不是默认学会的
-}
+},
+new Recipe
+{
+    Id = "RECIPE_TAILOR_LINEN_SHIRT",
+    Name = "制作简易亚麻衬衣",
+    RequiredProfession = ProductionProfession.Tailoring,
+    RequiredLevel = 1,
+    Ingredients = new Dictionary<string, int>
+    {
+        { "MAT_LINEN_CLOTH", 3 },
+        { "MAT_COARSE_THREAD", 1 } // 复用粗线
+    },
+    ResultingItemId = "EQ_CHEST_LINEN_SHIRT",
+    CraftingTimeSeconds = 10,
+    XpReward = 12,
+    IsDefault = true,
+},
     };
 
     public static List<Recipe> AllRecipes => _allRecipes;

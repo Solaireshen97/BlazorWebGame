@@ -22,6 +22,7 @@
         Alchemy,      // 炼金
         Blacksmithing, // 锻造
         Jewelcrafting, // 珠宝加工
-        Leatherworking // <-- 在这里添加
+        Leatherworking, // 制皮
+        Tailoring      // <-- 添加这一行
     }
 }

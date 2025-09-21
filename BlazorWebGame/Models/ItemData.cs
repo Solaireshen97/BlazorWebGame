@@ -260,6 +260,31 @@ new Equipment
     HealthBonus = 2,
     IsStackable = false
 },
+// --- 裁缝材料 ---
+new Item
+{
+    Id = "MAT_LINEN_CLOTH",
+    Name = "亚麻布",
+    Description = "由亚麻纤维织成的布料，是裁缝的基础材料。",
+    Type = ItemType.Material,
+    Value = 3,
+    IsStackable = true,
+                        ShopPurchaseInfo = new PurchaseInfo { ShopCategory = "素材", Price = 50 }
+},
+// 我们复用之前制皮的 "粗线" (MAT_COARSE_THREAD)，您也可以创建一个新的 "细线"
+
+// --- 裁缝制作的装备 ---
+new Equipment
+{
+    Id = "EQ_CHEST_LINEN_SHIRT",
+    Name = "简易亚麻衬衣",
+    Description = "一件朴素的亚麻布衬衣，能提供些许防护。",
+    Type = ItemType.Equipment,
+    Value = 30,
+    Slot = EquipmentSlot.Chest,
+    HealthBonus = 5,
+    IsStackable = false
+},
 
             // --- 新增装备 ---
             new Equipment
