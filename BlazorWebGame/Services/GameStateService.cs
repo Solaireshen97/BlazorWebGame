@@ -273,7 +273,6 @@ public class GameStateService : IAsyncDisposable
         }
     }
 
-    // 新的生产处理方法
     private void ProcessCrafting(double elapsedSeconds)
     {
         if (Player != null && CurrentRecipe != null)
@@ -281,41 +280,49 @@ public class GameStateService : IAsyncDisposable
             _craftingCooldown -= elapsedSeconds;
             if (_craftingCooldown <= 0)
             {
-                // 生产完成
+                // 生产完成，先给予产出
                 AddItemToInventory(CurrentRecipe.ResultingItemId, CurrentRecipe.ResultingItemQuantity);
-                Player.ProductionProfessionXP[CurrentRecipe.RequiredProfession] =
-                    Player.ProductionProfessionXP.GetValueOrDefault(CurrentRecipe.RequiredProfession) + CurrentRecipe.XpReward;
+                Player.AddProductionXP(CurrentRecipe.RequiredProfession, CurrentRecipe.XpReward);
 
+                // *** 核心修正点：在这里补上为“刚刚完成的这次制作”扣除材料的逻辑 ***
+                foreach (var ingredient in CurrentRecipe.Ingredients)
+                {
+                    RemoveItemFromInventory(ingredient.Key, ingredient.Value, out _);
+                }
+
+                // 检查是否还有足够的材料开始下一次循环
                 if (CanAffordRecipe(CurrentRecipe))
                 {
-                    // 自动开始下一次
-                    StartCrafting(CurrentRecipe);
+                    // 重置冷却时间，继续下一次制作
+                    _craftingCooldown += GetCurrentCraftingTime();
                 }
                 else
                 {
+                    // 材料不足，停止所有生产活动
                     StopCurrentAction();
                 }
             }
         }
     }
 
-    // 开始生产的方法
     public void StartCrafting(Recipe recipe)
     {
+        // 检查是否能负担得起至少一次制作
         if (!CanAffordRecipe(recipe)) return;
 
+        // 停止当前任何活动，为开始生产做准备
         StopCurrentAction();
 
-        // 扣除材料
-        foreach (var ingredient in recipe.Ingredients)
-        {
-            RemoveItemFromInventory(ingredient.Key, ingredient.Value, out _);
-        }
+        // **重要**：这里不再预先扣除材料
+        // 旧的扣材料逻辑 `foreach (...)` 已被移除
 
+        // 设置玩家状态为制作中
         Player.CurrentAction = PlayerActionState.Crafting;
         CurrentRecipe = recipe;
-        // *** 这是修正点：使用新的方法来计算初始冷却时间 ***
+
+        // 设置第一次制作的冷却/读条时间
         _craftingCooldown = GetCurrentCraftingTime();
+
         NotifyStateChanged();
     }
 

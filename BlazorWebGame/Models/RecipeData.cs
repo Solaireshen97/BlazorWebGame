@@ -45,6 +45,30 @@ public static class RecipeData
             CraftingTimeSeconds = 6,
             XpReward = 8,
             IsDefault = true // 默认学会
+        },
+        new Recipe
+        {
+            Id = "RECIPE_SMELT_COPPER",
+            Name = "熔炼铜矿",
+            RequiredProfession = ProductionProfession.Blacksmithing, // 专业为锻造
+            RequiredLevel = 1,
+            Ingredients = new Dictionary<string, int> { { "ORE_COPPER", 2 } }, // 2个铜矿石
+            ResultingItemId = "BAR_COPPER", // 产出1个铜锭
+            CraftingTimeSeconds = 5,
+            XpReward = 5,
+            IsDefault = true // 默认学会
+        },
+        new Recipe
+        {
+            Id = "RECIPE_COPPER_DAGGER",
+            Name = "铜质匕首",
+            RequiredProfession = ProductionProfession.Blacksmithing,
+            RequiredLevel = 1, // 需要5级锻造
+            Ingredients = new Dictionary<string, int> { { "BAR_COPPER", 4 } }, // 需要4个铜锭
+            ResultingItemId = "EQ_WEP_COPPER_DAGGER", // 产出铜质匕首
+            CraftingTimeSeconds = 12,
+            XpReward = 15,
+            IsDefault = true // 默认学会
         }
     };
 

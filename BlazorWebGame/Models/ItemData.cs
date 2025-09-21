@@ -158,15 +158,39 @@ namespace BlazorWebGame.Models
             {
                 Id = "ORE_COPPER", Name = "铜矿石",
                 Description = "一种基础的金属矿石，可以用于锻造。",
-                Type = ItemType.Material, IsStackable = true, Value = 4
+                Type = ItemType.Material, IsStackable = true, Value = 4,
+                ShopPurchaseInfo = new PurchaseInfo { ShopCategory = "素材", Price = 10 }
             },
             new Item
             {
                 Id = "ORE_IRON", Name = "铁矿石",
                 Description = "比铜更坚固的金属矿石。",
-                Type = ItemType.Material, IsStackable = true, Value = 10
+                Type = ItemType.Material, IsStackable = true, Value = 10,
+                ShopPurchaseInfo = new PurchaseInfo { ShopCategory = "素材", Price = 15 }
             },
-
+            new Item
+            {
+                Id = "BAR_COPPER",
+                Name = "铜锭",
+                Description = "由铜矿石熔炼而成的金属锭，是锻造的基础材料。",
+                Type = ItemType.Material,
+                Value = 8, // 价值比矿石高
+                IsStackable = true,
+                ShopPurchaseInfo = new PurchaseInfo { ShopCategory = "素材", Price = 50 }
+            },
+    
+            // --- 新增装备 ---
+            new Equipment
+            {
+                Id = "EQ_WEP_COPPER_DAGGER",
+                Name = "铜质匕首",
+                Description = "一把用铜打造的简易匕首，比新手武器要好一些。",
+                Type = ItemType.Equipment,
+                Value = 25,
+                Slot = EquipmentSlot.Weapon,
+                AttackBonus = 3, // 假设比初始武器攻击力高
+                IsStackable = false
+            },
             // --- 新增：鱼类 ---
             new Item
             {
