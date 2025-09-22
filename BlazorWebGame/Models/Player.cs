@@ -88,7 +88,7 @@ namespace BlazorWebGame.Models
             // 为所有可能的职业初始化经验和技能列表
             foreach (var profession in (BattleProfession[])Enum.GetValues(typeof(BattleProfession)))
             {
-                BattleProfessionXP.TryAdd(profession, 0);
+                BattleProfessionXP.TryAdd(profession, 1000);
                 EquippedSkills.TryAdd(profession, new List<string>());
             }
             foreach (var profession in (GatheringProfession[])Enum.GetValues(typeof(GatheringProfession)))

@@ -418,6 +418,7 @@ public class GameStateService : IAsyncDisposable
         }
     }
 
+
     private void ProcessGathering(Player character, double elapsedSeconds)
     {
         if (character.CurrentGatheringNode == null) return;
@@ -1048,14 +1049,191 @@ public class GameStateService : IAsyncDisposable
         ResetPlayerSkillCooldowns(character);
         NotifyStateChanged();
     }
-    private void CheckForNewSkillUnlocks(Player character, BattleProfession profession, int level, bool checkAllLevels = false) { /* ... */ }
-    private void ResetPlayerSkillCooldowns(Player character) { /* ... */ }
-    private void ApplyCharacterSkills(Player character, Enemy enemy) { /* ... */ }
-    private void ApplyEnemySkills(Enemy enemy, Player character) { /* ... */ }
-    private void ApplyConsumableEffect(Player character, Consumable consumable) { /* ... */ }
-    private void ProcessAutoConsumables(Player character) { /* ... */ }
+    private void CheckForNewSkillUnlocks(Player character,BattleProfession profession, int level, bool checkAllLevels = false)
+    {
+        if (character == null) return;
+        var skillsToLearnQuery = SkillData.AllSkills.Where(s => s.RequiredProfession == profession);
+        if (checkAllLevels)
+        {
+            skillsToLearnQuery = skillsToLearnQuery.Where(s => s.RequiredLevel <= level);
+        }
+        else
+        {
+            skillsToLearnQuery = skillsToLearnQuery.Where(s => s.RequiredLevel == level);
+        }
+        var newlyLearnedSkills = skillsToLearnQuery.ToList();
+        foreach (var skill in newlyLearnedSkills)
+        {
+            if (skill.Type == SkillType.Shared)
+            {
+                character.LearnedSharedSkills.Add(skill.Id); 
+            }
+            if (skill.Type == SkillType.Fixed) 
+            {
+                if (!character.EquippedSkills.TryGetValue(profession, out var equipped) || !equipped.Contains(skill.Id))
+                {
+                    character.EquippedSkills[profession].Insert(0, skill.Id);
+                }
+            }
+        }
+    }
+    private void ResetPlayerSkillCooldowns(Player character)
+    {
+        if (character == null) return;
+        character.SkillCooldowns.Clear();
+        foreach (var skillId in character.EquippedSkills.Values.SelectMany(s => s))
+        {
+            var skill = SkillData.GetSkillById(skillId);
+            if (skill != null) 
+            {
+                character.SkillCooldowns[skillId] = skill.InitialCooldownRounds;
+            }
+        }
+    }
+    private void ApplyCharacterSkills(Player character, Enemy enemy)
+    {
+        var profession = character.SelectedBattleProfession;
+        if (!character.EquippedSkills.ContainsKey(profession)) return;
 
-    public async Task SaveStateAsync() { /* TODO: Save all characters */ }
-    public async ValueTask DisposeAsync() { if (_gameLoopTimer != null) { _gameLoopTimer.Stop(); _gameLoopTimer.Dispose(); } await SaveStateAsync(); }
+        var equippedSkillIds = character.EquippedSkills[profession];
+
+        foreach (var skillId in equippedSkillIds)
+        {
+            var cooldown = character.SkillCooldowns.GetValueOrDefault(skillId, 0);
+
+            if (cooldown == 0)
+            {
+                var skill = SkillData.GetSkillById(skillId);
+                if (skill == null) continue;
+
+                // --- 技能效果处理 ---
+                switch (skill.EffectType)
+                {
+                    case SkillEffectType.DirectDamage:
+                        enemy.Health -= (int)skill.EffectValue;
+                        break;
+                    case SkillEffectType.Heal:
+                        var healAmount = skill.EffectValue < 1.0
+                            ? (int)(character.GetTotalMaxHealth() * skill.EffectValue)
+                            : (int)skill.EffectValue;
+                        character.Health = Math.Min(character.GetTotalMaxHealth(), character.Health + healAmount);
+                        break;
+                }
+                // --- 技能触发后进入冷却 ---
+                character.SkillCooldowns[skillId] = skill.CooldownRounds;
+            }
+            else if (cooldown > 0)
+            {
+                // 仅冷却减一
+                character.SkillCooldowns[skillId] = cooldown - 1;
+            }
+            // 如果 cooldown < 0 理论上不会出现
+        }
+    }
+
+    private void ApplyEnemySkills(Enemy enemy, Player character)
+    {
+        foreach (var skillId in enemy.SkillIds)
+        {
+            var cooldown = enemy.SkillCooldowns.GetValueOrDefault(skillId, 0);
+
+            if (cooldown == 0)
+            {
+                var skill = SkillData.GetSkillById(skillId);
+                if (skill == null) continue;
+
+                switch (skill.EffectType)
+                {
+                    case SkillEffectType.DirectDamage:
+                        character.Health -= (int)skill.EffectValue;
+                        break;
+                    case SkillEffectType.Heal:
+                        var healAmount = skill.EffectValue < 1.0
+                            ? (int)(enemy.MaxHealth * skill.EffectValue)
+                            : (int)skill.EffectValue;
+                        enemy.Health = Math.Min(enemy.MaxHealth, enemy.Health + healAmount);
+                        break;
+                }
+                enemy.SkillCooldowns[skillId] = skill.CooldownRounds;
+            }
+            else if (cooldown > 0)
+            {
+                enemy.SkillCooldowns[skillId] = cooldown - 1;
+            }
+        }
+    }
+    private void ApplyConsumableEffect(Player character,Consumable consumable)
+    {
+        switch (consumable.Effect)
+        {
+            case ConsumableEffectType.Heal:
+                character.Health = Math.Min(character.GetTotalMaxHealth(), character.Health + (int)consumable.EffectValue);
+                break;
+            case ConsumableEffectType.StatBuff:
+                if (consumable.BuffType.HasValue && consumable.DurationSeconds.HasValue)
+                {
+                    character.ActiveBuffs.RemoveAll(b => b.FoodType == consumable.FoodType && b.BuffType == consumable.BuffType.Value);
+                    character.ActiveBuffs.Add(new Buff
+                    {
+                        SourceItemId = consumable.Id,
+                        BuffType = consumable.BuffType.Value,
+                        BuffValue = (int)consumable.EffectValue,
+                        TimeRemainingSeconds = consumable.DurationSeconds.Value,
+                        FoodType = consumable.FoodType
+                    });
+                }
+                break;
+            case ConsumableEffectType.LearnRecipe:
+                if (!string.IsNullOrEmpty(consumable.RecipeIdToLearn))
+                {
+                    // 将配方ID添加到玩家的已学习列表中
+                    character.LearnedRecipeIds.Add(consumable.RecipeIdToLearn);
+                }
+                break;
+        }
+        character.ConsumableCooldowns[consumable.Id] = consumable.CooldownSeconds;
+        NotifyStateChanged();
+    }
+    private void ProcessAutoConsumables(Player character)
+    {
+        if (character == null) return;
+        var allQuickSlotItems = character.PotionQuickSlots
+            .Concat(character.CombatFoodQuickSlots)
+            .Concat(character.GatheringFoodQuickSlots)
+            .Concat(character.ProductionFoodQuickSlots);
+        foreach (var slot in allQuickSlotItems)
+        {
+            var itemId = slot.Value;
+            if (string.IsNullOrEmpty(itemId) || character.ConsumableCooldowns.ContainsKey(itemId)) continue;
+            if (ItemData.GetItemById(itemId) is not Consumable item) continue;
+            bool shouldUse = false;
+            switch (item.Category)
+            {
+                case ConsumableCategory.Potion:
+                    if ((double)character.Health / character.GetTotalMaxHealth() < 0.7) shouldUse = true;
+                    break;
+                case ConsumableCategory.Food:
+                    if (item.FoodType == FoodType.Combat && character.CurrentAction == PlayerActionState.Combat ||
+                        item.FoodType == FoodType.Gathering && character.CurrentAction == PlayerActionState.Gathering ||
+                        item.FoodType == FoodType.Production && character.CurrentAction == PlayerActionState.Crafting)
+                    {
+                        if (!character.ActiveBuffs.Any(b => b.BuffType == item.BuffType)) shouldUse = true;
+                    }
+                    break;
+            }
+            if (shouldUse && RemoveItemFromInventory(character,itemId, 1, out int removedCount) && removedCount > 0)
+            {
+                ApplyConsumableEffect(character,item);
+            }
+        }
+    }
+    public async Task SaveStateAsync(Player character)
+    {
+        if (character != null)
+        {
+            await _gameStorage.SavePlayerAsync(character);
+        }
+    }
+    public async ValueTask DisposeAsync() { if (_gameLoopTimer != null) { _gameLoopTimer.Stop(); _gameLoopTimer.Dispose(); } }
     private void NotifyStateChanged() => OnStateChanged?.Invoke();
 }
