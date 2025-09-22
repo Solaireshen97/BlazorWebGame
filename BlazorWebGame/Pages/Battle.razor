@@ -8,6 +8,70 @@
 
 @if (GameState.ActiveCharacter is Player character)
 {
+    <div class="party-management-section mb-4 p-3 border rounded">
+        <h4>队伍状态</h4>
+
+        @{
+            // 使用我们新加的辅助方法来获取当前角色的队伍信息
+            var party = GameState.GetPartyForCharacter(character.Id);
+        }
+
+        @if (party == null)
+        {
+            <p>@character.Name 当前不在任何队伍中。</p>
+            
+            <button class="btn btn-success mb-3" @onclick="GameState.CreateParty">
+                创建新队伍
+            </button>
+
+            @* 显示可加入的队伍列表 *@
+            var availableParties = GameState.Parties.Where(p => p.CaptainId != character.Id).ToList();
+            @if (availableParties.Any())
+            {
+                <h5>可加入的队伍:</h5>
+                <ul class="list-group">
+                    @foreach (var p in availableParties)
+                    {
+                        @if (p.MemberIds.Count < Party.MaxMembers)
+                        {
+                            var captainName = GameState.AllCharacters.FirstOrDefault(c => c.Id == p.CaptainId)?.Name;
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                @captainName 的队伍 (@p.MemberIds.Count/@Party.MaxMembers 人)
+                                <button class="btn btn-primary btn-sm" @onclick="() => GameState.JoinParty(p.Id)">
+                                    加入
+                                </button>
+                            </li>
+                        }
+                    }
+                </ul>
+            }
+        }
+        else
+        {
+            // 使用Bootstrap的flex布局来创建标题和按钮在同一行的效果
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="mb-0">队伍信息 (@party.MemberIds.Count/@Party.MaxMembers)</h5>
+                <button class="btn btn-danger btn-sm" @onclick="GameState.LeaveParty">
+                    @(party.CaptainId == character.Id ? "解散队伍" : "离开队伍")
+                </button>
+            </div>
+
+            // 用于单行显示所有成员的容器
+            <div class="party-members-inline">
+                @foreach (var memberId in party.MemberIds)
+                {
+                    var member = GameState.AllCharacters.FirstOrDefault(c => c.Id == memberId);
+                    if (member != null)
+                    {
+                        // 为每个成员创建一个标签(badge)，队长的标签颜色不同
+                        <span class="badge @(member.Id == party.CaptainId ? "bg-primary" : "bg-secondary") me-1">
+                            @member.Name
+                        </span>
+                    }
+                }
+            </div>
+        }
+    </div>
     <div class="battle-page-layout">
         <!-- 怪物选择 -->
         <div class="monster-selection-area">

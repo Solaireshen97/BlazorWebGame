@@ -20,7 +20,10 @@ public class GameStateService : IAsyncDisposable
     public List<Player> AllCharacters { get; private set; } = new();
     public Player? ActiveCharacter { get; private set; }
     // --- ^^^ 变更结束 ^^^ ---
-
+    /// <summary>
+    /// 游戏中存在的所有队伍列表。
+    /// </summary>
+    public List<Party> Parties { get; private set; } = new();
     public List<Enemy> AvailableMonsters => MonsterTemplates.All;
     public List<GatheringNode> AvailableGatheringNodes => GatheringData.AllNodes;
     public const int MaxEquippedSkills = 4;
@@ -118,6 +121,104 @@ public class GameStateService : IAsyncDisposable
             var item = ItemData.GetItemById(buff.SourceItemId);
             return item is Consumable consumable && consumable.Category != ConsumableCategory.Food;
         });
+    }
+
+    /// <summary>
+    /// 根据角色ID查找他所在的队伍。
+    /// 如果角色不在任何队伍中，则返回 null。
+    /// </summary>
+    /// <param name="characterId">要查找的角色ID</param>
+    /// <returns>角色所在的队伍对象，或 null</returns>
+    public Party? GetPartyForCharacter(string characterId)
+    {
+        return Parties.FirstOrDefault(p => p.MemberIds.Contains(characterId));
+    }
+
+    /// <summary>
+    /// 使用当前激活的角色创建一个新队伍，该角色将成为队长。
+    /// </summary>
+    public void CreateParty()
+    {
+        // 安全检查：确保有激活的角色，并且该角色当前不在任何队伍中。
+        if (ActiveCharacter == null || GetPartyForCharacter(ActiveCharacter.Id) != null)
+        {
+            return; // 如果不满足条件，则不执行任何操作
+        }
+
+        // 创建一个新的队伍实例
+        var newParty = new Party
+        {
+            CaptainId = ActiveCharacter.Id,
+            MemberIds = new List<string> { ActiveCharacter.Id } // 队长自己也是队伍的第一个成员
+        };
+
+        // 将新队伍添加到游戏状态的队伍列表中
+        Parties.Add(newParty);
+
+        // 通知UI进行刷新，以显示队伍状态的变化
+        NotifyStateChanged();
+    }
+
+    /// <summary>
+    /// 让当前激活的角色加入一个指定的队伍。
+    /// </summary>
+    /// <param name="partyId">要加入的队伍的ID</param>
+    public void JoinParty(Guid partyId)
+    {
+        // 1. 安全检查 (保持不变)
+        if (ActiveCharacter == null || GetPartyForCharacter(ActiveCharacter.Id) != null)
+        {
+            return;
+        }
+
+        // 2. 查找目标队伍
+        var partyToJoin = Parties.FirstOrDefault(p => p.Id == partyId);
+        if (partyToJoin == null)
+        {
+            return; // 队伍不存在
+        }
+
+        // --- vvv 新增：检查队伍是否已满 vvv ---
+        if (partyToJoin.MemberIds.Count >= Party.MaxMembers)
+        {
+            return; // 队伍已满，无法加入
+        }
+        // --- ^^^ 新增结束 ^^^ ---
+
+        // 3. 执行加入操作 (保持不变)
+        partyToJoin.MemberIds.Add(ActiveCharacter.Id);
+
+        // 4. 通知UI更新 (保持不变)
+        NotifyStateChanged();
+    }
+
+    /// <summary>
+    /// 让当前激活的角色离开他所在的队伍。
+    /// </summary>
+    public void LeaveParty()
+    {
+        // 1. 安全检查
+        if (ActiveCharacter == null) return;
+        var party = GetPartyForCharacter(ActiveCharacter.Id);
+        if (party == null)
+        {
+            return; // 角色不在任何队伍中
+        }
+
+        // 2. 判断是队长离开还是成员离开
+        if (party.CaptainId == ActiveCharacter.Id)
+        {
+            // 如果是队长离开，则解散整个队伍
+            Parties.Remove(party);
+        }
+        else
+        {
+            // 如果只是普通成员离开，则从成员列表中移除自己
+            party.MemberIds.Remove(ActiveCharacter.Id);
+        }
+
+        // 3. 通知UI更新
+        NotifyStateChanged();
     }
 
     private void ReviveCharacter(Player character)
