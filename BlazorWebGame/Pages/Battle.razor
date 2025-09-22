@@ -8,14 +8,11 @@
 
 @if (GameState.ActiveCharacter is Player character)
 {
+    var party = GameState.GetPartyForCharacter(character.Id);
+    var currentEnemy = party?.CurrentEnemy ?? character.CurrentEnemy; // 统一获取当前目标，优先队伍目标
+    var isPartyMemberAndNotCaptain = party != null && party.CaptainId != character.Id;
     <div class="party-management-section mb-4 p-3 border rounded">
         <h4>队伍状态</h4>
-
-        @{
-            // 使用我们新加的辅助方法来获取当前角色的队伍信息
-            var party = GameState.GetPartyForCharacter(character.Id);
-        }
-
         @if (party == null)
         {
             <p>@character.Name 当前不在任何队伍中。</p>
@@ -77,11 +74,13 @@
         <div class="monster-selection-area">
             @foreach (var monsterTemplate in GameState.AvailableMonsters)
             {
-                <button class="monster-select-card @(IsCurrentEnemy(character, monsterTemplate) ? "active" : "")"
-                        @onclick="() => GameState.StartCombat(monsterTemplate)"
-                        disabled="@(character.CurrentAction != PlayerActionState.Idle && character.CurrentAction != PlayerActionState.Combat)">
+                // --- vvv 核心修改：按钮状态和行为完全由团队逻辑决定 vvv ---
+                <button class="monster-select-card @(currentEnemy?.Name == monsterTemplate.Name ? "active" : "")"
+                        @onclick="() => GameState.StartCombat(character, monsterTemplate)"
+                        disabled="@isPartyMemberAndNotCaptain">
                     @monsterTemplate.Name
                 </button>
+                // --- ^^^ 修改结束 ^^^ ---
             }
         </div>
 
@@ -101,7 +100,7 @@
                     <button class="btn btn-warning mt-2" @onclick="GameState.StopCurrentAction">停止当前活动</button>
                 </div>
             }
-            else if (character.CurrentEnemy is Enemy currentEnemy)
+            else if (currentEnemy != null)
             {
                 <div class="battle-container">
                     <!-- 玩家卡片 -->
@@ -189,9 +188,9 @@
                         </div>
                     </div>
 
-                    <!-- 敌人卡片 -->
+                    <!-- 敌人卡片 (现在会正确显示团队目标) -->
                     <div class="character-card enemy-card">
-                        <div class="character-image-placeholder"><span>怪物</span></div>
+                        <div class="character-image-placeholder"><span>怪</span></div>
                         <h5>@currentEnemy.Name</h5>
 
                         <div class="health-bar-container">
@@ -238,17 +237,17 @@
                 <p>攻击速度: @character.AttacksPerSecond.ToString("F2") 次/秒</p>
             </div>
 
-            @if (character.CurrentEnemy is Enemy currentEnemyForDetails)
+            @if (currentEnemy != null)
             {
                 <div class="details-card">
-                    <h5>@currentEnemyForDetails.Name 详情</h5>
-                    <p>攻击力: @currentEnemyForDetails.AttackPower</p>
-                    <p>攻击速度: @currentEnemyForDetails.AttacksPerSecond.ToString("F2") 次/秒</p>
-                    <p>经验掉落: @currentEnemyForDetails.XpReward</p>
+                    <h5>@currentEnemy.Name 属性</h5>
+                    <p>攻击力: @currentEnemy.AttackPower</p>
+                    <p>攻击速度: @currentEnemy.AttacksPerSecond.ToString("F2") 次/秒</p>
+                    <p>经验值: @currentEnemy.XpReward</p>
                     <hr />
                     <h6>可能掉落</h6>
                     <div class="loot-table">
-                        @foreach (var lootEntry in currentEnemyForDetails.LootTable)
+                        @foreach (var lootEntry in currentEnemy.LootTable)
                         {
                             var item = ItemData.GetItemById(lootEntry.Key);
                             if (item != null)
@@ -302,11 +301,6 @@ else
     protected override void OnInitialized()
     {
         GameState.OnStateChanged += StateHasChanged;
-    }
-
-    private bool IsCurrentEnemy(Player character, Enemy monsterTemplate)
-    {
-        return character.CurrentAction == PlayerActionState.Combat && character.CurrentEnemy?.Name == monsterTemplate.Name;
     }
 
     private double GetHealthPercentage(int current, int max)

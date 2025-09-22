@@ -8,25 +8,19 @@ namespace BlazorWebGame.Models;
 /// </summary>
 public class Party
 {
-    // --- vvv 添加队伍上限常量 vvv ---
-    /// <summary>
-    /// 队伍的最大成员数。
-    /// </summary>
     public const int MaxMembers = 5;
-    // --- ^^^ 添加结束 ^^^ ---
 
-    /// <summary>
-    /// 队伍的唯一ID
-    /// </summary>
     public Guid Id { get; set; } = Guid.NewGuid();
 
-    /// <summary>
-    /// 队长的角色ID
-    /// </summary>
     public required string CaptainId { get; set; }
 
-    /// <summary>
-    /// 队伍中所有成员的角色ID列表
-    /// </summary>
     public List<string> MemberIds { get; set; } = new();
+
+    // --- vvv 添加这一行 vvv ---
+    /// <summary>
+    /// 队伍当前正在集中攻击的敌人。
+    /// 如果为 null，则表示队伍未处于战斗状态。
+    /// </summary>
+    public Enemy? CurrentEnemy { get; set; }
+    // --- ^^^ 添加结束 ^^^ ---
 }

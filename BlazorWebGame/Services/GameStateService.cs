@@ -1,10 +1,11 @@
-﻿using System;
+﻿using BlazorWebGame.Models;
+using BlazorWebGame.Utils;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Timers;
-using BlazorWebGame.Models;
-using BlazorWebGame.Utils;
 
 namespace BlazorWebGame.Services;
 
@@ -108,14 +109,17 @@ public class GameStateService : IAsyncDisposable
     // --- vvv 以下所有方法都被重构为接收一个 'Player character' 参数 vvv ---
     private void HandleCharacterDeath(Player character)
     {
+        // 如果角色已经死了，就没必要再执行一次死亡逻辑了
+        if (character.IsDead) return;
+
         character.IsDead = true;
         character.Health = 0;
-        character.RevivalTimeRemaining = RevivalDuration;
+        character.RevivalTimeRemaining = RevivalDuration; // 使用您定义的常量
 
-        var previousAction = character.CurrentAction;
-        StopCurrentAction(character, keepTarget: true); // 停止活动，但保留目标信息
-        character.CurrentAction = PlayerActionState.Idle; // 确保状态是Idle
+        // 之前这里会调用 StopCurrentAction，我们彻底删掉它。
+        // 玩家的 CurrentAction 保持为 Combat，这样他复活后才知道自己应该继续战斗。
 
+        // 死亡时移除大部分buff，但保留食物buff
         character.ActiveBuffs.RemoveAll(buff =>
         {
             var item = ItemData.GetItemById(buff.SourceItemId);
@@ -247,66 +251,160 @@ public class GameStateService : IAsyncDisposable
 
     private void ProcessCombat(Player character, double elapsedSeconds)
     {
-        if (character.CurrentEnemy == null)
+        // --- vvv 新增：死亡的角色不参与任何战斗计算 vvv ---
+        if (character.IsDead)
         {
+            return; // 直接跳过此人的本轮战斗循环
+        }
+        // --- ^^^ 新增结束 ^^^ ---
+
+        var party = GetPartyForCharacter(character.Id);
+        var targetEnemy = party?.CurrentEnemy ?? character.CurrentEnemy;
+
+        if (targetEnemy == null)
+        {
+            // 只有在没有目标时才停止行动。
+            // 只要 party.CurrentEnemy 存在，战斗就不会因为任何成员死亡而停止。
             StopCurrentAction(character);
             return;
         }
 
-        // 玩家攻击逻辑 (不变)
+        // --- vvv 核心修正：移除团队全灭判断逻辑 vvv ---
+        // 我们删除了之前在这里添加的 isPartyWiped 判断。
+        // 战斗现在会无条件继续，直到有玩家主动离开或解散队伍。
+        // --- ^^^ 修正结束 ^^^ ---
+
+        // 玩家攻击逻辑 (只有活着的角色能执行到这里)
         character.AttackCooldown -= elapsedSeconds;
         if (character.AttackCooldown <= 0)
         {
-            PlayerAttackEnemy(character);
+            PlayerAttackEnemy(character, targetEnemy, party);
             character.AttackCooldown += 1.0 / character.AttacksPerSecond;
         }
 
-        // --- vvv 敌人攻击逻辑修正 vvv ---
-        // 确保 CurrentEnemy 在上次攻击后可能死亡的情况下依然存在
-        if (character.CurrentEnemy != null)
+        // 敌人攻击逻辑
+        targetEnemy.EnemyAttackCooldown -= elapsedSeconds;
+        if (targetEnemy.EnemyAttackCooldown <= 0)
         {
-            // 直接操作敌人实例自身的冷却
-            character.CurrentEnemy.EnemyAttackCooldown -= elapsedSeconds;
-            if (character.CurrentEnemy.EnemyAttackCooldown <= 0)
+            Player? playerToAttack = null;
+            if (party != null)
             {
-                EnemyAttackPlayer(character.CurrentEnemy, character);
-
-                // 再次检查，因为敌人在攻击时可能被技能反伤致死
-                if (character.CurrentEnemy != null)
+                // 敌人只会选择活着的成员进行攻击
+                var aliveMembers = AllCharacters.Where(c => party.MemberIds.Contains(c.Id) && !c.IsDead).ToList();
+                if (aliveMembers.Any())
                 {
-                    // 重置敌人实例自身的冷却
-                    character.CurrentEnemy.EnemyAttackCooldown += 1.0 / character.CurrentEnemy.AttacksPerSecond;
+                    playerToAttack = aliveMembers[new Random().Next(aliveMembers.Count)];
                 }
+                // 如果所有人都死了，playerToAttack 会是 null，敌人本轮就不会攻击，这符合逻辑。
+            }
+            else
+            {
+                playerToAttack = character; // 单人模式
+            }
+
+            if (playerToAttack != null)
+            {
+                EnemyAttackPlayer(targetEnemy, playerToAttack);
+            }
+
+            // 只有当敌人确实攻击了，才重置它的冷却
+            if (playerToAttack != null)
+            {
+                targetEnemy.EnemyAttackCooldown += 1.0 / targetEnemy.AttacksPerSecond;
             }
         }
-        // --- ^^^ 修正结束 ^^^ ---
     }
 
-    private void PlayerAttackEnemy(Player character)
+    private void PlayerAttackEnemy(Player character, Enemy enemy, Party? party)
     {
-        var enemy = character.CurrentEnemy;
-        if (enemy == null) return;
-
-        // 技能逻辑
+        // 技能和攻击逻辑 (不变)
         ApplyCharacterSkills(character, enemy);
-
         enemy.Health -= character.GetTotalAttackPower();
+
         if (enemy.Health <= 0)
         {
-            character.Gold += enemy.GetGoldDropAmount();
-            var random = new Random();
-            foreach (var lootItem in enemy.LootTable) { if (random.NextDouble() <= lootItem.Value) { AddItemToInventory(character, lootItem.Key, 1); } }
+            // 敌人被击败
+            var originalTemplate = AvailableMonsters.FirstOrDefault(m => m.Name == enemy.Name) ?? enemy;
 
-            var profession = character.SelectedBattleProfession;
-            var oldLevel = character.GetLevel(profession);
-            character.AddBattleXP(profession, enemy.XpReward);
-            if (character.GetLevel(profession) > oldLevel) { CheckForNewSkillUnlocks(character, profession, character.GetLevel(profession)); }
+            if (party != null)
+            {
+                // --- vvv 全新的团队奖励分配逻辑 vvv ---
 
-            UpdateQuestProgress(character, QuestType.KillMonster, enemy.Name, 1);
-            UpdateQuestProgress(character, QuestType.KillMonster, "any", 1);
+                // 1. 获取所有队伍成员，无论死活
+                var partyMembers = AllCharacters.Where(c => party.MemberIds.Contains(c.Id)).ToList();
+                if (!partyMembers.Any()) // 如果队伍是空的，直接结束
+                {
+                    party.CurrentEnemy = originalTemplate.Clone(); // 重置怪物
+                    return;
+                }
+                var memberCount = partyMembers.Count;
+                var random = new Random();
 
-            character.DefeatedMonsterIds.Add(enemy.Name);
-            SpawnNewEnemyForCharacter(character, enemy);
+                // 2. 分配金币 (平分 + 随机分配余数)
+                var totalGold = enemy.GetGoldDropAmount();
+                var goldPerMember = totalGold / memberCount;
+                var remainderGold = totalGold % memberCount;
+
+                foreach (var member in partyMembers)
+                {
+                    member.Gold += goldPerMember;
+                }
+                if (remainderGold > 0)
+                {
+                    var luckyMemberForGold = partyMembers[random.Next(memberCount)];
+                    luckyMemberForGold.Gold += remainderGold;
+                }
+
+                // 3. 分配战利品 (随机roll给一个幸运儿)
+                foreach (var lootItem in enemy.LootTable)
+                {
+                    // 先判断这个物品是否掉落
+                    if (random.NextDouble() <= lootItem.Value)
+                    {
+                        // 如果掉落，再随机选择一个成员获得它
+                        var luckyMemberForLoot = partyMembers[random.Next(memberCount)];
+                        AddItemToInventory(luckyMemberForLoot, lootItem.Key, 1);
+                    }
+                }
+
+                // 4. 分配经验和任务进度 (给所有人，无论死活)
+                foreach (var member in partyMembers)
+                {
+                    var profession = member.SelectedBattleProfession;
+                    var oldLevel = member.GetLevel(profession);
+                    member.AddBattleXP(profession, enemy.XpReward);
+                    if (member.GetLevel(profession) > oldLevel)
+                    {
+                        CheckForNewSkillUnlocks(member, profession, member.GetLevel(profession));
+                    }
+
+                    UpdateQuestProgress(member, QuestType.KillMonster, enemy.Name, 1);
+                    UpdateQuestProgress(member, QuestType.KillMonster, "any", 1);
+                    member.DefeatedMonsterIds.Add(enemy.Name);
+                }
+
+                // --- ^^^ 奖励分配结束 ^^^ ---
+
+                // 为团队生成新敌人
+                party.CurrentEnemy = originalTemplate.Clone();
+            }
+            else
+            {
+                // --- 个人奖励分配 (逻辑不变) ---
+                character.Gold += enemy.GetGoldDropAmount();
+                var random = new Random();
+                foreach (var lootItem in enemy.LootTable) { if (random.NextDouble() <= lootItem.Value) { AddItemToInventory(character, lootItem.Key, 1); } }
+                var profession = character.SelectedBattleProfession;
+                var oldLevel = character.GetLevel(profession);
+                character.AddBattleXP(profession, enemy.XpReward);
+                if (character.GetLevel(profession) > oldLevel) { CheckForNewSkillUnlocks(character, profession, character.GetLevel(profession)); }
+                UpdateQuestProgress(character, QuestType.KillMonster, enemy.Name, 1);
+                UpdateQuestProgress(character, QuestType.KillMonster, "any", 1);
+                character.DefeatedMonsterIds.Add(enemy.Name);
+
+                // 为个人生成新敌人
+                SpawnNewEnemyForCharacter(character, originalTemplate);
+            }
         }
     }
 
@@ -394,14 +492,69 @@ public class GameStateService : IAsyncDisposable
 
     // --- vvv 真正的实现逻辑，现在都接收character参数 vvv ---
 
-    private void StartCombat(Player? character, Enemy? enemyTemplate)
+    public void StartCombat(Player? character, Enemy? enemyTemplate)
     {
         if (character == null || enemyTemplate == null) return;
-        if (character.CurrentAction == PlayerActionState.Combat && character.CurrentEnemy?.Name == enemyTemplate.Name) return;
 
-        StopCurrentAction(character);
-        character.CurrentAction = PlayerActionState.Combat;
-        SpawnNewEnemyForCharacter(character, enemyTemplate);
+        var party = GetPartyForCharacter(character.Id);
+
+        if (party != null)
+        {
+            // --- 团队作战逻辑 ---
+
+            if (party.CaptainId != character.Id)
+            {
+                return;
+            }
+
+            if (party.CurrentEnemy?.Name == enemyTemplate.Name)
+            {
+                return;
+            }
+
+            var originalTemplate = AvailableMonsters.FirstOrDefault(m => m.Name == enemyTemplate.Name) ?? enemyTemplate;
+            party.CurrentEnemy = originalTemplate.Clone();
+
+            party.CurrentEnemy.SkillCooldowns.Clear();
+            foreach (var skillId in party.CurrentEnemy.SkillIds)
+            {
+                var skill = SkillData.GetSkillById(skillId);
+                if (skill != null) party.CurrentEnemy.SkillCooldowns[skillId] = skill.InitialCooldownRounds;
+            }
+            party.CurrentEnemy.EnemyAttackCooldown = 1.0 / party.CurrentEnemy.AttacksPerSecond;
+
+            // --- vvv 核心修正：不再调用 StopCurrentAction vvv ---
+            foreach (var memberId in party.MemberIds)
+            {
+                var member = AllCharacters.FirstOrDefault(c => c.Id == memberId);
+                if (member != null && !member.IsDead)
+                {
+                    // 如果成员正在做采集或制作等非战斗、非空闲的活动，我们让他停下来
+                    if (member.CurrentAction != PlayerActionState.Idle && member.CurrentAction != PlayerActionState.Combat)
+                    {
+                        // 这里我们只重置他个人的状态，而不调用会影响全队的 StopCurrentAction
+                        member.CurrentGatheringNode = null;
+                        member.CurrentRecipe = null;
+                        member.GatheringCooldown = 0;
+                        member.CraftingCooldown = 0;
+                    }
+
+                    // 统一设置所有符合条件的成员进入战斗状态
+                    member.CurrentAction = PlayerActionState.Combat;
+                    member.AttackCooldown = 0; // 重置攻击冷却，确保能立即攻击
+                }
+            }
+            // --- ^^^ 修正结束 ^^^ ---
+        }
+        else
+        {
+            // --- 个人作战逻辑 (保持原样) ---
+            if (character.CurrentAction == PlayerActionState.Combat && character.CurrentEnemy?.Name == enemyTemplate.Name) return;
+            StopCurrentAction(character);
+            character.CurrentAction = PlayerActionState.Combat;
+            SpawnNewEnemyForCharacter(character, enemyTemplate);
+        }
+
         NotifyStateChanged();
     }
 
@@ -431,16 +584,43 @@ public class GameStateService : IAsyncDisposable
     private void StopCurrentAction(Player? character, bool keepTarget = false)
     {
         if (character == null) return;
-        character.CurrentAction = PlayerActionState.Idle;
-        if (!keepTarget)
+
+        var party = GetPartyForCharacter(character.Id);
+
+        // --- vvv 核心修改：不再检查是否为队长 vvv ---
+        if (party != null)
         {
-            character.CurrentEnemy = null;
-            character.CurrentGatheringNode = null;
-            character.CurrentRecipe = null;
+            // 只要角色在队伍中，他的停止指令就会解散整个团队的战斗状态。
+            party.CurrentEnemy = null;
+            foreach (var memberId in party.MemberIds)
+            {
+                var member = AllCharacters.FirstOrDefault(c => c.Id == memberId);
+                if (member != null)
+                {
+                    member.CurrentAction = PlayerActionState.Idle;
+                    member.CurrentEnemy = null; // 确保个人目标也被清空
+                    member.AttackCooldown = 0;
+                    member.GatheringCooldown = 0;
+                    member.CraftingCooldown = 0;
+                }
+            }
         }
-        character.AttackCooldown = 0;
-        character.GatheringCooldown = 0;
-        character.CraftingCooldown = 0;
+        // --- ^^^ 修改结束 ^^^ ---
+        else
+        {
+            // 个人停止行动的逻辑 (保持原样)
+            character.CurrentAction = PlayerActionState.Idle;
+            if (!keepTarget)
+            {
+                character.CurrentEnemy = null;
+                character.CurrentGatheringNode = null;
+                character.CurrentRecipe = null;
+            }
+            character.AttackCooldown = 0;
+            character.GatheringCooldown = 0;
+            character.CraftingCooldown = 0;
+        }
+
         NotifyStateChanged();
     }
 
