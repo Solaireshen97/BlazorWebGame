@@ -4,22 +4,35 @@
     height: calc(100vh - 100px);
 }
 
-/* --- 左栏和中栏 (保持不变) --- */
+/* 左栏：装备 */
+.equipment-panel {
+    width: 300px;
+    flex-shrink: 0;
+}
+
+/* 中栏：背包 */
 .inventory-panel {
-    width: 280px;
+    flex-grow: 1;
+}
+
+/* 右栏：详情 */
+.item-detail-panel {
+    width: 300px;
     flex-shrink: 0;
 }
 
 .inventory-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    grid-template-rows: repeat(5, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
     gap: 10px;
     padding: 10px;
     border: 1px solid #ddd;
     background-color: #f8f9fa;
     border-radius: 5px;
-    height: 350px;
+    height: 100%;
+    /* vvv 这是唯一的修正点 vvv */
+    align-content: start; /* 让所有行从顶部开始堆叠，消除垂直间隙 */
+    /* ^^^ 修正结束 ^^^ */
 }
 
 .item-slot {
@@ -70,10 +83,6 @@
     text-shadow: 1px 1px 2px white;
 }
 
-.item-detail-panel {
-    flex-grow: 1;
-}
-
 .detail-card {
     padding: 20px;
     background-color: #fff;
@@ -107,12 +116,6 @@
     border-top: 1px solid #eee;
 }
 
-/* --- 右栏：装备 --- */
-.equipment-panel {
-    width: 300px;
-    flex-shrink: 0;
-}
-
 .player-stats {
     background-color: #f0f0f0;
     border-radius: 5px;
@@ -134,22 +137,14 @@
 }
 
 .equipment-weapons {
-    display: grid; /* 从 flex 改为 grid */
-    grid-template-columns: repeat(2, 1fr); /* 新增，与上方网格对齐 */
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
     gap: 8px;
     margin-top: 10px;
     padding-top: 10px;
     border-top: 1px solid #ddd;
 }
 
-
-/* --- vvv 核心修正：使用 ::deep 穿透CSS作用域 vvv --- */
-
-/* 
-  将所有针对子组件 .equipment-slot-display 的规则前面
-  加上 ::deep 伪元素。
-  这会告诉Blazor，这些样式需要应用到子组件的元素上。
-*/
 ::deep .equipment-slot-display {
     height: 50px;
     border: 1px dashed #ccc;
@@ -159,7 +154,7 @@
     justify-content: center;
     cursor: pointer;
     transition: background-color 0.2s;
-    position: relative; /* 为tooltip定位 */
+    position: relative;
 }
 
     ::deep .equipment-slot-display:hover {
@@ -180,11 +175,6 @@
         border-color: #b3d7ff;
     }
 
-    /* --- 悬浮窗 Tooltip 规则也需要 ::deep --- */
-    /*
-  注意这里的写法: 父选择器和子选择器都需要 ::deep
-  来确保规则能正确应用
-*/
     ::deep .item-slot .item-tooltip,
     ::deep .equipment-slot-display .item-tooltip {
         visibility: hidden;
@@ -205,14 +195,12 @@
         pointer-events: none;
     }
 
-    /* 悬停显示规则 */
     ::deep .item-slot:hover .item-tooltip,
     ::deep .equipment-slot-display:hover .item-tooltip {
         visibility: visible;
         opacity: 1;
     }
 
-/* Tooltip 内部样式 */
 ::deep .item-tooltip hr {
     border-top: 1px solid #666;
     margin: 5px 0;
@@ -227,5 +215,3 @@
     color: #28a745;
     font-weight: bold;
 }
-
-/* ^^^ 核心修正结束 ^^^ */
