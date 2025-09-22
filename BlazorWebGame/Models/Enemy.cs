@@ -4,6 +4,7 @@ namespace BlazorWebGame.Models
 {
     public class Enemy
     {
+        public double EnemyAttackCooldown { get; set; }
         public string Name { get; set; } = "Î´ÖªÉúÎï";
         public int Health { get; set; } = 50;
         public int MaxHealth { get; set; } = 50;

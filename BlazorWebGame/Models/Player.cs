@@ -14,6 +14,16 @@ namespace BlazorWebGame.Models
     public record ReputationTier(string Name, int MinValue, int MaxValue, string BarColorClass);
     public class Player
     {
+        public string Id { get; set; } = Guid.NewGuid().ToString(); // 赋予每个角色唯一ID
+        public bool IsDead { get; set; } = false;
+        public double RevivalTimeRemaining { get; set; } = 0;
+        public Enemy? CurrentEnemy { get; set; }
+        public GatheringNode? CurrentGatheringNode { get; set; }
+        public Recipe? CurrentRecipe { get; set; }
+        public double AttackCooldown { get; set; }
+        public double GatheringCooldown { get; set; }
+        public double CraftingCooldown { get; set; }
+
         public string Name { get; set; } = "英雄";
         public int Gold { get; set; } = 10000;
         public int Health { get; set; } = 100;

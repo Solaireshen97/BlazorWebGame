@@ -6,7 +6,8 @@
 
 <PageTitle>裁缝</PageTitle>
 
-@if (GameState.Player != null)
+@* --- vvv 核心修改：从检查 Player 改为检查 ActiveCharacter vvv --- *@
+@if (GameState.ActiveCharacter is Player character)
 {
     <div class="production-layout">
         <div class="header-section">
@@ -14,11 +15,11 @@
                 <h3>裁缝</h3>
                 <div class="profession-stats">
                     <p>
-                        等级: <strong>@GameState.Player.GetLevel(ProductionProfession.Tailoring)</strong>
-                        (XP: @(GameState.Player.ProductionProfessionXP.GetValueOrDefault(ProductionProfession.Tailoring)))
+                        等级: <strong>@character.GetLevel(ProductionProfession.Tailoring)</strong>
+                        (XP: @(character.ProductionProfessionXP.GetValueOrDefault(ProductionProfession.Tailoring)))
                     </p>
                     <p>
-                        制作速度加成: <strong>@((GameState.Player.GetTotalCraftingSpeedBonus() * 100).ToString("F0"))%</strong>
+                        制作速度加成: <strong>@((character.GetTotalCraftingSpeedBonus() * 100).ToString("F0"))%</strong>
                     </p>
                 </div>
             </div>
@@ -33,13 +34,13 @@
                              @onclick="() => OpenQuickSlotPicker(ConsumableCategory.Food, slotId, FoodType.Production)"
                              @oncontextmenu="() => GameState.ClearQuickSlotItem(ConsumableCategory.Food, slotId, FoodType.Production)"
                              @oncontextmenu:preventDefault>
-                            @if (GameState.Player.ProductionFoodQuickSlots != null && GameState.Player.ProductionFoodQuickSlots.TryGetValue(slotId, out var itemId) && !string.IsNullOrEmpty(itemId))
+                            @if (character.ProductionFoodQuickSlots != null && character.ProductionFoodQuickSlots.TryGetValue(slotId, out var itemId) && !string.IsNullOrEmpty(itemId))
                             {
                                 var item = ItemData.GetItemById(itemId);
                                 if (item != null)
                                 {
-                                    var cooldown = GameState.Player.ConsumableCooldowns.GetValueOrDefault(itemId, 0);
-                                    var count = GetItemCountInInventory(itemId);
+                                    var cooldown = character.ConsumableCooldowns.GetValueOrDefault(itemId, 0);
+                                    var count = GetItemCountInInventory(character, itemId);
                                     <div class="quick-slot-item @(count == 0 ? "depleted" : "")" title="@item.Name (@count) - 右键清空">
                                         <div class="item-icon">@item.Name.Substring(0, 1)</div>
                                         <span class="item-count">@count</span>
@@ -60,21 +61,21 @@
             </div>
         </div>
 
-        @if (GameState.Player.CurrentAction == PlayerActionState.Crafting && GameState.CurrentRecipe != null && GameState.CurrentRecipe.RequiredProfession == ProductionProfession.Tailoring)
+        @if (character.CurrentAction == PlayerActionState.Crafting && character.CurrentRecipe is Recipe currentRecipe)
         {
             <div class="current-action-card">
-                <h4>正在制作: @GameState.CurrentRecipe.Name</h4>
+                <h4>正在制作: @currentRecipe.Name</h4>
                 <div class="progress-bar-container">
-                    <div class="progress-bar" style="width: @GameState.CraftingProgress%;"></div>
-                    <span class="progress-text">@GameState.GetCurrentCraftingTime().ToString("F1")s</span>
+                    <div class="progress-bar" style="width: @(GetCraftingProgress(character))%;"></div>
+                    <span class="progress-text">@GetCurrentCraftingTime(character).ToString("F1")s</span>
                 </div>
                 <button class="btn btn-danger mt-3" @onclick="GameState.StopCurrentAction">停止制作</button>
             </div>
         }
-        else if (GameState.Player.CurrentAction != PlayerActionState.Idle)
+        else if (character.CurrentAction != PlayerActionState.Idle)
         {
             <div class="action-blocked-card">
-                <p><strong>正在进行其他活动，无法开始制作！</strong></p>
+                <p><strong>@character.Name 正在进行其他活动，无法开始制作！</strong></p>
                 <button class="btn btn-warning" @onclick="GameState.StopCurrentAction">停止当前活动</button>
             </div>
         }
@@ -82,15 +83,16 @@
         <div class="recipe-list">
             @foreach (var recipe in RecipeData.AllRecipes.Where(r => r.RequiredProfession == ProductionProfession.Tailoring).OrderBy(r => r.RequiredLevel))
             {
-                bool isLearned = GameState.Player.LearnedRecipeIds.Contains(recipe.Id);
-                bool canCraft = isLearned && GameState.Player.GetLevel(ProductionProfession.Tailoring) >= recipe.RequiredLevel;
-                bool hasMaterials = GameState.CanAffordRecipe(recipe);
+                bool isLearned = recipe.IsDefault || character.LearnedRecipeIds.Contains(recipe.Id);
+                bool canCraft = isLearned && character.GetLevel(ProductionProfession.Tailoring) >= recipe.RequiredLevel;
+                bool hasMaterials = CanAffordRecipe(character, recipe);
 
                 <div class="recipe-card @(isLearned ? "" : "locked") @(canCraft ? "" : "level-locked")">
                     <div class="recipe-header">
                         <h5>@recipe.Name</h5>
                         <span class="recipe-level">Lv. @recipe.RequiredLevel</span>
                     </div>
+
                     <div class="recipe-details">
                         <div class="recipe-materials">
                             <h6>所需材料:</h6>
@@ -98,7 +100,7 @@
                                 @foreach (var ingredient in recipe.Ingredients)
                                 {
                                     var item = ItemData.GetItemById(ingredient.Key);
-                                    var ownedCount = GetItemCountInInventory(ingredient.Key);
+                                    var ownedCount = GetItemCountInInventory(character, ingredient.Key);
                                     <li class="@(ownedCount >= ingredient.Value ? "has-mats" : "missing-mats")">
                                         @item?.Name: @ownedCount / @ingredient.Value
                                     </li>
@@ -110,11 +112,12 @@
                             <p>@ItemData.GetItemById(recipe.ResultingItemId)?.Name x @recipe.ResultingItemQuantity</p>
                         </div>
                     </div>
+
                     @if (isLearned)
                     {
                         @if (canCraft)
                         {
-                            <button class="btn btn-success" @onclick="() => GameState.StartCrafting(recipe)" disabled="@(!hasMaterials || GameState.Player.CurrentAction != PlayerActionState.Idle)">
+                            <button class="btn btn-success" @onclick="() => GameState.StartCrafting(recipe)" disabled="@(!hasMaterials || character.CurrentAction != PlayerActionState.Idle)">
                                 @(hasMaterials ? "制作" : "材料不足")
                             </button>
                         }
@@ -125,31 +128,46 @@
                     }
                     else
                     {
-                        <div class="lock-reason">需要图样解锁</div>
+                        var unlockItem = ItemData.GetItemById(recipe.UnlockItemId ?? "");
+                        <div class="lock-reason">
+                            @if (unlockItem != null)
+                            {
+                                <span>需要图样: @unlockItem.Name</span>
+                            }
+                            else
+                            {
+                                <span>通过其他方式解锁</span>
+                            }
+                        </div>
                     }
                 </div>
             }
         </div>
     </div>
 }
+else
+{
+    <p>正在加载角色信息...</p>
+}
 
-@if (_isPickerVisible)
+@if (_isPickerVisible && GameState.ActiveCharacter is Player pickerCharacter)
 {
     <div class="modal-backdrop" @onclick="CloseQuickSlotPicker"></div>
     <div class="quick-slot-picker">
         <h5>选择生产食物</h5>
         <div class="picker-item-list">
-            @foreach (var item in GetAvailableConsumablesForPicker())
+            @foreach (var item in GetAvailableConsumablesForPicker(pickerCharacter))
             {
                 <div class="picker-item" @onclick="() => SetQuickSlot(item.Id)">
                     <span class="picker-item-name">@item.Name</span>
-                    <span class="picker-item-count">(x@(GetItemCountInInventory(item.Id)))</span>
+                    <span class="picker-item-count">(x@(GetItemCountInInventory(pickerCharacter, item.Id)))</span>
                 </div>
             }
         </div>
         <button class="btn btn-secondary mt-2" @onclick="CloseQuickSlotPicker">关闭</button>
     </div>
 }
+@* --- ^^^ 修改结束 ^^^ --- *@
 
 
 @code {
@@ -163,11 +181,54 @@
         GameState.OnStateChanged += StateHasChanged;
     }
 
-    private int GetItemCountInInventory(string itemId)
+    // --- vvv 新增和修改的辅助方法 vvv ---
+
+    private double GetCurrentCraftingTime(Player character)
     {
-        if (GameState.Player?.Inventory == null) return 0;
-        return GameState.Player.Inventory.Where(s => s.ItemId == itemId).Sum(s => s.Quantity);
+        if (character.CurrentRecipe == null) return 0;
+        double speedBonus = character.GetTotalCraftingSpeedBonus();
+        return character.CurrentRecipe.CraftingTimeSeconds / (1 + speedBonus);
     }
+
+    private double GetCraftingProgress(Player character)
+    {
+        var totalTime = GetCurrentCraftingTime(character);
+        if (totalTime <= 0) return 0;
+        var progress = (totalTime - character.CraftingCooldown) / totalTime;
+        return Math.Clamp(progress * 100, 0, 100);
+    }
+
+    private bool CanAffordRecipe(Player character, Recipe recipe)
+    {
+        foreach (var ingredient in recipe.Ingredients)
+        {
+            if (GetItemCountInInventory(character, ingredient.Key) < ingredient.Value)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private int GetItemCountInInventory(Player character, string itemId)
+    {
+        return character.Inventory.Where(s => s.ItemId == itemId).Sum(s => s.Quantity);
+    }
+
+    private List<Consumable> GetAvailableConsumablesForPicker(Player character)
+    {
+        var itemIdsInInventory = character.Inventory
+            .Where(s => !s.IsEmpty && s.ItemId != null)
+            .Select(s => s.ItemId!)
+            .ToHashSet();
+
+        return ItemData.AllItems
+            .OfType<Consumable>()
+            .Where(c => c.FoodType == _managingFoodType && itemIdsInInventory.Contains(c.Id))
+            .ToList();
+    }
+
+    // --- ^^^ 方法修改结束 ^^^ ---
 
     private void OpenQuickSlotPicker(ConsumableCategory category, int slotId, FoodType foodType)
     {
@@ -177,19 +238,15 @@
         _isPickerVisible = true;
     }
 
-    private void CloseQuickSlotPicker() => _isPickerVisible = false;
+    private void CloseQuickSlotPicker()
+    {
+        _isPickerVisible = false;
+    }
 
     private void SetQuickSlot(string itemId)
     {
         GameState.SetQuickSlotItem(_managingCategory, _managingSlotId, itemId);
         CloseQuickSlotPicker();
-    }
-
-    private List<Consumable> GetAvailableConsumablesForPicker()
-    {
-        if (GameState.Player?.Inventory == null) return new List<Consumable>();
-        var itemIdsInInventory = GameState.Player.Inventory.Where(s => !s.IsEmpty).Select(s => s.ItemId).Distinct();
-        return ItemData.AllItems.OfType<Consumable>().Where(c => c.FoodType == _managingFoodType && itemIdsInInventory.Contains(c.Id)).ToList();
     }
 
     public void Dispose()

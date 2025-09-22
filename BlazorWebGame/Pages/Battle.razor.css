@@ -3,7 +3,10 @@
     flex-direction: column;
     gap: 1.5rem;
     height: 100%;
-    min-height: calc(100vh - 200px);
+    /* --- vvv 唯一的修改点 vvv --- */
+    /* 确保即使内容很少，布局也能撑满最小高度 */
+    min-height: calc(100vh - 150px);
+    /* --- ^^^ 修改结束 ^^^ --- */
 }
 
 /* 怪物选择 */

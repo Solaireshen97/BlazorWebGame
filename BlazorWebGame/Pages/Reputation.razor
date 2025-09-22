@@ -7,10 +7,10 @@
 <PageTitle>声望与委托</PageTitle>
 
 <h3>声望与委托</h3>
-
-@if (GameState.Player == null)
+@* --- vvv 核心修改：从检查 Player 改为检查 ActiveCharacter vvv --- *@
+@if (GameState.ActiveCharacter is not Player character)
 {
-    <p>正在加载...</p>
+    <p>正在加载角色信息...</p>
     return;
 }
 
@@ -22,17 +22,15 @@
     <div class="card-body">
         @foreach (Faction faction in Enum.GetValues(typeof(Faction)))
         {
-            var repValue = GameState.Player.Reputation.GetValueOrDefault(faction, 0);
-            var repTier = GameState.Player.GetReputationLevel(faction);
-            var progressPercent = GameState.Player.GetReputationProgressPercentage(faction);
+            var repValue = character.Reputation.GetValueOrDefault(faction, 0);
+            var repTier = character.GetReputationLevel(faction);
+            var progressPercent = character.GetReputationProgressPercentage(faction);
 
             <div class="faction-rep-bar mb-2">
                 <span class="faction-name">@FactionData.GetName(faction)</span>
 
-                @* vvv 这是核心修正区域 vvv *@
                 <div class="progress position-relative" style="height: 20px;" title="@repTier.Name (@repValue / @repTier.MaxValue)">
 
-                    @* 1. 进度条本身，不再包含任何文本 *@
                     <div class="progress-bar @repTier.BarColorClass"
                          role="progressbar"
                          style="width: @(progressPercent)%;"
@@ -41,13 +39,11 @@
                          aria-valuemax="100">
                     </div>
 
-                    @* 2. 新增的文本元素，与进度条同级，并使用新样式 *@
                     <span class="progress-text">
                         @repTier.Name (@repValue)
                     </span>
 
                 </div>
-                @* ^^^ 修正结束 ^^^ *@
             </div>
         }
     </div>
@@ -64,8 +60,8 @@
             <ul class="list-group list-group-flush">
                 @foreach (var quest in GameState.DailyQuests)
                 {
-                    var progress = GameState.Player.QuestProgress.GetValueOrDefault(quest.Id, 0);
-                    var isCompleted = GameState.Player.CompletedQuestIds.Contains(quest.Id);
+                    var progress = character.QuestProgress.GetValueOrDefault(quest.Id, 0);
+                    var isCompleted = character.CompletedQuestIds.Contains(quest.Id);
                     var canComplete = progress >= quest.RequiredAmount && !isCompleted;
 
                     <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -77,6 +73,7 @@
                             </div>
                             <small class="text-success">奖励: @quest.GoldReward G</small>
                         </div>
+                        @* GameState.TryCompleteQuest 内部会自动处理当前角色，无需修改 *@
                         <button class="btn @(isCompleted ? "btn-secondary" : "btn-primary")"
                                 disabled="@(!canComplete)"
                                 @onclick="() => GameState.TryCompleteQuest(quest.Id)">
@@ -97,8 +94,8 @@
             <ul class="list-group list-group-flush">
                 @foreach (var quest in GameState.WeeklyQuests)
                 {
-                    var progress = GameState.Player.QuestProgress.GetValueOrDefault(quest.Id, 0);
-                    var isCompleted = GameState.Player.CompletedQuestIds.Contains(quest.Id);
+                    var progress = character.QuestProgress.GetValueOrDefault(quest.Id, 0);
+                    var isCompleted = character.CompletedQuestIds.Contains(quest.Id);
                     var canComplete = progress >= quest.RequiredAmount && !isCompleted;
 
                     <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -110,6 +107,7 @@
                             </div>
                             <small class="text-primary">奖励: @quest.ReputationReward 点 @FactionData.GetName(quest.Faction) 声望</small>
                         </div>
+                        @* GameState.TryCompleteQuest 内部会自动处理当前角色，无需修改 *@
                         <button class="btn @(isCompleted ? "btn-secondary" : "btn-primary")"
                                 disabled="@(!canComplete)"
                                 @onclick="() => GameState.TryCompleteQuest(quest.Id)">
@@ -121,6 +119,7 @@
         </div>
     </div>
 </div>
+@* --- ^^^ 修改结束 ^^^ --- *@
 
 @code {
     protected override void OnInitialized()
@@ -133,10 +132,8 @@
         GameState.OnStateChanged -= StateHasChanged;
     }
 
-    // 这就是我为您新增的辅助方法
     private string GetQuestObjectiveText(Quest quest)
     {
-        // 如果任务有描述，直接用描述
         if (!string.IsNullOrEmpty(quest.Description))
         {
             return quest.Description;
@@ -145,12 +142,10 @@
         var targetName = "";
         if (quest.Type == QuestType.KillMonster)
         {
-            // 对于杀怪任务，TargetId 就是怪物名
             targetName = quest.TargetId;
         }
         else
         {
-            // 对于物品任务，从ItemData查找名字
             targetName = ItemData.GetItemById(quest.TargetId)?.Name;
         }
 

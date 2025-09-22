@@ -1,6 +1,7 @@
 ﻿@using BlazorWebGame.Models
 @using BlazorWebGame.Services
 @inject GameStateService GameState
+@implements IDisposable
 
 @* 
     将整个组件包裹在一个根元素中，这是Blazor组件的最佳实践。
@@ -66,15 +67,17 @@
     [Parameter]
     public string Label { get; set; } = "";
 
-    // 将逻辑封装到方法中，使模板更清晰
+    // --- vvv 这是唯一的、但也是最核心的修改 vvv ---
     private Equipment? GetEquippedItem()
     {
-        if (GameState.Player.EquippedItems.TryGetValue(Slot, out var itemId) && !string.IsNullOrEmpty(itemId))
+        // 从 GameState.ActiveCharacter 获取装备信息，而不是 GameState.Player
+        if (GameState.ActiveCharacter is Player character && character.EquippedItems.TryGetValue(Slot, out var itemId) && !string.IsNullOrEmpty(itemId))
         {
             return ItemData.GetItemById(itemId) as Equipment;
         }
         return null;
     }
+    // --- ^^^ 修改结束 ^^^ ---
 
     private string GetSlotClass()
     {
@@ -90,6 +93,7 @@
     {
         if (GetEquippedItem() != null)
         {
+            // GameState.UnequipItem 内部会自动处理当前激活的角色，无需修改
             GameState.UnequipItem(Slot);
         }
     }

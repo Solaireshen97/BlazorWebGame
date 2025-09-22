@@ -1,36 +1,76 @@
-.player-status-bar {
-    background-color: #343a40; /* 深灰色 */
+/* 最外层的容器 */
+.multi-character-status-container {
+    background-color: #212529; /* 使用更深的背景色 */
     color: white;
-    padding: 0.5rem 1.5rem;
-    border-bottom: 2px solid #495057;
-    font-size: 1rem; /* 稍微缩小字体 */
-    transition: background-color 0.5s;
+    padding: 0.75rem;
+    border-bottom: 3px solid #000;
+    display: flex;
+    flex-direction: column; /* 垂直堆叠每一行 */
+    gap: 0.5rem; /* 行与行之间的间距 */
+}
+
+/* 单个角色的状态行 */
+.character-status-row {
+    background-color: #343a40;
+    padding: 0.75rem 1.25rem;
+    border-radius: 6px;
+    border-left: 5px solid #6c757d; /* 默认的左侧边框颜色 */
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
-    .player-status-bar.player-dead {
-        background-color: #dc3545; /* 死亡时红色 */
+    /* 鼠标悬浮效果 */
+    .character-status-row:hover {
+        background-color: #495057;
     }
 
-    .player-status-bar strong {
-        color: #ffc107; /* 金色 */
+    /* 激活状态的行 */
+    .character-status-row.active {
+        background-color: #3a4148;
+        border-left: 5px solid #0d6efd; /* 蓝色高亮 */
+        box-shadow: 0 0 10px rgba(13, 110, 253, 0.3);
     }
 
-    .player-status-bar.player-dead strong {
-        color: #fff;
+    /* 角色死亡状态的行 */
+    .character-status-row.player-dead {
+        background-color: #5a2d32;
+        border-left: 5px solid #dc3545; /* 红色高亮 */
     }
 
+        .character-status-row.player-dead:hover {
+            background-color: #6c363c;
+        }
+
+/* 状态文本和数值的样式 */
+.status-display {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+    .status-display strong {
+        color: #ffc107; /* 亮黄色 */
+    }
+
+.character-status-row.player-dead .status-display strong {
+    color: #f8d7da; /* 死亡时，数值颜色变浅 */
+}
+
+/* 右侧的 Buff 图标区域 */
 .status-right {
     display: flex;
     gap: 0.5rem;
+    margin-left: 1rem; /* 与左侧信息拉开距离 */
 }
 
 .buff-icon {
     position: relative;
-    width: 32px;
-    height: 32px;
+    width: 28px; /* 图标尺寸稍小一些 */
+    height: 28px;
     background-color: #0d6efd;
     border: 1px solid #0a58ca;
     border-radius: 5px;
@@ -39,18 +79,20 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0; /* 防止图标被压缩 */
 }
 
 .buff-icon-text {
+    font-size: 0.9rem;
     font-weight: bold;
 }
 
 .buff-timer {
     position: absolute;
-    bottom: -2px;
-    right: -2px;
+    bottom: -3px;
+    right: -3px;
     font-size: 0.7rem;
-    background-color: rgba(0, 0, 0, 0.7);
+    background-color: rgba(0, 0, 0, 0.8);
     padding: 0 3px;
     border-radius: 3px;
     line-height: 1.2;

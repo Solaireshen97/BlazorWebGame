@@ -1,7 +1,10 @@
 ﻿.backpack-container {
     display: flex;
     gap: 20px;
-    height: calc(100vh - 100px);
+    /* --- vvv 唯一的修改点 vvv --- */
+    /* 稍微增加顶部的预留空间，以适应新的角色标签栏 */
+    height: calc(100vh - 120px);
+    /* --- ^^^ 修改结束 ^^^ --- */
 }
 
 /* 左栏：装备 */
