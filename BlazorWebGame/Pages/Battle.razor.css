@@ -2,11 +2,6 @@
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
-    height: 100%;
-    /* --- vvv 唯一的修改点 vvv --- */
-    /* 确保即使内容很少，布局也能撑满最小高度 */
-    min-height: calc(100vh - 150px);
-    /* --- ^^^ 修改结束 ^^^ --- */
 }
 
 /* 怪物选择 */
@@ -40,10 +35,11 @@
 
 /* 战斗核心 */
 .battle-core-area {
-    flex-grow: 1;
     display: flex;
     align-items: center;
     justify-content: center;
+    min-height: 150px; /* 保证内容不贴边，但不拉高整个区域 */
+    align-self: center; /* 避免 flex 拉伸太多 */
 }
 
 .player-dead-card {

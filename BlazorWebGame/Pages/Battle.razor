@@ -11,64 +11,6 @@
     var party = GameState.GetPartyForCharacter(character.Id);
     var currentEnemy = party?.CurrentEnemy ?? character.CurrentEnemy; // 统一获取当前目标，优先队伍目标
     var isPartyMemberAndNotCaptain = party != null && party.CaptainId != character.Id;
-    <div class="party-management-section mb-4 p-3 border rounded">
-        <h4>队伍状态</h4>
-        @if (party == null)
-        {
-            <p>@character.Name 当前不在任何队伍中。</p>
-            
-            <button class="btn btn-success mb-3" @onclick="GameState.CreateParty">
-                创建新队伍
-            </button>
-
-            @* 显示可加入的队伍列表 *@
-            var availableParties = GameState.Parties.Where(p => p.CaptainId != character.Id).ToList();
-            @if (availableParties.Any())
-            {
-                <h5>可加入的队伍:</h5>
-                <ul class="list-group">
-                    @foreach (var p in availableParties)
-                    {
-                        @if (p.MemberIds.Count < Party.MaxMembers)
-                        {
-                            var captainName = GameState.AllCharacters.FirstOrDefault(c => c.Id == p.CaptainId)?.Name;
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                @captainName 的队伍 (@p.MemberIds.Count/@Party.MaxMembers 人)
-                                <button class="btn btn-primary btn-sm" @onclick="() => GameState.JoinParty(p.Id)">
-                                    加入
-                                </button>
-                            </li>
-                        }
-                    }
-                </ul>
-            }
-        }
-        else
-        {
-            // 使用Bootstrap的flex布局来创建标题和按钮在同一行的效果
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <h5 class="mb-0">队伍信息 (@party.MemberIds.Count/@Party.MaxMembers)</h5>
-                <button class="btn btn-danger btn-sm" @onclick="GameState.LeaveParty">
-                    @(party.CaptainId == character.Id ? "解散队伍" : "离开队伍")
-                </button>
-            </div>
-
-            // 用于单行显示所有成员的容器
-            <div class="party-members-inline">
-                @foreach (var memberId in party.MemberIds)
-                {
-                    var member = GameState.AllCharacters.FirstOrDefault(c => c.Id == memberId);
-                    if (member != null)
-                    {
-                        // 为每个成员创建一个标签(badge)，队长的标签颜色不同
-                        <span class="badge @(member.Id == party.CaptainId ? "bg-primary" : "bg-secondary") me-1">
-                            @member.Name
-                        </span>
-                    }
-                }
-            </div>
-        }
-    </div>
     <div class="battle-page-layout">
         <!-- 怪物选择 -->
         <div class="monster-selection-area">
@@ -83,151 +25,207 @@
                 // --- ^^^ 修改结束 ^^^ ---
             }
         </div>
-
-        <!-- 战斗核心 -->
-        <div class="battle-core-area">
-            @if (character.IsDead)
-            {
-                <div class="player-dead-card">
-                    <h3>你被击败了...</h3>
-                    <p>复活倒计时: @character.RevivalTimeRemaining.ToString("F1")s</p>
-                </div>
-            }
-            else if (character.CurrentAction != PlayerActionState.Idle && character.CurrentAction != PlayerActionState.Combat)
-            {
-                <div class="action-blocked-card">
-                    <p><strong>@character.Name 正在进行其他活动 (@character.CurrentAction.ToString())，无法战斗！</strong></p>
-                    <button class="btn btn-warning mt-2" @onclick="GameState.StopCurrentAction">停止当前活动</button>
-                </div>
-            }
-            else if (currentEnemy != null)
-            {
+        <div class="view-switcher d-flex justify-content-center gap-2 mb-3 border-bottom pb-3">
+            <button class="btn @(_currentView == BattleView.Battle ? "btn-primary" : "btn-outline-primary")" @onclick="() => _currentView = BattleView.Battle">
+                战斗
+            </button>
+            <button class="btn @(_currentView == BattleView.Party ? "btn-primary" : "btn-outline-primary")" @onclick="() => _currentView = BattleView.Party">
+                队伍
+            </button>
+        </div>
+        <!-- vvv 核心修改：根据视图状态动态渲染内容 vvv -->
+        @if (_currentView == BattleView.Battle)
+        {
+            <!-- ================= BATTLE VIEW (战斗视图) ================= -->
+            <!-- 核心战斗区 -->
+            <div class="battle-core-area">
                 <div class="battle-container">
                     <!-- 玩家卡片 -->
                     <div class="character-card player-card">
-                        <div class="character-image-placeholder"><span>头像</span></div>
-                        <h5>@character.Name</h5>
-
-                        <div class="profession-display">
-                            <span>@character.SelectedBattleProfession.ToChineseString()</span>
-                            <span>Lv. @character.GetLevel(character.SelectedBattleProfession)</span>
-                        </div>
-
-                        <div class="health-bar-container">
-                            <div class="health-bar player-health" style="width: @(GetHealthPercentage(character.Health, character.GetTotalMaxHealth()))%;"></div>
-                            <span class="health-text">@character.Health / @character.GetTotalMaxHealth()</span>
-                        </div>
-
-                        <div class="attack-progress-container">
-                            <div class="attack-progress-bar" style="width: @(GetAttackProgress(character.AttackCooldown, character.AttacksPerSecond))%;"></div>
-                        </div>
-
-                        <div class="action-bar">
-                            <div class="equipped-skills-display">
-                                @foreach (var skillId in character.EquippedSkills[character.SelectedBattleProfession])
-                                {
-                                    var skill = SkillData.GetSkillById(skillId);
-                                    if (skill != null)
+                        @if (character.IsDead)
+                        {
+                            <div class="player-dead-card">
+                                <h3>你被击败了...</h3>
+                                <p>复活倒计时: @character.RevivalTimeRemaining.ToString("F1")s</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="character-image-placeholder"><span>头像</span></div>
+                            <h5>@character.Name</h5>
+                            <div class="profession-display">
+                                <span>@character.SelectedBattleProfession.ToChineseString()</span>
+                                <span>Lv. @character.GetLevel(character.SelectedBattleProfession)</span>
+                            </div>
+                            <div class="health-bar-container">
+                                <div class="health-bar player-health" style="width: @(GetHealthPercentage(character.Health, character.GetTotalMaxHealth()))%;"></div>
+                                <span class="health-text">@character.Health / @character.GetTotalMaxHealth()</span>
+                            </div>
+                            <div class="attack-progress-container">
+                                <div class="attack-progress-bar" style="width: @(GetAttackProgress(character.AttackCooldown, character.AttacksPerSecond))%;"></div>
+                            </div>
+                            <div class="action-bar">
+                                <div class="equipped-skills-display">
+                                    @foreach (var skillId in character.EquippedSkills[character.SelectedBattleProfession])
                                     {
-                                        <div class="skill-icon-container" title="@skill.Name: @skill.Description">
-                                            <div class="skill-icon">@skill.Name.Substring(0, 1)</div>
-                                            @if (character.SkillCooldowns.GetValueOrDefault(skillId, 0) > 0)
+                                        var skill = SkillData.GetSkillById(skillId);
+                                        if (skill != null)
+                                        {
+                                            <div class="skill-icon-container" title="@skill.Name: @skill.Description">
+                                                <div class="skill-icon">@skill.Name.Substring(0, 1)</div>
+                                                @if (character.SkillCooldowns.GetValueOrDefault(skillId, 0) > 0)
+                                                {
+                                                    <div class="cooldown-overlay"><span>@character.SkillCooldowns[skillId]</span></div>
+                                                }
+                                            </div>
+                                        }
+                                    }
+                                </div>
+                                <div class="consumable-quick-slots">
+                                    @for (int i = 0; i < 2; i++)
+                                    {
+                                        var slotId = i;
+                                        <div class="quick-slot" @onclick="() => OpenQuickSlotPicker(ConsumableCategory.Potion, slotId, FoodType.None)" @oncontextmenu:preventDefault @oncontextmenu="() => GameState.ClearQuickSlotItem(ConsumableCategory.Potion, slotId)">
+                                            @if (character.PotionQuickSlots.TryGetValue(slotId, out var itemId) && !string.IsNullOrEmpty(itemId) && ItemData.GetItemById(itemId) is Consumable item)
                                             {
-                                                <div class="cooldown-overlay"><span>@character.SkillCooldowns[skillId]</span></div>
+                                                <div class="quick-slot-item @(GetItemCountInInventory(character, itemId) == 0 ? "depleted" : "")" title="@item.Name (@GetItemCountInInventory(character, itemId)) - 右键清空">
+                                                    <div class="item-icon">@item.Name.Substring(0, 1)</div>
+                                                    <span class="item-count">@GetItemCountInInventory(character, itemId)</span>
+                                                    @if (character.ConsumableCooldowns.GetValueOrDefault(itemId, 0) > 0)
+                                                    {
+                                                        <div class="cooldown-overlay"><span>@((int)character.ConsumableCooldowns[itemId])</span></div>
+                                                    }
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="quick-slot-empty" title="点击设置药水"></div>
                                             }
                                         </div>
                                     }
-                                }
+                                    @for (int i = 0; i < 2; i++)
+                                    {
+                                        var slotId = i;
+                                        <div class="quick-slot" @onclick="() => OpenQuickSlotPicker(ConsumableCategory.Food, slotId, FoodType.Combat)" @oncontextmenu:preventDefault @oncontextmenu="() => GameState.ClearQuickSlotItem(ConsumableCategory.Food, slotId, FoodType.Combat)">
+                                            @if (character.CombatFoodQuickSlots.TryGetValue(slotId, out var itemId) && !string.IsNullOrEmpty(itemId) && ItemData.GetItemById(itemId) is Consumable item)
+                                            {
+                                                <div class="quick-slot-item @(GetItemCountInInventory(character, itemId) == 0 ? "depleted" : "")" title="@item.Name (@GetItemCountInInventory(character, itemId)) - 右键清空">
+                                                    <div class="item-icon">@item.Name.Substring(0, 1)</div>
+                                                    <span class="item-count">@GetItemCountInInventory(character, itemId)</span>
+                                                    @if (character.ConsumableCooldowns.GetValueOrDefault(itemId, 0) > 0)
+                                                    {
+                                                        <div class="cooldown-overlay"><span>@((int)character.ConsumableCooldowns[itemId])</span></div>
+                                                    }
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="quick-slot-empty" title="点击设置战斗食物"></div>
+                                            }
+                                        </div>
+                                    }
+                                </div>
                             </div>
-                            <div class="consumable-quick-slots">
-                                @for (int i = 0; i < 2; i++)
-                                {
-                                    var slotId = i;
-                                    <div class="quick-slot" @onclick="() => OpenQuickSlotPicker(ConsumableCategory.Potion, slotId, FoodType.None)" @oncontextmenu:preventDefault @oncontextmenu="() => GameState.ClearQuickSlotItem(ConsumableCategory.Potion, slotId)">
-                                        @if (character.PotionQuickSlots.TryGetValue(slotId, out var itemId) && !string.IsNullOrEmpty(itemId) && ItemData.GetItemById(itemId) is Consumable item)
-                                        {
-                                            <div class="quick-slot-item @(GetItemCountInInventory(character, itemId) == 0 ? "depleted" : "")" title="@item.Name (@GetItemCountInInventory(character, itemId)) - 右键清空">
-                                                <div class="item-icon">@item.Name.Substring(0, 1)</div>
-                                                <span class="item-count">@GetItemCountInInventory(character, itemId)</span>
-                                                @if (character.ConsumableCooldowns.GetValueOrDefault(itemId, 0) > 0)
-                                                {
-                                                    <div class="cooldown-overlay"><span>@((int)character.ConsumableCooldowns[itemId])</span></div>
-                                                }
-                                            </div>
-                                        }
-                                        else
-                                        {
-
-                                            <div class="quick-slot-empty" title="点击设置药水"></div>
-                                        }
-                                    </div>
-                                }
-                                @for (int i = 0; i < 2; i++)
-                                {
-                                    var slotId = i;
-                                    <div class="quick-slot" @onclick="() => OpenQuickSlotPicker(ConsumableCategory.Food, slotId, FoodType.Combat)" @oncontextmenu:preventDefault @oncontextmenu="() => GameState.ClearQuickSlotItem(ConsumableCategory.Food, slotId, FoodType.Combat)">
-                                        @if (character.CombatFoodQuickSlots.TryGetValue(slotId, out var itemId) && !string.IsNullOrEmpty(itemId) && ItemData.GetItemById(itemId) is Consumable item)
-                                        {
-                                            <div class="quick-slot-item @(GetItemCountInInventory(character, itemId) == 0 ? "depleted" : "")" title="@item.Name (@GetItemCountInInventory(character, itemId)) - 右键清空">
-                                                <div class="item-icon">@item.Name.Substring(0, 1)</div>
-                                                <span class="item-count">@GetItemCountInInventory(character, itemId)</span>
-                                                @if (character.ConsumableCooldowns.GetValueOrDefault(itemId, 0) > 0)
-                                                {
-                                                    <div class="cooldown-overlay"><span>@((int)character.ConsumableCooldowns[itemId])</span></div>
-                                                }
-                                            </div>
-                                        }
-                                        else
-                                        {
-
-                                            <div class="quick-slot-empty" title="点击设置战斗食物"></div>
-                                        }
-                                    </div>
-                                }
-                            </div>
-                        </div>
+                        }
                     </div>
 
-                    <!-- 敌人卡片 (现在会正确显示团队目标) -->
+                    <!-- 怪物卡片（始终显示） -->
                     <div class="character-card enemy-card">
-                        <div class="character-image-placeholder"><span>怪</span></div>
-                        <h5>@currentEnemy.Name</h5>
-
-                        <div class="health-bar-container">
-                            <div class="health-bar enemy-health" style="width: @(GetHealthPercentage(currentEnemy.Health, currentEnemy.MaxHealth))%;"></div>
-                            <span class="health-text">@currentEnemy.Health / @currentEnemy.MaxHealth</span>
-                        </div>
-
-                        <div class="attack-progress-container">
-                            <div class="attack-progress-bar" style="width: @(GetAttackProgress(currentEnemy.EnemyAttackCooldown, currentEnemy.AttacksPerSecond))%;"></div>
-                        </div>
-
-                        <div class="action-bar">
-                            <div class="equipped-skills-display">
-                                @foreach (var skillId in currentEnemy.SkillIds)
-                                {
-                                    var skill = SkillData.GetSkillById(skillId);
-                                    if (skill != null)
-                                    {
-                                        <div class="skill-icon-container" title="@skill.Name: @skill.Description">
-                                            <div class="skill-icon">@skill.Name.Substring(0, 1)</div>
-                                            @if (currentEnemy.SkillCooldowns.GetValueOrDefault(skillId, 0) > 0)
-                                            {
-                                                <div class="cooldown-overlay"><span>@currentEnemy.SkillCooldowns[skillId]</span></div>
-                                            }
-                                        </div>
-                                    }
-                                }
+                        @if (currentEnemy is null)
+                        {
+                            <div class="character-image-placeholder"><span>怪物</span></div>
+                            <h5 class="text-muted">请选择怪物</h5>
+                        }
+                        else
+                        {
+                            <div class="character-image-placeholder"><span>怪</span></div>
+                            <h5>@currentEnemy.Name</h5>
+                            <div class="health-bar-container">
+                                <div class="health-bar enemy-health" style="width: @(GetHealthPercentage(currentEnemy.Health, currentEnemy.MaxHealth))%;"></div>
+                                <span class="health-text">@currentEnemy.Health / @currentEnemy.MaxHealth</span>
                             </div>
-                        </div>
+                            <div class="attack-progress-container">
+                                <div class="attack-progress-bar" style="width: @(GetAttackProgress(currentEnemy.EnemyAttackCooldown, currentEnemy.AttacksPerSecond))%;"></div>
+                            </div>
+                            <div class="action-bar">
+                                <div class="equipped-skills-display">
+                                    @foreach (var skillId in currentEnemy.SkillIds)
+                                    {
+                                        var skill = SkillData.GetSkillById(skillId);
+                                        if (skill != null)
+                                        {
+                                            <div class="skill-icon-container" title="@skill.Name: @skill.Description">
+                                                <div class="skill-icon">@skill.Name.Substring(0, 1)</div>
+                                                @if (currentEnemy.SkillCooldowns.GetValueOrDefault(skillId, 0) > 0)
+                                                {
+                                                    <div class="cooldown-overlay"><span>@currentEnemy.SkillCooldowns[skillId]</span></div>
+                                                }
+                                            </div>
+                                        }
+                                    }
+                                </div>
+                            </div>
+                        }
                     </div>
                 </div>
-            }
-            else
-            {
-                <div class="text-muted"><p>请从上方选择一个怪物开始战斗。</p></div>
-            }
-        </div>
+            </div>
+        }
+        else // _currentView == BattleView.Party
+        {
+            <!-- ================= PARTY VIEW (队伍视图) ================= -->
+            <div class="party-management-view p-3">
+                @if (party == null)
+                {
+                    <h4 class="mb-3">创建或加入队伍</h4>
+                    <p>@character.Name 当前不在任何队伍中。</p>
+                    <button class="btn btn-success mb-3" @onclick="GameState.CreateParty">创建新队伍</button>
+
+                    var availableParties = GameState.Parties.Where(p => p.CaptainId != character.Id).ToList();
+                    @if (availableParties.Any())
+                    {
+                        <h5>可加入的队伍:</h5>
+                        <ul class="list-group">
+                            @foreach (var p in availableParties)
+                            {
+                                @if (p.MemberIds.Count < Party.MaxMembers)
+                                {
+                                    var captainName = GameState.AllCharacters.FirstOrDefault(c => c.Id == p.CaptainId)?.Name;
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        @captainName 的队伍 (@p.MemberIds.Count/@Party.MaxMembers 人)
+                                        <button class="btn btn-primary btn-sm" @onclick="() => GameState.JoinParty(p.Id)">加入</button>
+                                    </li>
+                                }
+                            }
+                        </ul>
+                    }
+                }
+                else
+                {
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="mb-0">队伍信息 (@party.MemberIds.Count/@Party.MaxMembers)</h4>
+                        <button class="btn btn-danger btn-sm" @onclick="GameState.LeaveParty">
+                            @(party.CaptainId == character.Id ? "解散队伍" : "离开队伍")
+                        </button>
+                    </div>
+
+                    <h5>队伍成员:</h5>
+                    <ul class="list-group">
+                        @foreach (var memberId in party.MemberIds)
+                        {
+                            var member = GameState.AllCharacters.FirstOrDefault(c => c.Id == memberId);
+                            if (member != null)
+                            {
+                                <li class="list-group-item @(member.Id == party.CaptainId ? "list-group-item-primary" : "")">
+                                    @member.Name @(member.Id == party.CaptainId ? "(队长)" : "")
+                                </li>
+                            }
+                        }
+                    </ul>
+                }
+            </div>
+        }
+        <!-- ^^^ 修改结束 ^^^ -->
+    </div>
 
         <!-- 详细信息 -->
         <div class="details-area">
@@ -267,8 +265,6 @@
                 </div>
             }
         </div>
-    </div>
-
     @if (_isPickerVisible)
     {
         <div class="modal-backdrop" @onclick="CloseQuickSlotPicker"></div>
@@ -297,6 +293,8 @@ else
     private int _managingSlotId;
     private ConsumableCategory _managingCategory;
     private FoodType _managingFoodType;
+    private enum BattleView { Battle, Party }
+    private BattleView _currentView = BattleView.Battle; // 默认显示战斗界面
 
     protected override void OnInitialized()
     {
