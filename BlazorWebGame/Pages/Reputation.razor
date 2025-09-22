@@ -1,0 +1,159 @@
+﻿@page "/reputation"
+@using BlazorWebGame.Models
+@using BlazorWebGame.Services
+@inject GameStateService GameState
+@implements IDisposable
+
+<PageTitle>声望与委托</PageTitle>
+
+<h3>声望与委托</h3>
+
+@if (GameState.Player == null)
+{
+    <p>正在加载...</p>
+    return;
+}
+
+<!-- 声望概览 -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h4>阵营声望</h4>
+    </div>
+    <div class="card-body">
+        @foreach (Faction faction in Enum.GetValues(typeof(Faction)))
+        {
+            var repValue = GameState.Player.Reputation.GetValueOrDefault(faction, 0);
+            var repTier = GameState.Player.GetReputationLevel(faction);
+            var progressPercent = GameState.Player.GetReputationProgressPercentage(faction);
+
+            <div class="faction-rep-bar mb-2">
+                <span class="faction-name">@FactionData.GetName(faction)</span>
+
+                @* vvv 这是核心修正区域 vvv *@
+                <div class="progress position-relative" style="height: 20px;" title="@repTier.Name (@repValue / @repTier.MaxValue)">
+
+                    @* 1. 进度条本身，不再包含任何文本 *@
+                    <div class="progress-bar @repTier.BarColorClass"
+                         role="progressbar"
+                         style="width: @(progressPercent)%;"
+                         aria-valuenow="@progressPercent"
+                         aria-valuemin="0"
+                         aria-valuemax="100">
+                    </div>
+
+                    @* 2. 新增的文本元素，与进度条同级，并使用新样式 *@
+                    <span class="progress-text">
+                        @repTier.Name (@repValue)
+                    </span>
+
+                </div>
+                @* ^^^ 修正结束 ^^^ *@
+            </div>
+        }
+    </div>
+</div>
+
+<!-- 任务列表 -->
+<div class="row">
+    <!-- 每日任务 -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>每日委托</h5>
+            </div>
+            <ul class="list-group list-group-flush">
+                @foreach (var quest in GameState.DailyQuests)
+                {
+                    var progress = GameState.Player.QuestProgress.GetValueOrDefault(quest.Id, 0);
+                    var isCompleted = GameState.Player.CompletedQuestIds.Contains(quest.Id);
+                    var canComplete = progress >= quest.RequiredAmount && !isCompleted;
+
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>[@FactionData.GetName(quest.Faction)] @quest.Title</strong>
+                            <p class="mb-1 small text-muted">@GetQuestObjectiveText(quest)</p>
+                            <div class="progress" style="height: 10px; width: 200px;">
+                                <div class="progress-bar" role="progressbar" style="width: @(100.0 * progress / quest.RequiredAmount)%;"></div>
+                            </div>
+                            <small class="text-success">奖励: @quest.GoldReward G</small>
+                        </div>
+                        <button class="btn @(isCompleted ? "btn-secondary" : "btn-primary")"
+                                disabled="@(!canComplete)"
+                                @onclick="() => GameState.TryCompleteQuest(quest.Id)">
+                            @(isCompleted ? "已完成" : (canComplete ? "完成" : $"{progress}/{quest.RequiredAmount}"))
+                        </button>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+
+    <!-- 周常任务 -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>周常目标</h5>
+            </div>
+            <ul class="list-group list-group-flush">
+                @foreach (var quest in GameState.WeeklyQuests)
+                {
+                    var progress = GameState.Player.QuestProgress.GetValueOrDefault(quest.Id, 0);
+                    var isCompleted = GameState.Player.CompletedQuestIds.Contains(quest.Id);
+                    var canComplete = progress >= quest.RequiredAmount && !isCompleted;
+
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>@quest.Title</strong>
+                            <p class="mb-1 small text-muted">@quest.Description</p>
+                            <div class="progress" style="height: 10px; width: 200px;">
+                                <div class="progress-bar" role="progressbar" style="width: @(100.0 * progress / quest.RequiredAmount)%;"></div>
+                            </div>
+                            <small class="text-primary">奖励: @quest.ReputationReward 点 @FactionData.GetName(quest.Faction) 声望</small>
+                        </div>
+                        <button class="btn @(isCompleted ? "btn-secondary" : "btn-primary")"
+                                disabled="@(!canComplete)"
+                                @onclick="() => GameState.TryCompleteQuest(quest.Id)">
+                            @(isCompleted ? "已完成" : (canComplete ? "完成" : $"{progress}/{quest.RequiredAmount}"))
+                        </button>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        GameState.OnStateChanged += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        GameState.OnStateChanged -= StateHasChanged;
+    }
+
+    // 这就是我为您新增的辅助方法
+    private string GetQuestObjectiveText(Quest quest)
+    {
+        // 如果任务有描述，直接用描述
+        if (!string.IsNullOrEmpty(quest.Description))
+        {
+            return quest.Description;
+        }
+
+        var targetName = "";
+        if (quest.Type == QuestType.KillMonster)
+        {
+            // 对于杀怪任务，TargetId 就是怪物名
+            targetName = quest.TargetId;
+        }
+        else
+        {
+            // 对于物品任务，从ItemData查找名字
+            targetName = ItemData.GetItemById(quest.TargetId)?.Name;
+        }
+
+        return $"需求: {targetName}";
+    }
+}

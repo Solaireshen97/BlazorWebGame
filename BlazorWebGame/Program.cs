@@ -12,5 +12,6 @@ builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.
 
 builder.Services.AddSingleton<GameStorage>();
 builder.Services.AddSingleton<GameStateService>();
+builder.Services.AddSingleton<QuestService>();
 
 await builder.Build().RunAsync();

@@ -11,7 +11,7 @@ namespace BlazorWebGame.Models
         Gathering,
         Crafting
     }
-
+    public record ReputationTier(string Name, int MinValue, int MaxValue, string BarColorClass);
     public class Player
     {
         public string Name { get; set; } = "英雄";
@@ -22,6 +22,14 @@ namespace BlazorWebGame.Models
         public double AttacksPerSecond { get; set; } = 1.0;
 
         public BattleProfession SelectedBattleProfession { get; set; } = BattleProfession.Warrior;
+        public static readonly List<ReputationTier> ReputationTiers = new()
+        {
+            // 为了演示，我们使用较小的阈值
+            new ReputationTier("中立", 0, 1000, "bg-info"),
+            new ReputationTier("友善", 1000, 3000, "bg-success"),
+            new ReputationTier("尊敬", 3000, 6000, "bg-primary"),
+            new ReputationTier("崇拜", 6000, 6001, "bg-warning") // 崇拜是顶级
+        };
         public Dictionary<BattleProfession, int> BattleProfessionXP { get; set; } = new();
         public Dictionary<GatheringProfession, int> GatheringProfessionXP { get; set; } = new();
         public Dictionary<ProductionProfession, int> ProductionProfessionXP { get; set; } = new();
@@ -39,6 +47,13 @@ namespace BlazorWebGame.Models
         public Dictionary<int, string> GatheringFoodQuickSlots { get; set; } = new();
         public Dictionary<int, string> ProductionFoodQuickSlots { get; set; } = new(); // *** 这是新增的行 ***
         public Dictionary<string, double> ConsumableCooldowns { get; set; } = new();
+        public Dictionary<Faction, int> Reputation { get; set; } = new();
+
+        // 用于存储玩家所有任务的当前进度，键是任务ID，值是当前完成数量
+        public Dictionary<string, int> QuestProgress { get; set; } = new();
+
+        // 用于记录本周期（今天/本周）已完成的任务ID，防止重复完成
+        public List<string> CompletedQuestIds { get; set; } = new();
 
         public PlayerActionState CurrentAction { get; set; } = PlayerActionState.Idle;
         public HashSet<string> DefeatedMonsterIds { get; set; } = new();
@@ -125,6 +140,32 @@ namespace BlazorWebGame.Models
                 ProductionProfessionXP[profession] += amount;
             }
         }
+
+        // 可以添加一个辅助方法来获取声望等级
+        public ReputationTier GetReputationLevel(Faction faction)
+        {
+            var rep = Reputation.GetValueOrDefault(faction, 0);
+            // 从高到低查找，返回第一个满足条件的等级
+            return ReputationTiers.LastOrDefault(t => rep >= t.MinValue) ?? ReputationTiers.First();
+        }
+
+        public double GetReputationProgressPercentage(Faction faction)
+        {
+            var rep = Reputation.GetValueOrDefault(faction, 0);
+            var tier = GetReputationLevel(faction);
+
+            // 如果是最高等级，进度条直接拉满
+            if (tier.MaxValue - tier.MinValue <= 1)
+            {
+                return 100.0;
+            }
+
+            var progressInTier = rep - tier.MinValue;
+            var totalForTier = tier.MaxValue - tier.MinValue;
+
+            return (double)progressInTier / totalForTier * 100.0;
+        }
+
         public double GetTotalGatheringSpeedBonus() { double equipmentBonus = EquippedItems.Values.Select(itemId => ItemData.GetItemById(itemId) as Equipment).Where(eq => eq != null).Sum(eq => eq!.GatheringSpeedBonus); double buffBonus = ActiveBuffs.Where(b => b.BuffType == StatBuffType.GatheringSpeed).Sum(b => b.BuffValue / 100.0); return equipmentBonus + buffBonus; }
         public double GetTotalExtraLootChance() { double equipmentBonus = EquippedItems.Values.Select(itemId => ItemData.GetItemById(itemId) as Equipment).Where(eq => eq != null).Sum(eq => eq!.ExtraLootChanceBonus); double buffBonus = ActiveBuffs.Where(b => b.BuffType == StatBuffType.ExtraLootChance).Sum(b => b.BuffValue / 100.0); return equipmentBonus + buffBonus; }
         /// <summary>

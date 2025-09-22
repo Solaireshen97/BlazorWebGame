@@ -11,6 +11,7 @@ namespace BlazorWebGame.Services;
 public class GameStateService : IAsyncDisposable
 {
     private readonly GameStorage _gameStorage;
+    private readonly QuestService _questService; // <-- 新增：注入QuestService
     private System.Timers.Timer? _gameLoopTimer;
     private const int GameLoopIntervalMs = 100;
     private const double RevivalDuration = 2;
@@ -22,7 +23,8 @@ public class GameStateService : IAsyncDisposable
 
     // --- 新增字段 ---
     private Enemy? _lastEnemyBeforeDeath;
-
+    public List<Quest> DailyQuests { get; private set; } = new();
+    public List<Quest> WeeklyQuests { get; private set; } = new();
     public Player Player { get; private set; } = new();
     public Enemy? CurrentEnemy { get; private set; }
     public GatheringNode? CurrentGatheringNode { get; private set; }
@@ -41,7 +43,11 @@ public class GameStateService : IAsyncDisposable
 
     public event Action? OnStateChanged;
 
-    public GameStateService(GameStorage gameStorage) => _gameStorage = gameStorage;
+    public GameStateService(GameStorage gameStorage, QuestService questService)
+    {
+        _gameStorage = gameStorage;
+        _questService = questService; // <-- 依赖注入
+    }
 
     public async Task InitializeAsync()
     {
@@ -51,6 +57,13 @@ public class GameStateService : IAsyncDisposable
             Player = loadedPlayer;
             Player.EnsureDataConsistency();
         }
+
+        // --- vvv 新增任务初始化逻辑 vvv ---
+        DailyQuests = _questService.GetDailyQuests();
+        WeeklyQuests = _questService.GetWeeklyQuests();
+        // 这里可以添加一个逻辑，用于每日/每周重置任务进度和 `CompletedQuestIds`
+        // --- ^^^ 新增结束 ^^^ ---
+
         InitializePlayerState();
         _gameLoopTimer = new System.Timers.Timer(GameLoopIntervalMs);
         _gameLoopTimer.Elapsed += GameLoopTick;
@@ -268,6 +281,8 @@ public class GameStateService : IAsyncDisposable
                     AddItemToInventory(CurrentGatheringNode.ResultingItemId, CurrentGatheringNode.ResultingItemQuantity);
                 }
                 Player.AddGatheringXP(CurrentGatheringNode.RequiredProfession, CurrentGatheringNode.XpReward);
+                UpdateQuestProgress(QuestType.GatherItem, CurrentGatheringNode.ResultingItemId, CurrentGatheringNode.ResultingItemQuantity);
+                UpdateQuestProgress(QuestType.GatherItem, "any", 1); // 为周常任务的"任意采集"计数
                 _gatheringCooldown += GetCurrentGatheringTime();
             }
         }
@@ -283,6 +298,9 @@ public class GameStateService : IAsyncDisposable
                 // 生产完成，先给予产出
                 AddItemToInventory(CurrentRecipe.ResultingItemId, CurrentRecipe.ResultingItemQuantity);
                 Player.AddProductionXP(CurrentRecipe.RequiredProfession, CurrentRecipe.XpReward);
+
+                UpdateQuestProgress(QuestType.CraftItem, CurrentRecipe.ResultingItemId, CurrentRecipe.ResultingItemQuantity);
+                UpdateQuestProgress(QuestType.CraftItem, "any", 1); // 为周常任务的"任意制作"计数
 
                 // *** 核心修正点：在这里补上为“刚刚完成的这次制作”扣除材料的逻辑 ***
                 foreach (var ingredient in CurrentRecipe.Ingredients)
@@ -352,7 +370,53 @@ public class GameStateService : IAsyncDisposable
 
     // --- 以下是未作修改的既有方法，保持原样即可 ---
     private void ProcessCombat(double elapsedSeconds) { if (Player != null && CurrentEnemy != null) { _playerAttackCooldown -= elapsedSeconds; if (_playerAttackCooldown <= 0) { PlayerAttackEnemy(); _playerAttackCooldown += 1.0 / Player.AttacksPerSecond; } _enemyAttackCooldown -= elapsedSeconds; if (_enemyAttackCooldown <= 0) { EnemyAttackPlayer(); _enemyAttackCooldown += 1.0 / CurrentEnemy.AttacksPerSecond; } } }
-    private void PlayerAttackEnemy() { if (Player == null || CurrentEnemy == null) return; var equippedSkillIds = Player.EquippedSkills[Player.SelectedBattleProfession]; foreach (var skillId in equippedSkillIds) { var currentCooldown = Player.SkillCooldowns.GetValueOrDefault(skillId); if (currentCooldown <= 0) { var skill = SkillData.GetSkillById(skillId); if (skill != null) { ApplySkillEffect(skill, isPlayerSkill: true); Player.SkillCooldowns[skillId] = skill.CooldownRounds; } } else { Player.SkillCooldowns[skillId]--; } } CurrentEnemy.Health -= Player.GetTotalAttackPower(); if (CurrentEnemy.Health <= 0) { Player.Gold += CurrentEnemy.GetGoldDropAmount(); var random = new Random(); foreach (var lootItem in CurrentEnemy.LootTable) { if (random.NextDouble() <= lootItem.Value) { AddItemToInventory(lootItem.Key, 1); } } var profession = Player.SelectedBattleProfession; var oldLevel = Player.GetLevel(profession); Player.AddBattleXP(profession, CurrentEnemy.XpReward); var newLevel = Player.GetLevel(profession); if (newLevel > oldLevel) { CheckForNewSkillUnlocks(profession, newLevel); } Player.DefeatedMonsterIds.Add(CurrentEnemy.Name); SpawnNewEnemy(CurrentEnemy); } }
+    private void PlayerAttackEnemy()
+    {
+        if (Player == null || CurrentEnemy == null) return;
+        var equippedSkillIds = Player.EquippedSkills[Player.SelectedBattleProfession];
+        foreach (var skillId in equippedSkillIds) 
+        { 
+            var currentCooldown = Player.SkillCooldowns.GetValueOrDefault(skillId);
+            if (currentCooldown <= 0) 
+            {
+                var skill = SkillData.GetSkillById(skillId);
+                if (skill != null)
+                {
+                    ApplySkillEffect(skill, isPlayerSkill: true);
+                    Player.SkillCooldowns[skillId] = skill.CooldownRounds;
+                }
+            }
+            else
+            {
+                Player.SkillCooldowns[skillId]--;
+            }
+        }
+        CurrentEnemy.Health -= Player.GetTotalAttackPower();
+        if (CurrentEnemy.Health <= 0)
+        { 
+            Player.Gold += CurrentEnemy.GetGoldDropAmount();
+            var random = new Random();
+            foreach (var lootItem in CurrentEnemy.LootTable)
+            {
+                if (random.NextDouble() <= lootItem.Value)
+                {
+                    AddItemToInventory(lootItem.Key, 1); 
+                }
+            }
+            var profession = Player.SelectedBattleProfession;
+            var oldLevel = Player.GetLevel(profession);
+            Player.AddBattleXP(profession, CurrentEnemy.XpReward);
+            var newLevel = Player.GetLevel(profession);
+            if (newLevel > oldLevel) 
+            {
+                CheckForNewSkillUnlocks(profession, newLevel);
+            }
+            UpdateQuestProgress(QuestType.KillMonster, CurrentEnemy.Name, 1);
+            UpdateQuestProgress(QuestType.KillMonster, "any", 1); // 周常任务不受影响
+
+            Player.DefeatedMonsterIds.Add(CurrentEnemy.Name); SpawnNewEnemy(CurrentEnemy);
+        }
+    }
     public void StartCombat(Enemy enemyTemplate) { if (Player.CurrentAction == PlayerActionState.Combat && CurrentEnemy?.Name == enemyTemplate.Name) return; StopCurrentAction(); Player.CurrentAction = PlayerActionState.Combat; SpawnNewEnemy(enemyTemplate); }
     public void StopCurrentAction()
     {
@@ -473,6 +537,73 @@ public class GameStateService : IAsyncDisposable
             ApplyConsumableEffect(consumable);
         }
     }
+
+    /// <summary>
+    /// 核心任务进度更新逻辑
+    /// </summary>
+    private void UpdateQuestProgress(QuestType type, string targetId, int amount)
+    {
+        if (Player == null) return;
+
+        // 合并每日和周常任务列表进行检查
+        var allQuests = DailyQuests.Concat(WeeklyQuests);
+
+        foreach (var quest in allQuests)
+        {
+            // 如果任务已完成，则跳过
+            if (Player.CompletedQuestIds.Contains(quest.Id)) continue;
+
+            // 检查任务类型和目标ID是否匹配 (支持 "any" 通配符)
+            if (quest.Type == type && (quest.TargetId == targetId || quest.TargetId == "any"))
+            {
+                // 获取或初始化当前进度
+                var currentProgress = Player.QuestProgress.GetValueOrDefault(quest.Id, 0);
+
+                // 更新进度，但不超过任务要求上限
+                Player.QuestProgress[quest.Id] = Math.Min(currentProgress + amount, quest.RequiredAmount);
+            }
+        }
+    }
+
+
+    /// <summary>
+    /// 尝试完成一个任务
+    /// </summary>
+    public void TryCompleteQuest(string questId)
+    {
+        if (Player == null) return;
+
+        var quest = DailyQuests.Concat(WeeklyQuests).FirstOrDefault(q => q.Id == questId);
+        if (quest == null || Player.CompletedQuestIds.Contains(questId)) return;
+
+        // 检查进度是否达标
+        var currentProgress = Player.QuestProgress.GetValueOrDefault(questId, 0);
+        if (currentProgress >= quest.RequiredAmount)
+        {
+            // 给予奖励
+            Player.Gold += quest.GoldReward;
+            // Player.AddExperience... (如果需要奖励经验)
+
+            if (quest.ReputationReward > 0)
+            {
+                Player.Reputation[quest.Faction] = Player.Reputation.GetValueOrDefault(quest.Faction, 0) + quest.ReputationReward;
+            }
+
+            foreach (var itemReward in quest.ItemRewards)
+            {
+                AddItemToInventory(itemReward.Key, itemReward.Value);
+            }
+
+            // 标记为已完成
+            Player.CompletedQuestIds.Add(questId);
+
+            // (可选) 从进度字典中移除，节省空间
+            Player.QuestProgress.Remove(questId);
+
+            NotifyStateChanged();
+        }
+    }
+
     public void ToggleAutoSellItem(string itemId) { if (Player == null) return; if (Player.AutoSellItemIds.Contains(itemId)) { Player.AutoSellItemIds.Remove(itemId); } else { Player.AutoSellItemIds.Add(itemId); } NotifyStateChanged(); }
     public void SetBattleProfession(BattleProfession profession) { if (Player != null) { Player.SelectedBattleProfession = profession; NotifyStateChanged(); } }
     public void EquipSkill(string skillId) { if (Player == null) return; var profession = Player.SelectedBattleProfession; var equipped = Player.EquippedSkills[profession]; var skill = SkillData.GetSkillById(skillId); if (skill == null || skill.Type == SkillType.Fixed) return; if (equipped.Contains(skillId)) return; var currentSelectableSkills = equipped.Count(id => SkillData.GetSkillById(id)?.Type != SkillType.Fixed); if (currentSelectableSkills < MaxEquippedSkills) { equipped.Add(skillId); Player.SkillCooldowns[skillId] = skill.InitialCooldownRounds; NotifyStateChanged(); } }
