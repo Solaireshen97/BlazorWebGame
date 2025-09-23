@@ -565,6 +565,23 @@ namespace BlazorWebGame.Services
         /// 触发状态变更事件
         /// </summary>
         private void NotifyStateChanged() => OnStateChanged?.Invoke();
+
+        /// <summary>
+        /// 为角色生成新的敌人实例
+        /// </summary>
+        public void SpawnNewEnemyForCharacter(Player character, Enemy enemyTemplate)
+        {
+            if (character == null || enemyTemplate == null) return;
+            
+            // 查找敌人模板
+            var originalTemplate = MonsterTemplates.All.FirstOrDefault(m => m.Name == enemyTemplate.Name) ?? enemyTemplate;
+            
+            // 克隆敌人
+            character.CurrentEnemy = originalTemplate.Clone();
+            
+            // 初始化敌人技能冷却
+            InitializeEnemySkills(character.CurrentEnemy);
+        }
     }
 
     /// <summary>

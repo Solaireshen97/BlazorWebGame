@@ -137,24 +137,10 @@ public class GameStateService : IAsyncDisposable
     /// </summary>
     public void CreateParty()
     {
-        // 安全检查：确保有激活的角色，并且该角色当前不在任何队伍中。
-        if (ActiveCharacter == null || GetPartyForCharacter(ActiveCharacter.Id) != null)
+        if (ActiveCharacter != null)
         {
-            return; // 如果不满足条件，则不执行任何操作
+            _partyService.CreateParty(ActiveCharacter);
         }
-
-        // 创建一个新的队伍实例
-        var newParty = new Party
-        {
-            CaptainId = ActiveCharacter.Id,
-            MemberIds = new List<string> { ActiveCharacter.Id } // 阁长自己也是队伍的第一个成员
-        };
-
-        // 将新队伍添加到游戏状态的队伍列表中
-        Parties.Add(newParty);
-
-        // 通知UI进行刷新，以显示队伍状态的变化
-        NotifyStateChanged();
     }
 
     /// <summary>
@@ -163,60 +149,22 @@ public class GameStateService : IAsyncDisposable
     /// <param name="partyId">要加入的队伍的ID</param>
     public void JoinParty(Guid partyId)
     {
-        // 1. 安全检查 (保持不变)
-        if (ActiveCharacter == null || GetPartyForCharacter(ActiveCharacter.Id) != null)
+        if (ActiveCharacter != null)
         {
-            return;
+            _partyService.JoinParty(ActiveCharacter, partyId);
         }
-
-        // 2. 查找目标队伍
-        var partyToJoin = Parties.FirstOrDefault(p => p.Id == partyId);
-        if (partyToJoin == null)
-        {
-            return; // 队伍不存在
-        }
-
-        // --- vvv 新增：检查队伍是否已满 vvv ---
-        if (partyToJoin.MemberIds.Count >= Party.MaxMembers)
-        {
-            return; // 队伍已满，无法加入
-        }
-        // --- ^^^ 新增结束 ^^^ ---
-
-        // 3. 执行加入操作 (保持不变)
-        partyToJoin.MemberIds.Add(ActiveCharacter.Id);
-
-        // 4. 通知UI更新 (保持不变)
-        NotifyStateChanged();
     }
+
 
     /// <summary>
     /// 让当前激活的角色离开他所在的队伍。
     /// </summary>
     public void LeaveParty()
     {
-        // 1. 安全检查
-        if (ActiveCharacter == null) return;
-        var party = GetPartyForCharacter(ActiveCharacter.Id);
-        if (party == null)
+        if (ActiveCharacter != null)
         {
-            return; // 角色不在任何队伍中
+            _partyService.LeaveParty(ActiveCharacter);
         }
-
-        // 2. 判断是队长离开还是成员离开
-        if (party.CaptainId == ActiveCharacter.Id)
-        {
-            // 如果是队长离开，则解散整个队伍
-            Parties.Remove(party);
-        }
-        else
-        {
-            // 如果只是普通成员离开，则从成员列表中移除自己
-            party.MemberIds.Remove(ActiveCharacter.Id);
-        }
-
-        // 3. 通知UI更新
-        NotifyStateChanged();
     }
 
     public void StartCombat(Enemy enemyTemplate) =>_combatService.StartCombat(ActiveCharacter, enemyTemplate, GetPartyForCharacter(ActiveCharacter?.Id));
@@ -248,61 +196,42 @@ public class GameStateService : IAsyncDisposable
 
         if (party != null)
         {
-            // 团队战斗相关逻辑保持不变
-            party.CurrentEnemy = null;
+            // 停止团队战斗 - 应该委托给PartyService
+            _partyService.StopPartyAction(party);
+
+            // 处理团队成员的状态
             foreach (var memberId in party.MemberIds)
             {
                 var member = AllCharacters.FirstOrDefault(c => c.Id == memberId);
                 if (member != null)
                 {
-                    // 对于团队成员，使用ProfessionService停止其专业活动
+                    // 停止专业活动
                     _professionService.StopCurrentAction(member);
-                    member.CurrentEnemy = null;
-                    member.AttackCooldown = 0;
+
+                    // 重置战斗状态
+                    if (member.CurrentAction == PlayerActionState.Combat)
+                    {
+                        member.CurrentAction = PlayerActionState.Idle;
+                        member.CurrentEnemy = null;
+                        member.AttackCooldown = 0;
+                    }
                 }
             }
         }
         else if (character.CurrentAction == PlayerActionState.Combat)
         {
-            // 对于个人战斗状态
+            // 停止个人战斗
             character.CurrentAction = PlayerActionState.Idle;
             character.CurrentEnemy = null;
             character.AttackCooldown = 0;
         }
         else
         {
-            // 对于采集和制作状态，委托给ProfessionService
+            // 停止采集和制作活动
             _professionService.StopCurrentAction(character);
         }
 
         NotifyStateChanged();
-    }
-
-
-    private void SpawnNewEnemyForCharacter(Player character, Enemy enemyTemplate)
-    {
-        var originalTemplate = AvailableMonsters.FirstOrDefault(m => m.Name == enemyTemplate.Name) ?? enemyTemplate;
-        character.CurrentEnemy = originalTemplate.Clone();
-        character.CurrentEnemy.SkillCooldowns.Clear();
-        foreach (var skillId in character.CurrentEnemy.SkillIds)
-        {
-            var skill = SkillData.GetSkillById(skillId);
-            if (skill != null) character.CurrentEnemy.SkillCooldowns[skillId] = skill.InitialCooldownRounds;
-        }
-
-        // --- vvv 修正点：初始化敌人实例的攻击冷却 vvv ---
-        // 从设置 character.EnemyAttackCooldown 改为设置 character.CurrentEnemy.EnemyAttackCooldown
-        character.CurrentEnemy.EnemyAttackCooldown = 1.0 / character.CurrentEnemy.AttacksPerSecond;
-        // --- ^^^ 修正结束 ^^^ ---
-    }
-
-    private void SetBattleProfession(Player? character, BattleProfession profession)
-    {
-        if (character != null)
-        {
-            character.SelectedBattleProfession = profession;
-            NotifyStateChanged();
-        }
     }
 
     public async Task SaveStateAsync(Player character) =>await _characterService.SaveStateAsync(character);

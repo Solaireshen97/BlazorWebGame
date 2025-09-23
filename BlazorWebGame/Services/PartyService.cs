@@ -40,14 +40,16 @@ namespace BlazorWebGame.Services
         }
 
         /// <summary>
-        /// 使用指定的角色创建一个新队伍，该角色将成为队长。
+        /// 创建新队伍，指定角色将成为队长
         /// </summary>
-        public void CreateParty(Player character)
+        /// <param name="character">要创建队伍的角色</param>
+        /// <returns>成功创建返回true，否则返回false</returns>
+        public bool CreateParty(Player character)
         {
-            // 安全检查：确保角色当前不在任何队伍中。
+            // 安全检查：确保角色存在且不在任何队伍中
             if (character == null || GetPartyForCharacter(character.Id) != null)
             {
-                return; // 如果不满足条件，则不执行任何操作
+                return false;
             }
 
             // 创建一个新的队伍实例
@@ -57,57 +59,64 @@ namespace BlazorWebGame.Services
                 MemberIds = new List<string> { character.Id } // 队长自己也是队伍的第一个成员
             };
 
-            // 将新队伍添加到游戏状态的队伍列表中
+            // 将新队伍添加到队伍列表中
             Parties.Add(newParty);
-
-            // 通知UI进行刷新，以显示队伍状态的变化
+            
+            // 通知状态变化
             NotifyStateChanged();
+            return true;
         }
 
         /// <summary>
-        /// 让指定角色加入一个指定的队伍。
+        /// 让指定角色加入一个队伍
         /// </summary>
-        /// <param name="character">要加入的角色</param>
-        /// <param name="partyId">要加入的队伍的ID</param>
-        public void JoinParty(Player character, Guid partyId)
+        /// <param name="character">要加入队伍的角色</param>
+        /// <param name="partyId">目标队伍的ID</param>
+        /// <returns>成功加入返回true，否则返回false</returns>
+        public bool JoinParty(Player character, Guid partyId)
         {
-            // 安全检查
+            // 安全检查：角色不能为空且不能已经在队伍中
             if (character == null || GetPartyForCharacter(character.Id) != null)
             {
-                return;
+                return false;
             }
 
             // 查找目标队伍
             var partyToJoin = Parties.FirstOrDefault(p => p.Id == partyId);
             if (partyToJoin == null)
             {
-                return; // 队伍不存在
+                return false; // 队伍不存在
             }
 
             // 检查队伍是否已满
             if (partyToJoin.MemberIds.Count >= Party.MaxMembers)
             {
-                return; // 队伍已满，无法加入
+                return false; // 队伍已满，无法加入
             }
 
             // 执行加入操作
             partyToJoin.MemberIds.Add(character.Id);
-
-            // 通知UI更新
+            
+            // 通知状态变化
             NotifyStateChanged();
+            return true;
         }
 
         /// <summary>
-        /// 让指定角色离开他所在的队伍。
+        /// 让指定角色离开他所在的队伍
         /// </summary>
-        public void LeaveParty(Player character)
+        /// <param name="character">要离开队伍的角色</param>
+        /// <returns>成功离开返回true，否则返回false</returns>
+        public bool LeaveParty(Player character)
         {
-            // 安全检查
-            if (character == null) return;
+            // 安全检查：角色不能为空
+            if (character == null) return false;
+            
+            // 查找角色所在的队伍
             var party = GetPartyForCharacter(character.Id);
             if (party == null)
             {
-                return; // 角色不在任何队伍中
+                return false; // 角色不在任何队伍中
             }
 
             // 判断是队长离开还是成员离开
@@ -121,9 +130,10 @@ namespace BlazorWebGame.Services
                 // 如果只是普通成员离开，则从成员列表中移除自己
                 party.MemberIds.Remove(character.Id);
             }
-
-            // 通知UI更新
+            
+            // 通知状态变化
             NotifyStateChanged();
+            return true;
         }
         
         /// <summary>
