@@ -133,3 +133,29 @@ h3::after {
         20% 100%
     );
 }
+
+/* 添加珠宝加工专业的图标样式 */
+.profession-header[data-profession="Jewelcrafting"] h3::before {
+    /* 珠宝加工图标特性 - 菱形宝石 */
+    background-color: #40E0D0;
+    clip-path: polygon(
+        50% 0%,
+        100% 50%,
+        50% 100%,
+        0% 50%
+    );
+}
+
+/* 添加闪烁效果 */
+.profession-header[data-profession="Jewelcrafting"] h3::before {
+    animation: gem-glow 3s infinite alternate;
+}
+
+@keyframes gem-glow {
+    0% {
+        box-shadow: 0 0 2px #40E0D0;
+    }
+    100% {
+        box-shadow: 0 0 10px #40E0D0, 0 0 20px rgba(64, 224, 208, 0.5);
+    }
+}
