@@ -1,7 +1,11 @@
 @page "/battle"
 @using BlazorWebGame.Models
+@using BlazorWebGame.Models.Battles
+@using BlazorWebGame.Models.Dungeons
 @using BlazorWebGame.Models.Items
+@using BlazorWebGame.Models.Monsters
 @using BlazorWebGame.Services
+@using static BlazorWebGame.Services.CombatService
 @inject GameStateService GameState
 @implements IDisposable
 
@@ -10,22 +14,33 @@
 @if (GameState.ActiveCharacter is Player character)
 {
     var party = GameState.GetPartyForCharacter(character.Id);
-    var currentEnemy = party?.CurrentEnemy ?? character.CurrentEnemy; // 统一获取当前目标，优先队伍目标
+    var battleContext = _combatService?.GetBattleContextForPlayer(character.Id);
+    var currentEnemy = GetCurrentEnemy(character, party, battleContext);
     var isPartyMemberAndNotCaptain = party != null && party.CaptainId != character.Id;
+
     <div class="battle-page-layout">
         <!-- 怪物选择 -->
         <div class="monster-selection-area">
             @foreach (var monsterTemplate in GameState.AvailableMonsters)
             {
-                // --- vvv 核心修改：按钮状态和行为完全由团队逻辑决定 vvv ---
                 <button class="monster-select-card @(currentEnemy?.Name == monsterTemplate.Name ? "active" : "")"
-                        @onclick="() => GameState.StartCombat(monsterTemplate)"
+                        @onclick="() => StartBattle(monsterTemplate)"
                         disabled="@isPartyMemberAndNotCaptain">
                     @monsterTemplate.Name
                 </button>
-                // --- ^^^ 修改结束 ^^^ ---
+            }
+
+            <!-- 添加副本和多对多战斗选项 -->
+            @if (party != null && party.CaptainId == character.Id)
+            {
+                <div class="advanced-battle-options mt-3">
+                    <button class="btn btn-primary" @onclick="() => ShowAdvancedBattleOptions()">
+                        高级战斗选项
+                    </button>
+                </div>
             }
         </div>
+
         <div class="view-switcher d-flex justify-content-center gap-2 mb-3 border-bottom pb-3">
             <button class="btn @(_currentView == BattleView.Battle ? "btn-primary" : "btn-outline-primary")" @onclick="() => _currentView = BattleView.Battle">
                 战斗
@@ -34,12 +49,27 @@
                 队伍
             </button>
         </div>
-        <!-- vvv 核心修改：根据视图状态动态渲染内容 vvv -->
+
         @if (_currentView == BattleView.Battle)
         {
             <!-- ================= BATTLE VIEW (战斗视图) ================= -->
             <!-- 核心战斗区 -->
             <div class="battle-core-area">
+                <!-- 战斗上下文信息显示 -->
+                @if (battleContext != null)
+                {
+                    <div class="battle-context-info mb-3">
+                        <h5 class="text-center">
+                            @(battleContext.BattleType == BattleType.Dungeon ?
+                                            $"副本战斗: {GetDungeonName(battleContext.DungeonId)} (波次 {battleContext.WaveNumber})" :
+                                            "多对多战斗")
+            </h5>
+            <div class="enemy-count text-center mb-2">
+                敌人: @battleContext.Enemies.Count 个剩余
+            </div>
+        </div>
+                }
+
                 <div class="battle-container">
                     <!-- 玩家卡片 -->
                     <div class="character-card player-card">
@@ -130,7 +160,7 @@
                         }
                     </div>
 
-                    <!-- 怪物卡片（始终显示） -->
+                    <!-- 怪物卡片（在多对多战斗中显示目标敌人） -->
                     <div class="character-card enemy-card">
                         @if (currentEnemy is null)
                         {
@@ -169,6 +199,53 @@
                         }
                     </div>
                 </div>
+
+                <!-- 多对多战斗中显示其他敌人列表 -->
+                @if (battleContext != null && battleContext.Enemies.Count > 1)
+                {
+                    <div class="other-enemies-list mt-3">
+                        <h6>其他敌人:</h6>
+                        <div class="enemy-list d-flex flex-wrap gap-2">
+                            @foreach (var enemy in battleContext.Enemies.Where(e => e != currentEnemy))
+                            {
+                                <div class="enemy-mini-card p-2 border rounded"
+                                     @onclick="() => SetPlayerTarget(character.Id, enemy.Name, battleContext)">
+                                    <div class="d-flex justify-content-between">
+                                        <span>@enemy.Name</span>
+                                        <span>Lv.@enemy.Level</span>
+                                    </div>
+                                    <div class="mini-health-bar">
+                                        <div class="mini-health-fill" style="width: @(GetHealthPercentage(enemy.Health, enemy.MaxHealth))%"></div>
+                                        <span class="mini-health-text">@enemy.Health/@enemy.MaxHealth</span>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <!-- 多对多战斗中显示其他玩家列表 -->
+                @if (battleContext != null && battleContext.Players.Count > 1)
+                {
+                    <div class="other-players-list mt-3">
+                        <h6>其他玩家:</h6>
+                        <div class="player-list d-flex flex-wrap gap-2">
+                            @foreach (var player in battleContext.Players.Where(p => p.Id != character.Id))
+                            {
+                                <div class="player-mini-card p-2 border rounded @(player.IsDead ? "bg-danger text-white" : "")">
+                                    <div class="d-flex justify-content-between">
+                                        <span>@player.Name</span>
+                                        <span>@player.SelectedBattleProfession.ToChineseString()</span>
+                                    </div>
+                                    <div class="mini-health-bar">
+                                        <div class="mini-health-fill" style="width: @(GetHealthPercentage(player.Health, player.GetTotalMaxHealth()))%"></div>
+                                        <span class="mini-health-text">@player.Health/@player.GetTotalMaxHealth()</span>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
             </div>
         }
         else // _currentView == BattleView.Party
@@ -222,50 +299,111 @@
                             }
                         }
                     </ul>
+
+                    <!-- 队长可以选择进入副本 -->
+                    @if (party.CaptainId == character.Id)
+                    {
+                        <div class="dungeon-options mt-4">
+                            <h5>可用副本:</h5>
+                            <div class="dungeon-list">
+                                @foreach (var dungeon in DungeonData.AllDungeons.Where(d => CanEnterDungeon(character, party, d)))
+                                {
+                                    <div class="dungeon-card p-3 border rounded mb-2">
+                                        <h6>@dungeon.Name (推荐等级: @dungeon.RecommendedLevel)</h6>
+                                        <p>@dungeon.Description</p>
+                                        <p><small>参与人数: @dungeon.MinPlayers-@dungeon.MaxPlayers 人</small></p>
+                                        <button class="btn btn-primary btn-sm" @onclick="() => StartDungeon(dungeon.Id)">
+                                            开始副本
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
                 }
             </div>
         }
-        <!-- ^^^ 修改结束 ^^^ -->
     </div>
 
-        <!-- 详细信息 -->
-        <div class="details-area">
+    <!-- 详细信息 -->
+    <div class="details-area">
+        <div class="details-card">
+            <h5>@character.Name 属性</h5>
+            <p>攻击力: @character.GetTotalAttackPower()</p>
+            <p>攻击速度: @character.AttacksPerSecond.ToString("F2") 次/秒</p>
+        </div>
+
+        @if (currentEnemy != null)
+        {
             <div class="details-card">
-                <h5>@character.Name 属性</h5>
-                <p>攻击力: @character.GetTotalAttackPower()</p>
-                <p>攻击速度: @character.AttacksPerSecond.ToString("F2") 次/秒</p>
+                <h5>@currentEnemy.Name 属性</h5>
+                <p>攻击力: @currentEnemy.AttackPower</p>
+                <p>攻击速度: @currentEnemy.AttacksPerSecond.ToString("F2") 次/秒</p>
+                <p>经验值: @currentEnemy.XpReward</p>
+                <hr />
+                <h6>可能掉落</h6>
+                <div class="loot-table">
+                    @foreach (var lootEntry in currentEnemy.LootTable)
+                    {
+                        var item = ItemData.GetItemById(lootEntry.Key);
+                        if (item != null)
+                        {
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>@item.Name (@((lootEntry.Value * 100).ToString("F0"))%)</span>
+                                <label class="form-check-label small">
+                                    <input type="checkbox" class="form-check-input"
+                                           checked="@(character.AutoSellItemIds.Contains(item.Id))"
+                                           @onchange="() => GameState.ToggleAutoSellItem(item.Id)" />
+                                    自动出售
+                                </label>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- 高级战斗选项对话框 -->
+    @if (_showAdvancedOptions)
+    {
+        <div class="modal-backdrop" @onclick="CloseAdvancedOptions"></div>
+        <div class="advanced-battle-modal">
+            <h4>高级战斗选项</h4>
+
+            <div class="mt-3">
+                <h5>多对多战斗设置</h5>
+                <div class="form-group mb-3">
+                    <label>敌人数量</label>
+                    <input type="number" class="form-control" @bind="_multiEnemyCount" min="1" max="5" />
+                </div>
+
+                <div class="form-group mb-3">
+                    <label>选择敌人类型</label>
+                    <select class="form-control" @bind="_selectedEnemyTemplate">
+                        @foreach (var monster in GameState.AvailableMonsters)
+                        {
+                            <option value="@monster.Name">@monster.Name</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-group mb-3">
+                    <label>目标选择策略</label>
+                    <select class="form-control" @bind="_targetSelectionStrategy">
+                        <option value="@TargetSelectionStrategy.Random">随机目标</option>
+                        <option value="@TargetSelectionStrategy.LowestHealth">最低生命值</option>
+                        <option value="@TargetSelectionStrategy.HighestHealth">最高生命值</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-success" @onclick="StartMultiEnemyBattle">开始多对多战斗</button>
             </div>
 
-            @if (currentEnemy != null)
-            {
-                <div class="details-card">
-                    <h5>@currentEnemy.Name 属性</h5>
-                    <p>攻击力: @currentEnemy.AttackPower</p>
-                    <p>攻击速度: @currentEnemy.AttacksPerSecond.ToString("F2") 次/秒</p>
-                    <p>经验值: @currentEnemy.XpReward</p>
-                    <hr />
-                    <h6>可能掉落</h6>
-                    <div class="loot-table">
-                        @foreach (var lootEntry in currentEnemy.LootTable)
-                        {
-                            var item = ItemData.GetItemById(lootEntry.Key);
-                            if (item != null)
-                            {
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <span>@item.Name (@((lootEntry.Value * 100).ToString("F0"))%)</span>
-                                    <label class="form-check-label small">
-                                        <input type="checkbox" class="form-check-input"
-                                               checked="@(character.AutoSellItemIds.Contains(item.Id))"
-                                               @onchange="() => GameState.ToggleAutoSellItem(item.Id)" />
-                                        自动出售
-                                    </label>
-                                </div>
-                            }
-                        }
-                    </div>
-                </div>
-            }
+            <button class="btn btn-secondary mt-3" @onclick="CloseAdvancedOptions">关闭</button>
         </div>
+    }
+
     @if (_isPickerVisible)
     {
         <div class="modal-backdrop" @onclick="CloseQuickSlotPicker"></div>
@@ -291,15 +429,31 @@ else
 
 @code {
     private bool _isPickerVisible = false;
+    private bool _showAdvancedOptions = false;
     private int _managingSlotId;
     private ConsumableCategory _managingCategory;
     private FoodType _managingFoodType;
     private enum BattleView { Battle, Party }
     private BattleView _currentView = BattleView.Battle; // 默认显示战斗界面
 
+    // 获取CombatService实例
+    private CombatService? _combatService;
+
+    // 多对多战斗设置
+    private int _multiEnemyCount = 3;
+    private string _selectedEnemyTemplate = "";
+    private TargetSelectionStrategy _targetSelectionStrategy = TargetSelectionStrategy.LowestHealth;
+
     protected override void OnInitialized()
     {
         GameState.OnStateChanged += StateHasChanged;
+        _combatService = ServiceLocator.GetService<CombatService>();
+
+        // 设置默认敌人模板
+        if (GameState.AvailableMonsters.Any())
+        {
+            _selectedEnemyTemplate = GameState.AvailableMonsters.First().Name;
+        }
     }
 
     private double GetHealthPercentage(int current, int max)
@@ -314,6 +468,146 @@ else
         var totalCooldown = 1.0 / attacksPerSecond;
         var progress = (totalCooldown - currentCooldown) / totalCooldown;
         return Math.Clamp(progress * 100, 0, 100);
+    }
+
+    /// <summary>
+    /// 获取当前目标敌人，优先级：战斗上下文中的目标 > 团队目标 > 个人目标
+    /// </summary>
+    private Enemy? GetCurrentEnemy(Player character, Party? party, BattleContext? battleContext)
+    {
+        if (battleContext != null && battleContext.Enemies.Any())
+        {
+            // 检查玩家是否有指定目标
+            if (battleContext.PlayerTargets.TryGetValue(character.Id, out var targetName))
+            {
+                var target = battleContext.Enemies.FirstOrDefault(e => e.Name == targetName);
+                if (target != null)
+                    return target;
+            }
+
+            // 默认返回第一个敌人
+            return battleContext.Enemies.First();
+        }
+
+        // 旧系统：团队目标或个人目标
+        return party?.CurrentEnemy ?? character.CurrentEnemy;
+    }
+
+    /// <summary>
+    /// 启动战斗，根据情况使用新旧系统
+    /// </summary>
+    private void StartBattle(Enemy enemyTemplate)
+    {
+        // 使用旧系统启动战斗
+        GameState.StartCombat(enemyTemplate);
+    }
+
+    /// <summary>
+    /// 设置玩家的目标敌人
+    /// </summary>
+    private void SetPlayerTarget(string playerId, string enemyName, BattleContext battleContext)
+    {
+        if (_combatService != null && battleContext != null)
+        {
+            // 在BattleContext中设置玩家目标
+            battleContext.PlayerTargets[playerId] = enemyName;
+        }
+    }
+
+    /// <summary>
+    /// 显示高级战斗选项
+    /// </summary>
+    private void ShowAdvancedBattleOptions()
+    {
+        _showAdvancedOptions = true;
+    }
+
+    /// <summary>
+    /// 关闭高级战斗选项
+    /// </summary>
+    private void CloseAdvancedOptions()
+    {
+        _showAdvancedOptions = false;
+    }
+
+    /// <summary>
+    /// 启动多对多战斗
+    /// </summary>
+    private void StartMultiEnemyBattle()
+    {
+        if (GameState.ActiveCharacter == null || _combatService == null || string.IsNullOrEmpty(_selectedEnemyTemplate))
+            return;
+
+        var party = GameState.GetPartyForCharacter(GameState.ActiveCharacter.Id);
+
+        // 查找敌人模板
+        var enemyTemplate = GameState.AvailableMonsters.FirstOrDefault(m => m.Name == _selectedEnemyTemplate);
+        if (enemyTemplate == null)
+            return;
+
+        // 创建多个敌人
+        var enemies = new List<Enemy>();
+        for (int i = 0; i < _multiEnemyCount; i++)
+        {
+            enemies.Add(enemyTemplate.Clone());
+        }
+
+        // 使用新系统启动多对多战斗
+        _combatService.StartMultiEnemyBattle(GameState.ActiveCharacter, enemies, party);
+
+        // 关闭选项对话框
+        CloseAdvancedOptions();
+    }
+
+    /// <summary>
+    /// 启动副本战斗
+    /// </summary>
+    private void StartDungeon(string dungeonId)
+    {
+        var party = GameState.GetPartyForCharacter(GameState.ActiveCharacter?.Id);
+        if (party != null && _combatService != null)
+        {
+            _combatService.StartDungeon(party, dungeonId);
+
+            // 切换到战斗视图
+            _currentView = BattleView.Battle;
+        }
+    }
+
+    /// <summary>
+    /// 检查是否可以进入副本
+    /// </summary>
+    private bool CanEnterDungeon(Player character, Party party, Dungeon dungeon)
+    {
+        // 检查队伍人数
+        var memberCount = party.MemberIds.Count;
+        if (memberCount < dungeon.MinPlayers || memberCount > dungeon.MaxPlayers)
+            return false;
+
+        // 检查队长等级
+        if (character.GetLevel(character.SelectedBattleProfession) < dungeon.RecommendedLevel)
+            return false;
+
+        // 检查先决条件
+        foreach (var prerequisite in dungeon.Prerequisites)
+        {
+            // if (!character.CompletedDungeons.Contains(prerequisite))
+            //     return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// 获取副本名称
+    /// </summary>
+    private string GetDungeonName(string? dungeonId)
+    {
+        if (string.IsNullOrEmpty(dungeonId))
+            return "未知副本";
+
+        var dungeon = DungeonData.GetDungeonById(dungeonId);
+        return dungeon?.Name ?? "未知副本";
     }
 
     private void OpenQuickSlotPicker(ConsumableCategory category, int slotId, FoodType foodType)

@@ -321,3 +321,93 @@
     color: #6c757d;
     font-size: 0.9em;
 }
+
+/* 新增CSS样式以支持多对多战斗界面 */
+
+.battle-context-info {
+    background-color: rgba(0, 0, 0, 0.1);
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+}
+
+.mini-health-bar {
+    height: 10px;
+    background-color: #333;
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+    margin-top: 5px;
+}
+
+.mini-health-fill {
+    height: 100%;
+    background-color: #4CAF50;
+    transition: width 0.3s ease-in-out;
+}
+
+.mini-health-text {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 8px;
+    text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.8);
+}
+
+.enemy-mini-card, .player-mini-card {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+    padding: 5px;
+    min-width: 120px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+    .enemy-mini-card:hover {
+        background-color: rgba(255, 0, 0, 0.1);
+        transform: scale(1.05);
+    }
+
+    .player-mini-card.dead {
+        opacity: 0.6;
+        background-color: rgba(255, 0, 0, 0.2);
+    }
+
+.advanced-battle-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1100;
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    width: 90%;
+    max-width: 500px;
+}
+
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+}
+
+.dungeon-card {
+    background-color: rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+}
+
+    .dungeon-card:hover {
+        background-color: rgba(0, 0, 0, 0.1);
+    }

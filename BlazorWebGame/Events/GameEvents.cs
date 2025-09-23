@@ -25,7 +25,10 @@ namespace BlazorWebGame.Events
         EnemyKilled,
         PlayerDamaged,
         SkillUsed,
-        
+        DungeonWaveStarted,
+        BattleCompleted,
+        BattleDefeated,
+
         // 物品相关事件
         ItemAcquired,
         ItemSold,

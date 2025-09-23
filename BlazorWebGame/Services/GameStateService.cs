@@ -136,22 +136,25 @@ public class GameStateService : IAsyncDisposable
         {
             // 启动性能监控
             _gameLoopStopwatch.Restart();
-            
+
             // 计算上次循环后经过的时间
             double elapsedSeconds = GameLoopIntervalMs / 1000.0;
-            
+
             // 更新全局游戏状态
             UpdateGlobalGameState(elapsedSeconds);
-            
+
+            // 处理所有活跃战斗 - 添加这一行
+            _combatService.ProcessAllBattles(elapsedSeconds);
+
             // 更新所有角色
             foreach (var character in AllCharacters)
             {
                 UpdateCharacter(character, elapsedSeconds);
             }
-            
+
             // 触发UI更新
             NotifyStateChanged();
-            
+
             // 停止性能监控并记录数据
             _gameLoopStopwatch.Stop();
             RecordPerformanceMetrics();
@@ -162,7 +165,7 @@ public class GameStateService : IAsyncDisposable
             LogError(ex);
         }
     }
-    
+
     /// <summary>
     /// 更新全局游戏状态
     /// </summary>
@@ -251,16 +254,26 @@ public class GameStateService : IAsyncDisposable
                 break;
         }
     }
-    
+
     /// <summary>
     /// 处理战斗状态
     /// </summary>
     private void ProcessCombatState(Player character, double elapsedSeconds)
     {
         var party = GetPartyForCharacter(character.Id);
-        _combatService.ProcessCombat(character, elapsedSeconds, party);
+
+        // 首先检查角色是否在新的战斗系统中
+        var combatService = ServiceLocator.GetService<CombatService>();
+        var battleContext = combatService?.GetBattleContextForPlayer(character.Id);
+
+        // 如果不在新战斗系统中，使用旧的处理方法
+        if (battleContext == null)
+        {
+            _combatService.ProcessCombat(character, elapsedSeconds, party);
+        }
+        // 新战斗系统的处理在CombatService.ProcessAllBattles中完成
     }
-    
+
     /// <summary>
     /// 记录性能指标
     /// </summary>

@@ -1,5 +1,7 @@
 using BlazorWebGame.Events;
 using BlazorWebGame.Models;
+using BlazorWebGame.Models.Battles;
+using BlazorWebGame.Models.Dungeons;
 using BlazorWebGame.Models.Items;
 using BlazorWebGame.Models.Monsters;
 using BlazorWebGame.Models.Skills;
@@ -17,7 +19,7 @@ namespace BlazorWebGame.Services
         private readonly InventoryService _inventoryService;
         private List<Player> _allCharacters;
         private const double RevivalDuration = 2;
-
+        private Dictionary<Guid, BattleContext> _activeBattles = new();
         /// <summary>
         /// 状态变更事件
         /// </summary>
@@ -30,10 +32,392 @@ namespace BlazorWebGame.Services
         }
 
         /// <summary>
+        /// 获取活跃战斗上下文
+        /// </summary>
+        public BattleContext? GetBattleContextForPlayer(string playerId)
+        {
+            return _activeBattles.Values.FirstOrDefault(b => b.Players.Any(p => p.Id == playerId));
+        }
+
+        /// <summary>
+        /// 获取活跃战斗上下文
+        /// </summary>
+        public BattleContext? GetBattleContextForParty(Guid partyId)
+        {
+            return _activeBattles.Values.FirstOrDefault(b => b.Party?.Id == partyId);
+        }
+
+        /// <summary>
+        /// 处理所有活跃战斗
+        /// </summary>
+        public void ProcessAllBattles(double elapsedSeconds)
+        {
+            var battlesToRemove = new List<Guid>();
+
+            foreach (var battle in _activeBattles.Values)
+            {
+                ProcessBattle(battle, elapsedSeconds);
+
+                // 检查战斗是否完成
+                if (battle.State == BattleState.Completed)
+                {
+                    battlesToRemove.Add(battle.Id);
+                }
+            }
+
+            // 移除已完成的战斗
+            foreach (var id in battlesToRemove)
+            {
+                _activeBattles.Remove(id);
+            }
+
+            if (battlesToRemove.Any())
+            {
+                NotifyStateChanged();
+            }
+        }
+
+        /// <summary>
+        /// 处理单个战斗
+        /// </summary>
+        private void ProcessBattle(BattleContext battle, double elapsedSeconds)
+        {
+            if (battle.State != BattleState.Active)
+                return;
+
+            // 处理玩家攻击
+            foreach (var player in battle.Players.Where(p => !p.IsDead))
+            {
+                ProcessPlayerAttack(battle, player, elapsedSeconds);
+            }
+
+            // 处理敌人攻击
+            foreach (var enemy in battle.Enemies.ToList()) // 使用ToList以避免迭代时集合被修改
+            {
+                ProcessEnemyAttack(battle, enemy, elapsedSeconds);
+            }
+
+            // 检查战斗状态
+            CheckBattleStatus(battle);
+        }
+
+        /// <summary>
+        /// 处理玩家攻击
+        /// </summary>
+        private void ProcessPlayerAttack(BattleContext battle, Player player, double elapsedSeconds)
+        {
+            player.AttackCooldown -= elapsedSeconds;
+            if (player.AttackCooldown <= 0)
+            {
+                // 选择目标
+                var targetEnemy = SelectTargetForPlayer(battle, player);
+                if (targetEnemy != null)
+                {
+                    // 记录玩家的目标
+                    battle.PlayerTargets[player.Id] = targetEnemy.Name;
+
+                    // 执行攻击
+                    PlayerAttackEnemy(player, targetEnemy, battle.Party);
+                }
+
+                // 重置冷却
+                player.AttackCooldown += 1.0 / player.AttacksPerSecond;
+            }
+        }
+
+        /// <summary>
+        /// 处理敌人攻击
+        /// </summary>
+        private void ProcessEnemyAttack(BattleContext battle, Enemy enemy, double elapsedSeconds)
+        {
+            enemy.EnemyAttackCooldown -= elapsedSeconds;
+            if (enemy.EnemyAttackCooldown <= 0)
+            {
+                // 选择目标
+                var targetPlayer = SelectTargetForEnemy(battle, enemy);
+                if (targetPlayer != null)
+                {
+                    // 执行攻击
+                    EnemyAttackPlayer(enemy, targetPlayer);
+                }
+
+                // 重置冷却
+                enemy.EnemyAttackCooldown += 1.0 / enemy.AttacksPerSecond;
+            }
+        }
+
+        /// <summary>
+        /// 为玩家选择目标
+        /// </summary>
+        private Enemy? SelectTargetForPlayer(BattleContext battle, Player player)
+        {
+            // 如果没有敌人，返回null
+            if (!battle.Enemies.Any())
+                return null;
+
+            // 检查玩家是否已有目标
+            if (battle.PlayerTargets.TryGetValue(player.Id, out var targetName))
+            {
+                var existingTarget = battle.Enemies.FirstOrDefault(e => e.Name == targetName);
+                if (existingTarget != null)
+                    return existingTarget;
+            }
+
+            // 根据策略选择新目标
+            switch (battle.PlayerTargetStrategy)
+            {
+                case TargetSelectionStrategy.LowestHealth:
+                    return battle.Enemies.OrderBy(e => (double)e.Health / e.MaxHealth).FirstOrDefault();
+
+                case TargetSelectionStrategy.HighestHealth:
+                    return battle.Enemies.OrderByDescending(e => (double)e.Health / e.MaxHealth).FirstOrDefault();
+
+                case TargetSelectionStrategy.Random:
+                default:
+                    return battle.Enemies[new Random().Next(battle.Enemies.Count)];
+            }
+        }
+
+        /// <summary>
+        /// 为敌人选择目标
+        /// </summary>
+        private Player? SelectTargetForEnemy(BattleContext battle, Enemy enemy)
+        {
+            // 获取所有存活的玩家
+            var alivePlayers = battle.Players.Where(p => !p.IsDead).ToList();
+            if (!alivePlayers.Any())
+                return null;
+
+            // 根据策略选择目标
+            switch (battle.EnemyTargetStrategy)
+            {
+                case TargetSelectionStrategy.HighestThreat:
+                    // 这里简单实现，后续可以增加玩家威胁值计算
+                    return alivePlayers.OrderByDescending(p => p.GetTotalAttackPower()).FirstOrDefault();
+
+                case TargetSelectionStrategy.Random:
+                default:
+                    return alivePlayers[new Random().Next(alivePlayers.Count)];
+            }
+        }
+
+        /// <summary>
+        /// 检查战斗状态
+        /// </summary>
+        private void CheckBattleStatus(BattleContext battle)
+        {
+            if (battle.IsCompleted)
+            {
+                battle.State = BattleState.Completed;
+
+                // 如果玩家获胜，处理奖励
+                if (battle.IsVictory)
+                {
+                    HandleBattleVictory(battle);
+                }
+                else
+                {
+                    HandleBattleDefeat(battle);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 处理战斗胜利
+        /// </summary>
+        private void HandleBattleVictory(BattleContext battle)
+        {
+            // 副本战斗胜利处理
+            if (battle.BattleType == BattleType.Dungeon && !string.IsNullOrEmpty(battle.DungeonId))
+            {
+                var dungeon = DungeonData.GetDungeonById(battle.DungeonId);
+                if (dungeon != null)
+                {
+                    // 检查是否是最后一波
+                    if (battle.WaveNumber >= dungeon.Waves.Count)
+                    {
+                        // 副本完成奖励
+                        DistributeDungeonRewards(battle, dungeon);
+                    }
+                    else
+                    {
+                        // 进入下一波
+                        PrepareDungeonWave(battle, dungeon, battle.WaveNumber + 1);
+                    }
+                }
+            }
+            // 普通战斗胜利处理
+            else
+            {
+                // 根据战斗类型分配奖励
+                if (battle.BattleType == BattleType.Party && battle.Party != null)
+                {
+                    // 重置团队敌人
+                    battle.Party.CurrentEnemy = battle.Enemies.FirstOrDefault()?.Clone();
+                    if (battle.Party.CurrentEnemy != null)
+                    {
+                        InitializeEnemySkills(battle.Party.CurrentEnemy);
+                    }
+                }
+                else
+                {
+                    // 单人战斗，为每个玩家生成新敌人
+                    foreach (var player in battle.Players)
+                    {
+                        if (!player.IsDead && battle.Enemies.Any())
+                        {
+                            player.CurrentEnemy = battle.Enemies.First().Clone();
+                            if (player.CurrentEnemy != null)
+                            {
+                                InitializeEnemySkills(player.CurrentEnemy);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 触发战斗完成事件
+            var gameStateService = ServiceLocator.GetService<GameStateService>();
+            gameStateService?.RaiseEvent(GameEventType.BattleCompleted);
+        }
+
+        /// <summary>
+        /// 处理战斗失败
+        /// </summary>
+        private void HandleBattleDefeat(BattleContext battle)
+        {
+            // 触发战斗失败事件
+            var gameStateService = ServiceLocator.GetService<GameStateService>();
+            gameStateService?.RaiseEvent(GameEventType.BattleDefeated);
+        }
+
+        /// <summary>
+        /// 分配副本奖励
+        /// </summary>
+        private void DistributeDungeonRewards(BattleContext battle, Dungeon dungeon)
+        {
+            var alivePlayers = battle.Players.Where(p => !p.IsDead).ToList();
+            if (!alivePlayers.Any())
+                return;
+
+            var random = new Random();
+
+            // 分配每个奖励
+            foreach (var reward in dungeon.Rewards)
+            {
+                // 根据概率决定是否掉落
+                if (random.NextDouble() <= reward.DropChance)
+                {
+                    // 随机选择一名玩家获得物品奖励
+                    if (!string.IsNullOrEmpty(reward.ItemId) && reward.ItemQuantity > 0)
+                    {
+                        var luckyPlayer = alivePlayers[random.Next(alivePlayers.Count)];
+                        _inventoryService.AddItemToInventory(luckyPlayer, reward.ItemId, reward.ItemQuantity);
+                    }
+
+                    // 所有玩家获得金币和经验
+                    foreach (var player in alivePlayers)
+                    {
+                        // 金币奖励
+                        if (reward.Gold > 0)
+                        {
+                            player.Gold += reward.Gold;
+                        }
+
+                        // 经验奖励
+                        if (reward.Experience > 0)
+                        {
+                            var profession = player.SelectedBattleProfession;
+                            var oldLevel = player.GetLevel(profession);
+                            player.AddBattleXP(profession, reward.Experience);
+
+                            if (player.GetLevel(profession) > oldLevel)
+                            {
+                                CheckForNewSkillUnlocks(player, profession, player.GetLevel(profession));
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 更新副本完成记录
+            foreach (var player in alivePlayers)
+            {
+                //if (!player.CompletedDungeons.Contains(dungeon.Id))
+                //{
+                //    player.CompletedDungeons.Add(dungeon.Id);
+                //}
+            }
+        }
+
+        /// <summary>
+        /// 准备副本战斗波次
+        /// </summary>
+        private void PrepareDungeonWave(BattleContext battle, Dungeon dungeon, int waveNumber)
+        {
+            if (waveNumber <= 0 || waveNumber > dungeon.Waves.Count)
+                return;
+
+            var wave = dungeon.Waves[waveNumber - 1];
+            battle.WaveNumber = waveNumber;
+            battle.Enemies.Clear();
+
+            // 生成波次敌人
+            foreach (var spawnInfo in wave.Enemies)
+            {
+                var template = MonsterTemplates.All.FirstOrDefault(m => m.Name == spawnInfo.EnemyTemplateName);
+                if (template != null)
+                {
+                    for (int i = 0; i < spawnInfo.Count; i++)
+                    {
+                        var enemy = template.Clone();
+
+                        // 应用等级和属性调整
+                        if (spawnInfo.LevelAdjustment != 0)
+                        {
+                            enemy.Level += spawnInfo.LevelAdjustment;
+                            enemy.AttackPower = AdjustStatByLevel(enemy.AttackPower, spawnInfo.LevelAdjustment);
+                        }
+
+                        // 应用血量倍率
+                        if (spawnInfo.HealthMultiplier != 1.0)
+                        {
+                            enemy.MaxHealth = (int)(enemy.MaxHealth * spawnInfo.HealthMultiplier);
+                            enemy.Health = enemy.MaxHealth;
+                        }
+
+                        // 初始化技能冷却
+                        InitializeEnemySkills(enemy);
+
+                        // 添加敌人到战斗
+                        battle.Enemies.Add(enemy);
+                    }
+                }
+            }
+
+            // 设置状态为活跃
+            battle.State = BattleState.Active;
+
+            // 触发新波次事件
+            var gameStateService = ServiceLocator.GetService<GameStateService>();
+            gameStateService?.RaiseEvent(GameEventType.DungeonWaveStarted, battle.Players.FirstOrDefault());
+        }
+
+        /// <summary>
+        /// 根据等级调整属性值
+        /// </summary>
+        private int AdjustStatByLevel(int baseStat, int levelAdjustment)
+        {
+            // 简单实现：每级提升10%
+            return (int)(baseStat * (1 + 0.1 * levelAdjustment));
+        }
+
+        /// <summary>
         /// 处理角色的战斗
         /// </summary>
         public void ProcessCombat(Player character, double elapsedSeconds, Party? party)
         {
+            // 对于还在使用老系统的战斗，保持兼容
             // 死亡的角色不参与任何战斗计算
             if (character.IsDead)
                 return;
@@ -90,20 +474,20 @@ namespace BlazorWebGame.Services
         {
             // 应用技能和普通攻击
             ApplyCharacterSkills(character, enemy);
-            
+
             // 记录原始血量用于计算伤害
             int originalHealth = enemy.Health;
             enemy.Health -= character.GetTotalAttackPower();
             int damageDealt = originalHealth - enemy.Health;
-            
+
             // 触发敌人受伤事件
             var gameStateService = ServiceLocator.GetService<GameStateService>();
             gameStateService?.RaiseCombatEvent(
-                GameEventType.EnemyDamaged, 
-                character, 
-                enemy, 
-                damageDealt, 
-                null, 
+                GameEventType.EnemyDamaged,
+                character,
+                enemy,
+                damageDealt,
+                null,
                 party
             );
 
@@ -112,26 +496,47 @@ namespace BlazorWebGame.Services
             {
                 // 触发敌人死亡事件
                 gameStateService?.RaiseCombatEvent(
-                    GameEventType.EnemyKilled, 
-                    character, 
-                    enemy, 
-                    null, 
-                    null, 
+                    GameEventType.EnemyKilled,
+                    character,
+                    enemy,
+                    null,
+                    null,
                     party
                 );
-                
-                // 敌人被击败
-                var originalTemplate = MonsterTemplates.All.FirstOrDefault(m => m.Name == enemy.Name) ?? enemy;
 
-                if (party != null)
+                // 检查是否是新战斗系统中的敌人
+                var battle = _activeBattles.Values.FirstOrDefault(b => b.Enemies.Contains(enemy));
+                if (battle != null)
                 {
-                    // 团队奖励分配
-                    HandlePartyLoot(party, enemy, originalTemplate);
+                    // 从战斗中移除敌人
+                    battle.Enemies.Remove(enemy);
+
+                    // 更新玩家的目标
+                    foreach (var playerId in battle.PlayerTargets.Keys.ToList())
+                    {
+                        if (battle.PlayerTargets[playerId] == enemy.Name)
+                        {
+                            battle.PlayerTargets.Remove(playerId);
+                        }
+                    }
+
+                    // 战斗结束检查会在ProcessBattle中进行
                 }
                 else
                 {
-                    // 个人奖励分配
-                    HandleSoloLoot(character, enemy, originalTemplate);
+                    // 旧战斗系统，使用原来的逻辑
+                    var originalTemplate = MonsterTemplates.All.FirstOrDefault(m => m.Name == enemy.Name) ?? enemy;
+
+                    if (party != null)
+                    {
+                        // 团队奖励分配
+                        HandlePartyLoot(party, enemy, originalTemplate);
+                    }
+                    else
+                    {
+                        // 个人奖励分配
+                        HandleSoloLoot(character, enemy, originalTemplate);
+                    }
                 }
             }
         }
@@ -301,8 +706,117 @@ namespace BlazorWebGame.Services
                 // 个人战斗逻辑
                 HandleSoloStartCombat(character, enemyTemplate);
             }
-            
+
             NotifyStateChanged();
+        }
+
+        /// <summary>
+        /// 开始副本战斗
+        /// </summary>
+        public bool StartDungeon(Party party, string dungeonId)
+        {
+            if (party == null || string.IsNullOrEmpty(dungeonId))
+                return false;
+
+            var dungeon = DungeonData.GetDungeonById(dungeonId);
+            if (dungeon == null)
+                return false;
+
+            // 验证参与人数
+            var members = _allCharacters.Where(c => party.MemberIds.Contains(c.Id)).ToList();
+            if (members.Count < dungeon.MinPlayers || members.Count > dungeon.MaxPlayers)
+                return false;
+
+            // 创建战斗上下文
+            var battle = new BattleContext
+            {
+                BattleType = BattleType.Dungeon,
+                Party = party,
+                DungeonId = dungeonId,
+                State = BattleState.Preparing
+            };
+
+            // 添加参与的玩家
+            foreach (var member in members)
+            {
+                if (!member.IsDead)
+                {
+                    battle.Players.Add(member);
+
+                    // 设置玩家状态
+                    member.CurrentAction = PlayerActionState.Combat;
+                    member.AttackCooldown = 0;
+
+                    // 重置其他活动
+                    member.CurrentGatheringNode = null;
+                    member.CurrentRecipe = null;
+                    member.GatheringCooldown = 0;
+                    member.CraftingCooldown = 0;
+                }
+            }
+
+            // 准备第一波战斗
+            PrepareDungeonWave(battle, dungeon, 1);
+
+            // 添加到活跃战斗列表
+            _activeBattles[battle.Id] = battle;
+
+            NotifyStateChanged();
+            return true;
+        }
+
+        /// <summary>
+        /// 开始多对多普通战斗
+        /// </summary>
+        public bool StartMultiEnemyBattle(Player character, List<Enemy> enemies, Party? party = null)
+        {
+            if (character == null || enemies == null || !enemies.Any())
+                return false;
+
+            // 创建战斗上下文
+            var battle = new BattleContext
+            {
+                BattleType = party != null ? BattleType.Party : BattleType.Solo,
+                Party = party,
+                State = BattleState.Active
+            };
+
+            // 添加玩家
+            if (party != null)
+            {
+                // 团队战斗
+                var members = _allCharacters.Where(c => party.MemberIds.Contains(c.Id)).ToList();
+                foreach (var member in members)
+                {
+                    if (!member.IsDead)
+                    {
+                        battle.Players.Add(member);
+                        member.CurrentAction = PlayerActionState.Combat;
+                        member.AttackCooldown = 0;
+                    }
+                }
+            }
+            else
+            {
+                // 单人战斗
+                battle.Players.Add(character);
+                character.CurrentAction = PlayerActionState.Combat;
+                character.AttackCooldown = 0;
+            }
+
+            // 添加敌人
+            foreach (var enemyTemplate in enemies)
+            {
+                var enemy = enemyTemplate.Clone();
+                InitializeEnemySkills(enemy);
+                battle.Enemies.Add(enemy);
+            }
+
+            // 添加到活跃战斗
+            _activeBattles[battle.Id] = battle;
+
+            NotifyStateChanged();
+            return true;
         }
 
         /// <summary>
@@ -618,8 +1132,85 @@ namespace BlazorWebGame.Services
         {
             if (characters == null)
                 throw new ArgumentNullException(nameof(characters));
-                
+
             _allCharacters = characters;
+        }
+
+        /// <summary>
+        /// 副本数据静态类
+        /// </summary>
+        public static class DungeonData
+        {
+            /// <summary>
+            /// 所有可用副本
+            /// </summary>
+            public static List<Dungeon> AllDungeons { get; } = new();
+
+            /// <summary>
+            /// 通过ID获取副本
+            /// </summary>
+            public static Dungeon? GetDungeonById(string id)
+            {
+                return AllDungeons.FirstOrDefault(d => d.Id == id);
+            }
+
+            /// <summary>
+            /// 初始化副本数据
+            /// </summary>
+            static DungeonData()
+            {
+                // 示例副本数据
+                AllDungeons.Add(new Dungeon
+                {
+                    Id = "forest_ruins",
+                    Name = "森林遗迹",
+                    Description = "一个被遗忘的古代遗迹，现在被各种野生动物和强盗占据。",
+                    RecommendedLevel = 5,
+                    MinPlayers = 1,
+                    MaxPlayers = 3,
+                    Waves = new List<DungeonWave>
+                {
+                    new DungeonWave
+                    {
+                        WaveNumber = 1,
+                        Description = "入口守卫",
+                        Enemies = new List<EnemySpawnInfo>
+                        {
+                            new EnemySpawnInfo { EnemyTemplateName = "森林狼", Count = 3 },
+                            new EnemySpawnInfo { EnemyTemplateName = "强盗", Count = 1 }
+                        }
+                    },
+                    new DungeonWave
+                    {
+                        WaveNumber = 2,
+                        Description = "内部巡逻",
+                        Enemies = new List<EnemySpawnInfo>
+                        {
+                            new EnemySpawnInfo { EnemyTemplateName = "强盗", Count = 2 },
+                            new EnemySpawnInfo { EnemyTemplateName = "强盗弓箭手", Count = 2 }
+                        }
+                    },
+                    new DungeonWave
+                    {
+                        WaveNumber = 3,
+                        Description = "最终BOSS",
+                        Enemies = new List<EnemySpawnInfo>
+                        {
+                            new EnemySpawnInfo { EnemyTemplateName = "强盗头目", Count = 1, IsElite = true, HealthMultiplier = 1.5 }
+                        }
+                    }
+                },
+                    Rewards = new List<DungeonReward>
+                {
+                    new DungeonReward { Gold = 500, Experience = 1000 },
+                    new DungeonReward { ItemId = "rare_sword", ItemQuantity = 1, DropChance = 0.3 },
+                    new DungeonReward { ItemId = "healing_potion", ItemQuantity = 5, DropChance = 0.8 }
+                },
+                    CooldownHours = 24
+                });
+
+                // 可以继续添加更多副本...
+            }
         }
     }
 }
