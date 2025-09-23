@@ -1,0 +1,34 @@
+@using BlazorWebGame.Models
+
+<div class="profession-info">
+    <h3>@Title</h3>
+    <div class="profession-stats">
+        <p>
+            等级: <strong>@Level</strong>
+            (XP: @Experience)
+        </p>
+        <p>
+            采集速度加成: <strong>@((GatheringSpeedBonus * 100).ToString("F0"))%</strong>
+        </p>
+        <p>
+            额外掉落几率: <strong>@((ExtraLootChance * 100).ToString("F0"))%</strong>
+        </p>
+    </div>
+</div>
+
+@code {
+    [Parameter] 
+    public string Title { get; set; } = "";
+
+    [Parameter] 
+    public int Level { get; set; }
+
+    [Parameter] 
+    public int Experience { get; set; }
+
+    [Parameter] 
+    public double GatheringSpeedBonus { get; set; }
+
+    [Parameter] 
+    public double ExtraLootChance { get; set; }
+}

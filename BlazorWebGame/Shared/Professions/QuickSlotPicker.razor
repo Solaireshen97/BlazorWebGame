@@ -1,0 +1,44 @@
+@using BlazorWebGame.Models
+@using BlazorWebGame.Models.Items
+
+<div class="modal-backdrop" @onclick="OnClose"></div>
+<div class="quick-slot-picker">
+    <h5>选择@Title</h5>
+    <div class="picker-item-list">
+        @foreach (var item in Items)
+        {
+            <div class="picker-item" @onclick="() => OnItemSelected(item.Id)">
+                <span class="picker-item-name">@item.Name</span>
+                <span class="picker-item-count">(x@(ItemCounts.GetValueOrDefault(item.Id, 0)))</span>
+            </div>
+        }
+    </div>
+    <button class="btn btn-secondary mt-2" @onclick="OnClose">关闭</button>
+</div>
+
+@code {
+    [Parameter]
+    public string Title { get; set; } = "物品";
+    
+    [Parameter]
+    public List<Consumable> Items { get; set; } = new();
+    
+    [Parameter]
+    public Dictionary<string, int> ItemCounts { get; set; } = new();
+    
+    [Parameter]
+    public EventCallback<string> OnItemSelect { get; set; }
+    
+    [Parameter]
+    public EventCallback OnCloseRequest { get; set; }
+    
+    private async Task OnItemSelected(string itemId)
+    {
+        await OnItemSelect.InvokeAsync(itemId);
+    }
+    
+    private async Task OnClose()
+    {
+        await OnCloseRequest.InvokeAsync();
+    }
+}

@@ -1,0 +1,64 @@
+.profession-info {
+    flex-grow: 1;
+}
+
+h3 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    color: #f8b700;
+    text-shadow: 0 0 5px rgba(248, 183, 0, 0.5);
+    font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    position: relative;
+    padding-left: 35px;
+}
+
+    /* 钓鱼图标使用纯CSS创建 */
+    h3::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 3px;
+        width: 25px;
+        height: 25px;
+        background-color: #f8b700;
+        clip-path: polygon( 50% 0%, 85% 50%, 70% 100%, 30% 100%, 15% 50% );
+        box-shadow: 0 0 5px rgba(248, 183, 0, 0.5);
+    }
+
+    h3::after {
+        content: '';
+        position: absolute;
+        left: 9px;
+        top: 18px;
+        width: 7px;
+        height: 15px;
+        background-color: #f8b700;
+        border-radius: 0 0 2px 2px;
+        transform: rotate(-30deg);
+        box-shadow: 0 0 3px rgba(248, 183, 0, 0.5);
+    }
+
+.profession-stats {
+    display: flex;
+    gap: 2rem;
+    margin-top: .8rem;
+    font-size: 1rem;
+    color: #f0e6d2;
+    background-color: rgba(33, 21, 16, 0.6);
+    border: 1px solid #5c4d3c;
+    border-radius: 5px;
+    padding: 10px;
+}
+
+    .profession-stats p {
+        margin: 0;
+        padding: 5px 0;
+    }
+
+    .profession-stats strong {
+        color: #00b4ff;
+        text-shadow: 0 0 3px rgba(0, 180, 255, 0.3);
+    }

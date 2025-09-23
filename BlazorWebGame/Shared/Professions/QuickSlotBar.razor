@@ -1,0 +1,78 @@
+@using BlazorWebGame.Models
+@using BlazorWebGame.Models.Items
+@using BlazorWebGame.Services
+@inject GameStateService GameState
+
+<div class="consumable-bar">
+    <h5>@Title</h5>
+    <div class="consumable-quick-slots">
+        @for (int i = 0; i < SlotCount; i++)
+        {
+            var slotId = i;
+            <div class="quick-slot"
+                 @onclick="() => OnSlotClick(slotId)"
+                 @oncontextmenu="() => OnSlotClear(slotId)"
+                 @oncontextmenu:preventDefault>
+                @if (QuickSlots.TryGetValue(slotId, out var itemId) && !string.IsNullOrEmpty(itemId))
+                {
+                    var item = ItemData.GetItemById(itemId);
+                    if (item != null)
+                    {
+                        var cooldown = Cooldowns.GetValueOrDefault(itemId, 0);
+                        var count = GetItemCount(itemId);
+                        <div class="quick-slot-item @(count == 0 ? "depleted" : "")" title="@item.Name (@count) - 右键清空">
+                            <div class="item-icon">@item.Name.Substring(0, 1)</div>
+                            <span class="item-count">@count</span>
+                            @if (cooldown > 0)
+                            {
+                                <div class="cooldown-overlay"><span>@((int)cooldown)</span></div>
+                            }
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="quick-slot-empty" title="点击设置@Title"></div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string Title { get; set; } = "消耗品";
+    
+    [Parameter]
+    public int SlotCount { get; set; } = 2;
+    
+    [Parameter]
+    public Dictionary<int, string> QuickSlots { get; set; } = new();
+    
+    [Parameter]
+    public Dictionary<string, double> Cooldowns { get; set; } = new();
+    
+    [Parameter]
+    public List<InventorySlot> Inventory { get; set; } = new();
+    
+    [Parameter]
+    public EventCallback<int> OnSlotClicked { get; set; }
+    
+    [Parameter]
+    public EventCallback<int> OnSlotCleared { get; set; }
+    
+    private int GetItemCount(string itemId)
+    {
+        return Inventory.Where(s => s.ItemId == itemId).Sum(s => s.Quantity);
+    }
+    
+    private async Task OnSlotClick(int slotId)
+    {
+        await OnSlotClicked.InvokeAsync(slotId);
+    }
+    
+    private async Task OnSlotClear(int slotId)
+    {
+        await OnSlotCleared.InvokeAsync(slotId);
+    }
+}

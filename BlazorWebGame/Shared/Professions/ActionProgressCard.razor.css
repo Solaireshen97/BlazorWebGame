@@ -1,0 +1,88 @@
+.current-action-card, .action-blocked-card {
+    background-color: rgba(10, 33, 55, 0.7);
+    border: 2px solid #00b4ff;
+    border-radius: 8px;
+    padding: 1.5rem;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 0 15px rgba(0, 180, 255, 0.3), inset 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+    .current-action-card::before, .action-blocked-card::before {
+        content: '';
+        position: absolute;
+        top: 5px;
+        left: 5px;
+        right: 5px;
+        bottom: 5px;
+        border: 1px solid rgba(0, 180, 255, 0.5);
+        border-radius: 4px;
+        pointer-events: none;
+    }
+
+.action-blocked-card {
+    background-color: rgba(73, 33, 10, 0.7);
+    border-color: #e6b800;
+    box-shadow: 0 0 15px rgba(230, 184, 0, 0.3), inset 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+    .action-blocked-card::before {
+        border-color: rgba(230, 184, 0, 0.5);
+    }
+
+h4 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: #00b4ff;
+    text-shadow: 0 0 5px rgba(0, 180, 255, 0.5);
+    font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.action-blocked-card h4 {
+    color: #e6b800;
+    text-shadow: 0 0 5px rgba(230, 184, 0, 0.5);
+}
+
+.progress-bar-container {
+    background-color: rgba(0, 0, 0, 0.5);
+    border-radius: 4px;
+    height: 25px;
+    margin-top: 1rem;
+    overflow: hidden;
+    border: 1px solid #00b4ff;
+    position: relative;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.7);
+}
+
+.progress-bar {
+    background: linear-gradient(to right, #003366, #00b4ff);
+    height: 100%;
+    transition: width .3s linear;
+    box-shadow: 0 0 5px rgba(0, 180, 255, 0.5);
+    position: relative;
+}
+
+    .progress-bar::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 50%;
+        background: linear-gradient(to bottom, rgba(255, 255, 255, 0.2), transparent);
+    }
+
+.progress-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+    color: #fff;
+    font-weight: 700;
+    text-shadow: 0 0 3px rgba(0, 0, 0, 1);
+    z-index: 2;
+    pointer-events: none;
+}

@@ -1,0 +1,47 @@
+@using BlazorWebGame.Models
+@using BlazorWebGame.Models.Items
+
+<div class="node-card @(IsUnlocked ? "" : "locked")">
+    <div class="node-header">
+        <h5>@Node.Name</h5>
+        <span class="node-level">Lv. @Node.RequiredLevel</span>
+    </div>
+    <p class="node-description">@Node.Description</p>
+    <div class="node-footer">
+        <span>产出: @(ItemData.GetItemById(Node.ResultingItemId)?.Name)</span>
+        <span>时间: @Node.GatheringTimeSeconds 秒</span>
+    </div>
+
+    @if (IsUnlocked)
+    {
+        <button class="btn btn-success" @onclick="OnStartAction" disabled="@IsDisabled">
+            @ButtonText
+        </button>
+    }
+    else
+    {
+        <div class="lock-reason">
+            @LockReason
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public GatheringNode Node { get; set; } = null!;
+    
+    [Parameter]
+    public bool IsUnlocked { get; set; } = true;
+    
+    [Parameter]
+    public string LockReason { get; set; } = "";
+    
+    [Parameter]
+    public string ButtonText { get; set; } = "开始采集";
+    
+    [Parameter]
+    public bool IsDisabled { get; set; } = false;
+    
+    [Parameter]
+    public EventCallback OnStartAction { get; set; }
+}
