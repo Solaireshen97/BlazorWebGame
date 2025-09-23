@@ -85,6 +85,9 @@ namespace BlazorWebGame.Services
             if (battle.State != BattleState.Active)
                 return;
 
+            // 处理玩家复活倒计时
+            ProcessPlayerRevival(battle, elapsedSeconds);
+
             // 处理玩家攻击
             foreach (var player in battle.Players.Where(p => !p.IsDead))
             {
@@ -99,6 +102,26 @@ namespace BlazorWebGame.Services
 
             // 检查战斗状态
             CheckBattleStatus(battle);
+        }
+
+        /// <summary>
+        /// 处理玩家复活
+        /// </summary>
+        private void ProcessPlayerRevival(BattleContext battle, double elapsedSeconds)
+        {
+            // 只处理允许自动复活的战斗
+            if (!battle.AllowAutoRevive && battle.BattleType == BattleType.Dungeon)
+                return;
+
+            foreach (var player in battle.Players.Where(p => p.IsDead))
+            {
+                player.RevivalTimeRemaining -= elapsedSeconds;
+
+                if (player.RevivalTimeRemaining <= 0)
+                {
+                    ReviveCharacter(player);
+                }
+            }
         }
 
         /// <summary>
@@ -351,6 +374,110 @@ namespace BlazorWebGame.Services
         }
 
         /// <summary>
+        /// 智能开始战斗，根据场景自动选择合适的战斗模式
+        /// </summary>
+        public bool SmartStartBattle(Player character, Enemy enemyTemplate, Party? party = null)
+        {
+            if (character == null || enemyTemplate == null)
+                return false;
+
+            // 获取当前战斗上下文（如果存在）
+            var existingBattle = GetBattleContextForPlayer(character.Id);
+            if (existingBattle != null)
+            {
+                // 如果已经在战斗中，并且尝试战斗相同的敌人，什么都不做
+                if (existingBattle.Enemies.Any(e => e.Name == enemyTemplate.Name))
+                    return true;
+
+                // 如果已经在战斗中，但尝试战斗不同敌人，则先结束当前战斗
+                _activeBattles.Remove(existingBattle.Id);
+            }
+
+            // 判断战斗类型
+            if (party != null)
+            {
+                // 团队战斗
+                var memberCount = party.MemberIds.Count;
+
+                // 创建战斗上下文
+                var battle = new BattleContext
+                {
+                    BattleType = BattleType.Party,
+                    Party = party,
+                    State = BattleState.Active,
+                    PlayerTargetStrategy = TargetSelectionStrategy.LowestHealth,
+                    EnemyTargetStrategy = TargetSelectionStrategy.Random,
+                    AllowAutoRevive = true // 默认允许普通战斗自动复活
+                };
+
+                // 添加团队成员
+                var members = _allCharacters.Where(c => party.MemberIds.Contains(c.Id) && !c.IsDead).ToList();
+                foreach (var member in members)
+                {
+                    battle.Players.Add(member);
+
+                    // 重置当前活动
+                    ResetPlayerAction(member);
+
+                    // 设置为战斗状态
+                    member.CurrentAction = PlayerActionState.Combat;
+                    member.AttackCooldown = 0;
+                }
+
+                // 根据团队规模生成适量敌人
+                var enemyCount = DetermineEnemyCount(memberCount);
+                for (int i = 0; i < enemyCount; i++)
+                {
+                    var enemy = enemyTemplate.Clone();
+                    InitializeEnemySkills(enemy);
+                    battle.Enemies.Add(enemy);
+                }
+
+                // 添加到活跃战斗
+                _activeBattles[battle.Id] = battle;
+                NotifyStateChanged();
+                return true;
+            }
+            else
+            {
+                // 单人战斗 - 简单地使用1v1
+                if (character.CurrentAction != PlayerActionState.Combat || character.CurrentEnemy?.Name != enemyTemplate.Name)
+                {
+                    // 重置当前活动
+                    ResetPlayerAction(character);
+
+                    // 设置战斗状态
+                    character.CurrentAction = PlayerActionState.Combat;
+                    character.AttackCooldown = 0;
+                    character.CurrentEnemy = enemyTemplate.Clone();
+                    InitializeEnemySkills(character.CurrentEnemy);
+                }
+                NotifyStateChanged();
+                return true;
+            }
+        }
+        /// <summary>
+        /// 根据团队规模确定敌人数量
+        /// </summary>
+        private int DetermineEnemyCount(int memberCount)
+        {
+            // 简单逻辑：每1-2名队员对应1名敌人
+            return Math.Max(1, (memberCount + 1) / 2);
+        }
+
+        /// <summary>
+        /// 重置玩家当前动作状态
+        /// </summary>
+        private void ResetPlayerAction(Player player)
+        {
+            if (player == null) return;
+
+            player.CurrentGatheringNode = null;
+            player.CurrentRecipe = null;
+            player.GatheringCooldown = 0;
+            player.CraftingCooldown = 0;
+        }
+        /// <summary>
         /// 准备副本战斗波次
         /// </summary>
         private void PrepareDungeonWave(BattleContext battle, Dungeon dungeon, int waveNumber)
@@ -361,7 +488,7 @@ namespace BlazorWebGame.Services
             var wave = dungeon.Waves[waveNumber - 1];
             battle.WaveNumber = waveNumber;
             battle.Enemies.Clear();
-
+            battle.AllowAutoRevive = dungeon.AllowAutoRevive;
             // 生成波次敌人
             foreach (var spawnInfo in wave.Enemies)
             {
@@ -674,7 +801,17 @@ namespace BlazorWebGame.Services
                 var item = ItemData.GetItemById(buff.SourceItemId);
                 return item is Consumable consumable && consumable.Category != ConsumableCategory.Food;
             });
-            
+
+            // 检查玩家所在的战斗上下文
+            var battleContext = _activeBattles.Values.FirstOrDefault(b => b.Players.Contains(character));
+
+            // 如果玩家在多对多战斗中死亡，检查战斗是否应该继续
+            if (battleContext != null)
+            {
+                // 在下一个战斗处理周期中，CheckBattleStatus会检查是否所有玩家都死亡
+                // 根据AllowAutoRevive属性决定是否结束战斗
+            }
+
             NotifyStateChanged();
         }
 
@@ -733,7 +870,8 @@ namespace BlazorWebGame.Services
                 BattleType = BattleType.Dungeon,
                 Party = party,
                 DungeonId = dungeonId,
-                State = BattleState.Preparing
+                State = BattleState.Preparing,
+                AllowAutoRevive = true // 初始设置为允许复活，具体副本可以覆盖此设置
             };
 
             // 添加参与的玩家
@@ -1168,6 +1306,7 @@ namespace BlazorWebGame.Services
                     RecommendedLevel = 5,
                     MinPlayers = 1,
                     MaxPlayers = 3,
+                    AllowAutoRevive = true, // 森林遗迹允许自动复活
                     Waves = new List<DungeonWave>
                 {
                     new DungeonWave

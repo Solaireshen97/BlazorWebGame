@@ -58,6 +58,11 @@ namespace BlazorWebGame.Models.Dungeons
         /// 解锁需要的先决条件
         /// </summary>
         public List<string> Prerequisites { get; set; } = new();
+        
+        /// <summary>
+        /// 是否允许自动复活
+        /// </summary>
+        public bool AllowAutoRevive { get; set; } = true;
     }
 
     /// <summary>

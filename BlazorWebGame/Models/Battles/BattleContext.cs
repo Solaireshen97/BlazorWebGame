@@ -71,9 +71,29 @@ namespace BlazorWebGame.Models.Battles
         public Dictionary<string, string> PlayerTargets { get; set; } = new Dictionary<string, string>();
 
         /// <summary>
+        /// 是否允许死亡玩家自动复活
+        /// </summary>
+        public bool AllowAutoRevive { get; set; } = true;
+    
+        /// <summary>
         /// 检查战斗是否完成
         /// </summary>
-        public bool IsCompleted => Enemies.Count == 0 || !Players.Any(p => !p.IsDead);
+        public bool IsCompleted 
+        {
+            get
+            {
+                // 如果没有敌人，战斗结束
+                if (Enemies.Count == 0)
+                    return true;
+                
+                // 对于允许自动复活的战斗，只有在所有玩家死亡且战斗类型为副本时才结束
+                if (AllowAutoRevive && BattleType != BattleType.Dungeon)
+                    return false;
+                
+                // 对于副本或不允许自动复活的战斗，所有玩家死亡则结束
+                return !Players.Any(p => !p.IsDead);
+            }
+        }
 
         /// <summary>
         /// 检查是否获胜

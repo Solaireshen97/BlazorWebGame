@@ -260,15 +260,16 @@ public class GameStateService : IAsyncDisposable
     /// </summary>
     private void ProcessCombatState(Player character, double elapsedSeconds)
     {
-        var party = GetPartyForCharacter(character.Id);
-
-        // 首先检查角色是否在新的战斗系统中
+        // 无需再检查角色是否在新战斗系统中
+        // 所有战斗都会由CombatService.ProcessAllBattles统一处理
+        
+        // 只处理那些不在新战斗系统中的角色
         var combatService = ServiceLocator.GetService<CombatService>();
         var battleContext = combatService?.GetBattleContextForPlayer(character.Id);
-
-        // 如果不在新战斗系统中，使用旧的处理方法
-        if (battleContext == null)
+        
+        if (battleContext == null && character.CurrentAction == PlayerActionState.Combat)
         {
+            var party = GetPartyForCharacter(character.Id);
             _combatService.ProcessCombat(character, elapsedSeconds, party);
         }
         // 新战斗系统的处理在CombatService.ProcessAllBattles中完成
@@ -396,8 +397,13 @@ public class GameStateService : IAsyncDisposable
         }
     }
 
-    public void StartCombat(Enemy enemyTemplate) =>_combatService.StartCombat(ActiveCharacter, enemyTemplate, GetPartyForCharacter(ActiveCharacter?.Id));
+    public void StartCombat(Enemy enemyTemplate)
+    {
+        if (ActiveCharacter == null) return;
 
+        var party = GetPartyForCharacter(ActiveCharacter.Id);
+        _combatService.SmartStartBattle(ActiveCharacter, enemyTemplate, party);
+    }
     // 修改委托方法使用ProfessionService
     public void StartGathering(GatheringNode node) =>_professionService.StartGathering(ActiveCharacter, node);
 

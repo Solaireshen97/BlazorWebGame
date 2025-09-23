@@ -30,12 +30,12 @@
                 </button>
             }
 
-            <!-- 添加副本和多对多战斗选项 -->
+            <!-- 只保留副本选项的入口，因为副本是特殊的战斗类型 -->
             @if (party != null && party.CaptainId == character.Id)
             {
-                <div class="advanced-battle-options mt-3">
-                    <button class="btn btn-primary" @onclick="() => ShowAdvancedBattleOptions()">
-                        高级战斗选项
+                <div class="dungeon-options mt-3">
+                    <button class="btn btn-info" @onclick="() => _currentView = BattleView.Party">
+                        查看可用副本
                     </button>
                 </div>
             }
@@ -52,6 +52,25 @@
 
         @if (_currentView == BattleView.Battle)
         {
+            <!-- 战斗模式提示 -->
+            @if (party != null)
+            {
+                <div class="battle-mode-info mb-3 text-center small">
+                    <i class="bi bi-info-circle"></i>
+                    战斗模式: 团队战斗 (@party.MemberIds.Count 名玩家)
+                    @if (battleContext != null)
+                    {
+                        <span> - 对抗 @battleContext.Enemies.Count 名敌人</span>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="battle-mode-info mb-3 text-center small">
+                    <i class="bi bi-info-circle"></i>
+                    战斗模式: 单人战斗
+                </div>
+            }
             <!-- ================= BATTLE VIEW (战斗视图) ================= -->
             <!-- 核心战斗区 -->
             <div class="battle-core-area">
@@ -494,12 +513,17 @@ else
     }
 
     /// <summary>
-    /// 启动战斗，根据情况使用新旧系统
+    /// 启动战斗，使用智能战斗系统
     /// </summary>
     private void StartBattle(Enemy enemyTemplate)
     {
-        // 使用旧系统启动战斗
-        GameState.StartCombat(enemyTemplate);
+        if (GameState.ActiveCharacter == null || _combatService == null)
+            return;
+
+        var party = GameState.GetPartyForCharacter(GameState.ActiveCharacter.Id);
+
+        // 使用智能战斗系统
+        _combatService.SmartStartBattle(GameState.ActiveCharacter, enemyTemplate, party);
     }
 
     /// <summary>
