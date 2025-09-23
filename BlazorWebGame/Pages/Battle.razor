@@ -332,7 +332,7 @@
                         <div class="dungeon-options mt-4">
                             <h5>可用副本:</h5>
                             <div class="dungeon-list">
-                                @foreach (var dungeon in DungeonData.AllDungeons.Where(d => CanEnterDungeon(character, party, d)))
+                                @foreach (var dungeon in DungeonTemplates.All.Where(d => CanEnterDungeon(character, party, d)))
                                 {
                                     <div class="dungeon-card p-3 border rounded mb-2">
                                         <h6>@dungeon.Name (推荐等级: @dungeon.RecommendedLevel)</h6>
@@ -671,7 +671,7 @@ else
         if (string.IsNullOrEmpty(dungeonId))
             return "未知副本";
 
-        var dungeon = DungeonData.GetDungeonById(dungeonId);
+        var dungeon = DungeonTemplates.GetDungeonById(dungeonId);
         return dungeon?.Name ?? "未知副本";
     }
 

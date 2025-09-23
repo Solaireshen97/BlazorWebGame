@@ -227,7 +227,7 @@ namespace BlazorWebGame.Services
             // 如果是副本战斗，尝试从当前波次信息获取
             if (result.Count == 0 && battle.BattleType == BattleType.Dungeon && !string.IsNullOrEmpty(battle.DungeonId))
             {
-                var dungeon = DungeonData.GetDungeonById(battle.DungeonId);
+                var dungeon = DungeonTemplates.GetDungeonById(battle.DungeonId);
                 if (dungeon != null && battle.WaveNumber > 0 && battle.WaveNumber <= dungeon.Waves.Count)
                 {
                     var wave = dungeon.Waves[battle.WaveNumber - 1];
@@ -669,7 +669,7 @@ namespace BlazorWebGame.Services
             // 副本战斗胜利处理
             if (battle.BattleType == BattleType.Dungeon && !string.IsNullOrEmpty(battle.DungeonId))
             {
-                var dungeon = DungeonData.GetDungeonById(battle.DungeonId);
+                var dungeon = DungeonTemplates.GetDungeonById(battle.DungeonId);
                 if (dungeon != null)
                 {
                     // 检查是否是最后一波
@@ -1302,7 +1302,7 @@ namespace BlazorWebGame.Services
             if (party == null || string.IsNullOrEmpty(dungeonId))
                 return false;
 
-            var dungeon = DungeonData.GetDungeonById(dungeonId);
+            var dungeon = DungeonTemplates.GetDungeonById(dungeonId);
             if (dungeon == null)
                 return false;
 
@@ -1750,84 +1750,6 @@ namespace BlazorWebGame.Services
                 }
             }
             return 0;
-        }
-
-        /// <summary>
-        /// 副本数据静态类
-        /// </summary>
-        public static class DungeonData
-        {
-            /// <summary>
-            /// 所有可用副本
-            /// </summary>
-            public static List<Dungeon> AllDungeons { get; } = new();
-
-            /// <summary>
-            /// 通过ID获取副本
-            /// </summary>
-            public static Dungeon? GetDungeonById(string id)
-            {
-                return AllDungeons.FirstOrDefault(d => d.Id == id);
-            }
-
-            /// <summary>
-            /// 初始化副本数据
-            /// </summary>
-            static DungeonData()
-            {
-                // 示例副本数据
-                AllDungeons.Add(new Dungeon
-                {
-                    Id = "forest_ruins",
-                    Name = "森林遗迹",
-                    Description = "一个被遗忘的古代遗迹，现在被各种野生动物和强盗占据。",
-                    RecommendedLevel = 5,
-                    MinPlayers = 1,
-                    MaxPlayers = 3,
-                    AllowAutoRevive = true, // 森林遗迹允许自动复活
-                    Waves = new List<DungeonWave>
-                {
-                    new DungeonWave
-                    {
-                        WaveNumber = 1,
-                        Description = "入口守卫",
-                        Enemies = new List<EnemySpawnInfo>
-                        {
-                            new EnemySpawnInfo { EnemyTemplateName = "森林狼", Count = 3 },
-                            new EnemySpawnInfo { EnemyTemplateName = "强盗", Count = 1 }
-                        }
-                    },
-                    new DungeonWave
-                    {
-                        WaveNumber = 2,
-                        Description = "内部巡逻",
-                        Enemies = new List<EnemySpawnInfo>
-                        {
-                            new EnemySpawnInfo { EnemyTemplateName = "强盗", Count = 2 },
-                            new EnemySpawnInfo { EnemyTemplateName = "强盗弓箭手", Count = 2 }
-                        }
-                    },
-                    new DungeonWave
-                    {
-                        WaveNumber = 3,
-                        Description = "最终BOSS",
-                        Enemies = new List<EnemySpawnInfo>
-                        {
-                            new EnemySpawnInfo { EnemyTemplateName = "强盗头目", Count = 1, IsElite = true, HealthMultiplier = 1.5 }
-                        }
-                    }
-                },
-                    Rewards = new List<DungeonReward>
-                {
-                    new DungeonReward { Gold = 500, Experience = 1000 },
-                    new DungeonReward { ItemId = "rare_sword", ItemQuantity = 1, DropChance = 0.3 },
-                    new DungeonReward { ItemId = "healing_potion", ItemQuantity = 5, DropChance = 0.8 }
-                },
-                    CooldownHours = 24
-                });
-
-                // 可以继续添加更多副本...
-            }
         }
     }
     /// <summary>
