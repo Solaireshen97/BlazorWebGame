@@ -68,13 +68,18 @@ namespace BlazorWebGame.Services
         /// <summary>
         /// …Ë÷√ªÓ‘æΩ«…´
         /// </summary>
-        public void SetActiveCharacter(string characterId)
+        public bool SetActiveCharacter(string characterId)
         {
             var character = AllCharacters.FirstOrDefault(c => c.Id == characterId);
             if (character != null && ActiveCharacter?.Id != characterId)
             {
                 ActiveCharacter = character;
                 NotifyStateChanged();
+                return true;
+            }
+            else
+            {
+                return false; 
             }
         }
 

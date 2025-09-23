@@ -1,3 +1,4 @@
+using BlazorWebGame.Events;
 using BlazorWebGame.Models;
 using BlazorWebGame.Models.Items;
 using BlazorWebGame.Models.Monsters;
@@ -89,11 +90,36 @@ namespace BlazorWebGame.Services
         {
             // 应用技能和普通攻击
             ApplyCharacterSkills(character, enemy);
+            
+            // 记录原始血量用于计算伤害
+            int originalHealth = enemy.Health;
             enemy.Health -= character.GetTotalAttackPower();
+            int damageDealt = originalHealth - enemy.Health;
+            
+            // 触发敌人受伤事件
+            var gameStateService = ServiceLocator.GetService<GameStateService>();
+            gameStateService?.RaiseCombatEvent(
+                GameEventType.EnemyDamaged, 
+                character, 
+                enemy, 
+                damageDealt, 
+                null, 
+                party
+            );
 
             // 如果敌人血量降至0，处理战利品分配
             if (enemy.Health <= 0)
             {
+                // 触发敌人死亡事件
+                gameStateService?.RaiseCombatEvent(
+                    GameEventType.EnemyKilled, 
+                    character, 
+                    enemy, 
+                    null, 
+                    null, 
+                    party
+                );
+                
                 // 敌人被击败
                 var originalTemplate = MonsterTemplates.All.FirstOrDefault(m => m.Name == enemy.Name) ?? enemy;
 

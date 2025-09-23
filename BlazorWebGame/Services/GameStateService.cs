@@ -1,4 +1,5 @@
-﻿using BlazorWebGame.Models;
+﻿using BlazorWebGame.Events;
+using BlazorWebGame.Models;
 using BlazorWebGame.Models.Items;
 using BlazorWebGame.Models.Monsters;
 using BlazorWebGame.Utils;
@@ -34,6 +35,9 @@ public class GameStateService : IAsyncDisposable
     private int _loopCount = 0;
     private DateTime _lastPerformanceLog = DateTime.UtcNow;
 
+    // 新增事件管理器
+    private readonly GameEventManager _eventManager = new();
+
     public List<Player> AllCharacters => _characterService.AllCharacters;
     public Player? ActiveCharacter => _characterService.ActiveCharacter;
 
@@ -44,6 +48,7 @@ public class GameStateService : IAsyncDisposable
     public List<Quest> DailyQuests => _questService.DailyQuests;
     public List<Quest> WeeklyQuests => _questService.WeeklyQuests;
 
+    // 保留老的事件机制，但在内部用新系统实现
     public event Action? OnStateChanged;
 
     public GameStateService(
@@ -64,13 +69,16 @@ public class GameStateService : IAsyncDisposable
         _characterService = characterService;
         _serviceProvider = new ServiceProvider(); // 初始化服务提供者
 
-        // 订阅各个服务的状态变更事件
-        _partyService.OnStateChanged += () => NotifyStateChanged();
-        _inventoryService.OnStateChanged += () => NotifyStateChanged();
-        _combatService.OnStateChanged += () => NotifyStateChanged();
-        _professionService.OnStateChanged += () => NotifyStateChanged();
-        _characterService.OnStateChanged += () => NotifyStateChanged();
-        _questService.OnStateChanged += () => NotifyStateChanged(); // 添加遗漏的订阅
+        // 订阅各个服务的状态变更事件，转发到新的事件系统
+        _partyService.OnStateChanged += () => RaiseEvent(GameEventType.GenericStateChanged);
+        _inventoryService.OnStateChanged += () => RaiseEvent(GameEventType.GenericStateChanged);
+        _combatService.OnStateChanged += () => RaiseEvent(GameEventType.GenericStateChanged);
+        _professionService.OnStateChanged += () => RaiseEvent(GameEventType.GenericStateChanged);
+        _characterService.OnStateChanged += () => RaiseEvent(GameEventType.GenericStateChanged);
+        _questService.OnStateChanged += () => RaiseEvent(GameEventType.GenericStateChanged);
+        
+        // 为兼容性，订阅GenericStateChanged事件到旧的OnStateChanged
+        _eventManager.Subscribe(GameEventType.GenericStateChanged, _ => OnStateChanged?.Invoke());
 
         // 注册所有服务到服务定位器
         RegisterServices();
@@ -103,11 +111,21 @@ public class GameStateService : IAsyncDisposable
 
         // 启动游戏循环
         StartGameLoop();
+        
+        // 触发游戏初始化完成事件
+        RaiseEvent(GameEventType.GameInitialized);
     }
     private T GetService<T>() where T : class => _serviceProvider.GetService<T>() ?? throw new InvalidOperationException($"服务 {typeof(T).Name} 未注册");
 
 
-    public void SetActiveCharacter(string characterId) =>_characterService.SetActiveCharacter(characterId);
+    public void SetActiveCharacter(string characterId)
+    {
+        if (_characterService.SetActiveCharacter(characterId))
+        {
+            // 触发角色变更事件
+            RaiseEvent(GameEventType.ActiveCharacterChanged, ActiveCharacter);
+        }
+    }
 
     /// <summary>
     /// 游戏循环主入口点
@@ -434,5 +452,92 @@ public class GameStateService : IAsyncDisposable
 
     public async Task SaveStateAsync(Player character) =>await _characterService.SaveStateAsync(character);
     public async ValueTask DisposeAsync() { StopGameLoop(); if (_gameLoopTimer != null) { _gameLoopTimer.Dispose(); } }
-    private void NotifyStateChanged() => OnStateChanged?.Invoke();
+
+    // 新的事件系统相关方法
+    
+    /// <summary>
+    /// 订阅游戏事件
+    /// </summary>
+    /// <param name="eventType">事件类型</param>
+    /// <param name="handler">事件处理器</param>
+    public void SubscribeToEvent(GameEventType eventType, Action<GameEventArgs> handler)
+    {
+        _eventManager.Subscribe(eventType, handler);
+    }
+    
+    /// <summary>
+    /// 取消事件订阅
+    /// </summary>
+    /// <param name="eventType">事件类型</param>
+    /// <param name="handler">处理器</param>
+    /// <returns>是否成功取消</returns>
+    public bool UnsubscribeFromEvent(GameEventType eventType, Action<GameEventArgs> handler)
+    {
+        return _eventManager.Unsubscribe(eventType, handler);
+    }
+    
+    /// <summary>
+    /// 触发游戏事件
+    /// </summary>
+    /// <param name="args">事件参数</param>
+    public void RaiseEvent(GameEventArgs args)
+    {
+        _eventManager.Raise(args);
+    }
+    
+    /// <summary>
+    /// 触发简单游戏事件
+    /// </summary>
+    /// <param name="eventType">事件类型</param>
+    /// <param name="player">相关玩家，如果有</param>
+    public void RaiseEvent(GameEventType eventType, Player? player = null)
+    {
+        _eventManager.Raise(new GameEventArgs(eventType, player));
+    }
+    
+    /// <summary>
+    /// 触发战斗相关事件
+    /// </summary>
+    public void RaiseCombatEvent(
+        GameEventType eventType, 
+        Player? player = null, 
+        Enemy? enemy = null, 
+        int? damage = null, 
+        Skill? skill = null, 
+        Party? party = null)
+    {
+        _eventManager.Raise(new CombatEventArgs(eventType, player, enemy, damage, skill, party));
+    }
+    
+    /// <summary>
+    /// 触发物品相关事件
+    /// </summary>
+    public void RaiseItemEvent(
+        GameEventType eventType,
+        Player? player = null,
+        string? itemId = null,
+        Item? item = null,
+        int quantity = 1,
+        int? goldChange = null,
+        EquipmentSlot? slot = null)
+    {
+        _eventManager.Raise(new ItemEventArgs(eventType, player, itemId, item, quantity, goldChange, slot));
+    }
+    
+    /// <summary>
+    /// 触发任务相关事件
+    /// </summary>
+    public void RaiseQuestEvent(
+        GameEventType eventType,
+        Player? player = null,
+        string? questId = null,
+        Quest? quest = null,
+        int? progress = null,
+        bool isDaily = true)
+    {
+        _eventManager.Raise(new QuestEventArgs(eventType, player, questId, quest, progress, isDaily));
+    }
+    
+    // 保留原有的NotifyStateChanged方法作为兼容层
+    private void NotifyStateChanged() => RaiseEvent(GameEventType.GenericStateChanged);
 }
