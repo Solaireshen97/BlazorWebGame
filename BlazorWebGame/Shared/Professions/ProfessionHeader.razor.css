@@ -104,3 +104,18 @@ h3::after {
         0% 70%
     );
 }
+
+/* 添加裁缝专业的图标样式 */
+.profession-header[data-profession="Tailoring"] h3::before {
+    /* 裁缝图标特性 */
+    background-color: #9370DB;
+    clip-path: polygon(
+        50% 0%,
+        80% 30%,
+        100% 0%,
+        100% 100%,
+        0% 100%,
+        0% 0%,
+        20% 30%
+    );
+}

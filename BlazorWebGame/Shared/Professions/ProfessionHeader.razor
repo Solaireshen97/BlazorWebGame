@@ -7,12 +7,21 @@
             等级: <strong>@Level</strong>
             (XP: @Experience)
         </p>
-        <p>
-            采集速度加成: <strong>@((GatheringSpeedBonus * 100).ToString("F0"))%</strong>
-        </p>
-        <p>
-            额外掉落几率: <strong>@((ExtraLootChance * 100).ToString("F0"))%</strong>
-        </p>
+        @if (ProfessionType == "Tailoring" || ProfessionType == "Blacksmithing" || ProfessionType == "Alchemy")
+        {
+            <p>
+                制作速度加成: <strong>@((GatheringSpeedBonus * 100).ToString("F0"))%</strong>
+            </p>
+        }
+        else
+        {
+            <p>
+                采集速度加成: <strong>@((GatheringSpeedBonus * 100).ToString("F0"))%</strong>
+            </p>
+            <p>
+                额外掉落几率: <strong>@((ExtraLootChance * 100).ToString("F0"))%</strong>
+            </p>
+        }
     </div>
 </div>
 
