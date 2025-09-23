@@ -15,12 +15,19 @@ builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.
 builder.Services.AddSingleton<GameStorage>();
 // 注册InventoryService
 builder.Services.AddSingleton<InventoryService>();
-// 注册PartyService在GameStateService之前
+
+// 注册PartyService
 builder.Services.AddSingleton<PartyService>(sp => {
-    // PartyService需要AllCharacters引用，但这是在GameStateService初始化后才有的
     return new PartyService(new List<Player>());
 });
-builder.Services.AddSingleton<GameStateService>();
-builder.Services.AddSingleton<QuestService>();
 
+// 注册CombatService
+builder.Services.AddSingleton<CombatService>(sp => {
+    var inventoryService = sp.GetRequiredService<InventoryService>();
+    return new CombatService(inventoryService, new List<Player>());
+});
+
+builder.Services.AddSingleton<QuestService>();
+builder.Services.AddSingleton<GameStateService>();
+        
 await builder.Build().RunAsync();

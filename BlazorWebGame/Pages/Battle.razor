@@ -19,7 +19,7 @@
             {
                 // --- vvv 核心修改：按钮状态和行为完全由团队逻辑决定 vvv ---
                 <button class="monster-select-card @(currentEnemy?.Name == monsterTemplate.Name ? "active" : "")"
-                        @onclick="() => GameState.StartCombat(character, monsterTemplate)"
+                        @onclick="() => GameState.StartCombat(monsterTemplate)"
                         disabled="@isPartyMemberAndNotCaptain">
                     @monsterTemplate.Name
                 </button>
