@@ -1,274 +1,136 @@
-﻿.gathering-layout {
+﻿/* 魔兽世界风格的主题色彩 */
+:root {
+    --wow-gold: #f8b700;
+    --wow-dark: #211510;
+    --wow-light-brown: #5c4d3c;
+    --wow-parchment: #f0e6d2;
+    --wow-blue: #00b4ff;
+    --wow-dark-blue: #0a2137;
+    --wow-red: #ff2020;
+    --wow-green: #40bf40;
+}
+
+/* 主容器风格 */
+.gathering-layout {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
-}
-
-/* --- 这是关键的样式修改 --- */
-.header-section {
-    display: flex; /* 1. 设为 Flex 容器 */
-    justify-content: space-between; /* 2. 两端对齐 */
-    align-items: flex-start; /* 3. 顶部对齐 */
-    padding-bottom: 1.5rem;
-    border-bottom: 1px solid #dee2e6;
-}
-
-.profession-info {
-    flex-grow: 1; /* 让左侧信息占据多余空间 */
-}
-
-.profession-stats {
-    display: flex;
-    gap: 2rem;
-    margin-top: 0.5rem;
-    font-size: 0.9rem;
-    color: #555;
-}
-
-.consumable-bar {
-    /* 移除背景和边框，让它不再像一个独立的卡片 */
-    background-color: transparent;
-    border: none;
-    padding: 0;
-    flex-shrink: 0; /* 防止被压缩 */
-}
-
-    .consumable-bar h5 {
-        margin-top: 0;
-        margin-bottom: 0.75rem;
-        text-align: center;
-        font-size: 1rem;
-        font-weight: bold;
-        color: #6c757d;
-    }
-/* --- 修改结束 --- */
-
-.consumable-quick-slots {
-    display: flex;
-    justify-content: center;
-    gap: 0.5rem;
-}
-
-.current-action-card, .action-blocked-card {
-    background-color: #e7f1ff;
-    border: 1px solid #b3d7ff;
+    background-color: var(--wow-dark);
+    background-image: repeating-linear-gradient( 45deg, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.2) 10px, rgba(0, 0, 0, 0.3) 10px, rgba(0, 0, 0, 0.3) 20px );
+    border: 2px solid var(--wow-green); /* 草药学使用绿色边框，区别于钓鱼的金色 */
     border-radius: 8px;
-    padding: 1.5rem;
-    text-align: center;
+    padding: 20px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.5), inset 0 0 8px rgba(64, 191, 64, 0.3);
+    position: relative;
+    margin: 10px;
+    color: var(--wow-parchment);
+    font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
 }
 
-.action-blocked-card {
-    background-color: #fff3cd;
-    border-color: #ffeeba;
-}
+    .gathering-layout::before {
+        content: '';
+        position: absolute;
+        top: 5px;
+        left: 5px;
+        right: 5px;
+        bottom: 5px;
+        border: 1px solid var(--wow-green);
+        border-radius: 4px;
+        pointer-events: none;
+    }
 
-.progress-bar-container {
-    background-color: #e9ecef;
-    border-radius: 4px;
-    height: 25px;
-    margin-top: 1rem;
-    overflow: hidden;
-    border: 1px solid #ddd;
+/* 顶部区域装饰 */
+.header-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--wow-green);
     position: relative;
 }
 
-.progress-bar {
-    background-color: #28a745;
-    height: 100%;
-    transition: width 0.1s linear;
-}
+    .header-section::after {
+        content: '';
+        position: absolute;
+        bottom: -5px;
+        left: calc(50% - 60px);
+        width: 120px;
+        height: 10px;
+        background: linear-gradient(90deg, transparent, var(--wow-green), transparent);
+        border-radius: 50%;
+    }
 
-.progress-text {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: #343a40;
-    font-weight: bold;
-    text-shadow: none;
-    z-index: 2;
-    pointer-events: none;
-}
-
+/* 节点列表样式 */
 .node-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1rem;
+    gap: 1.5rem;
+    padding: 10px 0;
 }
 
-.node-card {
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    padding: 1rem;
-    background-color: white;
-    display: flex;
-    flex-direction: column;
+/* 页面标题特效 */
+::deep h3 {
+    color: var(--wow-green);
+    text-shadow: 0 0 5px rgba(64, 191, 64, 0.5);
+    font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
 }
 
-    .node-card.locked {
-        background-color: #f8f9fa;
-        color: #6c757d;
-    }
-
-.node-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 0.5rem;
-    margin-bottom: 0.5rem;
-}
-
-    .node-header h5 {
-        margin: 0;
-    }
-
-.node-level {
-    font-size: 0.9rem;
+/* 全局按钮样式 */
+::deep .btn {
+    background-color: var(--wow-light-brown);
+    border: 1px solid var(--wow-gold);
+    color: var(--wow-gold);
+    font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
+    text-transform: uppercase;
     font-weight: bold;
-    color: #007bff;
+    padding: 8px 16px;
+    transition: all 0.2s ease;
+    box-shadow: inset 0 0 5px rgba(248, 183, 0, 0.3);
 }
 
-.node-description {
-    font-size: 0.9rem;
-    flex-grow: 1;
-    margin: 0.5rem 0;
-}
-
-.node-footer {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.85rem;
-    color: #555;
-    margin-bottom: 1rem;
-}
-
-.lock-reason {
-    background-color: #e9ecef;
-    text-align: center;
-    padding: 0.5rem;
-    border-radius: 5px;
-    font-weight: bold;
-    color: #dc3545;
-}
-
-.modal-backdrop {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 1040;
-}
-
-.quick-slot-picker {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 300px;
-    background-color: white;
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-    z-index: 1050;
-    padding: 1.5rem;
-    display: flex;
-    flex-direction: column;
-}
-
-.picker-item-list {
-    max-height: 200px;
-    overflow-y: auto;
-    border: 1px solid #eee;
-    border-radius: 5px;
-}
-
-.picker-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 1rem;
-    cursor: pointer;
-    border-bottom: 1px solid #f0f0f0;
-}
-
-    .picker-item:hover {
-        background-color: #f8f9fa;
+    ::deep .btn:hover {
+        background-color: var(--wow-dark);
+        box-shadow: 0 0 10px var(--wow-gold), inset 0 0 8px rgba(248, 183, 0, 0.6);
+        transform: scale(1.05);
     }
 
-    .picker-item:last-child {
-        border-bottom: none;
+::deep .btn-success {
+    background-color: #2a4225;
+    color: #7aff7a;
+    border-color: #40bf40;
+}
+
+::deep .btn-danger {
+    background-color: #4a1f1f;
+    color: #ff9999;
+    border-color: var(--wow-red);
+}
+
+::deep .btn-warning {
+    background-color: #493b24;
+    color: #ffe066;
+    border-color: #e6b800;
+}
+
+/* 为草药学设置特殊的样式，区别于钓鱼 */
+::deep .profession-header h3::before {
+    background-color: var(--wow-green) !important;
+}
+
+/* 修改组件样式以匹配草药学主题 */
+::deep .node-card {
+    border-color: #3a5a30;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3), inset 0 0 10px rgba(64, 191, 64, 0.1);
+}
+
+    ::deep .node-card:hover {
+        border-color: var(--wow-green);
     }
 
-.picker-item-name, .picker-item-count {
-    white-space: nowrap;
-}
-
-.picker-item-count {
-    color: #6c757d;
-    font-size: 0.9em;
-}
-
-.quick-slot {
-    width: 40px;
-    height: 40px;
-    border-radius: 5px;
-    border: 1px dashed #ccc;
-    cursor: pointer;
-    position: relative;
-}
-
-.quick-slot-empty {
-    width: 100%;
-    height: 100%;
-}
-
-.quick-slot-item {
-    width: 100%;
-    height: 100%;
-    position: relative;
-    background-color: #fff;
-    border: 1px solid #adb5bd;
-    border-radius: 5px;
-}
-
-    .quick-slot-item .item-icon {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
-        height: 100%;
-        font-weight: bold;
-        font-size: 1rem;
-    }
-
-    .quick-slot-item .item-count {
-        position: absolute;
-        bottom: 1px;
-        right: 2px;
-        font-size: 0.75rem;
-        font-weight: bold;
-        color: #212529;
-        text-shadow: 0 0 2px white;
-    }
-
-    .quick-slot-item.depleted .item-icon {
-        color: #dee2e6;
-    }
-
-.cooldown-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.6);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.2rem;
-    font-weight: bold;
-    border-radius: 5px;
+::deep .node-header h5 {
+    color: var(--wow-green);
+    text-shadow: 0 0 3px rgba(64, 191, 64, 0.5);
 }

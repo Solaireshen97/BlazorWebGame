@@ -14,12 +14,12 @@
 {
     <div class="gathering-layout">
         <div class="header-section">
-            <ProfessionHeader 
-                Title="钓鱼" 
-                Level="@character.GetLevel(GatheringProfession.Fishing)"
-                Experience="@character.GatheringProfessionXP.GetValueOrDefault(GatheringProfession.Fishing)"
-                GatheringSpeedBonus="@character.GetTotalGatheringSpeedBonus()"
-                ExtraLootChance="@character.GetTotalExtraLootChance()" />
+            <ProfessionHeader Title="钓鱼"
+                              ProfessionType="Fishing"
+                              Level="@character.GetLevel(GatheringProfession.Fishing)"
+                              Experience="@character.GatheringProfessionXP.GetValueOrDefault(GatheringProfession.Fishing)"
+                              GatheringSpeedBonus="@character.GetTotalGatheringSpeedBonus()"
+                              ExtraLootChance="@character.GetTotalExtraLootChance()" />
 
             <QuickSlotBar 
                 Title="采集食物" 

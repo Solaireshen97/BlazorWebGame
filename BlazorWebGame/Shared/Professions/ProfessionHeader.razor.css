@@ -15,31 +15,31 @@ h3 {
     padding-left: 35px;
 }
 
-    /* 钓鱼图标使用纯CSS创建 */
-    h3::before {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 3px;
-        width: 25px;
-        height: 25px;
-        background-color: #f8b700;
-        clip-path: polygon( 50% 0%, 85% 50%, 70% 100%, 30% 100%, 15% 50% );
-        box-shadow: 0 0 5px rgba(248, 183, 0, 0.5);
-    }
+/* 钓鱼图标使用纯CSS创建 */
+h3::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 3px;
+    width: 25px;
+    height: 25px;
+    background-color: #f8b700;
+    clip-path: polygon( 50% 0%, 85% 50%, 70% 100%, 30% 100%, 15% 50% );
+    box-shadow: 0 0 5px rgba(248, 183, 0, 0.5);
+}
 
-    h3::after {
-        content: '';
-        position: absolute;
-        left: 9px;
-        top: 18px;
-        width: 7px;
-        height: 15px;
-        background-color: #f8b700;
-        border-radius: 0 0 2px 2px;
-        transform: rotate(-30deg);
-        box-shadow: 0 0 3px rgba(248, 183, 0, 0.5);
-    }
+h3::after {
+    content: '';
+    position: absolute;
+    left: 9px;
+    top: 18px;
+    width: 7px;
+    height: 15px;
+    background-color: #f8b700;
+    border-radius: 0 0 2px 2px;
+    transform: rotate(-30deg);
+    box-shadow: 0 0 3px rgba(248, 183, 0, 0.5);
+}
 
 .profession-stats {
     display: flex;
@@ -53,12 +53,54 @@ h3 {
     padding: 10px;
 }
 
-    .profession-stats p {
-        margin: 0;
-        padding: 5px 0;
-    }
+.profession-stats p {
+    margin: 0;
+    padding: 5px 0;
+}
 
-    .profession-stats strong {
-        color: #00b4ff;
-        text-shadow: 0 0 3px rgba(0, 180, 255, 0.3);
-    }
+.profession-stats strong {
+    color: #00b4ff;
+    text-shadow: 0 0 3px rgba(0, 180, 255, 0.3);
+}
+
+/* 现有代码保持不变... */
+
+/* 添加特定职业的图标变化 */
+.profession-header[data-profession="Fishing"] h3::before {
+    /* 钓鱼图标特性 */
+    background-color: #00b4ff;
+    clip-path: polygon(
+        50% 0%, 
+        85% 50%, 
+        70% 100%, 
+        30% 100%, 
+        15% 50%
+    );
+}
+
+.profession-header[data-profession="Herbalist"] h3::before {
+    /* 草药学图标特性 */
+    background-color: #40bf40;
+    clip-path: polygon(
+        50% 0%, 
+        65% 25%, 
+        100% 50%,
+        65% 75%,
+        50% 100%,
+        35% 75%,
+        0% 50%,
+        35% 25%
+    );
+}
+
+.profession-header[data-profession="Mining"] h3::before {
+    /* 采矿图标特性 */
+    background-color: #c07800;
+    clip-path: polygon(
+        0% 0%,
+        100% 0%,
+        100% 70%,
+        50% 100%,
+        0% 70%
+    );
+}
