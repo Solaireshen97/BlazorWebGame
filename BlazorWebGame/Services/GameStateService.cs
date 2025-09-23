@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using System.Timers;
 
@@ -15,18 +16,17 @@ public class GameStateService : IAsyncDisposable
 {
     private readonly GameStorage _gameStorage;
     private readonly QuestService _questService;
+    private readonly PartyService _partyService; // 新增
     private System.Timers.Timer? _gameLoopTimer;
     private const int GameLoopIntervalMs = 100;
     private const double RevivalDuration = 2;
 
-    // --- vvv 核心架构变更 vvv ---
     public List<Player> AllCharacters { get; private set; } = new();
     public Player? ActiveCharacter { get; private set; }
-    // --- ^^^ 变更结束 ^^^ ---
-    /// <summary>
-    /// 游戏中存在的所有队伍列表。
-    /// </summary>
-    public List<Party> Parties { get; private set; } = new();
+    
+    // 移除Parties属性，改为从PartyService获取
+    public List<Party> Parties => _partyService.Parties;
+    
     public List<Enemy> AvailableMonsters => MonsterTemplates.All;
     public List<GatheringNode> AvailableGatheringNodes => GatheringData.AllNodes;
     public const int MaxEquippedSkills = 4;
@@ -35,10 +35,15 @@ public class GameStateService : IAsyncDisposable
 
     public event Action? OnStateChanged;
 
-    public GameStateService(GameStorage gameStorage, QuestService questService)
+    // 修改构造函数，注入PartyService
+    public GameStateService(GameStorage gameStorage, QuestService questService, PartyService partyService)
     {
         _gameStorage = gameStorage;
         _questService = questService;
+        _partyService = partyService;
+        
+        // 订阅PartyService的状态变更事件
+        _partyService.OnStateChanged += () => NotifyStateChanged();
     }
 
     public async Task InitializeAsync()
@@ -59,6 +64,10 @@ public class GameStateService : IAsyncDisposable
             character.EnsureDataConsistency();
             InitializePlayerState(character);
         }
+
+        // 向PartyService提供角色列表引用
+        typeof(PartyService).GetField("_allCharacters", BindingFlags.NonPublic | BindingFlags.Instance)
+            ?.SetValue(_partyService, AllCharacters);
 
         DailyQuests = _questService.GetDailyQuests();
         WeeklyQuests = _questService.GetWeeklyQuests();
@@ -129,15 +138,10 @@ public class GameStateService : IAsyncDisposable
         });
     }
 
-    /// <summary>
-    /// 根据角色ID查找他所在的队伍。
-    /// 如果角色不在任何队伍中，则返回 null。
-    /// </summary>
-    /// <param name="characterId">要查找的角色ID</param>
-    /// <returns>角色所在的队伍对象，或 null</returns>
+    // 删除原来的GetPartyForCharacter方法，改用PartyService的方法
     public Party? GetPartyForCharacter(string characterId)
     {
-        return Parties.FirstOrDefault(p => p.MemberIds.Contains(characterId));
+        return _partyService.GetPartyForCharacter(characterId);
     }
 
     /// <summary>
@@ -155,7 +159,7 @@ public class GameStateService : IAsyncDisposable
         var newParty = new Party
         {
             CaptainId = ActiveCharacter.Id,
-            MemberIds = new List<string> { ActiveCharacter.Id } // 队长自己也是队伍的第一个成员
+            MemberIds = new List<string> { ActiveCharacter.Id } // 阁长自己也是队伍的第一个成员
         };
 
         // 将新队伍添加到游戏状态的队伍列表中
