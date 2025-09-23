@@ -14,7 +14,7 @@ namespace BlazorWebGame.Services
     public class CombatService
     {
         private readonly InventoryService _inventoryService;
-        private readonly List<Player> _allCharacters;
+        private List<Player> _allCharacters;
         private const double RevivalDuration = 2;
 
         /// <summary>
@@ -555,10 +555,12 @@ namespace BlazorWebGame.Services
         {
             if (character == null) return;
             
+            // 直接使用ServiceLocator获取QuestService
             var questService = ServiceLocator.GetService<QuestService>();
-            if (questService == null) return;
-            
-            questService.UpdateQuestProgress(character, type, targetId, amount);
+            if (questService != null)
+            {
+                questService.UpdateQuestProgress(character, type, targetId, amount);
+            }
         }
 
         /// <summary>
@@ -582,26 +584,16 @@ namespace BlazorWebGame.Services
             // 初始化敌人技能冷却
             InitializeEnemySkills(character.CurrentEnemy);
         }
-    }
 
-    /// <summary>
-    /// 服务定位器，用于获取其他服务实例
-    /// </summary>
-    public static class ServiceLocator
-    {
-        private static readonly Dictionary<Type, object> _services = new();
-
-        public static void RegisterService<T>(T service) where T : class
+        /// <summary>
+        /// 设置所有角色列表
+        /// </summary>
+        public void SetAllCharacters(List<Player> characters)
         {
-            _services[typeof(T)] = service;
-        }
-
-        public static T? GetService<T>() where T : class
-        {
-            if (_services.TryGetValue(typeof(T), out var service))
-                return (T)service;
+            if (characters == null)
+                throw new ArgumentNullException(nameof(characters));
                 
-            return null;
+            _allCharacters = characters;
         }
     }
 }

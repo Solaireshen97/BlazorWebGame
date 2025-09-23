@@ -21,6 +21,7 @@ public class GameStateService : IAsyncDisposable
     private readonly CombatService _combatService;
     private readonly ProfessionService _professionService;
     private readonly CharacterService _characterService;
+    private readonly IServiceProvider _serviceProvider;
     private System.Timers.Timer? _gameLoopTimer;
     private const int GameLoopIntervalMs = 100;
     private const double RevivalDuration = 2;
@@ -53,6 +54,7 @@ public class GameStateService : IAsyncDisposable
         _combatService = combatService;
         _professionService = professionService;
         _characterService = characterService;
+        _serviceProvider = new ServiceProvider(); // 初始化服务提供者
 
         // 订阅各个服务的状态变更事件
         _partyService.OnStateChanged += () => NotifyStateChanged();
@@ -60,9 +62,26 @@ public class GameStateService : IAsyncDisposable
         _combatService.OnStateChanged += () => NotifyStateChanged();
         _professionService.OnStateChanged += () => NotifyStateChanged();
         _characterService.OnStateChanged += () => NotifyStateChanged();
+        _questService.OnStateChanged += () => NotifyStateChanged(); // 添加遗漏的订阅
 
-        // 注册服务到服务定位器
+        // 注册所有服务到服务定位器
+        RegisterServices();
+    }
+
+    /// <summary>
+    /// 注册所有服务到服务定位器
+    /// </summary>
+    private void RegisterServices()
+    {
+        ServiceLocator.Initialize();
+        ServiceLocator.RegisterService(_gameStorage);
         ServiceLocator.RegisterService(_questService);
+        ServiceLocator.RegisterService(_partyService);
+        ServiceLocator.RegisterService(_inventoryService);
+        ServiceLocator.RegisterService(_combatService);
+        ServiceLocator.RegisterService(_professionService);
+        ServiceLocator.RegisterService(_characterService);
+        ServiceLocator.RegisterService(this); // 注册GameStateService自身
     }
 
     public async Task InitializeAsync()
@@ -70,21 +89,18 @@ public class GameStateService : IAsyncDisposable
         // 初始化角色系统
         await _characterService.InitializeAsync();
 
-        // 向PartyService提供角色列表引用
-        typeof(PartyService).GetField("_allCharacters", BindingFlags.NonPublic | BindingFlags.Instance)
-            ?.SetValue(_partyService, AllCharacters);
+        // 不再使用反射，而是使用公开的API来设置角色引用
+        _partyService.SetAllCharacters(AllCharacters);
+        _combatService.SetAllCharacters(AllCharacters);
 
-        // 向CombatService提供角色列表引用
-        typeof(CombatService).GetField("_allCharacters", BindingFlags.NonPublic | BindingFlags.Instance)
-            ?.SetValue(_combatService, AllCharacters);
-
-        // 不再需要初始化DailyQuests和WeeklyQuests，因为它们直接使用QuestService的属性
-
+        // 启动游戏循环
         _gameLoopTimer = new System.Timers.Timer(GameLoopIntervalMs);
         _gameLoopTimer.Elapsed += GameLoopTick;
         _gameLoopTimer.AutoReset = true;
         _gameLoopTimer.Start();
     }
+    private T GetService<T>() where T : class => _serviceProvider.GetService<T>() ?? throw new InvalidOperationException($"服务 {typeof(T).Name} 未注册");
+
 
     public void SetActiveCharacter(string characterId) =>_characterService.SetActiveCharacter(characterId);
 

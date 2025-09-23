@@ -21,7 +21,7 @@ namespace BlazorWebGame.Services
         public event Action? OnStateChanged;
 
         // 所有玩家引用 - 由GameStateService提供
-        private readonly List<Player> _allCharacters;
+        private List<Player> _allCharacters;
 
         public PartyService(List<Player> allCharacters)
         {
@@ -145,6 +145,17 @@ namespace BlazorWebGame.Services
             
             // 清除队伍的战斗目标
             party.CurrentEnemy = null;
+        }
+
+        /// <summary>
+        /// 设置所有角色列表
+        /// </summary>
+        public void SetAllCharacters(List<Player> characters)
+        {
+            if (characters == null)
+                throw new ArgumentNullException(nameof(characters));
+            
+            _allCharacters = characters;
         }
 
         /// <summary>
