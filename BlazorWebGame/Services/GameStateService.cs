@@ -1,4 +1,5 @@
 ﻿using BlazorWebGame.Models;
+using BlazorWebGame.Models.Items;
 using BlazorWebGame.Utils;
 using System;
 using System.Collections.Generic;
