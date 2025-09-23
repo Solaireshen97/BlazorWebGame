@@ -57,10 +57,17 @@
             {
                 <div class="battle-mode-info mb-3 text-center small">
                     <i class="bi bi-info-circle"></i>
-                    战斗模式: 团队战斗 (@party.MemberIds.Count 名玩家)
-                    @if (battleContext != null)
+                    @if (_combatService?.GetBattleContextForPlayer(character.Id) != null)
                     {
-                        <span> - 对抗 @battleContext.Enemies.Count 名敌人</span>
+                        <span>战斗模式: @GetBattleModeText(character) - 自动战斗中</span>
+                    }
+                    else if (_isBattleRefreshing(character.Id))
+                    {
+                        <span>战斗冷却中: @GetBattleRefreshTime(character.Id).ToString("F1")秒后自动开始下一场战斗</span>
+                    }
+                    else
+                    {
+                        <span>战斗模式: @GetBattleModeText(character) - 等待开始</span>
                     }
                 </div>
             }
@@ -472,6 +479,40 @@ else
         if (GameState.AvailableMonsters.Any())
         {
             _selectedEnemyTemplate = GameState.AvailableMonsters.First().Name;
+        }
+    }
+
+    // 添加检查战斗刷新状态的方法
+    private bool _isBattleRefreshing(string playerId)
+    {
+        if (_combatService == null) return false;
+
+        // 通过反射或者添加公开的API来检查战斗刷新状态
+        // 这里假设CombatService有一个IsPlayerInBattleRefresh方法
+        return _combatService.IsPlayerInBattleRefresh(playerId);
+    }
+
+    // 添加获取战斗刷新倒计时的方法
+    private double GetBattleRefreshTime(string playerId)
+    {
+        if (_combatService == null) return 0;
+
+        // 通过反射或者添加公开的API来获取战斗刷新倒计时
+        // 这里假设CombatService有一个GetPlayerBattleRefreshTime方法
+        return _combatService.GetPlayerBattleRefreshTime(playerId);
+    }
+
+    // 获取战斗模式文本
+    private string GetBattleModeText(Player character)
+    {
+        var party = GameState.GetPartyForCharacter(character.Id);
+        if (party != null)
+        {
+            return $"团队战斗 ({party.MemberIds.Count} 名玩家)";
+        }
+        else
+        {
+            return "单人战斗";
         }
     }
 

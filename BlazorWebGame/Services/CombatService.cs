@@ -20,6 +20,13 @@ namespace BlazorWebGame.Services
         private List<Player> _allCharacters;
         private const double RevivalDuration = 2;
         private Dictionary<Guid, BattleContext> _activeBattles = new();
+
+        // 新增战斗刷新冷却常量
+        private const double BattleRefreshCooldown = 3.0; // 战斗结束后等待3秒再开始新战斗
+
+        // 跟踪战斗刷新状态的字典
+        private Dictionary<Guid, BattleRefreshState> _battleRefreshStates = new();
+
         /// <summary>
         /// 状态变更事件
         /// </summary>
@@ -53,14 +60,62 @@ namespace BlazorWebGame.Services
         public void ProcessAllBattles(double elapsedSeconds)
         {
             var battlesToRemove = new List<Guid>();
+            var refreshesToRemove = new List<Guid>();
 
+            // 处理活跃战斗
             foreach (var battle in _activeBattles.Values)
             {
+                // 在处理战斗之前，先保存敌人信息（以防战斗结束后丢失）
+                var enemyInfosBeforeBattle = CollectEnemyInfosFromCurrentBattle(battle);
+
                 ProcessBattle(battle, elapsedSeconds);
 
                 // 检查战斗是否完成
                 if (battle.State == BattleState.Completed)
                 {
+                    // 使用之前保存的敌人信息，如果当前收集失败的话
+                    var enemyInfos = CollectEnemyInfos(battle);
+
+                    if (!enemyInfos.Any() && enemyInfosBeforeBattle.Any())
+                    {
+                        enemyInfos = enemyInfosBeforeBattle;
+                    }
+
+                    // 如果还是没有敌人信息，创建默认的
+                    if (!enemyInfos.Any() && battle.BattleType != BattleType.Dungeon)
+                    {
+                        if (battle.Players.Any())
+                        {
+                            var player = battle.Players.First();
+                            var playerLevel = player.GetLevel(player.SelectedBattleProfession);
+
+                            var suitableEnemy = MonsterTemplates.All
+                                .Where(m => Math.Abs(m.Level - playerLevel) <= 2)
+                                .OrderBy(m => Math.Abs(m.Level - playerLevel))
+                                .FirstOrDefault();
+
+                            if (suitableEnemy != null)
+                            {
+                                enemyInfos.Add(new EnemyInfo
+                                {
+                                    Name = suitableEnemy.Name,
+                                    Count = battle.BattleType == BattleType.Party ?
+                                        DetermineEnemyCount(battle.Players.Count) : 1
+                                });
+                            }
+                        }
+                    }
+
+                    // 创建刷新状态，保存完整的敌人信息
+                    _battleRefreshStates[battle.Id] = new BattleRefreshState
+                    {
+                        OriginalBattle = battle,
+                        RemainingCooldown = BattleRefreshCooldown,
+                        BattleType = battle.BattleType,
+                        EnemyInfos = enemyInfos,
+                        DungeonId = battle.DungeonId
+                    };
+
                     battlesToRemove.Add(battle.Id);
                 }
             }
@@ -71,10 +126,371 @@ namespace BlazorWebGame.Services
                 _activeBattles.Remove(id);
             }
 
-            if (battlesToRemove.Any())
+            // 处理刷新中的战斗
+            foreach (var kvp in _battleRefreshStates)
+            {
+                var refreshState = kvp.Value;
+                refreshState.RemainingCooldown -= elapsedSeconds;
+
+                // 刷新时间到，开始新战斗
+                if (refreshState.RemainingCooldown <= 0)
+                {
+                    StartNewBattleAfterCooldown(refreshState);
+                    refreshesToRemove.Add(kvp.Key);
+                }
+            }
+
+            // 移除已刷新的战斗
+            foreach (var id in refreshesToRemove)
+            {
+                _battleRefreshStates.Remove(id);
+            }
+
+            if (battlesToRemove.Any() || refreshesToRemove.Any())
             {
                 NotifyStateChanged();
             }
+        }
+
+        /// <summary>
+        /// 从当前战斗中收集敌人信息（战斗进行中版本）
+        /// </summary>
+        private List<EnemyInfo> CollectEnemyInfosFromCurrentBattle(BattleContext battle)
+        {
+            var result = new List<EnemyInfo>();
+
+            // 如果战斗中有敌人，直接收集
+            if (battle.Enemies.Any())
+            {
+                var groupedEnemies = battle.Enemies.GroupBy(e => e.Name);
+                foreach (var group in groupedEnemies)
+                {
+                    result.Add(new EnemyInfo
+                    {
+                        Name = group.Key,
+                        Count = group.Count()
+                    });
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// 收集战斗中的敌人信息
+        /// </summary>
+        private List<EnemyInfo> CollectEnemyInfos(BattleContext battle)
+        {
+            var result = new List<EnemyInfo>();
+
+            // 如果战斗中还有敌人，直接收集
+            if (battle.Enemies.Any())
+            {
+                // 按敌人类型分组并计数
+                var groupedEnemies = battle.Enemies.GroupBy(e => e.Name);
+                foreach (var group in groupedEnemies)
+                {
+                    result.Add(new EnemyInfo
+                    {
+                        Name = group.Key,
+                        Count = group.Count()
+                    });
+                }
+                return result; // 直接返回，不需要继续查找
+            }
+
+            // 从玩家当前敌人或队伍当前敌人获取
+            if (battle.Party?.CurrentEnemy != null)
+            {
+                result.Add(new EnemyInfo
+                {
+                    Name = battle.Party.CurrentEnemy.Name,
+                    Count = battle.BattleType == BattleType.Party ?
+                        DetermineEnemyCount(battle.Players.Count) : 1
+                });
+                return result;
+            }
+
+            // 检查玩家的当前敌人
+            foreach (var player in battle.Players)
+            {
+                if (player.CurrentEnemy != null && !result.Any(e => e.Name == player.CurrentEnemy.Name))
+                {
+                    result.Add(new EnemyInfo
+                    {
+                        Name = player.CurrentEnemy.Name,
+                        Count = 1
+                    });
+                }
+            }
+
+            // 如果是副本战斗，尝试从当前波次信息获取
+            if (result.Count == 0 && battle.BattleType == BattleType.Dungeon && !string.IsNullOrEmpty(battle.DungeonId))
+            {
+                var dungeon = DungeonData.GetDungeonById(battle.DungeonId);
+                if (dungeon != null && battle.WaveNumber > 0 && battle.WaveNumber <= dungeon.Waves.Count)
+                {
+                    var wave = dungeon.Waves[battle.WaveNumber - 1];
+                    foreach (var spawnInfo in wave.Enemies)
+                    {
+                        result.Add(new EnemyInfo
+                        {
+                            Name = spawnInfo.EnemyTemplateName,
+                            Count = spawnInfo.Count
+                        });
+                    }
+                }
+            }
+
+            return result;
+        }
+        /// <summary>
+        /// 获取最后一个敌人的名称
+        /// </summary>
+        private string? GetLastEnemyName(BattleContext battle)
+        {
+            // 首先检查战斗中是否有敌人模板（虽然可能已被击败）
+            if (battle.Party?.CurrentEnemy != null)
+            {
+                return battle.Party.CurrentEnemy.Name;
+            }
+
+            // 检查玩家的当前敌人
+            foreach (var player in battle.Players)
+            {
+                if (player.CurrentEnemy != null)
+                {
+                    return player.CurrentEnemy.Name;
+                }
+            }
+
+            // 如果都没有，尝试从原始敌人列表中获取（应该已经为空，但以防万一）
+            return battle.Enemies.FirstOrDefault()?.Name;
+        }
+        /// <summary>
+        /// 冷却结束后开始新战斗
+        /// </summary>
+        private void StartNewBattleAfterCooldown(BattleRefreshState refreshState)
+        {
+            var originalBattle = refreshState.OriginalBattle;
+
+            // 检查是否有有效的玩家
+            if (!originalBattle.Players.Any(p => !p.IsDead))
+                return;
+
+            // 根据不同的战斗类型处理
+            switch (refreshState.BattleType)
+            {
+                case BattleType.Dungeon:
+                    // 副本结束后，尝试开启同一个副本的下一次挑战
+                    if (!string.IsNullOrEmpty(refreshState.DungeonId))
+                    {
+                        StartNextDungeonRun(originalBattle, refreshState.DungeonId);
+                    }
+                    break;
+
+                case BattleType.Party:
+                case BattleType.Solo:
+                    // 开启相似的战斗
+                    StartSimilarBattle(originalBattle, refreshState.EnemyInfos);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// 开启一个与之前相似的战斗
+        /// </summary>
+        private void StartSimilarBattle(BattleContext originalBattle, List<EnemyInfo> enemyInfos)
+        {
+            // 确保有玩家和敌人信息
+            var party = originalBattle.Party;
+            var alivePlayers = originalBattle.Players.Where(p => !p.IsDead).ToList();
+
+            if (!alivePlayers.Any())
+                return;
+
+            // 准备敌人列表
+            var enemies = new List<Enemy>();
+
+            // 如果提供了敌人信息，使用它创建敌人
+            if (enemyInfos != null && enemyInfos.Any())
+            {
+                foreach (var info in enemyInfos)
+                {
+                    if (string.IsNullOrEmpty(info.Name))
+                        continue;
+
+                    var template = MonsterTemplates.All.FirstOrDefault(m => m.Name == info.Name);
+                    if (template != null)
+                    {
+                        for (int i = 0; i < info.Count; i++)
+                        {
+                            enemies.Add(template.Clone());
+                        }
+                    }
+                }
+            }
+
+            // 如果没有有效的敌人信息，尝试根据玩家等级创建敌人
+            if (!enemies.Any())
+            {
+                var player = alivePlayers.First();
+                var playerLevel = player.GetLevel(player.SelectedBattleProfession);
+
+                var suitableEnemy = MonsterTemplates.All
+                    .Where(m => Math.Abs(m.Level - playerLevel) <= 2)
+                    .OrderBy(m => Math.Abs(m.Level - playerLevel))
+                    .FirstOrDefault();
+
+                if (suitableEnemy != null)
+                {
+                    int count = party != null ?
+                        DetermineEnemyCount(alivePlayers.Count) : 1;
+
+                    for (int i = 0; i < count; i++)
+                    {
+                        enemies.Add(suitableEnemy.Clone());
+                    }
+                }
+            }
+
+            // 确保至少有一个敌人
+            if (!enemies.Any())
+                return;
+
+            // 开启新战斗
+            StartMultiEnemyBattle(alivePlayers.First(), enemies, party);
+        }
+
+        /// <summary>
+        /// 开始下一次副本挑战
+        /// </summary>
+        private void StartNextDungeonRun(BattleContext originalBattle, string dungeonId)
+        {
+            // 获取有效队伍
+            var party = originalBattle.Party;
+            if (party == null) return;
+
+            // 只有当队伍中有存活的队员时才开启下一次挑战
+            var alivePlayers = originalBattle.Players.Where(p => !p.IsDead).ToList();
+            if (!alivePlayers.Any()) return;
+
+            // 启动新的副本挑战
+            StartDungeon(party, dungeonId);
+        }
+
+        /// <summary>
+        /// 开始下一轮团队战斗
+        /// </summary>
+        private void StartNextPartyBattle(BattleContext originalBattle)
+        {
+            // 获取有效队伍
+            var party = originalBattle.Party;
+            if (party == null) return;
+
+            // 只有当队伍中有存活的队员时才开启下一轮战斗
+            var alivePlayers = originalBattle.Players.Where(p => !p.IsDead).ToList();
+            if (!alivePlayers.Any()) return;
+
+            // 使用相似的敌人重启战斗
+            var firstPlayer = alivePlayers.First();
+            var enemyTemplate = GetEnemyTemplate(originalBattle);
+
+            if (enemyTemplate != null)
+            {
+                // 传入ignoreRefreshCheck=true以允许自动战斗系统绕过刷新状态检查
+                SmartStartBattle(firstPlayer, enemyTemplate, party, true);
+            }
+        }
+
+        /// <summary>
+        /// 开始下一轮单人战斗
+        /// </summary>
+        private void StartNextSoloBattle(BattleContext originalBattle)
+        {
+            // 获取存活的玩家
+            var player = originalBattle.Players.FirstOrDefault(p => !p.IsDead);
+            if (player == null) return;
+
+            // 使用相似的敌人重启战斗
+            var enemyTemplate = GetEnemyTemplate(originalBattle);
+
+            if (enemyTemplate != null)
+            {
+                // 传入ignoreRefreshCheck=true以允许自动战斗系统绕过刷新状态检查
+                SmartStartBattle(player, enemyTemplate, null, true);
+            }
+        }
+
+        /// <summary>
+        /// 获取适合下一轮战斗的敌人模板
+        /// </summary>
+        private Enemy? GetEnemyTemplate(BattleContext battle)
+        {
+            // 1. 尝试从刷新状态中获取敌人信息
+            var refreshState = _battleRefreshStates.Values
+                .FirstOrDefault(rs => rs.OriginalBattle.Id == battle.Id);
+
+            if (refreshState?.EnemyInfos != null && refreshState.EnemyInfos.Any())
+            {
+                // 从敌人信息列表中随机选择一种类型
+                var random = new Random();
+                var selectedEnemyInfo = refreshState.EnemyInfos[random.Next(refreshState.EnemyInfos.Count)];
+
+                var enemyFromRefresh = MonsterTemplates.All
+                    .FirstOrDefault(m => m.Name == selectedEnemyInfo.Name);
+                if (enemyFromRefresh != null)
+                    return enemyFromRefresh;
+            }
+
+            // 2. 尝试获取战斗中的敌人（如果有）
+            if (battle.Enemies.Any())
+            {
+                // 随机选择一个现有敌人类型
+                var random = new Random();
+                var enemyIndex = random.Next(battle.Enemies.Count);
+                var enemyName = battle.Enemies[enemyIndex].Name;
+
+                return MonsterTemplates.All.FirstOrDefault(m => m.Name == enemyName);
+            }
+
+            // 3. 从队伍或玩家当前敌人获取
+            if (battle.Party?.CurrentEnemy != null)
+            {
+                return battle.Party.CurrentEnemy;
+            }
+            else if (battle.Players.Any())
+            {
+                // 尝试从任意队员的当前敌人中选择
+                var playersWithEnemies = battle.Players.Where(p => p.CurrentEnemy != null).ToList();
+                if (playersWithEnemies.Any())
+                {
+                    var random = new Random();
+                    var player = playersWithEnemies[random.Next(playersWithEnemies.Count)];
+                    return player.CurrentEnemy;
+                }
+            }
+
+            // 4. 如果都失败，从总怪物列表中选择一个适合玩家等级的
+            if (battle.Players.Any())
+            {
+                var player = battle.Players.First();
+                var playerLevel = player.GetLevel(player.SelectedBattleProfession);
+
+                // 获取所有适合等级的敌人
+                var suitableEnemies = MonsterTemplates.All
+                    .Where(m => Math.Abs(m.Level - playerLevel) <= 2)
+                    .ToList();
+
+                if (suitableEnemies.Any())
+                {
+                    var random = new Random();
+                    return suitableEnemies[random.Next(suitableEnemies.Count)];
+                }
+            }
+
+            // 没有找到合适的敌人模板
+            return null;
         }
 
         /// <summary>
@@ -261,6 +677,9 @@ namespace BlazorWebGame.Services
                     {
                         // 副本完成奖励
                         DistributeDungeonRewards(battle, dungeon);
+
+                        // 标记为完成，等待刷新冷却后自动开始新的副本
+                        battle.State = BattleState.Completed;
                     }
                     else
                     {
@@ -297,6 +716,9 @@ namespace BlazorWebGame.Services
                         }
                     }
                 }
+
+                // 标记为完成，等待刷新冷却后自动开始新的战斗
+                battle.State = BattleState.Completed;
             }
 
             // 触发战斗完成事件
@@ -312,6 +734,9 @@ namespace BlazorWebGame.Services
             // 触发战斗失败事件
             var gameStateService = ServiceLocator.GetService<GameStateService>();
             gameStateService?.RaiseEvent(GameEventType.BattleDefeated);
+
+            // 标记为完成，但不会自动开始新战斗（因为全部玩家已死亡）
+            battle.State = BattleState.Completed;
         }
 
         /// <summary>
@@ -376,10 +801,17 @@ namespace BlazorWebGame.Services
         /// <summary>
         /// 智能开始战斗，根据场景自动选择合适的战斗模式
         /// </summary>
-        public bool SmartStartBattle(Player character, Enemy enemyTemplate, Party? party = null)
+        public bool SmartStartBattle(Player character, Enemy enemyTemplate, Party? party = null, bool ignoreRefreshCheck = false)
         {
             if (character == null || enemyTemplate == null)
                 return false;
+
+            // 检查玩家是否处于战斗刷新冷却状态 - 如果是且不忽略检查，不允许开始新战斗
+            if (!ignoreRefreshCheck && IsPlayerInBattleRefresh(character.Id))
+            {
+                // 玩家正在战斗刷新冷却中，不能开始新战斗
+                return false;
+            }
 
             // 获取当前战斗上下文（如果存在）
             var existingBattle = GetBattleContextForPlayer(character.Id);
@@ -392,6 +824,21 @@ namespace BlazorWebGame.Services
                 // 如果已经在战斗中，但尝试战斗不同敌人，则先结束当前战斗
                 _activeBattles.Remove(existingBattle.Id);
             }
+
+            // 如果是队伍成员，检查队伍是否有人在战斗刷新状态
+            if (!ignoreRefreshCheck && party != null)
+            {
+                // 检查队伍是否有任何成员处于战斗刷新状态
+                foreach (var memberId in party.MemberIds)
+                {
+                    if (IsPlayerInBattleRefresh(memberId))
+                    {
+                        // 队伍中有人在战斗刷新中，不能开始新战斗
+                        return false;
+                    }
+                }
+            }
+
 
             // 判断战斗类型
             if (party != null)
@@ -1274,6 +1721,37 @@ namespace BlazorWebGame.Services
             _allCharacters = characters;
         }
 
+
+        /// <summary>
+        /// 检查玩家是否处于战斗刷新状态
+        /// </summary>
+        public bool IsPlayerInBattleRefresh(string playerId)
+        {
+            foreach (var refreshState in _battleRefreshStates.Values)
+            {
+                if (refreshState.OriginalBattle.Players.Any(p => p.Id == playerId))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 获取玩家战斗刷新剩余时间
+        /// </summary>
+        public double GetPlayerBattleRefreshTime(string playerId)
+        {
+            foreach (var refreshState in _battleRefreshStates.Values)
+            {
+                if (refreshState.OriginalBattle.Players.Any(p => p.Id == playerId))
+                {
+                    return refreshState.RemainingCooldown;
+                }
+            }
+            return 0;
+        }
+
         /// <summary>
         /// 副本数据静态类
         /// </summary>
@@ -1351,5 +1829,51 @@ namespace BlazorWebGame.Services
                 // 可以继续添加更多副本...
             }
         }
+    }
+    /// <summary>
+    /// 战斗刷新状态
+    /// </summary>
+    public class BattleRefreshState
+    {
+        /// <summary>
+        /// 原始战斗上下文
+        /// </summary>
+        public BattleContext OriginalBattle { get; set; }
+
+        /// <summary>
+        /// 剩余冷却时间
+        /// </summary>
+        public double RemainingCooldown { get; set; }
+
+        /// <summary>
+        /// 战斗类型
+        /// </summary>
+        public BattleType BattleType { get; set; }
+
+        /// <summary>
+        /// 上一场战斗的敌人信息（类型和数量）
+        /// </summary>
+        public List<EnemyInfo> EnemyInfos { get; set; } = new();
+
+        /// <summary>
+        /// 副本ID（如果是副本战斗）
+        /// </summary>
+        public string? DungeonId { get; set; }
+    }
+
+    /// <summary>
+    /// 敌人信息记录
+    /// </summary>
+    public class EnemyInfo
+    {
+        /// <summary>
+        /// 敌人名称
+        /// </summary>
+        public string Name { get; set; }
+
+        /// <summary>
+        /// 敌人数量
+        /// </summary>
+        public int Count { get; set; }
     }
 }
