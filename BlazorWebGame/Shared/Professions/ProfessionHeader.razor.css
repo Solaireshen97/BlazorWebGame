@@ -239,3 +239,70 @@ h3::after {
         transform: translateY(-10px) scale(1.5);
     }
 }
+
+/* 添加锻造专业的图标样式 - 锤子形状 */
+.profession-header[data-profession="Blacksmithing"] h3::before {
+    background-color: #FF4500;
+    clip-path: polygon(
+        20% 0%,
+        80% 0%,
+        80% 15%,
+        100% 15%,
+        100% 35%,
+        80% 35%,
+        80% 60%,
+        60% 60%,
+        60% 100%,
+        40% 100%,
+        40% 60%,
+        20% 60%,
+        20% 35%,
+        0% 35%,
+        0% 15%,
+        20% 15%
+    );
+}
+
+/* 添加锤击动画效果 */
+.profession-header[data-profession="Blacksmithing"] h3::before {
+    animation: hammer-hit 2.5s infinite;
+    transform-origin: 50% 30%;
+}
+
+@keyframes hammer-hit {
+    0%, 15%, 85%, 100% {
+        transform: rotate(0deg);
+    }
+    20%, 25% {
+        transform: rotate(-20deg);
+    }
+    30%, 35% {
+        transform: rotate(0deg);
+    }
+}
+
+/* 添加火花效果 */
+.profession-header[data-profession="Blacksmithing"] h3::after {
+    content: '*';
+    position: absolute;
+    left: 18px;
+    top: 5px;
+    color: #FFA54F;
+    font-size: 8px;
+    opacity: 0;
+    animation: sparks 2.5s infinite;
+}
+
+@keyframes sparks {
+    0%, 25%, 50%, 100% {
+        opacity: 0;
+    }
+    32%, 33%, 34%, 35% {
+        opacity: 1;
+        transform: translate(2px, -2px) scale(1.2);
+    }
+    37%, 38%, 39% {
+        opacity: 1;
+        transform: translate(-2px, -1px) scale(0.8);
+    }
+}
