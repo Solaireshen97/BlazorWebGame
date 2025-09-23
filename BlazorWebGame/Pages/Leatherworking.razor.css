@@ -1,299 +1,261 @@
-﻿.production-layout {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem
+﻿/* 魔兽世界风格的主题色彩 */
+:root {
+    --wow-gold: #f8b700;
+    --wow-dark: #211510;
+    --wow-light-brown: #5c4d3c;
+    --wow-leather: #8B4513;
+    --wow-leather-light: #A0522D;
+    --wow-leather-dark: #5C3317;
+    --wow-parchment: #f0e6d2;
+    --wow-blue: #00b4ff;
+    --wow-dark-blue: #0a2137;
+    --wow-red: #ff2020;
+    --wow-green: #40bf40;
 }
 
+/* 主容器风格 - 制皮专属棕色皮革主题 */
+.production-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    background-color: var(--wow-dark);
+    background-image: linear-gradient(135deg, rgba(30, 20, 10, 0.9), rgba(45, 30, 15, 0.9), rgba(30, 20, 10, 0.9));
+    border: 2px solid var(--wow-leather);
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.5), inset 0 0 8px rgba(139, 69, 19, 0.3);
+    position: relative;
+    margin: 10px;
+    color: var(--wow-parchment);
+    font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
+}
+
+    .production-layout::before {
+        content: '';
+        position: absolute;
+        top: 5px;
+        left: 5px;
+        right: 5px;
+        bottom: 5px;
+        border: 1px solid var(--wow-leather);
+        border-radius: 4px;
+        pointer-events: none;
+    }
+
+/* 顶部区域装饰 */
 .header-section {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     padding-bottom: 1.5rem;
-    border-bottom: 1px solid #dee2e6
+    border-bottom: 1px solid var(--wow-leather);
+    position: relative;
 }
 
-.profession-info {
-    flex-grow: 1
-}
+    .header-section::after {
+        content: '';
+        position: absolute;
+        bottom: -5px;
+        left: calc(50% - 60px);
+        width: 120px;
+        height: 10px;
+        background: linear-gradient(90deg, transparent, var(--wow-leather), transparent);
+        border-radius: 50%;
+    }
 
-.profession-stats {
-    display: flex;
-    gap: 2rem;
-    margin-top: .5rem;
-    font-size: .9rem;
-    color: #555
-}
-
-.current-action-card, .action-blocked-card {
-    background-color: #e7f1ff;
-    border: 1px solid #b3d7ff;
-    border-radius: 8px;
-    padding: 1.5rem;
-    text-align: center
-}
-
-.action-blocked-card {
-    background-color: #fff3cd;
-    border-color: #ffeeba
-}
-
-.progress-bar-container {
-    background-color: #e9ecef;
-    border-radius: 4px;
-    height: 25px;
-    margin-top: 1rem;
-    overflow: hidden;
-    border: 1px solid #ddd;
-    position: relative
-}
-
-.progress-bar {
-    background-color: #ff9800;
-    height: 100%;
-    transition: width .1s linear
-}
-
-.progress-text {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%,-50%);
-    color: #343a40;
-    font-weight: 700;
-    text-shadow: none;
-    z-index: 2;
-    pointer-events: none
-}
-
+/* 配方列表样式 */
 .recipe-list {
     display: grid;
-    grid-template-columns: repeat(auto-fill,minmax(320px,1fr));
-    gap: 1rem
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+    padding: 10px 0;
 }
 
+/* 配方卡片样式 - 皮革纹理 */
 .recipe-card {
-    border: 1px solid #ccc;
+    border: 2px solid var(--wow-leather-light);
     border-radius: 8px;
     padding: 1rem;
-    background-color: #fff;
+    background: linear-gradient(135deg, rgba(45, 30, 15, 0.9), rgba(35, 22, 10, 0.9));
     display: flex;
-    flex-direction: column
+    flex-direction: column;
+    position: relative;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3), inset 0 0 10px rgba(139, 69, 19, 0.1);
+    transition: all 0.3s ease;
 }
 
+    .recipe-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: repeating-linear-gradient( 45deg, transparent, transparent 10px, rgba(139, 69, 19, 0.1) 10px, rgba(139, 69, 19, 0.1) 15px );
+        opacity: 0.5;
+        border-radius: 6px;
+        pointer-events: none;
+    }
+
+    .recipe-card::after {
+        content: '';
+        position: absolute;
+        top: 5px;
+        left: 5px;
+        right: 5px;
+        bottom: 5px;
+        border: 1px solid rgba(139, 69, 19, 0.3);
+        border-radius: 4px;
+        pointer-events: none;
+    }
+
+    .recipe-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4), inset 0 0 10px rgba(139, 69, 19, 0.2);
+        border-color: var(--wow-leather-light);
+    }
+
     .recipe-card.locked {
-        background-color: #f8f9fa;
-        opacity: .7
+        background: linear-gradient(135deg, rgba(25, 25, 25, 0.9), rgba(15, 15, 15, 0.9));
+        border-color: #555;
+        opacity: 0.7;
     }
 
     .recipe-card.level-locked {
-        border-left: 5px solid #ffc107
+        border-left: 5px solid var(--wow-gold);
     }
 
 .recipe-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #eee;
-    padding-bottom: .5rem;
-    margin-bottom: 1rem
+    border-bottom: 1px solid var(--wow-leather-dark);
+    padding-bottom: 0.75rem;
+    margin-bottom: 1rem;
+    position: relative;
+    z-index: 2;
 }
 
     .recipe-header h5 {
-        margin: 0
+        margin: 0;
+        color: var(--wow-leather-light);
+        text-shadow: 0 0 3px rgba(139, 69, 19, 0.5);
+        font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
+        font-size: 1.2rem;
+        font-weight: 700;
     }
 
 .recipe-level {
-    font-size: .9rem;
+    font-size: 0.9rem;
     font-weight: 700;
-    color: #007bff
+    color: var(--wow-leather-light);
+    text-shadow: 0 0 3px rgba(139, 69, 19, 0.5);
+    background-color: rgba(0, 0, 0, 0.3);
+    padding: 3px 8px;
+    border-radius: 10px;
+    border: 1px solid rgba(139, 69, 19, 0.3);
 }
 
 .recipe-details {
     display: flex;
     gap: 1rem;
     margin-bottom: 1rem;
-    font-size: .9rem;
-    flex-grow: 1
+    font-size: 0.9rem;
+    flex-grow: 1;
+    position: relative;
+    z-index: 2;
 }
 
 .recipe-materials, .recipe-output {
-    flex: 1
+    flex: 1;
 }
 
     .recipe-materials h6, .recipe-output h6 {
         margin-top: 0;
-        margin-bottom: .5rem;
-        font-weight: 700
+        margin-bottom: 0.5rem;
+        font-weight: 700;
+        color: var(--wow-parchment);
+        text-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
     }
 
     .recipe-materials ul {
         list-style-type: none;
         padding-left: 0;
-        margin: 0
+        margin: 0;
     }
 
-    .recipe-materials li.missing-mats {
-        color: #dc3545
+    .recipe-materials li {
+        padding: 3px 0;
+        font-size: 0.9rem;
     }
 
-    .recipe-materials li.has-mats {
-        color: #28a745
-    }
+        .recipe-materials li.has-mats {
+            color: #7aff7a;
+        }
+
+        .recipe-materials li.missing-mats {
+            color: #ff9999;
+        }
 
 .lock-reason {
-    background-color: #e9ecef;
+    background-color: rgba(0, 0, 0, 0.5);
     text-align: center;
-    padding: .75rem;
+    padding: 0.75rem;
     border-radius: 5px;
     font-weight: 700;
-    color: #6c757d;
-    margin-top: auto
+    color: #999;
+    margin-top: auto;
+    border: 1px solid rgba(139, 69, 19, 0.3);
+    position: relative;
+    z-index: 2;
 }
 
 .recipe-card.level-locked .lock-reason {
-    background-color: #fff3cd;
-    color: #856404
+    background-color: rgba(73, 33, 10, 0.7);
+    color: var(--wow-gold);
+    border: 1px solid rgba(248, 183, 0, 0.3);
 }
 
-.consumable-bar {
-    background-color: transparent;
-    border: none;
-    padding: 0;
-    flex-shrink: 0
-}
-
-    .consumable-bar h5 {
-        margin-top: 0;
-        margin-bottom: .75rem;
-        text-align: center;
-        font-size: 1rem;
-        font-weight: 700;
-        color: #6c757d
-    }
-
-.consumable-quick-slots {
-    display: flex;
-    justify-content: center;
-    gap: .5rem
-}
-
-.quick-slot {
-    width: 40px;
-    height: 40px;
-    border-radius: 5px;
-    border: 1px dashed #ccc;
-    cursor: pointer;
-    position: relative
-}
-
-.quick-slot-empty {
-    width: 100%;
-    height: 100%
-}
-
-.quick-slot-item {
-    width: 100%;
-    height: 100%;
-    position: relative;
-    background-color: #fff;
-    border: 1px solid #adb5bd;
-    border-radius: 5px
-}
-
-    .quick-slot-item .item-icon {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
-        height: 100%;
-        font-weight: 700;
-        font-size: 1rem
-    }
-
-    .quick-slot-item .item-count {
-        position: absolute;
-        bottom: 1px;
-        right: 2px;
-        font-size: .75rem;
-        font-weight: 700;
-        color: #212529;
-        text-shadow: 0 0 2px #fff
-    }
-
-    .quick-slot-item.depleted .item-icon {
-        color: #dee2e6
-    }
-
-.cooldown-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0,0,0,.6);
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.2rem;
+/* 页面标题和按钮特效 */
+::deep h3 {
+    color: var(--wow-leather-light);
+    text-shadow: 0 0 5px rgba(139, 69, 19, 0.5);
+    font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
     font-weight: 700;
-    border-radius: 5px
+    letter-spacing: 1px;
+    text-transform: uppercase;
 }
 
-.modal-backdrop {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: rgba(0,0,0,.5);
-    z-index: 1040
+::deep .btn {
+    background-color: var(--wow-light-brown);
+    border: 1px solid var(--wow-gold);
+    color: var(--wow-gold);
+    font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
+    text-transform: uppercase;
+    font-weight: bold;
+    padding: 8px 16px;
+    transition: all 0.2s ease;
+    box-shadow: inset 0 0 5px rgba(248, 183, 0, 0.3);
 }
 
-.quick-slot-picker {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%,-50%);
-    width: 300px;
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0,0,0,.5);
-    z-index: 1050;
-    padding: 1.5rem;
-    display: flex;
-    flex-direction: column
-}
-
-.picker-item-list {
-    max-height: 200px;
-    overflow-y: auto;
-    border: 1px solid #eee;
-    border-radius: 5px
-}
-
-.picker-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: .5rem 1rem;
-    cursor: pointer;
-    border-bottom: 1px solid #f0f0f0
-}
-
-    .picker-item:hover {
-        background-color: #f8f9fa
+    ::deep .btn:hover {
+        background-color: var(--wow-dark);
+        box-shadow: 0 0 10px var(--wow-gold), inset 0 0 8px rgba(248, 183, 0, 0.6);
+        transform: scale(1.05);
     }
 
-    .picker-item:last-child {
-        border-bottom: none
-    }
-
-.picker-item-name, .picker-item-count {
-    white-space: nowrap
+::deep .btn-success {
+    background-color: #45331c;
+    color: #dda062;
+    border-color: var(--wow-leather);
 }
 
-.picker-item-count {
-    color: #6c757d;
-    font-size: .9em
+/* 为制皮设置特殊的样式，区别于其他专业 */
+::deep .profession-header h3::before {
+    background-color: var(--wow-leather) !important;
+}
+
+/* 修改进度条样式，使用皮革色调 */
+::deep .progress-bar {
+    background: linear-gradient(to right, #5C3317, #A0522D);
 }

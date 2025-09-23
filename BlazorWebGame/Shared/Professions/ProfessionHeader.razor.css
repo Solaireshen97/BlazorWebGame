@@ -119,3 +119,17 @@ h3::after {
         20% 30%
     );
 }
+
+/* 添加制皮专业的图标样式 */
+.profession-header[data-profession="Leatherworking"] h3::before {
+    /* 制皮图标特性 */
+    background-color: #8B4513;
+    clip-path: polygon(
+        0% 30%,
+        20% 0%,
+        80% 0%,
+        100% 30%,
+        80% 100%,
+        20% 100%
+    );
+}
