@@ -16,7 +16,8 @@ public class GameStateService : IAsyncDisposable
 {
     private readonly GameStorage _gameStorage;
     private readonly QuestService _questService;
-    private readonly PartyService _partyService; // 新增
+    private readonly PartyService _partyService;
+    private readonly InventoryService _inventoryService;
     private System.Timers.Timer? _gameLoopTimer;
     private const int GameLoopIntervalMs = 100;
     private const double RevivalDuration = 2;
@@ -36,14 +37,16 @@ public class GameStateService : IAsyncDisposable
     public event Action? OnStateChanged;
 
     // 修改构造函数，注入PartyService
-    public GameStateService(GameStorage gameStorage, QuestService questService, PartyService partyService)
+    public GameStateService(GameStorage gameStorage, QuestService questService, PartyService partyService, InventoryService inventoryService)
     {
         _gameStorage = gameStorage;
         _questService = questService;
         _partyService = partyService;
-        
-        // 订阅PartyService的状态变更事件
+        _inventoryService = inventoryService;
+
+        // 订阅PartyService和InventoryService的状态变更事件
         _partyService.OnStateChanged += () => NotifyStateChanged();
+        _inventoryService.OnStateChanged += () => NotifyStateChanged();
     }
 
     public async Task InitializeAsync()
@@ -95,7 +98,8 @@ public class GameStateService : IAsyncDisposable
         foreach (var character in AllCharacters)
         {
             UpdateBuffs(character, elapsedSeconds);
-            UpdateConsumableCooldowns(character, elapsedSeconds);
+            // 使用 InventoryService 来更新消耗品冷却
+            _inventoryService.UpdateConsumableCooldowns(character, elapsedSeconds);
 
             if (character.IsDead)
             {
@@ -111,7 +115,8 @@ public class GameStateService : IAsyncDisposable
                 case PlayerActionState.Crafting: ProcessCrafting(character, elapsedSeconds); break;
             }
 
-            ProcessAutoConsumables(character);
+            // 使用 InventoryService 处理自动消耗品
+            _inventoryService.ProcessAutoConsumables(character);
         }
 
         NotifyStateChanged();
@@ -334,19 +339,18 @@ public class GameStateService : IAsyncDisposable
 
             if (party != null)
             {
-                // --- vvv 全新的团队奖励分配逻辑 vvv ---
-
-                // 1. 获取所有队伍成员，无论死活
+                // 团队奖励分配逻辑
                 var partyMembers = AllCharacters.Where(c => party.MemberIds.Contains(c.Id)).ToList();
-                if (!partyMembers.Any()) // 如果队伍是空的，直接结束
+                if (!partyMembers.Any())
                 {
-                    party.CurrentEnemy = originalTemplate.Clone(); // 重置怪物
+                    party.CurrentEnemy = originalTemplate.Clone();
                     return;
                 }
+
                 var memberCount = partyMembers.Count;
                 var random = new Random();
 
-                // 2. 分配金币 (平分 + 随机分配余数)
+                // 分配金币
                 var totalGold = enemy.GetGoldDropAmount();
                 var goldPerMember = totalGold / memberCount;
                 var remainderGold = totalGold % memberCount;
@@ -361,7 +365,7 @@ public class GameStateService : IAsyncDisposable
                     luckyMemberForGold.Gold += remainderGold;
                 }
 
-                // 3. 分配战利品 (随机roll给一个幸运儿)
+                // 分配战利品，使用 InventoryService
                 foreach (var lootItem in enemy.LootTable)
                 {
                     // 先判断这个物品是否掉落
@@ -369,11 +373,11 @@ public class GameStateService : IAsyncDisposable
                     {
                         // 如果掉落，再随机选择一个成员获得它
                         var luckyMemberForLoot = partyMembers[random.Next(memberCount)];
-                        AddItemToInventory(luckyMemberForLoot, lootItem.Key, 1);
+                        _inventoryService.AddItemToInventory(luckyMemberForLoot, lootItem.Key, 1);
                     }
                 }
 
-                // 4. 分配经验和任务进度 (给所有人，无论死活)
+                // 分配经验和任务进度
                 foreach (var member in partyMembers)
                 {
                     var profession = member.SelectedBattleProfession;
@@ -389,26 +393,33 @@ public class GameStateService : IAsyncDisposable
                     member.DefeatedMonsterIds.Add(enemy.Name);
                 }
 
-                // --- ^^^ 奖励分配结束 ^^^ ---
-
-                // 为团队生成新敌人
                 party.CurrentEnemy = originalTemplate.Clone();
             }
             else
             {
-                // --- 个人奖励分配 (逻辑不变) ---
+                // 个人奖励分配，使用 InventoryService
                 character.Gold += enemy.GetGoldDropAmount();
                 var random = new Random();
-                foreach (var lootItem in enemy.LootTable) { if (random.NextDouble() <= lootItem.Value) { AddItemToInventory(character, lootItem.Key, 1); } }
+                foreach (var lootItem in enemy.LootTable)
+                {
+                    if (random.NextDouble() <= lootItem.Value)
+                    {
+                        _inventoryService.AddItemToInventory(character, lootItem.Key, 1);
+                    }
+                }
+
                 var profession = character.SelectedBattleProfession;
                 var oldLevel = character.GetLevel(profession);
                 character.AddBattleXP(profession, enemy.XpReward);
-                if (character.GetLevel(profession) > oldLevel) { CheckForNewSkillUnlocks(character, profession, character.GetLevel(profession)); }
+                if (character.GetLevel(profession) > oldLevel)
+                {
+                    CheckForNewSkillUnlocks(character, profession, character.GetLevel(profession));
+                }
+
                 UpdateQuestProgress(character, QuestType.KillMonster, enemy.Name, 1);
                 UpdateQuestProgress(character, QuestType.KillMonster, "any", 1);
                 character.DefeatedMonsterIds.Add(enemy.Name);
 
-                // 为个人生成新敌人
                 SpawnNewEnemyForCharacter(character, originalTemplate);
             }
         }
@@ -432,12 +443,14 @@ public class GameStateService : IAsyncDisposable
         character.GatheringCooldown -= elapsedSeconds;
         if (character.GatheringCooldown <= 0)
         {
-            AddItemToInventory(character, character.CurrentGatheringNode.ResultingItemId, character.CurrentGatheringNode.ResultingItemQuantity);
+            _inventoryService.AddItemToInventory(character, character.CurrentGatheringNode.ResultingItemId, character.CurrentGatheringNode.ResultingItemQuantity);
+
             double extraLootChance = character.GetTotalExtraLootChance();
             if (extraLootChance > 0 && new Random().NextDouble() < extraLootChance)
             {
-                AddItemToInventory(character, character.CurrentGatheringNode.ResultingItemId, character.CurrentGatheringNode.ResultingItemQuantity);
+                _inventoryService.AddItemToInventory(character, character.CurrentGatheringNode.ResultingItemId, character.CurrentGatheringNode.ResultingItemQuantity);
             }
+
             character.AddGatheringXP(character.CurrentGatheringNode.RequiredProfession, character.CurrentGatheringNode.XpReward);
 
             UpdateQuestProgress(character, QuestType.GatherItem, character.CurrentGatheringNode.ResultingItemId, character.CurrentGatheringNode.ResultingItemQuantity);
@@ -454,7 +467,7 @@ public class GameStateService : IAsyncDisposable
         character.CraftingCooldown -= elapsedSeconds;
         if (character.CraftingCooldown <= 0)
         {
-            if (!CanAffordRecipe(character, character.CurrentRecipe))
+            if (!_inventoryService.CanAffordRecipe(character, character.CurrentRecipe))
             {
                 StopCurrentAction(character);
                 return;
@@ -462,15 +475,16 @@ public class GameStateService : IAsyncDisposable
 
             foreach (var ingredient in character.CurrentRecipe.Ingredients)
             {
-                RemoveItemFromInventory(character, ingredient.Key, ingredient.Value, out _);
+                _inventoryService.RemoveItemFromInventory(character, ingredient.Key, ingredient.Value, out _);
             }
-            AddItemToInventory(character, character.CurrentRecipe.ResultingItemId, character.CurrentRecipe.ResultingItemQuantity);
+
+            _inventoryService.AddItemToInventory(character, character.CurrentRecipe.ResultingItemId, character.CurrentRecipe.ResultingItemQuantity);
             character.AddProductionXP(character.CurrentRecipe.RequiredProfession, character.CurrentRecipe.XpReward);
 
             UpdateQuestProgress(character, QuestType.CraftItem, character.CurrentRecipe.ResultingItemId, character.CurrentRecipe.ResultingItemQuantity);
             UpdateQuestProgress(character, QuestType.CraftItem, "any", 1);
 
-            if (CanAffordRecipe(character, character.CurrentRecipe))
+            if (_inventoryService.CanAffordRecipe(character, character.CurrentRecipe))
             {
                 character.CraftingCooldown += GetCurrentCraftingTime(character);
             }
@@ -481,23 +495,22 @@ public class GameStateService : IAsyncDisposable
         }
     }
 
-    // --- vvv 公共操作方法现在都作用于 ActiveCharacter vvv ---
-
     public void StartCombat(Enemy enemyTemplate) => StartCombat(ActiveCharacter, enemyTemplate);
     public void StartGathering(GatheringNode node) => StartGathering(ActiveCharacter, node);
     public void StartCrafting(Recipe recipe) => StartCrafting(ActiveCharacter, recipe);
     public void StopCurrentAction() => StopCurrentAction(ActiveCharacter);
-    public void EquipItem(string itemId) => EquipItem(ActiveCharacter, itemId);
-    public void UnequipItem(EquipmentSlot slot) => UnequipItem(ActiveCharacter, slot);
-    public void SellItem(string itemId, int quantity = 1) => SellItem(ActiveCharacter, itemId, quantity);
-    public void UseItem(string itemId) => UseItem(ActiveCharacter, itemId);
+    public void EquipItem(string itemId) => _inventoryService.EquipItem(ActiveCharacter, itemId);
+    public void UnequipItem(EquipmentSlot slot) => _inventoryService.UnequipItem(ActiveCharacter, slot);
+    public void SellItem(string itemId, int quantity = 1) => _inventoryService.SellItem(ActiveCharacter, itemId, quantity);
+    public void UseItem(string itemId) => _inventoryService.UseItem(ActiveCharacter, itemId);
+    public bool BuyItem(string itemId) => ActiveCharacter != null && _inventoryService.BuyItem(ActiveCharacter, itemId);
+    public void SetQuickSlotItem(ConsumableCategory category, int slotId, string itemId) => _inventoryService.SetQuickSlotItem(ActiveCharacter, category, slotId, itemId);
+    public void ClearQuickSlotItem(ConsumableCategory category, int slotId, FoodType foodType = FoodType.None) => _inventoryService.ClearQuickSlotItem(ActiveCharacter, category, slotId, foodType);
+    public void ToggleAutoSellItem(string itemId) => _inventoryService.ToggleAutoSellItem(ActiveCharacter, itemId);
     public void SetBattleProfession(BattleProfession profession) => SetBattleProfession(ActiveCharacter, profession);
     public void EquipSkill(string skillId) => EquipSkill(ActiveCharacter, skillId);
     public void UnequipSkill(string skillId) => UnequipSkill(ActiveCharacter, skillId);
     public void TryCompleteQuest(string questId) => TryCompleteQuest(ActiveCharacter, questId);
-
-
-    // --- vvv 真正的实现逻辑，现在都接收character参数 vvv ---
 
     public void StartCombat(Player? character, Enemy? enemyTemplate)
     {
@@ -579,7 +592,7 @@ public class GameStateService : IAsyncDisposable
 
     private void StartCrafting(Player? character, Recipe? recipe)
     {
-        if (character == null || recipe == null || !CanAffordRecipe(character, recipe)) return;
+        if (character == null || recipe == null || !_inventoryService.CanAffordRecipe(character, recipe)) return;
 
         StopCurrentAction(character);
         character.CurrentAction = PlayerActionState.Crafting;
@@ -665,151 +678,6 @@ public class GameStateService : IAsyncDisposable
         if (buffsChanged) character.Health = Math.Min(character.Health, character.GetTotalMaxHealth());
     }
 
-    private void UpdateConsumableCooldowns(Player character, double elapsedSeconds)
-    {
-        if (!character.ConsumableCooldowns.Any()) return;
-        var keys = character.ConsumableCooldowns.Keys.ToList();
-        foreach (var key in keys)
-        {
-            character.ConsumableCooldowns[key] -= elapsedSeconds;
-            if (character.ConsumableCooldowns[key] <= 0) character.ConsumableCooldowns.Remove(key);
-        }
-    }
-
-    private bool CanAffordRecipe(Player character, Recipe recipe)
-    {
-        foreach (var ingredient in recipe.Ingredients)
-        {
-            if (character.Inventory.Where(s => s.ItemId == ingredient.Key).Sum(s => s.Quantity) < ingredient.Value) return false;
-        }
-        return true;
-    }
-
-    private void AddItemToInventory(Player character, string itemId, int quantity)
-    {
-        var itemToAdd = ItemData.GetItemById(itemId);
-        if (itemToAdd == null) return;
-        if (character.AutoSellItemIds.Contains(itemId)) { character.Gold += itemToAdd.Value * quantity; return; }
-        if (itemToAdd.IsStackable)
-        {
-            var existingSlot = character.Inventory.FirstOrDefault(s => s.ItemId == itemId && s.Quantity < 99);
-            if (existingSlot != null) { existingSlot.Quantity += quantity; return; }
-        }
-        var emptySlot = character.Inventory.FirstOrDefault(s => s.IsEmpty);
-        if (emptySlot != null) { emptySlot.ItemId = itemId; emptySlot.Quantity = quantity; }
-    }
-
-    private bool RemoveItemFromInventory(Player character, string itemId, int quantityToRemove, out int actuallyRemoved)
-    {
-        actuallyRemoved = 0;
-        for (int i = character.Inventory.Count - 1; i >= 0; i--)
-        {
-            var slot = character.Inventory[i];
-            if (slot.ItemId == itemId)
-            {
-                int amountToRemoveFromSlot = Math.Min(quantityToRemove - actuallyRemoved, slot.Quantity);
-                slot.Quantity -= amountToRemoveFromSlot;
-                actuallyRemoved += amountToRemoveFromSlot;
-                if (slot.Quantity <= 0) slot.ItemId = null;
-                if (actuallyRemoved >= quantityToRemove) break;
-            }
-        }
-        return actuallyRemoved > 0;
-    }
-
-    private void EquipItem(Player? character, string itemId)
-    {
-        if (character == null) return;
-        var slotToEquipFrom = character.Inventory.FirstOrDefault(s => s.ItemId == itemId);
-        if (slotToEquipFrom == null) return;
-        if (ItemData.GetItemById(itemId) is not Equipment equipmentToEquip) return;
-
-        List<EquipmentSlot> targetSlots = equipmentToEquip.Slot switch
-        {
-            EquipmentSlot.Finger1 or EquipmentSlot.Finger2 => new() { EquipmentSlot.Finger1, EquipmentSlot.Finger2 },
-            EquipmentSlot.Trinket1 or EquipmentSlot.Trinket2 => new() { EquipmentSlot.Trinket1, EquipmentSlot.Trinket2 },
-            _ => new() { equipmentToEquip.Slot }
-        };
-
-        // --- vvv 这是唯一的修正区域 vvv ---
-
-        // 1. 优先寻找一个空的可用槽位
-        var emptySlot = targetSlots.FirstOrDefault(slot => !character.EquippedItems.ContainsKey(slot));
-
-        // 2. 如果找不到空槽位（`FirstOrDefault` 会返回枚举的默认值，通常是0，即 Head），
-        //    或者找到了一个（`emptySlot` 不是默认值），我们需要确定最终槽位。
-        //    这里我们直接用 `FindIndex` 更清晰。
-        EquipmentSlot? finalSlot;
-        int emptySlotIndex = targetSlots.FindIndex(slot => !character.EquippedItems.ContainsKey(slot));
-
-        if (emptySlotIndex != -1)
-        {
-            // 如果找到了空位，就用它
-            finalSlot = targetSlots[emptySlotIndex];
-        }
-        else if (targetSlots.Any())
-        {
-            // 如果没有空位，但至少有一个目标槽位，则准备替换第一个
-            finalSlot = targetSlots.First();
-        }
-        else
-        {
-            // 如果连目标槽位都没有（不应该发生），则无法装备
-            finalSlot = null;
-        }
-
-        // 如果最终没有找到可装备的槽位，则直接返回
-        if (finalSlot == null) return;
-
-        // --- ^^^ 修正结束 ^^^ ---
-
-        // 如果最终确定的槽位上已经有装备，则先卸下它
-        if (character.EquippedItems.TryGetValue(finalSlot.Value, out var currentItemId))
-        {
-            UnequipItem(character, finalSlot.Value);
-        }
-
-        // 从背包中减少物品数量
-        slotToEquipFrom.Quantity--;
-        if (slotToEquipFrom.Quantity <= 0) slotToEquipFrom.ItemId = null;
-
-        // 将新物品装备到最终确定的槽位上
-        character.EquippedItems[finalSlot.Value] = itemId;
-        character.Health = Math.Min(character.Health, character.GetTotalMaxHealth());
-        NotifyStateChanged();
-    }
-
-    private void UnequipItem(Player? character, EquipmentSlot slot)
-    {
-        if (character == null || !character.EquippedItems.TryGetValue(slot, out var itemIdToUnequip)) return;
-        character.EquippedItems.Remove(slot);
-        AddItemToInventory(character, itemIdToUnequip, 1);
-        character.Health = Math.Min(character.Health, character.GetTotalMaxHealth());
-        NotifyStateChanged();
-    }
-
-    private void SellItem(Player? character, string itemId, int quantity = 1)
-    {
-        if (character == null) return;
-        var itemData = ItemData.GetItemById(itemId);
-        if (itemData == null) return;
-        if (RemoveItemFromInventory(character, itemId, quantity, out int soldCount) && soldCount > 0)
-        {
-            character.Gold += itemData.Value * soldCount;
-            NotifyStateChanged();
-        }
-    }
-
-    private void UseItem(Player? character, string itemId)
-    {
-        if (character == null || ItemData.GetItemById(itemId) is not Consumable consumable) return;
-        if (consumable.CooldownSeconds > 0 && character.ConsumableCooldowns.ContainsKey(consumable.Id)) return;
-        if (RemoveItemFromInventory(character, itemId, 1, out int removedCount) && removedCount > 0)
-        {
-            ApplyConsumableEffect(character, consumable);
-        }
-    }
-
     private void UpdateQuestProgress(Player character, QuestType type, string targetId, int amount)
     {
         var allQuests = DailyQuests.Concat(WeeklyQuests);
@@ -837,7 +705,11 @@ public class GameStateService : IAsyncDisposable
             {
                 character.Reputation[quest.Faction] = character.Reputation.GetValueOrDefault(quest.Faction, 0) + quest.ReputationReward;
             }
-            foreach (var itemReward in quest.ItemRewards) AddItemToInventory(character, itemReward.Key, itemReward.Value);
+
+            foreach (var itemReward in quest.ItemRewards)
+            {
+                _inventoryService.AddItemToInventory(character, itemReward.Key, itemReward.Value);
+            }
 
             character.CompletedQuestIds.Add(questId);
             character.QuestProgress.Remove(questId);
@@ -845,164 +717,12 @@ public class GameStateService : IAsyncDisposable
         }
     }
 
-    public void SetQuickSlotItem(ConsumableCategory category, int slotId, string itemId) => SetQuickSlotItem(ActiveCharacter, category, slotId, itemId);
-    public void ClearQuickSlotItem(ConsumableCategory category, int slotId, FoodType foodType = FoodType.None) => ClearQuickSlotItem(ActiveCharacter, category, slotId, foodType);
-    public void ToggleAutoSellItem(string itemId) => ToggleAutoSellItem(ActiveCharacter, itemId);
     private void SetBattleProfession(Player? character, BattleProfession profession)
     {
         if (character != null)
         {
             character.SelectedBattleProfession = profession;
             NotifyStateChanged();
-        }
-    }
-
-    private void SetQuickSlotItem(Player? character, ConsumableCategory category, int slotId, string itemId)
-    {
-        if (character == null) return;
-        var item = ItemData.GetItemById(itemId) as Consumable;
-        if (item == null || item.Category != category) return;
-
-        Dictionary<int, string>? targetSlots = category switch
-        {
-            ConsumableCategory.Potion => character.PotionQuickSlots,
-            ConsumableCategory.Food when item.FoodType == FoodType.Combat => character.CombatFoodQuickSlots,
-            ConsumableCategory.Food when item.FoodType == FoodType.Gathering => character.GatheringFoodQuickSlots,
-            ConsumableCategory.Food when item.FoodType == FoodType.Production => character.ProductionFoodQuickSlots,
-            _ => null
-        };
-        if (targetSlots == null) return;
-
-        // 如果该物品已在其他快捷栏，则移除
-        var otherItemSlots = targetSlots.Where(kv => kv.Value == itemId && kv.Key != slotId).ToList();
-        foreach (var otherSlot in otherItemSlots)
-        {
-            targetSlots.Remove(otherSlot.Key);
-        }
-
-        // 设置新的快捷栏
-        targetSlots[slotId] = itemId;
-        NotifyStateChanged();
-    }
-
-    private void ClearQuickSlotItem(Player? character, ConsumableCategory category, int slotId, FoodType foodType = FoodType.None)
-    {
-        if (character == null) return;
-        Dictionary<int, string>? targetSlots = category switch
-        {
-            ConsumableCategory.Potion => character.PotionQuickSlots,
-            ConsumableCategory.Food when foodType == FoodType.Combat => character.CombatFoodQuickSlots,
-            ConsumableCategory.Food when foodType == FoodType.Gathering => character.GatheringFoodQuickSlots,
-            ConsumableCategory.Food when foodType == FoodType.Production => character.ProductionFoodQuickSlots,
-            _ => null
-        };
-        targetSlots?.Remove(slotId);
-        NotifyStateChanged();
-    }
-
-    private void ToggleAutoSellItem(Player? character, string itemId)
-    {
-        if (character == null) return;
-
-        if (character.AutoSellItemIds.Contains(itemId))
-        {
-            character.AutoSellItemIds.Remove(itemId);
-        }
-        else
-        {
-            character.AutoSellItemIds.Add(itemId);
-        }
-        NotifyStateChanged();
-    }
-    /// <summary>
-    /// 处理当前激活角色购买商品的逻辑
-    /// </summary>
-    /// <param name="itemId">要购买的物品ID</param>
-    /// <returns>如果购买成功则返回 true，否则返回 false</returns>
-    public bool BuyItem(string itemId)
-    {
-        // 1. 确保有激活的角色
-        if (ActiveCharacter is not Player character)
-        {
-            return false;
-        }
-
-        // 2. 查找物品及其商店信息
-        var itemToBuy = ItemData.GetItemById(itemId);
-        if (itemToBuy?.ShopPurchaseInfo == null)
-        {
-            return false; // 物品不存在或不可购买
-        }
-
-        var purchaseInfo = itemToBuy.ShopPurchaseInfo;
-
-        // 3. 检查货币是否足够
-        if (purchaseInfo.Currency == CurrencyType.Gold)
-        {
-            if (character.Gold < purchaseInfo.Price)
-            {
-                return false; // 金币不足
-            }
-        }
-        else // 如果货币是物品
-        {
-            int ownedAmount = character.Inventory
-                .Where(s => s.ItemId == purchaseInfo.CurrencyItemId)
-                .Sum(s => s.Quantity);
-            if (ownedAmount < purchaseInfo.Price)
-            {
-                return false; // 物品货币不足
-            }
-        }
-
-        // 4. 扣除花费
-        if (purchaseInfo.Currency == CurrencyType.Gold)
-        {
-            character.Gold -= purchaseInfo.Price;
-        }
-        else
-        {
-            // 调用辅助方法来移除指定数量的物品
-            RemoveItem(character, purchaseInfo.CurrencyItemId!, purchaseInfo.Price);
-        }
-
-        // 5. 将购买的物品添加到背包
-        AddItemToInventory(character, itemToBuy.Id, 1);
-
-        // 6. 通知UI更新并保存游戏
-        NotifyStateChanged();
-        return true;
-    }
-
-    /// <summary>
-    /// 从指定角色的背包中移除指定数量的物品
-    /// </summary>
-    private void RemoveItem(Player character, string itemId, int quantity)
-    {
-        int quantityToRemove = quantity;
-
-        // 从后往前遍历，这样即使移除了一个堆叠，索引也不会出错
-        for (int i = character.Inventory.Count - 1; i >= 0; i--)
-        {
-            var stack = character.Inventory[i];
-            if (stack.ItemId == itemId)
-            {
-                if (stack.Quantity > quantityToRemove)
-                {
-                    stack.Quantity -= quantityToRemove;
-                    quantityToRemove = 0;
-                }
-                else
-                {
-                    quantityToRemove -= stack.Quantity;
-                    character.Inventory.RemoveAt(i);
-                }
-
-                if (quantityToRemove == 0)
-                {
-                    break;
-                }
-            }
         }
     }
 
@@ -1165,71 +885,6 @@ public class GameStateService : IAsyncDisposable
             else if (cooldown > 0)
             {
                 enemy.SkillCooldowns[skillId] = cooldown - 1;
-            }
-        }
-    }
-    private void ApplyConsumableEffect(Player character,Consumable consumable)
-    {
-        switch (consumable.Effect)
-        {
-            case ConsumableEffectType.Heal:
-                character.Health = Math.Min(character.GetTotalMaxHealth(), character.Health + (int)consumable.EffectValue);
-                break;
-            case ConsumableEffectType.StatBuff:
-                if (consumable.BuffType.HasValue && consumable.DurationSeconds.HasValue)
-                {
-                    character.ActiveBuffs.RemoveAll(b => b.FoodType == consumable.FoodType && b.BuffType == consumable.BuffType.Value);
-                    character.ActiveBuffs.Add(new Buff
-                    {
-                        SourceItemId = consumable.Id,
-                        BuffType = consumable.BuffType.Value,
-                        BuffValue = (int)consumable.EffectValue,
-                        TimeRemainingSeconds = consumable.DurationSeconds.Value,
-                        FoodType = consumable.FoodType
-                    });
-                }
-                break;
-            case ConsumableEffectType.LearnRecipe:
-                if (!string.IsNullOrEmpty(consumable.RecipeIdToLearn))
-                {
-                    // 将配方ID添加到玩家的已学习列表中
-                    character.LearnedRecipeIds.Add(consumable.RecipeIdToLearn);
-                }
-                break;
-        }
-        character.ConsumableCooldowns[consumable.Id] = consumable.CooldownSeconds;
-        NotifyStateChanged();
-    }
-    private void ProcessAutoConsumables(Player character)
-    {
-        if (character == null) return;
-        var allQuickSlotItems = character.PotionQuickSlots
-            .Concat(character.CombatFoodQuickSlots)
-            .Concat(character.GatheringFoodQuickSlots)
-            .Concat(character.ProductionFoodQuickSlots);
-        foreach (var slot in allQuickSlotItems)
-        {
-            var itemId = slot.Value;
-            if (string.IsNullOrEmpty(itemId) || character.ConsumableCooldowns.ContainsKey(itemId)) continue;
-            if (ItemData.GetItemById(itemId) is not Consumable item) continue;
-            bool shouldUse = false;
-            switch (item.Category)
-            {
-                case ConsumableCategory.Potion:
-                    if ((double)character.Health / character.GetTotalMaxHealth() < 0.7) shouldUse = true;
-                    break;
-                case ConsumableCategory.Food:
-                    if (item.FoodType == FoodType.Combat && character.CurrentAction == PlayerActionState.Combat ||
-                        item.FoodType == FoodType.Gathering && character.CurrentAction == PlayerActionState.Gathering ||
-                        item.FoodType == FoodType.Production && character.CurrentAction == PlayerActionState.Crafting)
-                    {
-                        if (!character.ActiveBuffs.Any(b => b.BuffType == item.BuffType)) shouldUse = true;
-                    }
-                    break;
-            }
-            if (shouldUse && RemoveItemFromInventory(character,itemId, 1, out int removedCount) && removedCount > 0)
-            {
-                ApplyConsumableEffect(character,item);
             }
         }
     }
