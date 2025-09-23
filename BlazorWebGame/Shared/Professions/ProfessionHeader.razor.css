@@ -201,3 +201,41 @@ h3::after {
     background-color: #36454F;
     border-radius: 50%;
 }
+
+/* 添加烹饪专业的图标样式 - 厨师帽形状 */
+.profession-header[data-profession="Cooking"] h3::before {
+    background-color: #CC3333;
+    clip-path: polygon(
+        30% 85%,
+        70% 85%,
+        70% 100%,
+        30% 100%,
+        30% 85%,
+        20% 85%,
+        40% 15%,
+        60% 15%,
+        80% 85%
+    );
+}
+
+/* 添加"蒸汽"动画效果 */
+.profession-header[data-profession="Cooking"] h3::after {
+    content: '~';
+    position: absolute;
+    left: 12px;
+    top: 2px;
+    color: white;
+    font-size: 10px;
+    animation: steam 2s infinite ease-in-out;
+}
+
+@keyframes steam {
+    0% {
+        opacity: 0.8;
+        transform: translateY(0) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-10px) scale(1.5);
+    }
+}
