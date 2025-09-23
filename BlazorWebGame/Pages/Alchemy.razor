@@ -2,83 +2,47 @@
 @using BlazorWebGame.Models
 @using BlazorWebGame.Models.Items
 @using BlazorWebGame.Services
+@using BlazorWebGame.Utils
+@using BlazorWebGame.Shared.Professions
 @inject GameStateService GameState
 @implements IDisposable
 
 <PageTitle>炼金</PageTitle>
 
-@* --- vvv 核心修改：从检查 Player 改为检查 ActiveCharacter vvv --- *@
 @if (GameState.ActiveCharacter is Player character)
 {
     <div class="production-layout">
         <div class="header-section">
-            <div class="profession-info">
-                <h3>炼金</h3>
-                <div class="profession-stats">
-                    <p>
-                        等级: <strong>@character.GetLevel(ProductionProfession.Alchemy)</strong>
-                        (XP: @(character.ProductionProfessionXP.GetValueOrDefault(ProductionProfession.Alchemy)))
-                    </p>
-                    <p>
-                        制作速度加成: <strong>@((character.GetTotalCraftingSpeedBonus() * 100).ToString("F0"))%</strong>
-                    </p>
-                </div>
-            </div>
+            <ProfessionHeader Title="炼金"
+                              ProfessionType="Alchemy"
+                              Level="@character.GetLevel(ProductionProfession.Alchemy)"
+                              Experience="@character.ProductionProfessionXP.GetValueOrDefault(ProductionProfession.Alchemy)"
+                              GatheringSpeedBonus="@character.GetTotalCraftingSpeedBonus()"
+                              ExtraLootChance="0" />
 
-            <div class="consumable-bar">
-                <h5>生产食物</h5>
-                <div class="consumable-quick-slots">
-                    @for (int i = 0; i < 2; i++)
-                    {
-                        var slotId = i;
-                        <div class="quick-slot"
-                             @onclick="() => OpenQuickSlotPicker(ConsumableCategory.Food, slotId, FoodType.Production)"
-                             @oncontextmenu="() => GameState.ClearQuickSlotItem(ConsumableCategory.Food, slotId, FoodType.Production)"
-                             @oncontextmenu:preventDefault>
-                            @if (character.ProductionFoodQuickSlots != null && character.ProductionFoodQuickSlots.TryGetValue(slotId, out var itemId) && !string.IsNullOrEmpty(itemId))
-                            {
-                                var item = ItemData.GetItemById(itemId);
-                                if (item != null)
-                                {
-                                    var cooldown = character.ConsumableCooldowns.GetValueOrDefault(itemId, 0);
-                                    var count = GetItemCountInInventory(character, itemId);
-                                    <div class="quick-slot-item @(count == 0 ? "depleted" : "")" title="@item.Name (@count) - 右键清空">
-                                        <div class="item-icon">@item.Name.Substring(0, 1)</div>
-                                        <span class="item-count">@count</span>
-                                        @if (cooldown > 0)
-                                        {
-                                            <div class="cooldown-overlay"><span>@((int)cooldown)</span></div>
-                                        }
-                                    </div>
-                                }
-                            }
-                            else
-                            {
-                                <div class="quick-slot-empty" title="点击设置生产食物"></div>
-                            }
-                        </div>
-                    }
-                </div>
-            </div>
+            <QuickSlotBar Title="生产食物"
+                          QuickSlots="@character.ProductionFoodQuickSlots"
+                          Cooldowns="@character.ConsumableCooldowns"
+                          Inventory="@character.Inventory"
+                          OnSlotClicked="@((slotId) => OpenQuickSlotPicker(ConsumableCategory.Food, slotId, FoodType.Production))"
+                          OnSlotCleared="@((slotId) => GameState.ClearQuickSlotItem(ConsumableCategory.Food, slotId, FoodType.Production))" />
         </div>
 
         @if (character.CurrentAction == PlayerActionState.Crafting && character.CurrentRecipe is Recipe currentRecipe)
         {
-            <div class="current-action-card">
-                <h4>正在制作: @currentRecipe.Name</h4>
-                <div class="progress-bar-container">
-                    <div class="progress-bar" style="width: @(GetCraftingProgress(character))%;"></div>
-                    <span class="progress-text">@GetCurrentCraftingTime(character).ToString("F1")s</span>
-                </div>
-                <button class="btn btn-danger mt-3" @onclick="GameState.StopCurrentAction">停止制作</button>
-            </div>
+            <ActionProgressCard Title="@($"正在炼制: {currentRecipe.Name}")"
+                                ShowProgressBar="true"
+                                ProgressPercentage="@(GetCraftingProgress(character))"
+                                RemainingTimeText="@(GetCurrentCraftingTime(character).ToString("F1") + "s")">
+                <button class="btn btn-danger" @onclick="GameState.StopCurrentAction">停止炼制</button>
+            </ActionProgressCard>
         }
         else if (character.CurrentAction != PlayerActionState.Idle)
         {
-            <div class="action-blocked-card">
-                <p><strong>@character.Name 正在进行其他活动，无法开始制作！</strong></p>
+            <ActionProgressCard Title="@($"{character.Name} 正在进行其他活动，无法开始炼制！")"
+                                IsBlocked="true">
                 <button class="btn btn-warning" @onclick="GameState.StopCurrentAction">停止当前活动</button>
-            </div>
+            </ActionProgressCard>
         }
 
         <div class="recipe-list">
@@ -119,7 +83,7 @@
                         @if (canCraft)
                         {
                             <button class="btn btn-success" @onclick="() => GameState.StartCrafting(recipe)" disabled="@(!hasMaterials || character.CurrentAction != PlayerActionState.Idle)">
-                                @(hasMaterials ? "制作" : "材料不足")
+                                @(hasMaterials ? "炼制" : "材料不足")
                             </button>
                         }
                         else
@@ -133,7 +97,7 @@
                         <div class="lock-reason">
                             @if (unlockItem != null)
                             {
-                                <span>需要图纸: @unlockItem.Name</span>
+                                <span>需要配方: @unlockItem.Name</span>
                             }
                             else
                             {
@@ -145,31 +109,20 @@
             }
         </div>
     </div>
+
+    @if (_isPickerVisible)
+    {
+        <QuickSlotPicker Title="生产食物"
+                         Items="@GetAvailableConsumablesForPicker(character)"
+                         ItemCounts="@GetItemCounts(character)"
+                         OnItemSelect="@SetQuickSlot"
+                         OnCloseRequest="CloseQuickSlotPicker" />
+    }
 }
 else
 {
     <p>正在加载角色信息...</p>
 }
-
-@if (_isPickerVisible && GameState.ActiveCharacter is Player pickerCharacter)
-{
-    <div class="modal-backdrop" @onclick="CloseQuickSlotPicker"></div>
-    <div class="quick-slot-picker">
-        <h5>选择生产食物</h5>
-        <div class="picker-item-list">
-            @foreach (var item in GetAvailableConsumablesForPicker(pickerCharacter))
-            {
-                <div class="picker-item" @onclick="() => SetQuickSlot(item.Id)">
-                    <span class="picker-item-name">@item.Name</span>
-                    <span class="picker-item-count">(x@(GetItemCountInInventory(pickerCharacter, item.Id)))</span>
-                </div>
-            }
-        </div>
-        <button class="btn btn-secondary mt-2" @onclick="CloseQuickSlotPicker">关闭</button>
-    </div>
-}
-@* --- ^^^ 修改结束 ^^^ --- *@
-
 
 @code {
     private bool _isPickerVisible = false;
@@ -182,7 +135,15 @@ else
         GameState.OnStateChanged += StateHasChanged;
     }
 
-    // --- vvv 新增和修改的辅助方法 vvv ---
+    private Dictionary<string, int> GetItemCounts(Player character)
+    {
+        var result = new Dictionary<string, int>();
+        foreach (var item in GetAvailableConsumablesForPicker(character))
+        {
+            result[item.Id] = GetItemCountInInventory(character, item.Id);
+        }
+        return result;
+    }
 
     private double GetCurrentCraftingTime(Player character)
     {
@@ -219,17 +180,15 @@ else
     private List<Consumable> GetAvailableConsumablesForPicker(Player character)
     {
         var itemIdsInInventory = character.Inventory
-            .Where(s => !s.IsEmpty)
-            .Select(s => s.ItemId)
-            .Distinct();
+            .Where(s => !s.IsEmpty && s.ItemId != null)
+            .Select(s => s.ItemId!)
+            .ToHashSet();
 
         return ItemData.AllItems
             .OfType<Consumable>()
             .Where(c => c.FoodType == _managingFoodType && itemIdsInInventory.Contains(c.Id))
             .ToList();
     }
-
-    // --- ^^^ 方法修改结束 ^^^ ---
 
     private void OpenQuickSlotPicker(ConsumableCategory category, int slotId, FoodType foodType)
     {
@@ -246,7 +205,6 @@ else
 
     private void SetQuickSlot(string itemId)
     {
-        // GameState 中的方法已经被适配为作用于 ActiveCharacter
         GameState.SetQuickSlotItem(_managingCategory, _managingSlotId, itemId);
         CloseQuickSlotPicker();
     }

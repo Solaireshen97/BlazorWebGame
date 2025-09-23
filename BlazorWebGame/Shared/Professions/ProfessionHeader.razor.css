@@ -306,3 +306,52 @@ h3::after {
         transform: translate(-2px, -1px) scale(0.8);
     }
 }
+
+/* 添加炼金专业的图标样式 - 药水瓶形状 */
+.profession-header[data-profession="Alchemy"] h3::before {
+    background-color: #00C957;
+    clip-path: polygon(
+        40% 0%,
+        60% 0%,
+        60% 10%,
+        75% 10%,
+        75% 20%,
+        60% 20%,
+        60% 40%,
+        80% 75%,
+        80% 100%,
+        20% 100%,
+        20% 75%,
+        40% 40%,
+        40% 20%,
+        25% 20%,
+        25% 10%,
+        40% 10%
+    );
+}
+
+/* 添加药水冒泡动画效果 */
+.profession-header[data-profession="Alchemy"] h3::after {
+    content: '';
+    position: absolute;
+    left: 13px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.8);
+    animation: alchemic-bubble 3s infinite;
+}
+
+@keyframes alchemic-bubble {
+    0% {
+        bottom: 7px;
+        opacity: 0;
+    }
+    50% {
+        opacity: 0.8;
+    }
+    100% {
+        bottom: 20px;
+        opacity: 0;
+    }
+}

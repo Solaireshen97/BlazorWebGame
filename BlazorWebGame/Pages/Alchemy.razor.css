@@ -1,111 +1,210 @@
-﻿.production-layout {
+﻿/* 魔兽世界风格的主题色彩 - 炼金专用 */
+:root {
+    --wow-gold: #f8b700;
+    --wow-dark: #211510;
+    --wow-light-brown: #5c4d3c;
+    --wow-alchemy-purple: #8A2BE2;
+    --wow-alchemy-green: #00C957;
+    --wow-alchemy-blue: #4B0082;
+    --wow-potion-glow: #9370DB;
+    --wow-parchment: #f0e6d2;
+}
+
+/* 主容器风格 - 炼金专属神秘色调 */
+.production-layout {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+    background-color: var(--wow-dark);
+    background-image: linear-gradient(135deg, rgba(25, 10, 40, 0.9), rgba(35, 15, 50, 0.9), rgba(25, 10, 40, 0.9));
+    border: 2px solid var(--wow-alchemy-purple);
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.5), inset 0 0 8px rgba(138, 43, 226, 0.3);
+    position: relative;
+    margin: 10px;
+    color: var(--wow-parchment);
+    font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
 }
 
+    /* 药水泡泡背景效果 */
+    .production-layout::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: radial-gradient(circle at 75% 25%, rgba(138, 43, 226, 0.15) 0, rgba(138, 43, 226, 0) 20px), radial-gradient(circle at 25% 75%, rgba(0, 201, 87, 0.15) 0, rgba(0, 201, 87, 0) 30px), radial-gradient(circle at 60% 80%, rgba(138, 43, 226, 0.1) 0, rgba(138, 43, 226, 0) 15px), radial-gradient(circle at 30% 20%, rgba(0, 201, 87, 0.1) 0, rgba(0, 201, 87, 0) 25px);
+        opacity: 0.7;
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .production-layout::after {
+        content: '';
+        position: absolute;
+        top: 5px;
+        left: 5px;
+        right: 5px;
+        bottom: 5px;
+        border: 1px solid var(--wow-alchemy-purple);
+        border-radius: 4px;
+        pointer-events: none;
+        z-index: 0;
+    }
+
+/* 顶部区域装饰 - 炼金风格 */
 .header-section {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     padding-bottom: 1.5rem;
-    border-bottom: 1px solid #dee2e6;
-}
-
-.profession-info {
-    flex-grow: 1;
-}
-
-.profession-stats {
-    display: flex;
-    gap: 2rem;
-    margin-top: .5rem;
-    font-size: .9rem;
-    color: #555;
-}
-
-.current-action-card, .action-blocked-card {
-    background-color: #e7f1ff;
-    border: 1px solid #b3d7ff;
-    border-radius: 8px;
-    padding: 1.5rem;
-    text-align: center;
-}
-
-.action-blocked-card {
-    background-color: #fff3cd;
-    border-color: #ffeeba;
-}
-
-.progress-bar-container {
-    background-color: #e9ecef;
-    border-radius: 4px;
-    height: 25px;
-    margin-top: 1rem;
-    overflow: hidden;
-    border: 1px solid #ddd;
+    border-bottom: 1px solid var(--wow-alchemy-purple);
     position: relative;
+    z-index: 1;
 }
 
-.progress-bar {
-    background-color: #ff9800;
-    height: 100%;
-    transition: width 0.1s linear;
-}
+    /* 炼金风格分隔线 - 发光效果 */
+    .header-section::after {
+        content: '';
+        position: absolute;
+        bottom: -1px;
+        left: 10%;
+        right: 10%;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--wow-alchemy-green), var(--wow-alchemy-purple), var(--wow-alchemy-green), transparent);
+        box-shadow: 0 0 8px var(--wow-potion-glow);
+    }
 
-.progress-text {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: #343a40;
-    font-weight: bold;
-    text-shadow: none;
-    z-index: 2;
-    pointer-events: none;
-}
-
+/* 配方列表样式 */
 .recipe-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 1rem;
+    gap: 1.5rem;
+    padding: 10px 0;
+    position: relative;
+    z-index: 1;
 }
 
+/* 配方卡片样式 - 药水配方风格 */
 .recipe-card {
-    border: 1px solid #ccc;
+    border: 2px solid var(--wow-alchemy-purple);
     border-radius: 8px;
     padding: 1rem;
-    background-color: white;
+    background: linear-gradient(135deg, rgba(35, 15, 50, 0.9), rgba(25, 10, 40, 0.9));
     display: flex;
     flex-direction: column;
+    position: relative;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3), inset 0 0 10px rgba(138, 43, 226, 0.2);
+    transition: all 0.3s ease;
+    overflow: hidden;
 }
 
-    .recipe-card.locked {
-        background-color: #f8f9fa;
-        opacity: 0.7;
+    /* 药水流体效果 */
+    .recipe-card::before {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 8px;
+        background: linear-gradient(90deg, var(--wow-alchemy-purple), var(--wow-alchemy-green), var(--wow-alchemy-purple));
+        opacity: 0.6;
+        border-radius: 0 0 6px 6px;
     }
 
-    .recipe-card.level-locked {
-        border-left: 5px solid #ffc107;
+    /* 药水泡泡效果 */
+    .recipe-card::after {
+        content: '';
+        position: absolute;
+        bottom: 8px;
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.8);
+        animation: bubble 4s infinite;
+        opacity: 0;
     }
+
+@keyframes bubble {
+    0% {
+        left: 15%;
+        bottom: 8px;
+        opacity: 0;
+    }
+
+    10% {
+        opacity: 0.8;
+    }
+
+    50% {
+        left: 20%;
+        bottom: 60%;
+        opacity: 0.4;
+    }
+
+    100% {
+        left: 25%;
+        bottom: 100%;
+        opacity: 0;
+    }
+}
+
+.recipe-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4), inset 0 0 15px rgba(138, 43, 226, 0.3);
+    border-color: var(--wow-alchemy-green);
+}
+
+.recipe-card.locked {
+    background: linear-gradient(135deg, rgba(25, 25, 25, 0.9), rgba(15, 15, 15, 0.9));
+    border-color: #555;
+    opacity: 0.7;
+}
+
+.recipe-card.level-locked {
+    border-left: 5px solid var(--wow-gold);
+}
 
 .recipe-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--wow-alchemy-green);
+    padding-bottom: 0.75rem;
     margin-bottom: 1rem;
+    position: relative;
 }
+
+    /* 药水瓶标记 */
+    .recipe-header::before {
+        content: '◉';
+        position: absolute;
+        left: -3px;
+        top: -3px;
+        font-size: 12px;
+        color: var(--wow-alchemy-green);
+    }
 
     .recipe-header h5 {
         margin: 0;
+        color: var(--wow-alchemy-green);
+        text-shadow: 0 0 3px rgba(0, 201, 87, 0.5);
+        font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
+        font-size: 1.2rem;
+        font-weight: 700;
     }
 
 .recipe-level {
     font-size: 0.9rem;
-    font-weight: bold;
-    color: #007bff;
+    font-weight: 700;
+    color: var(--wow-potion-glow);
+    text-shadow: 0 0 3px rgba(138, 43, 226, 0.5);
+    background-color: rgba(0, 0, 0, 0.3);
+    padding: 3px 8px;
+    border-radius: 10px;
+    border: 1px solid rgba(138, 43, 226, 0.3);
 }
 
 .recipe-details {
@@ -114,16 +213,31 @@
     margin-bottom: 1rem;
     font-size: 0.9rem;
     flex-grow: 1;
+    position: relative;
 }
 
 .recipe-materials, .recipe-output {
     flex: 1;
+    position: relative;
 }
 
     .recipe-materials h6, .recipe-output h6 {
         margin-top: 0;
         margin-bottom: 0.5rem;
-        font-weight: bold;
+        font-weight: 700;
+        color: var(--wow-parchment);
+        text-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+    }
+
+    .recipe-materials::after {
+        content: '→';
+        position: absolute;
+        right: -12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--wow-alchemy-green);
+        font-size: 16px;
+        text-shadow: 0 0 5px var(--wow-alchemy-purple);
     }
 
     .recipe-materials ul {
@@ -132,168 +246,113 @@
         margin: 0;
     }
 
-    .recipe-materials li.missing-mats {
-        color: #dc3545;
+    .recipe-materials li {
+        padding: 3px 0;
+        font-size: 0.9rem;
+        position: relative;
+        padding-left: 15px;
     }
 
-    .recipe-materials li.has-mats {
-        color: #28a745;
-    }
+        .recipe-materials li::before {
+            content: '•';
+            position: absolute;
+            left: 0;
+            top: 2px;
+            font-size: 16px;
+            color: var(--wow-alchemy-green);
+        }
+
+        .recipe-materials li.has-mats {
+            color: #7aff7a;
+        }
+
+        .recipe-materials li.missing-mats {
+            color: #ff9999;
+        }
 
 .lock-reason {
-    background-color: #e9ecef;
+    background-color: rgba(0, 0, 0, 0.5);
     text-align: center;
     padding: 0.75rem;
     border-radius: 5px;
-    font-weight: bold;
-    color: #6c757d;
+    font-weight: 700;
+    color: #999;
     margin-top: auto;
+    border: 1px solid rgba(138, 43, 226, 0.3);
+    position: relative;
 }
 
 .recipe-card.level-locked .lock-reason {
-    background-color: #fff3cd;
-    color: #856404;
+    background-color: rgba(73, 33, 10, 0.7);
+    color: var(--wow-gold);
+    border: 1px solid rgba(248, 183, 0, 0.3);
 }
 
-.consumable-bar {
-    background-color: transparent;
-    border: none;
-    padding: 0;
-    flex-shrink: 0;
-}
-
-    .consumable-bar h5 {
-        margin-top: 0;
-        margin-bottom: 0.75rem;
-        text-align: center;
-        font-size: 1rem;
-        font-weight: 700;
-        color: #6c757d;
-    }
-
-.consumable-quick-slots {
-    display: flex;
-    justify-content: center;
-    gap: 0.5rem;
-}
-
-.quick-slot {
-    width: 40px;
-    height: 40px;
-    border-radius: 5px;
-    border: 1px dashed #ccc;
-    cursor: pointer;
-    position: relative;
-}
-
-.quick-slot-empty {
-    width: 100%;
-    height: 100%;
-}
-
-.quick-slot-item {
-    width: 100%;
-    height: 100%;
-    position: relative;
-    background-color: #fff;
-    border: 1px solid #adb5bd;
-    border-radius: 5px;
-}
-
-    .quick-slot-item .item-icon {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
-        height: 100%;
-        font-weight: 700;
-        font-size: 1rem;
-    }
-
-    .quick-slot-item .item-count {
-        position: absolute;
-        bottom: 1px;
-        right: 2px;
-        font-size: 0.75rem;
-        font-weight: 700;
-        color: #212529;
-        text-shadow: 0 0 2px #fff;
-    }
-
-    .quick-slot-item.depleted .item-icon {
-        color: #dee2e6;
-    }
-
-.cooldown-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.6);
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.2rem;
+/* 页面标题和按钮特效 */
+::deep h3 {
+    color: var(--wow-alchemy-green);
+    text-shadow: 0 0 5px rgba(0, 201, 87, 0.5);
+    font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
     font-weight: 700;
-    border-radius: 5px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
 }
 
-.modal-backdrop {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 1040;
+::deep .btn {
+    background-color: var(--wow-light-brown);
+    border: 1px solid var(--wow-gold);
+    color: var(--wow-gold);
+    font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
+    text-transform: uppercase;
+    font-weight: bold;
+    padding: 8px 16px;
+    transition: all 0.2s ease;
+    box-shadow: inset 0 0 5px rgba(248, 183, 0, 0.3);
 }
 
-.quick-slot-picker {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 300px;
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
-    z-index: 1050;
-    padding: 1.5rem;
-    display: flex;
-    flex-direction: column;
-}
-
-.picker-item-list {
-    max-height: 200px;
-    overflow-y: auto;
-    border: 1px solid #eee;
-    border-radius: 5px;
-}
-
-.picker-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: .5rem 1rem;
-    cursor: pointer;
-    border-bottom: 1px solid #f0f0f0;
-}
-
-    .picker-item:hover {
-        background-color: #f8f9fa;
+    ::deep .btn:hover {
+        background-color: var(--wow-dark);
+        box-shadow: 0 0 10px var(--wow-gold), inset 0 0 8px rgba(248, 183, 0, 0.6);
+        transform: scale(1.05);
     }
 
-    .picker-item:last-child {
-        border-bottom: none;
-    }
-
-.picker-item-name, .picker-item-count {
-    white-space: nowrap;
+::deep .btn-success {
+    background-color: #1d3b33;
+    color: var(--wow-alchemy-green);
+    border-color: var(--wow-alchemy-green);
 }
 
-.picker-item-count {
-    color: #6c757d;
-    font-size: .9em;
+/* 为炼金设置特殊的样式，区别于其他专业 */
+::deep .profession-header h3::before {
+    background-color: var(--wow-alchemy-green) !important;
+    filter: drop-shadow(0 0 3px var(--wow-alchemy-purple));
+}
+
+/* 修改进度条样式，使用炼金风格 - 药水流动效果 */
+::deep .progress-bar {
+    background: linear-gradient(to right, var(--wow-alchemy-blue), var(--wow-alchemy-purple), var(--wow-alchemy-green));
+    position: relative;
+    overflow: hidden;
+}
+
+    ::deep .progress-bar::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient( 45deg, transparent 0%, rgba(255, 255, 255, 0.2) 25%, transparent 50%, rgba(255, 255, 255, 0.2) 75%, transparent 100% );
+        background-size: 20px 20px;
+        animation: potion-flow 2s linear infinite;
+    }
+
+@keyframes potion-flow {
+    0% {
+        background-position: 0 0;
+    }
+
+    100% {
+        background-position: 20px 20px;
+    }
 }
