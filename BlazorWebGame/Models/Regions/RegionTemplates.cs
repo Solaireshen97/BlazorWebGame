@@ -142,7 +142,7 @@ namespace BlazorWebGame.Models.Regions
                 Type = RegionType.Continent,
                 RecommendedLevel = 58,
                 MinimumLevel = 58,
-                RequiredDungeons = new List<string> { "dungeon_dark_portal" }
+                RequiredDungeons = new List<string> { "forest_ruins" }
             };
             regions.Add(outland);
 
