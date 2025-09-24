@@ -161,6 +161,40 @@ namespace BlazorWebGame.Services
             return _battleManager.StartMultiEnemyBattle(character, enemies, party);
         }
 
+        /// <summary>
+        /// 停止战斗
+        /// </summary>
+        public void StopBattle(BattleContext battleContext)
+        {
+            if (battleContext == null) return;
+
+            _battleManager.StopBattle(battleContext);
+        }
+
+        /// <summary>
+        /// 停止玩家的战斗
+        /// </summary>
+        public void StopPlayerBattle(string playerId)
+        {
+            var battleContext = GetBattleContextForPlayer(playerId);
+            if (battleContext != null)
+            {
+                StopBattle(battleContext);
+            }
+        }
+
+        /// <summary>
+        /// 停止队伍的战斗
+        /// </summary>
+        public void StopPartyBattle(Guid partyId)
+        {
+            var battleContext = GetBattleContextForParty(partyId);
+            if (battleContext != null)
+            {
+                StopBattle(battleContext);
+            }
+        }
+
         #endregion
 
         #region 角色状态管理

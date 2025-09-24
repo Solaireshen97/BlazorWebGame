@@ -427,44 +427,27 @@ public class GameStateService : IAsyncDisposable
     {
         if (character == null) return;
 
-        var party = GetPartyForCharacter(character.Id);
-
-        if (party != null)
+        // 检查是否在新战斗系统中
+        var battleContext = _combatService.GetBattleContextForPlayer(character.Id);
+        if (battleContext != null)
         {
-            // 停止团队战斗 - 应该委托给PartyService
-            _partyService.StopPartyAction(party);
-
-            // 处理团队成员的状态
-            foreach (var memberId in party.MemberIds)
-            {
-                var member = AllCharacters.FirstOrDefault(c => c.Id == memberId);
-                if (member != null)
-                {
-                    // 停止专业活动
-                    _professionService.StopCurrentAction(member);
-
-                    // 重置战斗状态
-                    if (member.CurrentAction == PlayerActionState.Combat)
-                    {
-                        member.CurrentAction = PlayerActionState.Idle;
-                        member.CurrentEnemy = null;
-                        member.AttackCooldown = 0;
-                    }
-                }
-            }
+            // 停止新战斗系统的战斗
+            _combatService.StopBattle(battleContext);
+            NotifyStateChanged();
+            return;
         }
-        else if (character.CurrentAction == PlayerActionState.Combat)
+
+        // 如果不在战斗中，可能在进行专业活动
+        if (character.CurrentAction == PlayerActionState.Gathering ||
+            character.CurrentAction == PlayerActionState.Crafting)
         {
-            // 停止个人战斗
-            character.CurrentAction = PlayerActionState.Idle;
-            character.CurrentEnemy = null;
-            character.AttackCooldown = 0;
-        }
-        else
-        {
-            // 停止采集和制作活动
             _professionService.StopCurrentAction(character);
         }
+
+        // 确保角色状态为空闲
+        character.CurrentAction = PlayerActionState.Idle;
+        character.CurrentEnemy = null;
+        character.AttackCooldown = 0;
 
         NotifyStateChanged();
     }

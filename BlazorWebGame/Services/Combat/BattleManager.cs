@@ -452,6 +452,69 @@ namespace BlazorWebGame.Services.Combat
         }
 
         /// <summary>
+        /// 停止战斗
+        /// </summary>
+        public void StopBattle(BattleContext battle)
+        {
+            if (battle == null || !_activeBattles.ContainsKey(battle.Id))
+                return;
+
+            // 设置战斗状态为已取消
+            battle.State = BattleState.Cancelled;
+
+            // 清理所有参与战斗的玩家状态
+            foreach (var player in battle.Players)
+            {
+                player.CurrentAction = PlayerActionState.Idle;
+                player.CurrentEnemy = null;
+                player.AttackCooldown = 0;
+            }
+
+            // 清理队伍状态（如果有）
+            if (battle.Party != null)
+            {
+                battle.Party.CurrentEnemy = null;
+            }
+
+            // 从活跃战斗列表中移除
+            _activeBattles.Remove(battle.Id);
+
+            // 移除相关的刷新状态
+            _battleFlowService.CancelBattleRefresh(battle.Id);
+
+            // 触发状态变更事件
+            NotifyStateChanged();
+
+            // 触发战斗取消事件
+            var gameStateService = ServiceLocator.GetService<GameStateService>();
+            gameStateService?.RaiseEvent(GameEventType.BattleCancelled, battle.Players.FirstOrDefault());
+        }
+
+        /// <summary>
+        /// 停止玩家的所有战斗
+        /// </summary>
+        public void StopPlayerBattles(string playerId)
+        {
+            var battleToStop = GetBattleContextForPlayer(playerId);
+            if (battleToStop != null)
+            {
+                StopBattle(battleToStop);
+            }
+        }
+
+        /// <summary>
+        /// 停止队伍的所有战斗
+        /// </summary>
+        public void StopPartyBattles(Guid partyId)
+        {
+            var battleToStop = GetBattleContextForParty(partyId);
+            if (battleToStop != null)
+            {
+                StopBattle(battleToStop);
+            }
+        }
+
+        /// <summary>
         /// 触发状态变更事件
         /// </summary>
         private void NotifyStateChanged() => OnStateChanged?.Invoke();

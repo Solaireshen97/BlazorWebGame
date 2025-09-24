@@ -474,6 +474,62 @@ namespace BlazorWebGame.Services.Combat
         {
             return (int)(baseStat * (1 + 0.1 * levelAdjustment));
         }
+
+        /// <summary>
+        /// 取消战斗刷新
+        /// </summary>
+        public void CancelBattleRefresh(Guid battleId)
+        {
+            // 移除普通战斗刷新状态
+            var refreshToRemove = _battleRefreshStates
+                .Where(kvp => kvp.Value.OriginalBattle.Id == battleId)
+                .Select(kvp => kvp.Key)
+                .ToList();
+
+            foreach (var key in refreshToRemove)
+            {
+                _battleRefreshStates.Remove(key);
+            }
+
+            // 移除副本波次刷新状态
+            var waveRefreshToRemove = _dungeonWaveRefreshStates
+                .Where(kvp => kvp.Value.Battle.Id == battleId)
+                .Select(kvp => kvp.Key)
+                .ToList();
+
+            foreach (var key in waveRefreshToRemove)
+            {
+                _dungeonWaveRefreshStates.Remove(key);
+            }
+        }
+
+        /// <summary>
+        /// 取消玩家的所有战斗刷新
+        /// </summary>
+        public void CancelPlayerBattleRefresh(string playerId)
+        {
+            // 取消普通战斗刷新
+            var refreshToRemove = _battleRefreshStates
+                .Where(kvp => kvp.Value.OriginalBattle.Players.Any(p => p.Id == playerId))
+                .Select(kvp => kvp.Key)
+                .ToList();
+
+            foreach (var key in refreshToRemove)
+            {
+                _battleRefreshStates.Remove(key);
+            }
+
+            // 取消副本波次刷新
+            var waveRefreshToRemove = _dungeonWaveRefreshStates
+                .Where(kvp => kvp.Value.Battle.Players.Any(p => p.Id == playerId))
+                .Select(kvp => kvp.Key)
+                .ToList();
+
+            foreach (var key in waveRefreshToRemove)
+            {
+                _dungeonWaveRefreshStates.Remove(key);
+            }
+        }
     }
 
     /// <summary>
@@ -499,6 +555,8 @@ namespace BlazorWebGame.Services.Combat
         public double RemainingCooldown { get; set; }
         public SkillSystem SkillSystem { get; set; }
     }
+
+
 
     /// <summary>
     /// 敌人信息记录

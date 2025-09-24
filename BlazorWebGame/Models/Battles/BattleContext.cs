@@ -143,7 +143,8 @@ namespace BlazorWebGame.Models.Battles
         /// <summary>
         /// ÒÑÍê³É
         /// </summary>
-        Completed
+        Completed,
+        Cancelled,
     }
 
     /// <summary>
