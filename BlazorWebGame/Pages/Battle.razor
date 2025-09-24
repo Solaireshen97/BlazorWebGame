@@ -20,36 +20,146 @@
 
     <div class="battle-page-layout">
         <!-- 怪物选择 -->
-        <div class="monster-selection-area">
-            @foreach (var monsterTemplate in GameState.AvailableMonsters)
+        <div class="battle-control-bar">
+            <button class="btn btn-outline-primary" @onclick="ToggleMonsterSelector">
+                <i class="bi bi-list-ul"></i> 选择战斗目标
+            </button>
+
+            @if (party != null && party.CaptainId == character.Id)
             {
-                <button class="monster-select-card @(IsCurrentlyFightingMonster(monsterTemplate.Name, battleContext) ? "active" : "")"
-                        @onclick="() => StartBattle(monsterTemplate)"
-                        disabled="@(isPartyMemberAndNotCaptain || IsInBattleRefresh(character.Id) || IsInDungeonBattle(battleContext))">
-                    @monsterTemplate.Name
+                <button class="btn btn-outline-info" @onclick="ToggleDungeonSelector"
+                        disabled="@(battleContext != null && battleContext.BattleType == BattleType.Dungeon)">
+                    <i class="bi bi-dungeon"></i> 选择副本
                 </button>
             }
 
-            <!-- 只保留副本选项的入口，因为副本是特殊的战斗类型 -->
-            @if (party != null && party.CaptainId == character.Id)
-            {
-                <div class="dungeon-options mt-3">
-                    <button class="btn btn-info" @onclick="() => _currentView = BattleView.Party"
-                            disabled="@(battleContext != null && battleContext.BattleType == BattleType.Dungeon)">
-                        查看可用副本
-                    </button>
+            <div class="view-switcher d-flex gap-2">
+                <button class="btn @(_currentView == BattleView.Battle ? "btn-primary" : "btn-outline-primary")" @onclick="() => _currentView = BattleView.Battle">
+                    战斗
+                </button>
+                <button class="btn @(_currentView == BattleView.Party ? "btn-primary" : "btn-outline-primary")" @onclick="() => _currentView = BattleView.Party">
+                    队伍
+                </button>
+            </div>
+        </div>
+        <!-- 怪物选择悬浮窗 -->
+        @if (_showMonsterSelector)
+        {
+            <div class="modal-backdrop" @onclick="CloseSelectors"></div>
+            <div class="monster-selector-modal">
+                <div class="selector-header">
+                    <h5>选择战斗目标</h5>
+                    <button type="button" class="btn-close" @onclick="CloseSelectors"></button>
                 </div>
-            }
-        </div>
 
-        <div class="view-switcher d-flex justify-content-center gap-2 mb-3 border-bottom pb-3">
-            <button class="btn @(_currentView == BattleView.Battle ? "btn-primary" : "btn-outline-primary")" @onclick="() => _currentView = BattleView.Battle">
-                战斗
-            </button>
-            <button class="btn @(_currentView == BattleView.Party ? "btn-primary" : "btn-outline-primary")" @onclick="() => _currentView = BattleView.Party">
-                队伍
-            </button>
-        </div>
+                <div class="region-navigation">
+                    <!-- 面包屑导航 -->
+                    <div class="breadcrumb-navigation">
+                        <span class="breadcrumb-item" @onclick="() => ResetNavigation()">所有区域</span>
+                        @for (int i = 0; i < _navigationPath.Count; i++)
+                        {
+                            var index = i;
+                            var region = GetRegionByPath(_navigationPath.Take(index + 1).ToList());
+                            <span class="breadcrumb-separator">/</span>
+                            <span class="breadcrumb-item @(index == _navigationPath.Count - 1 ? "active" : "")"
+                                  @onclick="() => NavigateToPathLevel(index + 1)">
+                                @region.Name
+                            </span>
+                        }
+                    </div>
+
+                    <!-- 当前级别区域列表 -->
+                    <div class="region-level">
+                        @{
+                            var currentRegions = GetCurrentLevelRegions();
+                        }
+
+                        @foreach (var region in currentRegions)
+                        {
+                            <div class="region-item" @onclick="() => NavigateToRegion(region.Id)">
+                                @region.Name
+                            </div>
+                        }
+                    </div>
+
+                    <!-- 怪物列表 - 只在已到达叶子节点（没有更深子区域）时显示 -->
+                    @{
+                        var currentRegion = GetCurrentRegion();
+                        var hasSubRegions = currentRegion?.SubRegions?.Any() == true;
+
+                        // 只有当当前区域没有子区域时才显示怪物列表
+                        if (currentRegion != null && !hasSubRegions)
+                        {
+                            <div class="monsters-in-region">
+                                @{
+                                    var monstersInRegion = GameState.AvailableMonsters
+                                    .Where(m => currentRegion.MonsterIds.Contains(m.Name))
+                                    .ToList();
+                                }
+
+                                @foreach (var monster in monstersInRegion)
+                                {
+                                    var isFighting = IsCurrentlyFightingMonster(monster.Name, battleContext);
+
+                                    <div class="monster-select-item @(isFighting ? "active" : "")"
+                                         @onclick="() => StartBattle(monster)"
+                                         title="@monster.Description">
+                                        <div class="monster-name">@monster.Name</div>
+                                        <div class="monster-level">Lv.@monster.Level</div>
+                                    </div>
+                                }
+
+                                @if (!monstersInRegion.Any())
+                                {
+                                    <div class="no-monsters-message">该区域没有可选择的怪物</div>
+                                }
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- 副本选择悬浮窗 -->
+        @if (_showDungeonSelector)
+        {
+            <div class="modal-backdrop" @onclick="CloseSelectors"></div>
+            <div class="dungeon-selector-modal">
+                <div class="selector-header">
+                    <h5>选择副本</h5>
+                    <button type="button" class="btn-close" @onclick="CloseSelectors"></button>
+                </div>
+
+                <div class="dungeons-list">
+                    @foreach (var dungeon in DungeonTemplates.All)
+                    {
+                        bool canEnter = CanEnterDungeon(character, party, dungeon);
+
+                        <div class="dungeon-select-item @(!canEnter ? "disabled" : "")"
+                             @onclick="() => { if (canEnter) StartDungeon(dungeon.Id); }">
+                            <div class="dungeon-info">
+                                <div class="dungeon-name">@dungeon.Name</div>
+                                <div class="dungeon-level">推荐等级: @dungeon.RecommendedLevel</div>
+                                <div class="dungeon-players">@dungeon.MinPlayers-@dungeon.MaxPlayers 人</div>
+                            </div>
+                            <div class="dungeon-description">@dungeon.Description</div>
+                            @if (!canEnter)
+                            {
+                                <div class="dungeon-requirements">
+                                    @GetDungeonRequirementText(character, party, dungeon)
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    @if (!DungeonTemplates.All.Any())
+                    {
+                        <div class="no-dungeons-message">没有可用的副本</div>
+                    }
+                </div>
+            </div>
+        }
+
 
         @if (_currentView == BattleView.Battle)
         {
@@ -482,6 +592,200 @@ else
 }
 
 @code {
+    private bool _showMonsterSelector = false;
+    private bool _showDungeonSelector = false;
+    private string _selectedRegion = "";
+    private string _selectedSubRegion = "";
+
+    // 定义怪物区域结构
+    private class MonsterRegion
+    {
+        public string Id { get; set; }
+        public string Name { get; set; }
+        public List<MonsterRegion> SubRegions { get; set; } = new List<MonsterRegion>();
+        public List<string> MonsterIds { get; set; } = new List<string>();
+    }
+    // 用于存储当前导航路径
+    private List<string> _navigationPath = new List<string>();
+
+    // 重置导航到根级别
+    private void ResetNavigation()
+    {
+        _navigationPath.Clear();
+        StateHasChanged();
+    }
+
+    // 导航到指定区域
+    private void NavigateToRegion(string regionId)
+    {
+        _navigationPath.Add(regionId);
+        StateHasChanged();
+    }
+
+    // 导航到指定路径级别（截断后面的路径）
+    private void NavigateToPathLevel(int level)
+    {
+        if (level < _navigationPath.Count)
+        {
+            _navigationPath = _navigationPath.Take(level).ToList();
+            StateHasChanged();
+        }
+    }
+
+    // 获取当前导航区域
+    private MonsterRegion GetCurrentRegion()
+    {
+        return GetRegionByPath(_navigationPath);
+    }
+
+    // 获取当前级别应显示的子区域列表
+    private List<MonsterRegion> GetCurrentLevelRegions()
+    {
+        if (_navigationPath.Count == 0)
+        {
+            return _monsterRegions;
+        }
+
+        var parentRegion = GetRegionByPath(_navigationPath);
+        return parentRegion?.SubRegions ?? new List<MonsterRegion>();
+    }
+
+    // 根据路径获取区域
+    private MonsterRegion GetRegionByPath(List<string> path)
+    {
+        if (path == null || !path.Any())
+            return null;
+
+        MonsterRegion region = _monsterRegions.FirstOrDefault(r => r.Id == path[0]);
+
+        for (int i = 1; i < path.Count && region != null; i++)
+        {
+            region = region.SubRegions.FirstOrDefault(r => r.Id == path[i]);
+        }
+
+        return region;
+    }
+    // 示例区域数据 - 实际应用中可能需要从服务端获取
+    private List<MonsterRegion> _monsterRegions = new List<MonsterRegion>
+    {
+        new MonsterRegion
+        {
+            Id = "azeroth",
+            Name = "艾泽拉斯",
+            SubRegions = new List<MonsterRegion>
+            {
+                new MonsterRegion
+                {
+                    Id = "eastern-kingdoms",
+                    Name = "东部王国",
+                    SubRegions = new List<MonsterRegion>
+                    {
+                        new MonsterRegion
+                        {
+                            Id = "elwynn-forest",
+                            Name = "艾尔文森林",
+                            SubRegions = new List<MonsterRegion>(),
+                            MonsterIds = new List<string>{ "wolf", "murloc", "kobold" }
+                        },
+                        new MonsterRegion
+                        {
+                            Id = "westfall",
+                            Name = "西部荒野",
+                            SubRegions = new List<MonsterRegion>(),
+                            MonsterIds = new List<string>{ "defias", "harvest-golem", "vulture" }
+                        }
+                    },
+                    MonsterIds = new List<string>()
+                },
+                new MonsterRegion
+                {
+                    Id = "kalimdor",
+                    Name = "卡利姆多",
+                    SubRegions = new List<MonsterRegion>(),
+                    MonsterIds = new List<string>{ "boar", "quilboar", "centaur" }
+                }
+            }
+        },
+        new MonsterRegion
+        {
+            Id = "outland",
+            Name = "外域",
+            SubRegions = new List<MonsterRegion>
+            {
+                new MonsterRegion
+                {
+                    Id = "hellfire",
+                    Name = "地狱火半岛",
+                    SubRegions = new List<MonsterRegion>(),
+                    MonsterIds = new List<string>{ "fel-orc", "demon" }
+                }
+            }
+        }
+    };
+
+    private void ToggleMonsterSelector()
+    {
+        _showMonsterSelector = !_showMonsterSelector;
+        if (_showMonsterSelector) _showDungeonSelector = false;
+    }
+
+    private void ToggleDungeonSelector()
+    {
+        _showDungeonSelector = !_showDungeonSelector;
+        if (_showDungeonSelector) _showMonsterSelector = false;
+    }
+
+    private void CloseSelectors()
+    {
+        _showMonsterSelector = false;
+        _showDungeonSelector = false;
+    }
+
+    private void SelectRegion(string regionId)
+    {
+        _selectedRegion = regionId;
+        _selectedSubRegion = "";
+    }
+
+    private void SelectSubRegion(string subRegionId)
+    {
+        _selectedSubRegion = subRegionId;
+    }
+
+    private string GetDungeonRequirementText(Player character, Party party, Dungeon dungeon)
+    {
+        List<string> requirements = new List<string>();
+
+        // 检查等级
+        if (character.GetLevel(character.SelectedBattleProfession) < dungeon.RecommendedLevel)
+        {
+            requirements.Add($"需要等级 {dungeon.RecommendedLevel}+");
+        }
+
+        // 检查人数
+        int memberCount = party?.MemberIds.Count ?? 0;
+        if (memberCount < dungeon.MinPlayers)
+        {
+            requirements.Add($"至少需要 {dungeon.MinPlayers} 人");
+        }
+        else if (memberCount > dungeon.MaxPlayers)
+        {
+            requirements.Add($"最多允许 {dungeon.MaxPlayers} 人");
+        }
+
+        // 检查先决条件
+        foreach (var prerequisite in dungeon.Prerequisites)
+        {
+            var prereqDungeon = DungeonTemplates.GetDungeonById(prerequisite);
+            if (prereqDungeon != null)
+            {
+                requirements.Add($"需要完成 {prereqDungeon.Name}");
+            }
+        }
+
+        return string.Join(", ", requirements);
+    }
+
     private bool _isPickerVisible = false;
     private int _managingSlotId;
     private ConsumableCategory _managingCategory;

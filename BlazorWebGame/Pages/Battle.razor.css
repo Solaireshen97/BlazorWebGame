@@ -4,6 +4,41 @@
     gap: 1.5rem;
 }
 
+/* 面包屑导航样式 */
+.breadcrumb-navigation {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.breadcrumb-item {
+    cursor: pointer;
+    color: #007bff;
+}
+
+.breadcrumb-item:hover {
+    text-decoration: underline;
+}
+
+.breadcrumb-item.active {
+    color: #495057;
+    font-weight: bold;
+    cursor: default;
+}
+
+.breadcrumb-item.active:hover {
+    text-decoration: none;
+}
+
+.breadcrumb-separator {
+    margin: 0 0.5rem;
+    color: #6c757d;
+}
+
 /* 怪物选择 */
 .monster-selection-area {
     display: flex;
@@ -735,4 +770,203 @@
 
 .enemy-mini-card.border-primary {
     border: 2px solid #007bff;
+}
+
+/* 战斗控制栏样式 */
+.battle-control-bar {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #dee2e6;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* 怪物选择器模态框 */
+.monster-selector-modal,
+.dungeon-selector-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+    z-index: 1100;
+    width: 80%;
+    max-width: 900px;
+    max-height: 80vh;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.selector-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.selector-header h5 {
+    margin: 0;
+    font-weight: 600;
+}
+
+/* 区域导航样式 */
+.region-navigation {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 400px;
+}
+
+.region-level {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 1rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.region-item {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.region-item:hover {
+    background-color: #e9ecef;
+}
+
+.region-item.active {
+    background-color: #007bff;
+    color: white;
+    border-color: #0069d9;
+}
+
+/* 怪物列表样式 */
+.monsters-in-region {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+    padding: 1rem;
+    overflow-y: auto;
+}
+
+.monster-select-item {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 0.75rem;
+    background-color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+}
+
+.monster-select-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-color: #adb5bd;
+}
+
+.monster-select-item.active {
+    background-color: #007bff;
+    color: white;
+    border-color: #0069d9;
+}
+
+.monster-name {
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.monster-level {
+    color: #6c757d;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.no-monsters-message,
+.no-dungeons-message {
+    padding: 2rem;
+    text-align: center;
+    color: #6c757d;
+    width: 100%;
+}
+
+/* 副本列表样式 */
+.dungeons-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.dungeon-select-item {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 1rem;
+    background-color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.dungeon-select-item:hover:not(.disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-color: #adb5bd;
+}
+
+.dungeon-select-item.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: #f8f9fa;
+}
+
+.dungeon-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.dungeon-name {
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.dungeon-level {
+    color: #6c757d;
+}
+
+.dungeon-players {
+    background-color: #e9ecef;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+}
+
+.dungeon-description {
+    color: #495057;
+    font-size: 0.95rem;
+    margin-bottom: 0.75rem;
+}
+
+.dungeon-requirements {
+    color: #dc3545;
+    font-size: 0.875rem;
+    background-color: #f8d7da;
+    padding: 0.5rem;
+    border-radius: 4px;
 }
