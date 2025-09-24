@@ -45,7 +45,8 @@ namespace BlazorWebGame.Services
                 null!, // CombatEngine 会在下面初始化后设置
                 _battleFlowService,
                 _characterCombatService,
-                _skillSystem
+                _skillSystem,
+                _lootService
             );
 
             // 初始化战斗引擎

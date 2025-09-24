@@ -91,7 +91,64 @@
             <!-- ================= BATTLE VIEW (战斗视图) ================= -->
             <!-- 核心战斗区 -->
             <div class="battle-core-area">
-                <div class="battle-container">
+                <!-- 左侧区域：玩家和队伍成员 -->
+                <div class="battle-left-side">
+                    <!-- 队伍成员列表 - 放在玩家左侧 -->
+                    @if (party != null)
+                    {
+                        <div class="party-members-container horizontal">
+                            @{
+                                var otherPartyMembers = party.MemberIds
+                                .Where(id => id != character.Id)
+                                .Select(id => GameState.AllCharacters.FirstOrDefault(c => c.Id == id))
+                                .Where(p => p != null)
+                                .ToList();
+
+                                // 计算应该显示的空位数量
+                                var emptySlots = Math.Max(0, Party.MaxMembers - 1 - otherPartyMembers.Count);
+                            }
+
+                            @foreach (var member in otherPartyMembers)
+                            {
+                                var isCaptain = party.CaptainId == member.Id;
+                                var isInBattle = battleContext?.Players.Any(p => p.Id == member.Id) ?? false;
+                                var memberHealth = isInBattle ?
+                                battleContext.Players.First(p => p.Id == member.Id).Health :
+                                member.Health;
+                                var memberMaxHealth = isInBattle ?
+                                battleContext.Players.First(p => p.Id == member.Id).GetTotalMaxHealth() :
+                                member.GetTotalMaxHealth();
+
+                                <div class="party-member-card @(member.IsDead ? "member-dead" : "") @(isCaptain ? "captain" : "")">
+                                    <div class="member-avatar">@member.Name.Substring(0, 1)</div>
+                                    <div class="member-info">
+                                        <div class="member-name">
+                                            @member.Name @(isCaptain ? "(队长)" : "")
+                                        </div>
+                                        <div class="member-profession">
+                                            @member.SelectedBattleProfession.ToChineseString()
+                                        </div>
+                                        <div class="mini-health-bar">
+                                            <div class="mini-health-fill" style="width: @(GetHealthPercentage(memberHealth, memberMaxHealth))%"></div>
+                                            <span class="mini-health-text">@memberHealth/@memberMaxHealth</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+
+                            @for (int i = 0; i < emptySlots; i++)
+                            {
+                                <div class="party-member-card empty">
+                                    <div class="member-avatar empty">?</div>
+                                    <div class="member-info">
+                                        <div class="member-name">空位</div>
+                                        <div class="member-profession">等待加入</div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+
                     <!-- 玩家卡片 -->
                     <div class="character-card player-card">
                         @if (character.IsDead)
@@ -104,7 +161,6 @@
                         else
                         {
                             <div class="character-image-placeholder"><span>头像</span></div>
-                            <!-- 修改这里：添加一个包装器来水平显示职业+等级和名字 -->
                             <div class="player-name-container">
                                 <div class="player-level-badge">
                                     @character.SelectedBattleProfession.ToChineseString() Lv.@character.GetLevel(character.SelectedBattleProfession)
@@ -138,7 +194,10 @@
                             </div>
                         }
                     </div>
+                </div>
 
+                <!-- 右侧区域：敌人和其他敌人列表 -->
+                <div class="battle-right-side">
                     <!-- 怪物卡片（在多对多战斗中显示目标敌人） -->
                     <div class="character-card enemy-card">
                         @if (currentEnemy is null)
@@ -177,54 +236,30 @@
                             </div>
                         }
                     </div>
+
+                    <!-- 多对多战斗中显示其他敌人列表 -->
+                    @if (battleContext != null && battleContext.Enemies.Count > 1)
+                    {
+                        <div class="other-enemies-list horizontal">
+                            <div class="enemy-list">
+                                @foreach (var enemy in battleContext.Enemies.Where(e => e != currentEnemy))
+                                {
+                                    <div class="enemy-mini-card @(IsPlayerTarget(character.Id, enemy, battleContext) ? "border-primary" : "")"
+                                         @onclick="() => SetPlayerTarget(character.Id, enemy, battleContext)">
+                                        <div class="d-flex justify-content-between">
+                                            <span>@enemy.Name</span>
+                                            <span>Lv.@enemy.Level</span>
+                                        </div>
+                                        <div class="mini-health-bar">
+                                            <div class="mini-health-fill" style="width: @(GetHealthPercentage(enemy.Health, enemy.MaxHealth))%"></div>
+                                            <span class="mini-health-text">@enemy.Health/@enemy.MaxHealth</span>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
                 </div>
-
-                <!-- 多对多战斗中显示其他敌人列表 -->
-                @if (battleContext != null && battleContext.Enemies.Count > 1)
-                {
-                    <div class="other-enemies-list mt-3">
-                        <h6>其他敌人:</h6>
-                        <div class="enemy-list d-flex flex-wrap gap-2">
-                            @foreach (var enemy in battleContext.Enemies.Where(e => e != currentEnemy))
-                            {
-                                <div class="enemy-mini-card p-2 border rounded @(IsPlayerTarget(character.Id, enemy, battleContext) ? "border-primary" : "")"
-                                     @onclick="() => SetPlayerTarget(character.Id, enemy, battleContext)">
-                                    <div class="d-flex justify-content-between">
-                                        <span>@enemy.Name</span>
-                                        <span>Lv.@enemy.Level</span>
-                                    </div>
-                                    <div class="mini-health-bar">
-                                        <div class="mini-health-fill" style="width: @(GetHealthPercentage(enemy.Health, enemy.MaxHealth))%"></div>
-                                        <span class="mini-health-text">@enemy.Health/@enemy.MaxHealth</span>
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                    </div>
-                }
-
-                <!-- 多对多战斗中显示其他玩家列表 -->
-                @if (battleContext != null && battleContext.Players.Count > 1)
-                {
-                    <div class="other-players-list mt-3">
-                        <h6>其他玩家:</h6>
-                        <div class="player-list d-flex flex-wrap gap-2">
-                            @foreach (var player in battleContext.Players.Where(p => p.Id != character.Id))
-                            {
-                                <div class="player-mini-card p-2 border rounded @(player.IsDead ? "bg-danger text-white" : "")">
-                                    <div class="d-flex justify-content-between">
-                                        <span>@player.Name</span>
-                                        <span>@player.SelectedBattleProfession.ToChineseString()</span>
-                                    </div>
-                                    <div class="mini-health-bar">
-                                        <div class="mini-health-fill" style="width: @(GetHealthPercentage(player.Health, player.GetTotalMaxHealth()))%"></div>
-                                        <span class="mini-health-text">@player.Health/@player.GetTotalMaxHealth()</span>
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                    </div>
-                }
             </div>
         }
         else // _currentView == BattleView.Party

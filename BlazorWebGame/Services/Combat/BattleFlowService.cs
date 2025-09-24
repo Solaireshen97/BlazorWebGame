@@ -268,6 +268,7 @@ namespace BlazorWebGame.Services.Combat
             battle.Enemies.Clear();
             battle.AllowAutoRevive = dungeon.AllowAutoRevive;
 
+            // 生成波次敌人
             foreach (var spawnInfo in wave.Enemies)
             {
                 var template = MonsterTemplates.All.FirstOrDefault(m => m.Name == spawnInfo.EnemyTemplateName);
@@ -277,26 +278,43 @@ namespace BlazorWebGame.Services.Combat
                     {
                         var enemy = template.Clone();
 
+                        // 应用等级和属性调整
                         if (spawnInfo.LevelAdjustment != 0)
                         {
                             enemy.Level += spawnInfo.LevelAdjustment;
                             enemy.AttackPower = AdjustStatByLevel(enemy.AttackPower, spawnInfo.LevelAdjustment);
                         }
 
+                        // 应用血量倍率
                         if (spawnInfo.HealthMultiplier != 1.0)
                         {
                             enemy.MaxHealth = (int)(enemy.MaxHealth * spawnInfo.HealthMultiplier);
                             enemy.Health = enemy.MaxHealth;
                         }
 
+                        // 初始化技能冷却
                         skillSystem.InitializeEnemySkills(enemy);
+
+                        // 添加敌人到战斗
                         battle.Enemies.Add(enemy);
                     }
                 }
             }
 
+            // 如果有死亡的玩家且允许自动复活，立即复活他们
+            if (dungeon.AllowAutoRevive)
+            {
+                foreach (var player in battle.Players.Where(p => p.IsDead))
+                {
+                    var characterCombatService = ServiceLocator.GetService<CharacterCombatService>();
+                    characterCombatService?.ReviveCharacter(player);
+                }
+            }
+
+            // 设置状态为活跃
             battle.State = BattleState.Active;
 
+            // 触发新波次事件
             var gameStateService = ServiceLocator.GetService<GameStateService>();
             gameStateService?.RaiseEvent(GameEventType.DungeonWaveStarted, battle.Players.FirstOrDefault());
         }
@@ -313,6 +331,18 @@ namespace BlazorWebGame.Services.Combat
             }
             else
             {
+                // 先将战斗状态设置为准备中，避免玩家继续攻击
+                battle.State = BattleState.Preparing;
+
+                // 清空玩家目标
+                battle.PlayerTargets.Clear();
+
+                // 重置所有玩家的攻击冷却
+                foreach (var player in battle.Players)
+                {
+                    player.AttackCooldown = 0;
+                }
+
                 // 进入下一波
                 PrepareDungeonWave(battle, dungeon, battle.WaveNumber + 1, skillSystem);
             }

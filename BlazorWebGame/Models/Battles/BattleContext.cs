@@ -74,24 +74,27 @@ namespace BlazorWebGame.Models.Battles
         /// 是否允许死亡玩家自动复活
         /// </summary>
         public bool AllowAutoRevive { get; set; } = true;
-    
+
         /// <summary>
-        /// 检查战斗是否完成
+        /// 判断战斗是否完成
         /// </summary>
-        public bool IsCompleted 
+        public bool IsCompleted
         {
             get
             {
-                // 如果没有敌人，战斗结束
-                if (Enemies.Count == 0)
+                // 所有敌人死亡 = 胜利
+                if (!Enemies.Any())
                     return true;
-                
-                // 对于允许自动复活的战斗，只有在所有玩家死亡且战斗类型为副本时才结束
-                if (AllowAutoRevive && BattleType != BattleType.Dungeon)
+
+                // 如果允许自动复活，即使所有玩家死亡也不算战斗失败
+                if (AllowAutoRevive)
+                {
+                    // 只有在明确要求结束战斗时才算完成（例如玩家主动退出）
                     return false;
-                
-                // 对于副本或不允许自动复活的战斗，所有玩家死亡则结束
-                return !Players.Any(p => !p.IsDead);
+                }
+
+                // 不允许自动复活时，所有玩家死亡 = 失败
+                return Players.All(p => p.IsDead);
             }
         }
 

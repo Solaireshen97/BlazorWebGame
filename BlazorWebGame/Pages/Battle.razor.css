@@ -36,10 +36,33 @@
 /* 战斗核心 */
 .battle-core-area {
     display: flex;
-    align-items: center;
     justify-content: center;
-    min-height: 150px; /* 保证内容不贴边，但不拉高整个区域 */
-    align-self: center; /* 避免 flex 拉伸太多 */
+    align-items: flex-start;
+    min-height: 150px;
+    width: 100%;
+    max-width: 1200px;
+    gap: 1rem;
+    margin: 0 auto;
+}
+
+/* 左侧区域样式 - 水平布局 */
+.battle-left-side {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 1rem;
+    flex: 1;
+    justify-content: flex-end;
+}
+
+/* 右侧区域样式 - 水平布局 */
+.battle-right-side {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 1rem;
+    flex: 1;
+    justify-content: flex-start;
 }
 
 .player-dead-card {
@@ -54,11 +77,7 @@
 }
 
 .battle-container {
-    display: flex;
-    justify-content: space-around;
-    gap: 2rem;
-    flex-wrap: wrap;
-    width: 100%;
+    display: none; /* 隐藏原有容器，使用新的左右布局代替 */
 }
 
 .character-card {
@@ -66,6 +85,7 @@
     border-radius: 8px;
     padding: 16px;
     width: 300px;
+    flex-shrink: 0;
     text-align: center;
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     background-color: white;
@@ -522,4 +542,197 @@
 .player-name {
     margin: 0;
     font-size: 1.2rem;
+}
+
+/* 队伍战斗布局 */
+.party-battle-layout {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 1rem;
+}
+
+.party-members-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: flex-start;
+    margin-bottom: 1rem;
+}
+
+.party-member-card {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: rgba(0, 0, 0, 0.03);
+    border: 1px solid #e9ecef;
+    border-radius: 5px;
+    padding: 0.5rem;
+    width: 180px;
+    transition: all 0.2s ease;
+}
+
+.party-member-card:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    transform: translateY(-2px);
+}
+
+.party-member-card.empty {
+    background-color: rgba(0, 0, 0, 0.02);
+    border: 1px dashed #dee2e6;
+    opacity: 0.7;
+}
+
+.party-member-card.captain {
+    border-left: 3px solid #007bff;
+}
+
+.party-member-card.member-dead {
+    background-color: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+}
+
+.member-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #6c757d;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.member-avatar.empty {
+    background-color: #dee2e6;
+    color: #adb5bd;
+}
+
+.member-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.member-name {
+    font-weight: bold;
+    font-size: 0.9rem;
+    margin-bottom: 0.2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.member-profession {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-bottom: 0.2rem;
+}
+
+/* 确保mini-health-bar样式正确应用 */
+.party-member-card .mini-health-bar {
+    height: 8px;
+    background-color: #333;
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+}
+
+.party-member-card .mini-health-fill {
+    height: 100%;
+    background-color: #4CAF50;
+    transition: width 0.3s ease-in-out;
+}
+
+.party-member-card .mini-health-text {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 7px;
+    text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.8);
+}
+
+/* 调整战斗核心区域为水平布局 */
+.battle-core-area {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 150px;
+    width: 100%;
+    max-width: 1200px;
+    gap: 1rem;
+    margin: 0 auto;
+}
+
+/* 左侧区域样式 - 水平布局 */
+.battle-left-side {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 1rem;
+    flex: 1;
+    justify-content: flex-end;
+}
+
+/* 右侧区域样式 - 水平布局 */
+.battle-right-side {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 1rem;
+    flex: 1;
+    justify-content: flex-start;
+}
+
+/* 玩家卡片和敌人卡片固定宽度 */
+.character-card {
+    width: 300px;
+    flex-shrink: 0;
+}
+
+/* 水平队伍成员布局 */
+.party-members-container.horizontal {
+    display: flex;
+    flex-direction: column;
+    width: 180px;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+/* 水平其他敌人列表样式 */
+.other-enemies-list.horizontal {
+    width: 180px;
+    flex-shrink: 0;
+}
+
+.other-enemies-list.horizontal .enemy-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.enemy-mini-card {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+    padding: 8px;
+    border: 1px solid #dee2e6;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.enemy-mini-card:hover {
+    background-color: rgba(255, 0, 0, 0.1);
+    transform: scale(1.02);
+}
+
+.enemy-mini-card.border-primary {
+    border: 2px solid #007bff;
 }

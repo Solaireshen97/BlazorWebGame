@@ -44,9 +44,17 @@ namespace BlazorWebGame.Services.Combat
                     {
                         // 副本完成奖励
                         DistributeDungeonRewards(battle, dungeon);
+                        // 标记战斗完成
+                        battle.State = BattleState.Completed;
                     }
                     else
                     {
+                        // 重置所有玩家的攻击冷却，避免他们继续攻击空气
+                        foreach (var player in battle.Players)
+                        {
+                            player.AttackCooldown = 0;
+                        }
+
                         // 进入下一波（由BattleFlowService处理）
                         battleFlowService.ProcessDungeonNextWave(battle, dungeon, _skillSystem);
                     }

@@ -20,6 +20,7 @@ namespace BlazorWebGame.Services.Combat
         private readonly BattleFlowService _battleFlowService;
         private readonly CharacterCombatService _characterCombatService;
         private readonly SkillSystem _skillSystem;
+        private readonly LootService _lootService;  // 添加这行
 
         /// <summary>
         /// 状态变更事件
@@ -31,13 +32,15 @@ namespace BlazorWebGame.Services.Combat
             CombatEngine combatEngine,
             BattleFlowService battleFlowService,
             CharacterCombatService characterCombatService,
-            SkillSystem skillSystem)
+            SkillSystem skillSystem,
+            LootService lootService)  // 添加参数
         {
             _allCharacters = allCharacters;
             _combatEngine = combatEngine;
             _battleFlowService = battleFlowService;
             _characterCombatService = characterCombatService;
             _skillSystem = skillSystem;
+            _lootService = lootService;  // 添加赋值
         }
 
         /// <summary>
@@ -115,6 +118,7 @@ namespace BlazorWebGame.Services.Combat
         /// </summary>
         private void ProcessBattle(BattleContext battle, double elapsedSeconds)
         {
+            // 只处理活跃状态的战斗
             if (battle.State != BattleState.Active)
                 return;
 
@@ -137,23 +141,39 @@ namespace BlazorWebGame.Services.Combat
             CheckBattleStatus(battle);
         }
 
-        /// <summary>
-        /// 检查战斗状态
-        /// </summary>
         private void CheckBattleStatus(BattleContext battle)
         {
+            // 特殊处理：允许自动复活的副本
+            if (battle.BattleType == BattleType.Dungeon && battle.AllowAutoRevive)
+            {
+                // 即使所有玩家死亡，也继续战斗
+                if (!battle.Enemies.Any())
+                {
+                    // 敌人全部死亡，交给 LootService 处理奖励和下一波
+                    _lootService.HandleBattleVictory(battle, _battleFlowService);
+                }
+                // 不检查玩家是否全部死亡
+                return;
+            }
+
+            // 普通战斗完成检查
             if (battle.IsCompleted)
             {
                 battle.State = BattleState.Completed;
 
-                // 触发相应的战斗结束事件
                 var gameStateService = ServiceLocator.GetService<GameStateService>();
                 if (battle.IsVictory)
                 {
+                    // 所有胜利处理都交给 LootService
+                    _lootService.HandleBattleVictory(battle, _battleFlowService);
+
                     gameStateService?.RaiseEvent(GameEventType.BattleCompleted);
                 }
                 else
                 {
+                    // 失败处理
+                    _lootService.HandleBattleDefeat(battle);
+
                     gameStateService?.RaiseEvent(GameEventType.BattleDefeated);
                 }
             }
@@ -172,16 +192,32 @@ namespace BlazorWebGame.Services.Combat
                 return false;
             }
 
-            // 获取当前战斗上下文
-            var existingBattle = GetBattleContextForPlayer(character.Id);
-            if (existingBattle != null)
+            // 结束当前角色（以及队伍成员）的所有战斗
+            var playersToCheck = new List<Player> { character };
+            if (party != null)
             {
-                // 如果已经在战斗同类型的敌人，不做任何处理
-                if (existingBattle.Enemies.Any(e => e.Name == enemyTemplate.Name))
-                    return true;
+                playersToCheck.AddRange(_allCharacters.Where(c => party.MemberIds.Contains(c.Id)));
+            }
 
-                // 否则结束当前战斗，开始新战斗
-                _activeBattles.Remove(existingBattle.Id);
+            foreach (var player in playersToCheck.Distinct())
+            {
+                var existingBattle = GetBattleContextForPlayer(player.Id);
+                if (existingBattle != null)
+                {
+                    // 如果是同一个战斗中的同类型敌人，不做处理
+                    if (existingBattle.Players.Contains(character) &&
+                        existingBattle.Enemies.Any(e => e.Name == enemyTemplate.Name))
+                        return true;
+
+                    // 否则结束当前战斗
+                    foreach (var p in existingBattle.Players)
+                    {
+                        p.CurrentAction = PlayerActionState.Idle;
+                        p.CurrentEnemy = null;
+                        p.AttackCooldown = 0;
+                    }
+                    _activeBattles.Remove(existingBattle.Id);
+                }
             }
 
             // 团队成员刷新状态检查
@@ -196,7 +232,7 @@ namespace BlazorWebGame.Services.Combat
                 }
             }
 
-            // 所有战斗都使用BattleContext系统
+            // 创建新战斗（保持原有逻辑）
             var battle = new BattleContext
             {
                 BattleType = party != null ? BattleType.Party : BattleType.Solo,
@@ -210,7 +246,6 @@ namespace BlazorWebGame.Services.Combat
             // 添加玩家
             if (party != null)
             {
-                // 团队战斗：添加所有活着的团队成员
                 var members = _allCharacters.Where(c => party.MemberIds.Contains(c.Id) && !c.IsDead).ToList();
                 foreach (var member in members)
                 {
@@ -218,7 +253,6 @@ namespace BlazorWebGame.Services.Combat
                     _characterCombatService.PrepareCharacterForBattle(member);
                 }
 
-                // 根据团队规模生成适量敌人
                 var enemyCount = _battleFlowService.DetermineEnemyCount(members.Count);
                 for (int i = 0; i < enemyCount; i++)
                 {
@@ -229,7 +263,6 @@ namespace BlazorWebGame.Services.Combat
             }
             else
             {
-                // 单人战斗：1v1
                 battle.Players.Add(character);
                 _characterCombatService.PrepareCharacterForBattle(character);
 
@@ -238,7 +271,7 @@ namespace BlazorWebGame.Services.Combat
                 battle.Enemies.Add(enemy);
             }
 
-            // 清理旧系统的状态（确保完全移除）
+            // 清理旧系统的状态
             character.CurrentEnemy = null;
             if (party != null)
             {
@@ -266,6 +299,25 @@ namespace BlazorWebGame.Services.Combat
             var members = _allCharacters.Where(c => party.MemberIds.Contains(c.Id)).ToList();
             if (members.Count < dungeon.MinPlayers || members.Count > dungeon.MaxPlayers)
                 return false;
+
+            // 结束所有队伍成员的当前战斗
+            foreach (var member in members)
+            {
+                var existingBattle = GetBattleContextForPlayer(member.Id);
+                if (existingBattle != null)
+                {
+                    // 清理战斗状态
+                    foreach (var player in existingBattle.Players)
+                    {
+                        player.CurrentAction = PlayerActionState.Idle;
+                        player.CurrentEnemy = null;
+                        player.AttackCooldown = 0;
+                    }
+
+                    // 从活跃战斗中移除
+                    _activeBattles.Remove(existingBattle.Id);
+                }
+            }
 
             // 创建战斗上下文
             var battle = new BattleContext
