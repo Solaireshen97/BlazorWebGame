@@ -278,7 +278,11 @@
                     <p>@character.Name 当前不在任何队伍中。</p>
                     <button class="btn btn-success mb-3" @onclick="CreatePartyAndStopBattle">创建新队伍</button>
 
-                    var availableParties = GameState.Parties.Where(p => p.CaptainId != character.Id).ToList();
+                    var availableParties = GameState.Parties
+                    .Where(p => p.CaptainId != character.Id) // 不显示自己创建的队伍
+                    .Where(p => p.MemberIds.Count < Party.MaxMembers) // 队伍未满
+                    .Where(p => !IsPartyInBattle(p)) // 队伍不在战斗中
+                    .ToList();
                     @if (availableParties.Any())
                     {
                         <h5>可加入的队伍:</h5>
@@ -302,7 +306,7 @@
                 {
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h4 class="mb-0">队伍信息 (@party.MemberIds.Count/@Party.MaxMembers)</h4>
-                        <button class="btn btn-danger btn-sm" @onclick="GameState.LeaveParty">
+                        <button class="btn btn-danger btn-sm" @onclick="LeavePartyAndStopBattle">
                             @(party.CaptainId == character.Id ? "解散队伍" : "离开队伍")
                         </button>
                     </div>
@@ -643,6 +647,50 @@ else
             // 切换到战斗视图
             _currentView = BattleView.Battle;
         }
+    }
+
+    /// <summary>
+    /// 离开队伍前先停止当前战斗
+    /// </summary>
+    private void LeavePartyAndStopBattle()
+    {
+        var party = GameState.GetPartyForCharacter(GameState.ActiveCharacter?.Id);
+        if (party != null)
+        {
+            // 如果是队伍战斗，先停止所有成员的战斗
+            var battleContext = _combatService?.GetBattleContextForParty(party.Id);
+            if (battleContext != null)
+            {
+                GameState.StopCurrentAction();
+            }
+        }
+
+        // 然后离开队伍
+        GameState.LeaveParty();
+    }
+
+    /// <summary>
+    /// 检查队伍是否有任何成员在战斗中
+    /// </summary>
+    private bool IsPartyInBattle(Party party)
+    {
+        // 检查队伍是否有战斗上下文
+        if (_combatService?.GetBattleContextForParty(party.Id) != null)
+        {
+            return true;
+        }
+
+        // 检查队伍中的每个成员是否有人在战斗中
+        foreach (var memberId in party.MemberIds)
+        {
+            var member = GameState.AllCharacters.FirstOrDefault(c => c.Id == memberId);
+            if (member != null && member.CurrentAction == PlayerActionState.Combat)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
