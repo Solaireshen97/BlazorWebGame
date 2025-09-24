@@ -52,43 +52,45 @@
 
         @if (_currentView == BattleView.Battle)
         {
-            <!-- 战斗模式提示 -->
-            <div class="battle-mode-info mb-3 text-center small">
-                <i class="bi bi-info-circle"></i>
+            <div class="battle-info-panel mb-3">
                 @if (battleContext != null)
                 {
-                    <span>@GetBattleModeText(battleContext) - 自动战斗中</span>
-                }
-                else if (IsInBattleRefresh(character.Id))
-                {
-                    <span>战斗冷却中: @GetBattleRefreshTime(character.Id).ToString("F1")秒后自动开始下一场战斗</span>
-                }
-                else
-                {
-                    <span>等待开始战斗</span>
-                }
-            </div>
-
-            <!-- ================= BATTLE VIEW (战斗视图) ================= -->
-            <!-- 核心战斗区 -->
-            <div class="battle-core-area">
-                <!-- 战斗上下文信息显示 -->
-                @if (battleContext != null)
-                {
-                    <div class="battle-context-info mb-3">
-                        <h5 class="text-center">
+                    <div class="battle-status active">
+                        <h5 class="battle-title">
                             @(battleContext.BattleType == BattleType.Dungeon ?
                                             $"副本战斗: {GetDungeonName(battleContext.DungeonId)} (波次 {battleContext.WaveNumber})" :
                                             battleContext.BattleType == BattleType.Party ?
                                             $"团队战斗 ({battleContext.Players.Count}v{battleContext.Enemies.Count})" :
                                             $"单人战斗 (1v{battleContext.Enemies.Count})")
             </h5>
-            <div class="enemy-count text-center mb-2">
-                敌人: @battleContext.Enemies.Count 个剩余
+            <div class="battle-status-text">
+                <i class="bi bi-play-circle"></i> 自动战斗中 - 敌人: @battleContext.Enemies.Count 个剩余
             </div>
         </div>
                 }
+                else if (IsInBattleRefresh(character.Id))
+                {
+                    <div class="battle-status cooldown">
+                        <h5 class="battle-title">战斗冷却中</h5>
+                        <div class="battle-status-text">
+                            <i class="bi bi-hourglass-split"></i> @GetBattleRefreshTime(character.Id).ToString("F1")秒后自动开始下一场战斗
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="battle-status waiting">
+                        <h5 class="battle-title">等待开始战斗</h5>
+                        <div class="battle-status-text">
+                            <i class="bi bi-info-circle"></i> 请选择一个怪物进行战斗
+                        </div>
+                    </div>
+                }
+            </div>
 
+            <!-- ================= BATTLE VIEW (战斗视图) ================= -->
+            <!-- 核心战斗区 -->
+            <div class="battle-core-area">
                 <div class="battle-container">
                     <!-- 玩家卡片 -->
                     <div class="character-card player-card">
@@ -102,10 +104,12 @@
                         else
                         {
                             <div class="character-image-placeholder"><span>头像</span></div>
-                            <h5>@character.Name</h5>
-                            <div class="profession-display">
-                                <span>@character.SelectedBattleProfession.ToChineseString()</span>
-                                <span>Lv. @character.GetLevel(character.SelectedBattleProfession)</span>
+                            <!-- 修改这里：添加一个包装器来水平显示职业+等级和名字 -->
+                            <div class="player-name-container">
+                                <div class="player-level-badge">
+                                    @character.SelectedBattleProfession.ToChineseString() Lv.@character.GetLevel(character.SelectedBattleProfession)
+                                </div>
+                                <h5 class="player-name">@character.Name</h5>
                             </div>
                             <div class="health-bar-container">
                                 <div class="health-bar player-health" style="width: @(GetHealthPercentage(character.Health, character.GetTotalMaxHealth()))%;"></div>
@@ -129,50 +133,6 @@
                                                 }
                                             </div>
                                         }
-                                    }
-                                </div>
-                                <div class="consumable-quick-slots">
-                                    @for (int i = 0; i < 2; i++)
-                                    {
-                                        var slotId = i;
-                                        <div class="quick-slot" @onclick="() => OpenQuickSlotPicker(ConsumableCategory.Potion, slotId, FoodType.None)" @oncontextmenu:preventDefault @oncontextmenu="() => GameState.ClearQuickSlotItem(ConsumableCategory.Potion, slotId)">
-                                            @if (character.PotionQuickSlots.TryGetValue(slotId, out var itemId) && !string.IsNullOrEmpty(itemId) && ItemData.GetItemById(itemId) is Consumable item)
-                                            {
-                                                <div class="quick-slot-item @(GetItemCountInInventory(character, itemId) == 0 ? "depleted" : "")" title="@item.Name (@GetItemCountInInventory(character, itemId)) - 右键清空">
-                                                    <div class="item-icon">@item.Name.Substring(0, 1)</div>
-                                                    <span class="item-count">@GetItemCountInInventory(character, itemId)</span>
-                                                    @if (character.ConsumableCooldowns.GetValueOrDefault(itemId, 0) > 0)
-                                                    {
-                                                        <div class="cooldown-overlay"><span>@((int)character.ConsumableCooldowns[itemId])</span></div>
-                                                    }
-                                                </div>
-                                            }
-                                            else
-                                            {
-                                                <div class="quick-slot-empty" title="点击设置药水"></div>
-                                            }
-                                        </div>
-                                    }
-                                    @for (int i = 0; i < 2; i++)
-                                    {
-                                        var slotId = i;
-                                        <div class="quick-slot" @onclick="() => OpenQuickSlotPicker(ConsumableCategory.Food, slotId, FoodType.Combat)" @oncontextmenu:preventDefault @oncontextmenu="() => GameState.ClearQuickSlotItem(ConsumableCategory.Food, slotId, FoodType.Combat)">
-                                            @if (character.CombatFoodQuickSlots.TryGetValue(slotId, out var itemId) && !string.IsNullOrEmpty(itemId) && ItemData.GetItemById(itemId) is Consumable item)
-                                            {
-                                                <div class="quick-slot-item @(GetItemCountInInventory(character, itemId) == 0 ? "depleted" : "")" title="@item.Name (@GetItemCountInInventory(character, itemId)) - 右键清空">
-                                                    <div class="item-icon">@item.Name.Substring(0, 1)</div>
-                                                    <span class="item-count">@GetItemCountInInventory(character, itemId)</span>
-                                                    @if (character.ConsumableCooldowns.GetValueOrDefault(itemId, 0) > 0)
-                                                    {
-                                                        <div class="cooldown-overlay"><span>@((int)character.ConsumableCooldowns[itemId])</span></div>
-                                                    }
-                                                </div>
-                                            }
-                                            else
-                                            {
-                                                <div class="quick-slot-empty" title="点击设置战斗食物"></div>
-                                            }
-                                        </div>
                                     }
                                 </div>
                             </div>
@@ -346,41 +306,109 @@
 
     <!-- 详细信息 -->
     <div class="details-area">
-        <div class="details-card">
+        <!-- 修改后的玩家属性卡片 -->
+        <div class="details-card player-details-card">
             <h5>@character.Name 属性</h5>
-            <p>攻击力: @character.GetTotalAttackPower()</p>
-            <p>攻击速度: @character.AttacksPerSecond.ToString("F2") 次/秒</p>
-        </div>
+            <div class="player-stats">
+                <div class="stats-list">
+                    <p>攻击力: @character.GetTotalAttackPower()</p>
+                    <p>攻击速度: @character.AttacksPerSecond.ToString("F2") 次/秒</p>
+                </div>
 
-        @if (currentEnemy != null)
-        {
-            <div class="details-card">
-                <h5>@currentEnemy.Name 属性</h5>
-                <p>攻击力: @currentEnemy.AttackPower</p>
-                <p>攻击速度: @currentEnemy.AttacksPerSecond.ToString("F2") 次/秒</p>
-                <p>经验值: @currentEnemy.XpReward</p>
-                <hr />
-                <h6>可能掉落</h6>
-                <div class="loot-table">
-                    @foreach (var lootEntry in currentEnemy.LootTable)
-                    {
-                        var item = ItemData.GetItemById(lootEntry.Key);
-                        if (item != null)
-                        {
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span>@item.Name (@((lootEntry.Value * 100).ToString("F0"))%)</span>
-                                <label class="form-check-label small">
-                                    <input type="checkbox" class="form-check-input"
-                                           checked="@(character.AutoSellItemIds.Contains(item.Id))"
-                                           @onchange="() => GameState.ToggleAutoSellItem(item.Id)" />
-                                    自动出售
-                                </label>
-                            </div>
-                        }
-                    }
+                <!-- 快捷栏整合到玩家属性卡中 -->
+                <div class="player-quick-access">
+                    <div class="quick-slot-section">
+                        <h6>战斗消耗品</h6>
+                        <div class="quick-slots-container">
+                            <!-- 药水快捷栏 -->
+                            @for (int i = 0; i < 2; i++)
+                            {
+                                var slotId = i;
+                                <div class="quick-slot" @onclick="() => OpenQuickSlotPicker(ConsumableCategory.Potion, slotId, FoodType.None)" @oncontextmenu:preventDefault @oncontextmenu="() => GameState.ClearQuickSlotItem(ConsumableCategory.Potion, slotId)">
+                                    @if (character.PotionQuickSlots.TryGetValue(slotId, out var itemId) && !string.IsNullOrEmpty(itemId) && ItemData.GetItemById(itemId) is Consumable item)
+                                    {
+                                        <div class="quick-slot-item @(GetItemCountInInventory(character, itemId) == 0 ? "depleted" : "")" title="@item.Name (@GetItemCountInInventory(character, itemId)) - 右键清空">
+                                            <div class="item-icon">@item.Name.Substring(0, 1)</div>
+                                            <span class="item-count">@GetItemCountInInventory(character, itemId)</span>
+                                            @if (character.ConsumableCooldowns.GetValueOrDefault(itemId, 0) > 0)
+                                            {
+                                                <div class="cooldown-overlay"><span>@((int)character.ConsumableCooldowns[itemId])</span></div>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="quick-slot-empty" title="点击设置药水"></div>
+                                    }
+                                </div>
+                            }
+
+                            <!-- 战斗食物快捷栏 -->
+                            @for (int i = 0; i < 2; i++)
+                            {
+                                var slotId = i;
+                                <div class="quick-slot" @onclick="() => OpenQuickSlotPicker(ConsumableCategory.Food, slotId, FoodType.Combat)" @oncontextmenu:preventDefault @oncontextmenu="() => GameState.ClearQuickSlotItem(ConsumableCategory.Food, slotId, FoodType.Combat)">
+                                    @if (character.CombatFoodQuickSlots.TryGetValue(slotId, out var itemId) && !string.IsNullOrEmpty(itemId) && ItemData.GetItemById(itemId) is Consumable item)
+                                    {
+                                        <div class="quick-slot-item @(GetItemCountInInventory(character, itemId) == 0 ? "depleted" : "")" title="@item.Name (@GetItemCountInInventory(character, itemId)) - 右键清空">
+                                            <div class="item-icon">@item.Name.Substring(0, 1)</div>
+                                            <span class="item-count">@GetItemCountInInventory(character, itemId)</span>
+                                            @if (character.ConsumableCooldowns.GetValueOrDefault(itemId, 0) > 0)
+                                            {
+                                                <div class="cooldown-overlay"><span>@((int)character.ConsumableCooldowns[itemId])</span></div>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="quick-slot-empty" title="点击设置战斗食物"></div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
                 </div>
             </div>
-        }
+        </div>
+
+        <div class="details-card enemy-details-card">
+            <h5>@(currentEnemy != null ? currentEnemy.Name : "怪物") 属性</h5>
+
+            @if (currentEnemy != null)
+            {
+                <div class="enemy-stats">
+                    <p>攻击力: @currentEnemy.AttackPower</p>
+                    <p>攻击速度: @currentEnemy.AttacksPerSecond.ToString("F2") 次/秒</p>
+                    <p>经验值: @currentEnemy.XpReward</p>
+                    <hr />
+                    <h6>可能掉落</h6>
+                    <div class="loot-table">
+                        @foreach (var lootEntry in currentEnemy.LootTable)
+                        {
+                            var item = ItemData.GetItemById(lootEntry.Key);
+                            if (item != null)
+                            {
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span>@item.Name (@((lootEntry.Value * 100).ToString("F0"))%)</span>
+                                    <label class="form-check-label small">
+                                        <input type="checkbox" class="form-check-input"
+                                               checked="@(character.AutoSellItemIds.Contains(item.Id))"
+                                               @onchange="() => GameState.ToggleAutoSellItem(item.Id)" />
+                                        自动出售
+                                    </label>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="enemy-stats empty-stats">
+                    <p class="text-muted">请选择怪物开始战斗</p>
+                </div>
+            }
+        </div>
     </div>
 
     <!-- 快捷栏选择器 -->
