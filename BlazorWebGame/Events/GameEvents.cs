@@ -17,7 +17,8 @@ namespace BlazorWebGame.Events
         CharacterRevived,
         CharacterStatChanged,
         ActiveCharacterChanged,
-        
+        LevelUp,
+
         // 战斗相关事件
         CombatStarted,
         CombatEnded,
@@ -28,6 +29,8 @@ namespace BlazorWebGame.Events
         DungeonWaveStarted,
         BattleCompleted,
         BattleDefeated,
+        DungeonCompleted,
+        CombatStatusChanged,
 
         // 物品相关事件
         ItemAcquired,

@@ -18,6 +18,8 @@ namespace BlazorWebGame.Models
         public string Id { get; set; } = Guid.NewGuid().ToString(); // 赋予每个角色唯一ID
         public bool IsDead { get; set; } = false;
         public double RevivalTimeRemaining { get; set; } = 0;
+        // 可以标记为过时，或在确认没有其他地方使用后直接删除
+        [Obsolete("使用新的战斗系统")]
         public Enemy? CurrentEnemy { get; set; }
         public GatheringNode? CurrentGatheringNode { get; set; }
         public Recipe? CurrentRecipe { get; set; }

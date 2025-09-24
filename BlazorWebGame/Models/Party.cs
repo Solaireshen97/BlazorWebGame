@@ -16,11 +16,6 @@ public class Party
 
     public List<string> MemberIds { get; set; } = new();
 
-    // --- vvv 添加这一行 vvv ---
-    /// <summary>
-    /// 队伍当前正在集中攻击的敌人。
-    /// 如果为 null，则表示队伍未处于战斗状态。
-    /// </summary>
+    [Obsolete("使用新的战斗系统")]
     public Enemy? CurrentEnemy { get; set; }
-    // --- ^^^ 添加结束 ^^^ ---
 }

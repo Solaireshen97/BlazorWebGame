@@ -15,7 +15,7 @@
 {
     var party = GameState.GetPartyForCharacter(character.Id);
     var battleContext = _combatService?.GetBattleContextForPlayer(character.Id);
-    var currentEnemy = GetCurrentEnemy(character, party, battleContext);
+    var currentEnemy = GetCurrentEnemy(character, battleContext);
     var isPartyMemberAndNotCaptain = party != null && party.CaptainId != character.Id;
 
     <div class="battle-page-layout">
@@ -23,9 +23,9 @@
         <div class="monster-selection-area">
             @foreach (var monsterTemplate in GameState.AvailableMonsters)
             {
-                <button class="monster-select-card @(currentEnemy?.Name == monsterTemplate.Name ? "active" : "")"
+                <button class="monster-select-card @(IsCurrentlyFightingMonster(monsterTemplate.Name, battleContext) ? "active" : "")"
                         @onclick="() => StartBattle(monsterTemplate)"
-                        disabled="@isPartyMemberAndNotCaptain">
+                        disabled="@(isPartyMemberAndNotCaptain || IsInBattleRefresh(character.Id))">
                     @monsterTemplate.Name
                 </button>
             }
@@ -53,31 +53,22 @@
         @if (_currentView == BattleView.Battle)
         {
             <!-- 战斗模式提示 -->
-            @if (party != null)
-            {
-                <div class="battle-mode-info mb-3 text-center small">
-                    <i class="bi bi-info-circle"></i>
-                    @if (_combatService?.GetBattleContextForPlayer(character.Id) != null)
-                    {
-                        <span>战斗模式: @GetBattleModeText(character) - 自动战斗中</span>
-                    }
-                    else if (_isBattleRefreshing(character.Id))
-                    {
-                        <span>战斗冷却中: @GetBattleRefreshTime(character.Id).ToString("F1")秒后自动开始下一场战斗</span>
-                    }
-                    else
-                    {
-                        <span>战斗模式: @GetBattleModeText(character) - 等待开始</span>
-                    }
-                </div>
-            }
-            else
-            {
-                <div class="battle-mode-info mb-3 text-center small">
-                    <i class="bi bi-info-circle"></i>
-                    战斗模式: 单人战斗
-                </div>
-            }
+            <div class="battle-mode-info mb-3 text-center small">
+                <i class="bi bi-info-circle"></i>
+                @if (battleContext != null)
+                {
+                    <span>@GetBattleModeText(battleContext) - 自动战斗中</span>
+                }
+                else if (IsInBattleRefresh(character.Id))
+                {
+                    <span>战斗冷却中: @GetBattleRefreshTime(character.Id).ToString("F1")秒后自动开始下一场战斗</span>
+                }
+                else
+                {
+                    <span>等待开始战斗</span>
+                }
+            </div>
+
             <!-- ================= BATTLE VIEW (战斗视图) ================= -->
             <!-- 核心战斗区 -->
             <div class="battle-core-area">
@@ -88,7 +79,9 @@
                         <h5 class="text-center">
                             @(battleContext.BattleType == BattleType.Dungeon ?
                                             $"副本战斗: {GetDungeonName(battleContext.DungeonId)} (波次 {battleContext.WaveNumber})" :
-                                            "多对多战斗")
+                                            battleContext.BattleType == BattleType.Party ?
+                                            $"团队战斗 ({battleContext.Players.Count}v{battleContext.Enemies.Count})" :
+                                            $"单人战斗 (1v{battleContext.Enemies.Count})")
             </h5>
             <div class="enemy-count text-center mb-2">
                 敌人: @battleContext.Enemies.Count 个剩余
@@ -234,8 +227,8 @@
                         <div class="enemy-list d-flex flex-wrap gap-2">
                             @foreach (var enemy in battleContext.Enemies.Where(e => e != currentEnemy))
                             {
-                                <div class="enemy-mini-card p-2 border rounded"
-                                     @onclick="() => SetPlayerTarget(character.Id, enemy.Name, battleContext)">
+                                <div class="enemy-mini-card p-2 border rounded @(IsPlayerTarget(character.Id, enemy, battleContext) ? "border-primary" : "")"
+                                     @onclick="() => SetPlayerTarget(character.Id, enemy, battleContext)">
                                     <div class="d-flex justify-content-between">
                                         <span>@enemy.Name</span>
                                         <span>Lv.@enemy.Level</span>
@@ -390,46 +383,7 @@
         }
     </div>
 
-    <!-- 高级战斗选项对话框 -->
-    @if (_showAdvancedOptions)
-    {
-        <div class="modal-backdrop" @onclick="CloseAdvancedOptions"></div>
-        <div class="advanced-battle-modal">
-            <h4>高级战斗选项</h4>
-
-            <div class="mt-3">
-                <h5>多对多战斗设置</h5>
-                <div class="form-group mb-3">
-                    <label>敌人数量</label>
-                    <input type="number" class="form-control" @bind="_multiEnemyCount" min="1" max="5" />
-                </div>
-
-                <div class="form-group mb-3">
-                    <label>选择敌人类型</label>
-                    <select class="form-control" @bind="_selectedEnemyTemplate">
-                        @foreach (var monster in GameState.AvailableMonsters)
-                        {
-                            <option value="@monster.Name">@monster.Name</option>
-                        }
-                    </select>
-                </div>
-
-                <div class="form-group mb-3">
-                    <label>目标选择策略</label>
-                    <select class="form-control" @bind="_targetSelectionStrategy">
-                        <option value="@TargetSelectionStrategy.Random">随机目标</option>
-                        <option value="@TargetSelectionStrategy.LowestHealth">最低生命值</option>
-                        <option value="@TargetSelectionStrategy.HighestHealth">最高生命值</option>
-                    </select>
-                </div>
-
-                <button class="btn btn-success" @onclick="StartMultiEnemyBattle">开始多对多战斗</button>
-            </div>
-
-            <button class="btn btn-secondary mt-3" @onclick="CloseAdvancedOptions">关闭</button>
-        </div>
-    }
-
+    <!-- 快捷栏选择器 -->
     @if (_isPickerVisible)
     {
         <div class="modal-backdrop" @onclick="CloseQuickSlotPicker"></div>
@@ -455,65 +409,49 @@ else
 
 @code {
     private bool _isPickerVisible = false;
-    private bool _showAdvancedOptions = false;
     private int _managingSlotId;
     private ConsumableCategory _managingCategory;
     private FoodType _managingFoodType;
     private enum BattleView { Battle, Party }
-    private BattleView _currentView = BattleView.Battle; // 默认显示战斗界面
+    private BattleView _currentView = BattleView.Battle;
 
     // 获取CombatService实例
     private CombatService? _combatService;
-
-    // 多对多战斗设置
-    private int _multiEnemyCount = 3;
-    private string _selectedEnemyTemplate = "";
-    private TargetSelectionStrategy _targetSelectionStrategy = TargetSelectionStrategy.LowestHealth;
 
     protected override void OnInitialized()
     {
         GameState.OnStateChanged += StateHasChanged;
         _combatService = ServiceLocator.GetService<CombatService>();
-
-        // 设置默认敌人模板
-        if (GameState.AvailableMonsters.Any())
-        {
-            _selectedEnemyTemplate = GameState.AvailableMonsters.First().Name;
-        }
     }
 
-    // 添加检查战斗刷新状态的方法
-    private bool _isBattleRefreshing(string playerId)
+    // 检查是否处于战斗刷新状态
+    private bool IsInBattleRefresh(string playerId)
     {
-        if (_combatService == null) return false;
-
-        // 通过反射或者添加公开的API来检查战斗刷新状态
-        // 这里假设CombatService有一个IsPlayerInBattleRefresh方法
-        return _combatService.IsPlayerInBattleRefresh(playerId);
+        return _combatService?.IsPlayerInBattleRefresh(playerId) ?? false;
     }
 
-    // 添加获取战斗刷新倒计时的方法
+    // 获取战斗刷新倒计时
     private double GetBattleRefreshTime(string playerId)
     {
-        if (_combatService == null) return 0;
-
-        // 通过反射或者添加公开的API来获取战斗刷新倒计时
-        // 这里假设CombatService有一个GetPlayerBattleRefreshTime方法
-        return _combatService.GetPlayerBattleRefreshTime(playerId);
+        return _combatService?.GetPlayerBattleRefreshTime(playerId) ?? 0;
     }
 
     // 获取战斗模式文本
-    private string GetBattleModeText(Player character)
+    private string GetBattleModeText(BattleContext battleContext)
     {
-        var party = GameState.GetPartyForCharacter(character.Id);
-        if (party != null)
+        return battleContext.BattleType switch
         {
-            return $"团队战斗 ({party.MemberIds.Count} 名玩家)";
-        }
-        else
-        {
-            return "单人战斗";
-        }
+            BattleType.Dungeon => $"副本战斗 - {GetDungeonName(battleContext.DungeonId)}",
+            BattleType.Party => $"团队战斗 ({battleContext.Players.Count}v{battleContext.Enemies.Count})",
+            _ => $"单人战斗 (1v{battleContext.Enemies.Count})"
+        };
+    }
+
+    // 检查是否正在战斗该怪物
+    private bool IsCurrentlyFightingMonster(string monsterName, BattleContext? battleContext)
+    {
+        if (battleContext == null) return false;
+        return battleContext.Enemies.Any(e => e.Name == monsterName);
     }
 
     private double GetHealthPercentage(int current, int max)
@@ -531,26 +469,23 @@ else
     }
 
     /// <summary>
-    /// 获取当前目标敌人，优先级：战斗上下文中的目标 > 团队目标 > 个人目标
+    /// 获取当前目标敌人 - 只从战斗上下文中获取
     /// </summary>
-    private Enemy? GetCurrentEnemy(Player character, Party? party, BattleContext? battleContext)
+    private Enemy? GetCurrentEnemy(Player character, BattleContext? battleContext)
     {
-        if (battleContext != null && battleContext.Enemies.Any())
-        {
-            // 检查玩家是否有指定目标
-            if (battleContext.PlayerTargets.TryGetValue(character.Id, out var targetName))
-            {
-                var target = battleContext.Enemies.FirstOrDefault(e => e.Name == targetName);
-                if (target != null)
-                    return target;
-            }
+        if (battleContext == null || !battleContext.Enemies.Any())
+            return null;
 
-            // 默认返回第一个敌人
-            return battleContext.Enemies.First();
+        // 检查玩家是否有指定目标
+        if (battleContext.PlayerTargets.TryGetValue(character.Id, out var targetName))
+        {
+            var target = battleContext.Enemies.FirstOrDefault(e => e.Name == targetName);
+            if (target != null)
+                return target;
         }
 
-        // 旧系统：团队目标或个人目标
-        return party?.CurrentEnemy ?? character.CurrentEnemy;
+        // 默认返回第一个敌人
+        return battleContext.Enemies.First();
     }
 
     /// <summary>
@@ -570,58 +505,17 @@ else
     /// <summary>
     /// 设置玩家的目标敌人
     /// </summary>
-    private void SetPlayerTarget(string playerId, string enemyName, BattleContext battleContext)
+    private void SetPlayerTarget(string playerId, Enemy enemy, BattleContext battleContext)
     {
-        if (_combatService != null && battleContext != null)
-        {
-            // 在BattleContext中设置玩家目标
-            battleContext.PlayerTargets[playerId] = enemyName;
-        }
+        battleContext.PlayerTargets[playerId] = enemy.Name;
     }
 
     /// <summary>
-    /// 显示高级战斗选项
+    /// 检查敌人是否是玩家的当前目标
     /// </summary>
-    private void ShowAdvancedBattleOptions()
+    private bool IsPlayerTarget(string playerId, Enemy enemy, BattleContext battleContext)
     {
-        _showAdvancedOptions = true;
-    }
-
-    /// <summary>
-    /// 关闭高级战斗选项
-    /// </summary>
-    private void CloseAdvancedOptions()
-    {
-        _showAdvancedOptions = false;
-    }
-
-    /// <summary>
-    /// 启动多对多战斗
-    /// </summary>
-    private void StartMultiEnemyBattle()
-    {
-        if (GameState.ActiveCharacter == null || _combatService == null || string.IsNullOrEmpty(_selectedEnemyTemplate))
-            return;
-
-        var party = GameState.GetPartyForCharacter(GameState.ActiveCharacter.Id);
-
-        // 查找敌人模板
-        var enemyTemplate = GameState.AvailableMonsters.FirstOrDefault(m => m.Name == _selectedEnemyTemplate);
-        if (enemyTemplate == null)
-            return;
-
-        // 创建多个敌人
-        var enemies = new List<Enemy>();
-        for (int i = 0; i < _multiEnemyCount; i++)
-        {
-            enemies.Add(enemyTemplate.Clone());
-        }
-
-        // 使用新系统启动多对多战斗
-        _combatService.StartMultiEnemyBattle(GameState.ActiveCharacter, enemies, party);
-
-        // 关闭选项对话框
-        CloseAdvancedOptions();
+        return battleContext.PlayerTargets.TryGetValue(playerId, out var targetName) && targetName == enemy.Name;
     }
 
     /// <summary>
