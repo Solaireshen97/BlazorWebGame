@@ -125,16 +125,30 @@ namespace BlazorWebGame.Services.Combat
             // 处理玩家复活倒计时
             _characterCombatService.ProcessPlayerRevival(battle, elapsedSeconds);
 
-            // 处理玩家攻击
-            foreach (var player in battle.Players.Where(p => !p.IsDead))
-            {
-                _combatEngine.ProcessPlayerAttack(battle, player, elapsedSeconds);
-            }
+            // 检查是否有存活的玩家
+            var alivePlayers = battle.Players.Where(p => !p.IsDead).ToList();
 
-            // 处理敌人攻击
-            foreach (var enemy in battle.Enemies.ToList())
+            if (alivePlayers.Any())
             {
-                _combatEngine.ProcessEnemyAttack(battle, enemy, elapsedSeconds);
+                // 有存活玩家时，处理玩家攻击
+                foreach (var player in alivePlayers)
+                {
+                    _combatEngine.ProcessPlayerAttack(battle, player, elapsedSeconds);
+                }
+
+                // 处理敌人攻击
+                foreach (var enemy in battle.Enemies.ToList())
+                {
+                    _combatEngine.ProcessEnemyAttack(battle, enemy, elapsedSeconds);
+                }
+            }
+            else
+            {
+                // 所有玩家死亡，重置所有敌人的攻击冷却
+                foreach (var enemy in battle.Enemies)
+                {
+                    enemy.EnemyAttackCooldown = 1.0 / enemy.AttacksPerSecond;
+                }
             }
 
             // 检查战斗状态
@@ -258,6 +272,10 @@ namespace BlazorWebGame.Services.Combat
                 {
                     var enemy = enemyTemplate.Clone();
                     _skillSystem.InitializeEnemySkills(enemy);
+
+                    // 初始化敌人攻击冷却
+                    enemy.EnemyAttackCooldown = 1.0 / enemy.AttacksPerSecond;
+
                     battle.Enemies.Add(enemy);
                 }
             }
@@ -268,6 +286,10 @@ namespace BlazorWebGame.Services.Combat
 
                 var enemy = enemyTemplate.Clone();
                 _skillSystem.InitializeEnemySkills(enemy);
+
+                // 初始化敌人攻击冷却
+                enemy.EnemyAttackCooldown = 1.0 / enemy.AttacksPerSecond;
+
                 battle.Enemies.Add(enemy);
             }
 
@@ -383,6 +405,10 @@ namespace BlazorWebGame.Services.Combat
             {
                 var enemy = enemyTemplate.Clone();
                 _skillSystem.InitializeEnemySkills(enemy);
+
+                // 初始化敌人攻击冷却
+                enemy.EnemyAttackCooldown = 1.0 / enemy.AttacksPerSecond;
+
                 battle.Enemies.Add(enemy);
             }
 

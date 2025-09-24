@@ -15,18 +15,20 @@ namespace BlazorWebGame.Services.Combat
         private const double RevivalDuration = 2.0;
 
         /// <summary>
-        /// 准备角色进入战斗
+        /// 准备角色参与战斗
         /// </summary>
         public void PrepareCharacterForBattle(Player character)
         {
             if (character == null) return;
 
-            // 重置当前非战斗活动
+            // 重置当前其他动作
             ResetPlayerAction(character);
 
             // 设置为战斗状态
             character.CurrentAction = PlayerActionState.Combat;
-            character.AttackCooldown = 0;
+
+            // 初始化攻击冷却时间（防止立即攻击）
+            character.AttackCooldown = 1.0 / character.AttacksPerSecond;
         }
 
         /// <summary>
@@ -92,7 +94,6 @@ namespace BlazorWebGame.Services.Combat
                 // 根据AllowAutoRevive属性决定是否结束战斗
             }
         }
-
         /// <summary>
         /// 角色复活
         /// </summary>
@@ -101,6 +102,27 @@ namespace BlazorWebGame.Services.Combat
             character.IsDead = false;
             character.Health = character.GetTotalMaxHealth();
             character.RevivalTimeRemaining = 0;
+
+            // 获取角色所在的战斗
+            var battleManager = ServiceLocator.GetService<BattleManager>();
+            if (battleManager != null)
+            {
+                var battle = battleManager.GetBattleContextForPlayer(character.Id);
+                if (battle != null)
+                {
+                    // 检查是否是第一个复活的玩家（之前所有玩家都死亡）
+                    var otherAlivePlayers = battle.Players.Where(p => p.Id != character.Id && !p.IsDead).Count();
+                    if (otherAlivePlayers == 0)
+                    {
+                        // 如果是第一个复活的玩家，给敌人一个短暂的反应时间
+                        foreach (var enemy in battle.Enemies)
+                        {
+                            // 给敌人0.5秒的反应时间
+                            enemy.EnemyAttackCooldown = Math.Max(enemy.EnemyAttackCooldown, 0.5);
+                        }
+                    }
+                }
+            }
 
             // 触发角色复活事件
             var gameStateService = ServiceLocator.GetService<GameStateService>();

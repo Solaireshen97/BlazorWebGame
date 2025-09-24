@@ -295,6 +295,9 @@ namespace BlazorWebGame.Services.Combat
                         // 初始化技能冷却
                         skillSystem.InitializeEnemySkills(enemy);
 
+                        // 初始化敌人攻击冷却（防止立即攻击）
+                        enemy.EnemyAttackCooldown = 1.0 / enemy.AttacksPerSecond;
+
                         // 添加敌人到战斗
                         battle.Enemies.Add(enemy);
                     }
@@ -309,6 +312,12 @@ namespace BlazorWebGame.Services.Combat
                     var characterCombatService = ServiceLocator.GetService<CharacterCombatService>();
                     characterCombatService?.ReviveCharacter(player);
                 }
+            }
+
+            // 重置所有玩家的攻击冷却，确保新波次不会立即攻击
+            foreach (var player in battle.Players)
+            {
+                player.AttackCooldown = 1.0 / player.AttacksPerSecond;
             }
 
             // 设置状态为活跃
