@@ -90,6 +90,9 @@ namespace BlazorWebGame.Services
         {
             if (character == null) return;
             
+            // 初始化角色基础属性
+            InitializePlayerAttributes(character);
+            
             // 初始化战斗职业技能
             foreach (var profession in (BattleProfession[])Enum.GetValues(typeof(BattleProfession)))
             {
@@ -98,6 +101,23 @@ namespace BlazorWebGame.Services
             
             // 重置技能冷却
             _combatService.ResetPlayerSkillCooldowns(character);
+        }
+
+        /// <summary>
+        /// 初始化角色属性
+        /// </summary>
+        public void InitializePlayerAttributes(Player character)
+        {
+            if (character == null) return;
+            
+            // 确保基础属性已设置
+            if (character.BaseAttributes == null)
+            {
+                character.BaseAttributes = new AttributeSet();
+            }
+            
+            // 更新基础属性
+            character.UpdateBaseAttributes();
         }
 
         /// <summary>
@@ -141,6 +161,9 @@ namespace BlazorWebGame.Services
             var newCharacter = new Player { Name = name };
             newCharacter.EnsureDataConsistency();
             
+            // 初始化角色状态
+            InitializePlayerState(newCharacter);
+            
             AllCharacters.Add(newCharacter);
             
             // 如果这是第一个角色，自动设为活跃角色
@@ -149,7 +172,6 @@ namespace BlazorWebGame.Services
                 ActiveCharacter = newCharacter;
             }
             
-            InitializePlayerState(newCharacter);
             NotifyStateChanged();
         }
 

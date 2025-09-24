@@ -135,16 +135,34 @@ namespace BlazorWebGame.Services.Combat
         }
 
         /// <summary>
+        /// 未命中类型
+        /// </summary>
+        public enum HitResultType
+        {
+            Hit,    // 命中
+            Miss,   // 未命中
+            Dodge,  // 被闪避
+            Block   // 被格挡（部分伤害）
+        }
+
+        /// <summary>
         /// 计算玩家对敌人的伤害
         /// </summary>
         private int CalculatePlayerDamage(Player character, Enemy enemy)
         {
+            // 命中率检查
+            if (!RollForHit(character, enemy, out var hitResult))
+            {
+                // 触发未命中事件
+                RaiseMissEvent(character, enemy, hitResult, null);
+                return 0; // 未命中，没有伤害
+            }
+            
             // 基础伤害
             int baseDamage = character.GetTotalAttackPower();
             
             // TODO: 这里可以添加更复杂的伤害计算
             // - 暴击率和暴击伤害
-            // - 命中率和闪避
             // - 防御力减免
             // - 元素伤害和抗性
             // - 伤害加成和减免buff
@@ -153,17 +171,88 @@ namespace BlazorWebGame.Services.Combat
         }
 
         /// <summary>
+        /// 检查攻击是否命中
+        /// </summary>
+        private bool RollForHit(Player attacker, Enemy defender, out HitResultType resultType)
+        {
+            // 计算基础命中率
+            double baseHitChance = 0.7; // 70%的基础命中率
+            
+            // 获取怪物闪避基于其类型和等级
+            int avoidanceRating = defender.AvoidanceRating;
+            if (avoidanceRating == 0) // 如果没有设置，使用默认计算
+            {
+                switch (defender.Type)
+                {
+                    case MonsterType.Normal:
+                        avoidanceRating = defender.Level * 5;
+                        break;
+                    case MonsterType.Elite:
+                        avoidanceRating = defender.Level * 8;
+                        break;
+                    case MonsterType.Boss:
+                        avoidanceRating = defender.Level * 10;
+                        break;
+                }
+            }
+            
+            // 获取玩家的命中率
+            int accuracyRating = attacker.GetTotalAccuracy();
+            
+            // 计算最终命中率
+            double accuracyBonus = (accuracyRating - avoidanceRating) / 100.0;
+            double finalHitChance = Math.Clamp(baseHitChance + accuracyBonus, 0.3, 0.99);
+            
+            // 检查直接闪避（优先于命中率）
+            if (new Random().NextDouble() < defender.DodgeChance)
+            {
+                resultType = HitResultType.Dodge;
+                return false;
+            }
+            
+            // 检查命中
+            bool hit = new Random().NextDouble() <= finalHitChance;
+            resultType = hit ? HitResultType.Hit : HitResultType.Miss;
+            return hit;
+        }
+
+        /// <summary>
+        /// 触发未命中事件
+        /// </summary>
+        private void RaiseMissEvent(Player attacker, Enemy target, HitResultType resultType, BattleContext? battle)
+        {
+            var gameStateService = ServiceLocator.GetService<GameStateService>();
+            
+            string missType = resultType == HitResultType.Dodge ? "闪避" : "未命中";
+            
+            gameStateService?.RaiseCombatEvent(
+                GameEventType.AttackMissed,  // 需要在GameEventType中添加这个类型
+                attacker,
+                target,
+                null,
+                null,
+                battle?.Party
+            );
+        }
+
+        /// <summary>
         /// 计算敌人对玩家的伤害
         /// </summary>
         private int CalculateEnemyDamage(Enemy enemy, Player character)
         {
+            // 命中率检查（可以添加类似玩家的命中检查）
+            
             // 基础伤害
             int baseDamage = enemy.AttackPower;
             
-            // TODO: 这里可以添加更复杂的伤害计算
-            // - 玩家防御力减免
-            // - 格挡和招架
-            // - 抗性计算
+            // 检查暴击
+            bool isCritical = new Random().NextDouble() < enemy.CriticalChance;
+            if (isCritical)
+            {
+                baseDamage = (int)(baseDamage * enemy.CriticalMultiplier);
+            }
+            
+            // 考虑玩家防御力减免（后续可实现）
             
             return baseDamage;
         }

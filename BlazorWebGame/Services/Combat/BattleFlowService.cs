@@ -197,7 +197,17 @@ namespace BlazorWebGame.Services.Combat
                     {
                         for (int i = 0; i < info.Count; i++)
                         {
-                            enemies.Add(template.Clone());
+                            var enemy = template.Clone();
+
+                            // 添加: 初始化技能和战斗属性
+                            var skillSystem = ServiceLocator.GetService<SkillSystem>();
+                            if (skillSystem != null)
+                            {
+                                skillSystem.InitializeEnemySkills(enemy);
+                            }
+                            MonsterTemplates.InitializeCombatAttributes(enemy);
+
+                            enemies.Add(enemy);
                         }
                     }
                 }
@@ -220,7 +230,17 @@ namespace BlazorWebGame.Services.Combat
 
                     for (int i = 0; i < count; i++)
                     {
-                        enemies.Add(suitableEnemy.Clone());
+                        var enemy = suitableEnemy.Clone();
+
+                        // 添加: 初始化技能和战斗属性
+                        var skillSystem = ServiceLocator.GetService<SkillSystem>();
+                        if (skillSystem != null)
+                        {
+                            skillSystem.InitializeEnemySkills(enemy);
+                        }
+                        MonsterTemplates.InitializeCombatAttributes(enemy);
+
+                        enemies.Add(enemy);
                     }
                 }
             }
@@ -337,6 +357,9 @@ namespace BlazorWebGame.Services.Combat
 
                         // 初始化技能冷却
                         skillSystem.InitializeEnemySkills(enemy);
+
+                        // 添加: 初始化怪物战斗属性
+                        MonsterTemplates.InitializeCombatAttributes(enemy);
 
                         // 初始化敌人攻击冷却（防止立即攻击）
                         enemy.EnemyAttackCooldown = 1.0 / enemy.AttacksPerSecond;

@@ -273,6 +273,9 @@ namespace BlazorWebGame.Services.Combat
                     var enemy = enemyTemplate.Clone();
                     _skillSystem.InitializeEnemySkills(enemy);
 
+                    // 添加: 初始化怪物战斗属性
+                    MonsterTemplates.InitializeCombatAttributes(enemy);
+
                     // 初始化敌人攻击冷却
                     enemy.EnemyAttackCooldown = 1.0 / enemy.AttacksPerSecond;
 
@@ -284,8 +287,12 @@ namespace BlazorWebGame.Services.Combat
                 battle.Players.Add(character);
                 _characterCombatService.PrepareCharacterForBattle(character);
 
+                // 在单人模式部分
                 var enemy = enemyTemplate.Clone();
                 _skillSystem.InitializeEnemySkills(enemy);
+
+                // 添加: 初始化怪物战斗属性
+                MonsterTemplates.InitializeCombatAttributes(enemy);
 
                 // 初始化敌人攻击冷却
                 enemy.EnemyAttackCooldown = 1.0 / enemy.AttacksPerSecond;
@@ -400,11 +407,13 @@ namespace BlazorWebGame.Services.Combat
                 _characterCombatService.PrepareCharacterForBattle(character);
             }
 
-            // 添加敌人
             foreach (var enemyTemplate in enemies)
             {
                 var enemy = enemyTemplate.Clone();
                 _skillSystem.InitializeEnemySkills(enemy);
+
+                // 添加: 初始化怪物战斗属性
+                MonsterTemplates.InitializeCombatAttributes(enemy);
 
                 // 初始化敌人攻击冷却
                 enemy.EnemyAttackCooldown = 1.0 / enemy.AttacksPerSecond;

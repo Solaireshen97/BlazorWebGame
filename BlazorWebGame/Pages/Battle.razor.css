@@ -1,3 +1,4 @@
+/* 战斗页面整体布局 */
 .battle-page-layout {
     display: flex;
     flex-direction: column;
@@ -172,19 +173,19 @@
 }
 
 .attack-progress-bar {
-    background-color: #ffc107; /* 黄色 */
+    background-color: #ffc107; /* 黄色 */ 
     height: 100%;
     transition: width 0.1s linear;
 }
 
-/* 装备及细节信息 */
+/* 装备及细节信息 - 改为水平布局 */
 .details-area {
     display: flex;
-    justify-content: space-around;
-    gap: 2rem;
-    flex-wrap: wrap;
+    flex-direction: row; /* 改为水平布局 */
+    gap: 1rem;
     padding-top: 1rem;
     border-top: 1px solid #dee2e6;
+    margin-bottom: 1rem;
 }
 
 .details-card {
@@ -192,15 +193,9 @@
     border: 1px solid #e9ecef;
     border-radius: 8px;
     padding: 1rem;
-    width: 300px;
+    flex: 1; /* 让两个卡片平均分配空间 */
+    min-width: 0; /* 防止flex子项溢出 */
 }
-
-    .details-card h5 {
-        margin-top: 0;
-        border-bottom: 1px solid #ccc;
-        padding-bottom: 0.5rem;
-        margin-bottom: 1rem;
-    }
 
 /* 玩家职业和技能显示样式 */
 .profession-display {
@@ -1218,4 +1213,78 @@
 .dungeon-selector-modal {
     width: 90%;
     max-width: 1000px;
+}
+
+.stats-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.stats-section {
+    flex: 1;
+    min-width: 200px;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    padding: 10px;
+    background-color: #f9f9f9;
+}
+
+.stats-section h6 {
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 5px;
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+    font-size: 0.9rem;
+}
+
+.stat-label {
+    color: #666;
+}
+
+.stat-value {
+    font-weight: 500;
+}
+
+.positive {
+    color: green;
+}
+
+.negative {
+    color: red;
+}
+
+/* 将这些样式添加到您的CSS文件中 */
+.details-area {
+    margin-top: 1rem;
+    gap: 1rem;
+}
+
+.details-card {
+    width: 50%;
+    max-width: 100%;
+    height: 100%;
+}
+
+/* 确保统一的卡片高度 */
+.stats-section {
+    margin-bottom: 0.5rem;
+}
+
+/* 在小屏幕上改为垂直布局 */
+@media (max-width: 768px) {
+    .details-area {
+        flex-direction: column;
+    }
+    
+    .details-card.player-details-card {
+        margin-bottom: 1rem;
+    }
 }

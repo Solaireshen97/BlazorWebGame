@@ -32,6 +32,7 @@ namespace BlazorWebGame.Events
         DungeonCompleted,
         CombatStatusChanged,
         BattleCancelled,
+        AttackMissed,
 
         // 物品相关事件
         ItemAcquired,
