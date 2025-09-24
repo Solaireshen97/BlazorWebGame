@@ -58,7 +58,7 @@ namespace BlazorWebGame.Models.Battles
         /// <summary>
         /// 目标选择策略
         /// </summary>
-        public TargetSelectionStrategy PlayerTargetStrategy { get; set; } = TargetSelectionStrategy.LowestHealth;
+        public TargetSelectionStrategy PlayerTargetStrategy { get; set; } = TargetSelectionStrategy.Random;
         
         /// <summary>
         /// 敌人目标选择策略

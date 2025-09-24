@@ -252,7 +252,7 @@ namespace BlazorWebGame.Services.Combat
                 BattleType = party != null ? BattleType.Party : BattleType.Solo,
                 Party = party,
                 State = BattleState.Active,
-                PlayerTargetStrategy = TargetSelectionStrategy.LowestHealth,
+                PlayerTargetStrategy = TargetSelectionStrategy.Random,
                 EnemyTargetStrategy = TargetSelectionStrategy.Random,
                 AllowAutoRevive = true
             };
@@ -379,7 +379,7 @@ namespace BlazorWebGame.Services.Combat
                 BattleType = party != null ? BattleType.Party : BattleType.Solo,
                 Party = party,
                 State = BattleState.Active,
-                PlayerTargetStrategy = TargetSelectionStrategy.LowestHealth,
+                PlayerTargetStrategy = TargetSelectionStrategy.Random,
                 EnemyTargetStrategy = TargetSelectionStrategy.Random,
                 AllowAutoRevive = true
             };
