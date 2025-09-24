@@ -1170,10 +1170,23 @@ else
         if (GameState.ActiveCharacter == null || _combatService == null)
             return;
 
-        var party = GameState.GetPartyForCharacter(GameState.ActiveCharacter.Id);
+        // 获取当前玩家
+        var character = GameState.ActiveCharacter;
 
-        // 使用智能战斗系统
-        bool battleStarted = _combatService.SmartStartBattle(GameState.ActiveCharacter, enemyTemplate, party);
+        // 检查玩家是否已在战斗中（活跃战斗或战斗刷新状态）
+        var battleContext = _combatService.GetBattleContextForPlayer(character.Id);
+        var isInBattleRefresh = _combatService.IsPlayerInBattleRefresh(character.Id);
+
+        // 如果已在战斗，先停止当前战斗
+        if (battleContext != null || isInBattleRefresh || character.CurrentAction == PlayerActionState.Combat)
+        {
+            GameState.StopCurrentAction();
+        }
+
+        var party = GameState.GetPartyForCharacter(character.Id);
+
+        // 使用智能战斗系统，设置ignoreRefreshCheck=true以确保即使在刷新状态也能开始战斗
+        bool battleStarted = _combatService.SmartStartBattle(character, enemyTemplate, party, true);
 
         // 如果战斗成功启动，关闭悬浮窗
         if (battleStarted)

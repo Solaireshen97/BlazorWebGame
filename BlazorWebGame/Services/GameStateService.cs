@@ -437,6 +437,21 @@ public class GameStateService : IAsyncDisposable
             return;
         }
 
+        // 新增：检查是否在战斗刷新状态
+        if (_combatService.IsPlayerInBattleRefresh(character.Id))
+        {
+            // 取消玩家的战斗刷新状态
+            _combatService.CancelPlayerBattleRefresh(character.Id);
+
+            // 确保角色状态为空闲
+            character.CurrentAction = PlayerActionState.Idle;
+            character.CurrentEnemy = null;
+            character.AttackCooldown = 0;
+
+            NotifyStateChanged();
+            return;
+        }
+
         // 获取当前状态的字符串表示
         var actionState = character.CurrentAction.ToString();
 

@@ -190,7 +190,7 @@ namespace BlazorWebGame.Services
         {
             var battleContext = GetBattleContextForParty(partyId);
             if (battleContext != null)
-            {
+            {   
                 StopBattle(battleContext);
             }
         }
@@ -234,6 +234,14 @@ namespace BlazorWebGame.Services
             OnStateChanged?.Invoke();
         }
 
+
+        /// <summary>
+        /// 取消玩家的战斗刷新状态
+        /// </summary>
+        public void CancelPlayerBattleRefresh(string playerId)
+        {
+            _battleFlowService.CancelPlayerBattleRefresh(playerId);
+        }
         /// <summary>
         /// 为角色生成新的敌人实例（已废弃）
         /// </summary>
