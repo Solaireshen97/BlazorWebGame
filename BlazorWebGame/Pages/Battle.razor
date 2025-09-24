@@ -655,9 +655,9 @@
                 </div>
             </div>
             <hr />
-            <div class="player-stats">
+            <div class="player-stats d-flex flex-row flex-wrap">
                 <!-- 基础战斗属性 -->
-                <div class="stats-section">
+                <div class="stats-section flex-grow-1 me-2 mb-2" style="min-width: 180px; max-width: 48%;">
                     <h6>战斗属性</h6>
                     <div class="stat-row">
                         <div class="stat-label">攻击力</div>
@@ -681,7 +681,7 @@
                 @{
                     var attributes = character.GetTotalAttributes();
                 }
-                <div class="stats-section">
+                <div class="stats-section flex-grow-1 ms-2 mb-2" style="min-width: 180px; max-width: 48%;">
                     <h6>基础属性</h6>
                     <div class="stat-row">
                         <div class="stat-label">力量</div>
@@ -710,54 +710,54 @@
         <!-- 右侧：怪物属性卡片 -->
         <div class="details-card enemy-details-card flex-grow-1 ms-2">
             <h5>@(currentEnemy != null ? currentEnemy.Name : "怪物") 属性</h5>
-
-            @if (currentEnemy != null)
+            @if (currentEnemy != null || _lastBattleEnemy != null)
             {
+                var displayEnemy = currentEnemy ?? _lastBattleEnemy;
                 <div class="enemy-stats">
                     <div class="stats-section">
                         <h6>战斗属性</h6>
                         <div class="stat-row">
                             <div class="stat-label">攻击力</div>
-                            <div class="stat-value">@currentEnemy.AttackPower</div>
+                            <div class="stat-value">@displayEnemy.AttackPower</div>
                         </div>
                         <div class="stat-row">
                             <div class="stat-label">生命值</div>
-                            <div class="stat-value">@currentEnemy.Health/@currentEnemy.MaxHealth</div>
+                            <div class="stat-value">@displayEnemy.Health/@displayEnemy.MaxHealth</div>
                         </div>
                         <div class="stat-row">
                             <div class="stat-label">攻击速度</div>
-                            <div class="stat-value">@currentEnemy.AttacksPerSecond.ToString("F2") 次/秒</div>
+                            <div class="stat-value">@displayEnemy.AttacksPerSecond.ToString("F2") 次/秒</div>
                         </div>
                         <div class="stat-row">
                             <div class="stat-label">命中等级</div>
-                            <div class="stat-value">@currentEnemy.AccuracyRating</div>
+                            <div class="stat-value">@displayEnemy.AccuracyRating</div>
                         </div>
                         <div class="stat-row">
                             <div class="stat-label">闪避等级</div>
-                            <div class="stat-value">@currentEnemy.AvoidanceRating</div>
+                            <div class="stat-value">@displayEnemy.AvoidanceRating</div>
                         </div>
                         <div class="stat-row">
                             <div class="stat-label">闪避几率</div>
-                            <div class="stat-value">@(currentEnemy.DodgeChance.ToString("P1"))</div>
+                            <div class="stat-value">@(displayEnemy.DodgeChance.ToString("P1"))</div>
                         </div>
 
                         <!-- 暴击属性 -->
                         <div class="stat-row">
                             <div class="stat-label">暴击率</div>
-                            <div class="stat-value">@(currentEnemy.CriticalChance.ToString("P0"))</div>
+                            <div class="stat-value">@(displayEnemy.CriticalChance.ToString("P0"))</div>
                         </div>
                         <div class="stat-row">
                             <div class="stat-label">暴击伤害</div>
-                            <div class="stat-value">@(currentEnemy.CriticalMultiplier.ToString("P0"))</div>
+                            <div class="stat-value">@(displayEnemy.CriticalMultiplier.ToString("P0"))</div>
                         </div>
                     </div>
 
                     <!-- 元素抗性部分，如果有的话 -->
-                    @if (currentEnemy.ElementalResistances.Any())
+                    @if (displayEnemy.ElementalResistances.Any())
                     {
                         <div class="stats-section">
                             <h6>元素抗性</h6>
-                            @foreach (var resistance in currentEnemy.ElementalResistances)
+                            @foreach (var resistance in displayEnemy.ElementalResistances)
                             {
                                 <div class="stat-row">
                                     <div class="stat-label">@resistance.Key 抗性</div>
@@ -773,11 +773,11 @@
                     <hr />
                     <div class="stat-row">
                         <div class="stat-label">经验值</div>
-                        <div class="stat-value">@currentEnemy.XpReward</div>
+                        <div class="stat-value">@displayEnemy.XpReward</div>
                     </div>
                     <h6>可能掉落</h6>
                     <div class="loot-table">
-                        @foreach (var lootEntry in currentEnemy.LootTable)
+                        @foreach (var lootEntry in displayEnemy.LootTable)
                         {
                             var item = ItemData.GetItemById(lootEntry.Key);
                             if (item != null)
@@ -802,7 +802,7 @@
                     <p class="text-muted">请选择怪物开始战斗</p>
                 </div>
             }
-        </div>
+       </div>
     </div>
 
     <!-- 快捷栏选择器 -->
@@ -841,7 +841,7 @@ else
     // 添加新的状态变量
     private Enemy? _selectedMonster;
     private Dungeon? _selectedDungeon;
-
+    private Enemy? _lastBattleEnemy;
     // 选择怪物的方法
     private void SelectMonster(Enemy monster)
     {
@@ -1047,9 +1047,10 @@ else
     // 获取CombatService实例
     private CombatService? _combatService;
 
+    // 修改OnInitialized方法
     protected override void OnInitialized()
     {
-        GameState.OnStateChanged += StateHasChanged;
+        GameState.OnStateChanged += HandleStateChanged;
         _combatService = ServiceLocator.GetService<CombatService>();
     }
 
@@ -1139,9 +1140,6 @@ else
         return Math.Clamp(progress * 100, 0, 100);
     }
 
-    /// <summary>
-    /// 获取当前目标敌人 - 只从战斗上下文中获取
-    /// </summary>
     private Enemy? GetCurrentEnemy(Player character, BattleContext? battleContext)
     {
         if (battleContext == null || !battleContext.Enemies.Any())
@@ -1152,11 +1150,16 @@ else
         {
             var target = battleContext.Enemies.FirstOrDefault(e => e.Name == targetName);
             if (target != null)
+            {
+                _lastBattleEnemy = target; // 保存当前敌人
                 return target;
+            }
         }
 
         // 默认返回第一个敌人
-        return battleContext.Enemies.First();
+        var firstEnemy = battleContext.Enemies.First();
+        _lastBattleEnemy = firstEnemy; // 保存当前敌人
+        return firstEnemy;
     }
 
     /// <summary>
@@ -1341,6 +1344,22 @@ else
 
     public void Dispose()
     {
-        GameState.OnStateChanged -= StateHasChanged;
+        GameState.OnStateChanged -= HandleStateChanged;
     }
+    private void HandleStateChanged()
+    {
+        // 只有同时满足以下三个条件时才清空最后的敌人:
+        // 1. 角色不在战斗状态
+        // 2. 没有战斗上下文
+        // 3. 没有在战斗刷新状态(不在等待下一波)
+        if (GameState.ActiveCharacter?.CurrentAction != PlayerActionState.Combat &&
+            _combatService?.GetBattleContextForPlayer(GameState.ActiveCharacter?.Id) == null &&
+            !(_combatService?.IsPlayerInBattleRefresh(GameState.ActiveCharacter?.Id) ?? false))
+        {
+            _lastBattleEnemy = null;
+        }
+
+        StateHasChanged();
+    }
+
 }
