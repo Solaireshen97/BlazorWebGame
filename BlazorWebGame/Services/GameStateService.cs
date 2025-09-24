@@ -542,4 +542,40 @@ public class GameStateService : IAsyncDisposable
     
     // 保留原有的NotifyStateChanged方法作为兼容层
     private void NotifyStateChanged() => RaiseEvent(GameEventType.GenericStateChanged);
+
+    // 在GameStateService中添加委托方法
+
+    public void AddBattleXP(BattleProfession profession, int amount)
+    {
+        if (ActiveCharacter != null)
+        {
+            _characterService.AddBattleXP(ActiveCharacter, profession, amount);
+            
+            // 在GameStateService中处理事件触发
+            if (ActiveCharacter.GetLevel(profession) > 1) // 假设刚刚升级
+            {
+                RaiseEvent(GameEventType.LevelUp, ActiveCharacter);
+            }
+            
+            RaiseEvent(GameEventType.ExperienceGained, ActiveCharacter);
+        }
+    }
+
+    public void AddGatheringXP(GatheringProfession profession, int amount)
+    {
+        if (ActiveCharacter != null)
+        {
+            _characterService.AddGatheringXP(ActiveCharacter, profession, amount);
+            RaiseEvent(GameEventType.ExperienceGained, ActiveCharacter);
+        }
+    }
+
+    public void AddProductionXP(ProductionProfession profession, int amount)
+    {
+        if (ActiveCharacter != null)
+        {
+            _characterService.AddProductionXP(ActiveCharacter, profession, amount);
+            RaiseEvent(GameEventType.ExperienceGained, ActiveCharacter);
+        }
+    }
 }

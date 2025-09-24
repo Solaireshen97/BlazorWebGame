@@ -146,16 +146,51 @@ namespace BlazorWebGame.Models
         }
 
         public void AddGatheringXP(GatheringProfession profession, int amount) { if (GatheringProfessionXP.ContainsKey(profession)) { GatheringProfessionXP[profession] += amount; } }
-        public void AddBattleXP(BattleProfession profession, int amount) { if (BattleProfessionXP.ContainsKey(profession)) { BattleProfessionXP[profession] += amount; } }
+        /// <summary>
+        /// 为指定的战斗职业添加经验值，并返回升级结果
+        /// </summary>
+        /// <param name="profession">职业</param>
+        /// <param name="amount">经验值数量</param>
+        /// <returns>包含升级信息的元组</returns>
+        public (bool LeveledUp, int OldLevel, int NewLevel) AddBattleXP(BattleProfession profession, int amount) 
+        { 
+            if (BattleProfessionXP.ContainsKey(profession)) 
+            {
+                int oldLevel = GetLevel(profession);
+                
+                // 增加经验值
+                BattleProfessionXP[profession] += amount;
+                
+                // 检查是否升级
+                int newLevel = GetLevel(profession);
+                bool leveledUp = newLevel > oldLevel;
+                
+                // 返回升级信息，让服务层决定如何处理
+                return (leveledUp, oldLevel, newLevel);
+            }
+            
+            return (false, 0, 0);
+        }
         /// <summary>
         /// 为指定的生产职业增加经验值
         /// </summary>
-        public void AddProductionXP(ProductionProfession profession, int amount)
+        public (bool LeveledUp, int OldLevel, int NewLevel) AddProductionXP(ProductionProfession profession, int amount)
         {
             if (ProductionProfessionXP.ContainsKey(profession))
             {
+                int oldLevel = GetLevel(profession);
+                
+                // 增加经验值
                 ProductionProfessionXP[profession] += amount;
+                
+                // 检查是否升级
+                int newLevel = GetLevel(profession);
+                bool leveledUp = newLevel > oldLevel;
+                
+                return (leveledUp, oldLevel, newLevel);
             }
+            
+            return (false, 0, 0);
         }
 
         // 可以添加一个辅助方法来获取声望等级

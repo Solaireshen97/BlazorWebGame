@@ -1,6 +1,7 @@
 @using BlazorWebGame.Models
 @using BlazorWebGame.Models.Items
 @using BlazorWebGame.Services
+@using BlazorWebGame.Events
 @inject GameStateService GameState
 @implements IDisposable
 
@@ -9,8 +10,6 @@
     <div class="multi-character-status-container">
         @foreach (var character in GameState.AllCharacters)
         {
-            // --- vvv 这是本次的核心修正 vvv ---
-            // 我们将 @onclick 从这个 div 移动到了它内部的 status-display div 上
             <div class="character-status-row @(character.IsDead ? "player-dead" : "") @(GameState.ActiveCharacter?.Id == character.Id ? "active" : "")">
 
                 <div class="status-display" @onclick="() => SwitchCharacter(character.Id)">
@@ -21,6 +20,31 @@
                             | 生命: <strong>@character.Health / @character.MaxHealth</strong>
                             | 金币: <strong>@character.Gold</strong>
                         </span>
+                        
+                        <!-- 添加经验值进度条 -->
+                        @if (GameState.ActiveCharacter?.Id == character.Id)
+                        {
+                            var currentProfession = character.SelectedBattleProfession;
+                            var professionName = currentProfession.ToString();
+                            var level = character.GetLevel(currentProfession);
+                            var progressPercent = character.GetLevelProgress(currentProfession);
+                            var currentExp = character.BattleProfessionXP.GetValueOrDefault(currentProfession, 0);
+                            var nextLevelExp = ExpSystem.GetExpRequiredForLevel(level + 1);
+                            var currentLevelExp = ExpSystem.GetExpRequiredForLevel(level);
+                            var expToNextLevel = nextLevelExp - currentExp;
+                            
+                            <div class="profession-exp-display">
+                                <div class="profession-info">
+                                    <span class="profession-name">@professionName</span>
+                                    <span class="profession-level">Lv.@level</span>
+                                </div>
+                                
+                                <div class="exp-progress-container">
+                                    <div class="exp-progress-bar" style="width: @progressPercent%"></div>
+                                    <span class="exp-text">经验: @(currentExp - currentLevelExp)/@(nextLevelExp - currentLevelExp)</span>
+                                </div>
+                            </div>
+                        }
                     </div>
 
                     <div class="status-right">
@@ -39,7 +63,6 @@
                 </div>
 
             </div>
-            // --- ^^^ 修正结束 ^^^ ---
         }
     </div>
 }
@@ -54,6 +77,16 @@ else
     protected override void OnInitialized()
     {
         GameState.OnStateChanged += StateHasChanged;
+        
+        // 订阅经验值变化事件
+        GameState.SubscribeToEvent(GameEventType.ExperienceGained, OnExperienceGained);
+        GameState.SubscribeToEvent(GameEventType.LevelUp, _ => StateHasChanged());
+    }
+
+    private void OnExperienceGained(GameEventArgs args)
+    {
+        // 确保UI更新
+        StateHasChanged();
     }
 
     private void SwitchCharacter(string characterId)
@@ -67,5 +100,9 @@ else
     public void Dispose()
     {
         GameState.OnStateChanged -= StateHasChanged;
+        
+        // 取消订阅事件
+        GameState.UnsubscribeFromEvent(GameEventType.ExperienceGained, OnExperienceGained);
+        GameState.UnsubscribeFromEvent(GameEventType.LevelUp, _ => StateHasChanged());
     }
 }

@@ -204,5 +204,87 @@ namespace BlazorWebGame.Services
         /// 触发状态变更事件
         /// </summary>
         private void NotifyStateChanged() => OnStateChanged?.Invoke();
+
+        /// <summary>
+        /// 为角色添加战斗经验值，处理等级提升和事件
+        /// </summary>
+        public void AddBattleXP(Player player, BattleProfession profession, int amount)
+        {
+            if (player == null) return;
+            
+            int oldLevel = player.GetLevel(profession);
+            long oldXp = player.BattleProfessionXP.GetValueOrDefault(profession, 0);
+            
+            // 增加经验值
+            player.AddBattleXP(profession, amount);
+            
+            // 检查是否升级
+            int newLevel = player.GetLevel(profession);
+            bool leveledUp = newLevel > oldLevel;
+            
+            // 如果升级，需要更新属性
+            if (leveledUp)
+            {
+                player.UpdateBaseAttributes();
+                
+                // 检查新技能解锁
+                _combatService.CheckForNewSkillUnlocks(player, profession, newLevel, false);
+            }
+            
+            // 触发事件 - 这需要GameStateService的事件管理器
+            // 稍后解决这个问题
+            
+            NotifyStateChanged();
+        }
+
+        /// <summary>
+        /// 为角色添加采集经验值
+        /// </summary>
+        public void AddGatheringXP(Player player, GatheringProfession profession, int amount)
+        {
+            if (player == null) return;
+            
+            int oldLevel = player.GetLevel(profession);
+            
+            // 增加经验值
+            player.AddGatheringXP(profession, amount);
+            
+            // 检查是否升级
+            int newLevel = player.GetLevel(profession);
+            bool leveledUp = newLevel > oldLevel;
+            
+            // 如果升级处理额外逻辑
+            if (leveledUp)
+            {
+                // 采集专业升级逻辑
+            }
+            
+            NotifyStateChanged();
+        }
+
+        /// <summary>
+        /// 为角色添加生产经验值
+        /// </summary>
+        public void AddProductionXP(Player player, ProductionProfession profession, int amount)
+        {
+            if (player == null) return;
+            
+            int oldLevel = player.GetLevel(profession);
+            
+            // 增加经验值
+            player.AddProductionXP(profession, amount);
+            
+            // 检查是否升级
+            int newLevel = player.GetLevel(profession);
+            bool leveledUp = newLevel > oldLevel;
+            
+            // 如果升级处理额外逻辑
+            if (leveledUp)
+            {
+                // 生产专业升级逻辑
+            }
+            
+            NotifyStateChanged();
+        }
     }
 }

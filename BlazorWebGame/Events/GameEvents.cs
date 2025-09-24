@@ -18,6 +18,7 @@ namespace BlazorWebGame.Events
         CharacterStatChanged,
         ActiveCharacterChanged,
         LevelUp,
+        ExperienceGained,
 
         // 战斗相关事件
         CombatStarted,
@@ -70,7 +71,7 @@ namespace BlazorWebGame.Events
         GameError,
         
         // 其他通用事件
-        GenericStateChanged
+        GenericStateChanged,
     }
     
     /// <summary>

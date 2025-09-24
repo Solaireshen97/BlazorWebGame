@@ -97,3 +97,54 @@
     border-radius: 3px;
     line-height: 1.2;
 }
+
+/* 添加经验条样式 */
+.profession-exp-display {
+    margin-top: 5px;
+    font-size: 0.9em;
+    width: 100%;
+}
+
+.profession-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2px;
+}
+
+.profession-name {
+    font-weight: bold;
+    color: #4a6fa5;
+}
+
+.profession-level {
+    font-weight: bold;
+    color: #d4af37;
+}
+
+.exp-progress-container {
+    height: 12px;
+    background-color: #2a2a2a;
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+}
+
+.exp-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #4a6fa5 0%, #6a8cbb 100%);
+    transition: width 0.3s ease-in-out;
+}
+
+.exp-text {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 8px;
+    text-shadow: 0 0 2px black;
+}
