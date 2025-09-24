@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using BlazorWebGame.GameConfig;
 
 namespace BlazorWebGame.Models
 {
@@ -7,10 +8,10 @@ namespace BlazorWebGame.Models
     /// </summary>
     public enum AttributeType
     {
-        Strength,    // 力量：影响物理攻击力
-        Agility,     // 敏捷：影响命中率和闪避
-        Intellect,   // 智力：影响法术攻击力
-        Spirit,      // 精神：影响回复能力
+        Strength,    // 力量
+        Agility,     // 敏捷
+        Intellect,   // 智力
+        Spirit,      // 精神
         Stamina      // 耐力：影响生命值
     }
     
@@ -70,51 +71,89 @@ namespace BlazorWebGame.Models
         // 获取职业的初始属性分配
         public static AttributeSet GetInitialAttributes(BattleProfession profession)
         {
+            // 使用配置中的基础主属性和耐力值
+            int baseMainAttr = AttributeSystemConfig.BaseMainAttribute;
+            int baseStamina = AttributeSystemConfig.BaseStamina;
+            
             return profession switch
             {
                 BattleProfession.Warrior => new AttributeSet
                 {
-                    Strength = 8,  // 战士力量高
-                    Agility = 6,
-                    Intellect = 3, // 低智力
-                    Spirit = 4,
-                    Stamina = 7    // 高耐力
+                    Strength = baseMainAttr,  // 战士力量高
+                    Agility = baseMainAttr - 4,
+                    Intellect = baseMainAttr - 7, // 低智力
+                    Spirit = baseMainAttr - 6,
+                    Stamina = baseStamina    // 基础耐力
                 },
                 BattleProfession.Mage => new AttributeSet
                 {
-                    Strength = 3,  // 低力量
-                    Agility = 4,
-                    Intellect = 8, // 法师智力高
-                    Spirit = 7,    // 精神高
-                    Stamina = 5
+                    Strength = baseMainAttr - 7,  // 低力量
+                    Agility = baseMainAttr - 6,
+                    Intellect = baseMainAttr, // 法师智力高
+                    Spirit = baseMainAttr - 3,    // 精神高
+                    Stamina = baseStamina - 2 // 法师耐力略低
                 },
                 _ => new AttributeSet()
             };
         }
         
-        // 随等级增长获取属性提升
+        // 获取属性随等级增长值
         public static AttributeSet GetLevelUpAttributes(BattleProfession profession)
         {
+            // 获取属性成长系数
+            int lowLevelMainAttr = AttributeSystemConfig.LowLevelMainAttributeGrowth;
+            int lowLevelStamina = AttributeSystemConfig.LowLevelStaminaGrowth;
+            int highLevelMainAttr = AttributeSystemConfig.HighLevelMainAttributeGrowth;
+            int highLevelStamina = AttributeSystemConfig.HighLevelStaminaGrowth;
+            
+            // 取得当前层级的成长值
+            int mainAttrGrowth = lowLevelMainAttr; // 默认使用低等级成长
+            int staminaGrowth = lowLevelStamina;
+            
             return profession switch
             {
                 BattleProfession.Warrior => new AttributeSet
                 {
-                    Strength = 2,  // 每级+2力量
-                    Agility = 1,
+                    Strength = mainAttrGrowth,  // 主属性成长
+                    Agility = mainAttrGrowth / 2,
                     Intellect = 0,
                     Spirit = 0,
-                    Stamina = 1    // 每级+1耐力
+                    Stamina = staminaGrowth    // 耐力成长
                 },
                 BattleProfession.Mage => new AttributeSet
                 {
                     Strength = 0,
                     Agility = 0,
-                    Intellect = 2, // 每级+2智力
-                    Spirit = 1,
-                    Stamina = 1
+                    Intellect = mainAttrGrowth, // 主属性成长
+                    Spirit = mainAttrGrowth / 2,
+                    Stamina = staminaGrowth
                 },
                 _ => new AttributeSet()
             };
+        }
+        
+        /// <summary>
+        /// 获取特定等级下属性的成长值
+        /// </summary>
+        public static AttributeSet GetLevelUpAttributesForLevel(BattleProfession profession, int level)
+        {
+            var baseAttrs = GetLevelUpAttributes(profession);
+            
+            // 根据等级应用不同成长率
+            if (level > AttributeSystemConfig.LevelThreshold)
+            {
+                // 高等级时属性成长更快
+                float growthMultiplier = AttributeSystemConfig.HighLevelMainAttributeGrowth / (float)AttributeSystemConfig.LowLevelMainAttributeGrowth;
+                
+                // 应用高等级成长率
+                baseAttrs.Strength = (int)(baseAttrs.Strength * growthMultiplier);
+                baseAttrs.Agility = (int)(baseAttrs.Agility * growthMultiplier);
+                baseAttrs.Intellect = (int)(baseAttrs.Intellect * growthMultiplier);
+                baseAttrs.Spirit = (int)(baseAttrs.Spirit * growthMultiplier);
+                baseAttrs.Stamina = (int)(baseAttrs.Stamina * growthMultiplier);
+            }
+            
+            return baseAttrs;
         }
     }
 }

@@ -1,3 +1,4 @@
+using BlazorWebGame.GameConfig;
 using BlazorWebGame.Models.Items;
 using System;
 using System.Collections.Generic;
@@ -274,20 +275,15 @@ namespace BlazorWebGame.Models
         public int GetTotalAttackPower()
         {
             var attrs = GetTotalAttributes();
-            var baseAttack = 5;
-            var primaryAttrBonus = 0;
-            
-            if (SelectedBattleProfession == BattleProfession.Warrior)
-            {
-                // 战士: 力量影响攻击力，每点力量增加2点攻击力
-                primaryAttrBonus = attrs.Strength * 2;
-            }
-            else if (SelectedBattleProfession == BattleProfession.Mage)
-            {
-                // 法师: 智力影响攻击力，每点智力增加2点攻击力
-                primaryAttrBonus = attrs.Intellect * 2;
-            }
-            
+
+            // 获取主属性值
+            int primaryAttrValue = GetPrimaryAttributeValue();
+
+            // 使用配置中的主属性到攻击力转换系数
+            double apRatio = AttributeSystemConfig.MainAttributeToAPRatio;
+            int primaryAttrBonus = (int)(primaryAttrValue * apRatio);
+
+            // 计算装备和buff加成
             var equipmentAttack = EquippedItems
                 .Select(kv => ItemData.GetItemById(kv.Value) as Equipment)
                 .Where(eq => eq != null)
@@ -297,18 +293,32 @@ namespace BlazorWebGame.Models
                 .Where(b => b.BuffType == StatBuffType.AttackPower)
                 .Sum(b => b.BuffValue);
 
-            return baseAttack + primaryAttrBonus + equipmentAttack + (int)buffAttack;
+            return primaryAttrBonus + equipmentAttack + (int)buffAttack;
         }
 
-        // *** 这是修正点 ***
+        public double GetDamageMultiplier()
+        {
+            // 获取主属性值
+            int primaryAttrValue = GetPrimaryAttributeValue();
+
+            // 使用配置中的主属性到伤害倍率系数
+            double damageMultiplier = 1.0 + (primaryAttrValue * AttributeSystemConfig.MainAttributeToDamageMultiplier);
+
+            return damageMultiplier;
+        }
+
         public int GetTotalMaxHealth()
         {
             var attrs = GetTotalAttributes();
-            var baseHealth = 100;
-            
-            // 耐力影响生命值，每点耐力增加10点生命值
-            var staminaBonus = attrs.Stamina * 10;
-            
+
+            // 使用配置中的基础生命值
+            int baseHealth = AttributeSystemConfig.BaseHealth;
+
+            // 使用配置中的耐力转换系数
+            double staminaRatio = AttributeSystemConfig.StaminaToHealthRatio;
+            var staminaBonus = (int)(attrs.Stamina * staminaRatio);
+
+            // 计算装备和buff加成
             var equipmentHealth = EquippedItems
                 .Select(kv => ItemData.GetItemById(kv.Value) as Equipment)
                 .Where(eq => eq != null)
@@ -378,66 +388,52 @@ namespace BlazorWebGame.Models
                 _ => 0
             };
         }
-        
+
         /// <summary>
         /// 更新角色基础属性，应在创建角色或变更职业时调用
         /// </summary>
         public void UpdateBaseAttributes()
         {
+            if (BaseAttributes == null)
+            {
+                BaseAttributes = new AttributeSet();
+            }
+
             // 获取职业初始属性
             var initialAttrs = ProfessionAttributes.GetInitialAttributes(SelectedBattleProfession);
-            
-            // 获取每级属性成长
-            var levelUpAttrs = ProfessionAttributes.GetLevelUpAttributes(SelectedBattleProfession);
-            
-            // 计算当前等级的属性
+
+            // 获取当前等级
             int level = GetLevel(SelectedBattleProfession);
-            int levelBonus = level - 1; // 减去初始等级
-    
-            // 设置基础属性 = 初始属性 + 等级成长
-            BaseAttributes = new AttributeSet
+
+            // 设置基础属性 = 初始属性
+            BaseAttributes = initialAttrs.Clone();
+
+            // 累加每级成长
+            for (int i = 1; i < level; i++)
             {
-                Strength = initialAttrs.Strength + (levelUpAttrs.Strength * levelBonus),
-                Agility = initialAttrs.Agility + (levelUpAttrs.Agility * levelBonus),
-                Intellect = initialAttrs.Intellect + (levelUpAttrs.Intellect * levelBonus),
-                Spirit = initialAttrs.Spirit + (levelUpAttrs.Spirit * levelBonus),
-                Stamina = initialAttrs.Stamina + (levelUpAttrs.Stamina * levelBonus)
-            };
+                int currentLevel = i + 1; // 从第2级开始计算属性成长
+                var levelUpAttrs = ProfessionAttributes.GetLevelUpAttributesForLevel(SelectedBattleProfession, currentLevel);
+                BaseAttributes.Add(levelUpAttrs);
+            }
         }
-        
-        /// <summary>
-        /// 获取角色的总命中率，受敏捷和主属性影响
-        /// </summary>
+
         public int GetTotalAccuracy()
         {
             // 获取属性总值
             var attrs = GetTotalAttributes();
-            
-            // 基础命中率来自敏捷
-            var baseAccuracy = attrs.Agility * 2;
-            
+
             // 主属性加成
-            int primaryAttrBonus = 0;
-            if (SelectedBattleProfession == BattleProfession.Warrior)
-            {
-                // 战士: 力量影响命中
-                primaryAttrBonus = attrs.Strength;
-            }
-            else if (SelectedBattleProfession == BattleProfession.Mage)
-            {
-                // 法师: 智力影响命中
-                primaryAttrBonus = attrs.Intellect;
-            }
-            
+            int primaryAttrBonus = GetPrimaryAttributeValue() / 2;
+
             // 装备直接命中率加成
             var equipmentAccuracy = EquippedItems.Values
                 .Select(itemId => ItemData.GetItemById(itemId) as Equipment)
                 .Where(eq => eq != null)
                 .Sum(eq => eq!.AccuracyBonus);
-                
+
             // TODO: 如果有buff命中率加成，在这里添加
-    
-            return baseAccuracy + (primaryAttrBonus / 2) + equipmentAccuracy;
+
+            return primaryAttrBonus + equipmentAccuracy;
         }
     }
 }

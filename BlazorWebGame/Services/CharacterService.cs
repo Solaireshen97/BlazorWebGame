@@ -103,21 +103,23 @@ namespace BlazorWebGame.Services
             _combatService.ResetPlayerSkillCooldowns(character);
         }
 
-        /// <summary>
-        /// 初始化角色属性
-        /// </summary>
+        // 更新初始化玩家属性的方法
         public void InitializePlayerAttributes(Player character)
         {
             if (character == null) return;
-            
+
             // 确保基础属性已设置
             if (character.BaseAttributes == null)
             {
                 character.BaseAttributes = new AttributeSet();
             }
-            
+
             // 更新基础属性
             character.UpdateBaseAttributes();
+
+            // 设置生命值为最大值
+            character.MaxHealth = character.GetTotalMaxHealth();
+            character.Health = character.MaxHealth;
         }
 
         /// <summary>
