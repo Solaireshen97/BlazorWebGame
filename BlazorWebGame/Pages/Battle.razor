@@ -4,6 +4,7 @@
 @using BlazorWebGame.Models.Dungeons
 @using BlazorWebGame.Models.Items
 @using BlazorWebGame.Models.Monsters
+@using BlazorWebGame.Models.Regions
 @using BlazorWebGame.Services
 @using static BlazorWebGame.Services.CombatService
 @inject GameStateService GameState
@@ -59,12 +60,15 @@
                         @for (int i = 0; i < _navigationPath.Count; i++)
                         {
                             var index = i;
-                            var region = GetRegionByPath(_navigationPath.Take(index + 1).ToList());
-                            <span class="breadcrumb-separator">/</span>
-                            <span class="breadcrumb-item @(index == _navigationPath.Count - 1 ? "active" : "")"
-                                  @onclick="() => NavigateToPathLevel(index + 1)">
-                                @region.Name
-                            </span>
+                            var region = RegionTemplates.GetById(_navigationPath[index]);
+                            if (region != null)
+                            {
+                                <span class="breadcrumb-separator">/</span>
+                                <span class="breadcrumb-item @(index == _navigationPath.Count - 1 ? "active" : "")"
+                                      @onclick="() => NavigateToPathLevel(index + 1)">
+                                    @region.Name
+                                </span>
+                            }
                         }
                     </div>
 
@@ -76,28 +80,34 @@
 
                         @foreach (var region in currentRegions)
                         {
-                            <div class="region-item" @onclick="() => NavigateToRegion(region.Id)">
-                                @region.Name
+                            <div class="region-item @(region.MinimumLevel > character.GetLevel(character.SelectedBattleProfession) ? "disabled" : "")"
+                                 @onclick="() => NavigateToRegion(region.Id)"
+                                 title="@region.Description">
+                                <div class="region-name">@region.Name</div>
+                                <div class="region-level-info">
+                                    @if (region.MinimumLevel > 1)
+                                    {
+                                        <span class="level-req">需要等级: @region.MinimumLevel+</span>
+                                    }
+                                </div>
                             </div>
                         }
                     </div>
 
-                    <!-- 怪物列表 - 只在已到达叶子节点（没有更深子区域）时显示 -->
+                    <!-- 区域内怪物列表 -->
                     @{
                         var currentRegion = GetCurrentRegion();
-                        var hasSubRegions = currentRegion?.SubRegions?.Any() == true;
+                        var hasSubRegions = currentRegion?.SubRegionIds?.Any() == true;
 
                         // 只有当当前区域没有子区域时才显示怪物列表
                         if (currentRegion != null && !hasSubRegions)
                         {
                             <div class="monsters-in-region">
                                 @{
-                                    var monstersInRegion = GameState.AvailableMonsters
-                                    .Where(m => currentRegion.MonsterIds.Contains(m.Name))
-                                    .ToList();
+                                    var monsters = currentRegion.GetMonsters();
                                 }
 
-                                @foreach (var monster in monstersInRegion)
+                                @foreach (var monster in monsters)
                                 {
                                     var isFighting = IsCurrentlyFightingMonster(monster.Name, battleContext);
 
@@ -109,7 +119,7 @@
                                     </div>
                                 }
 
-                                @if (!monstersInRegion.Any())
+                                @if (!monsters.Any())
                                 {
                                     <div class="no-monsters-message">该区域没有可选择的怪物</div>
                                 }
@@ -117,6 +127,18 @@
                         }
                     }
                 </div>
+
+                <!-- 访问错误提示 -->
+                @if (_showAccessError)
+                {
+                    <div class="access-error-panel">
+                        <div class="error-message">
+                            <h5>无法进入此区域</h5>
+                            <p>@_accessErrorMessage</p>
+                            <button class="btn btn-secondary btn-sm" @onclick="() => _showAccessError = false">确定</button>
+                        </div>
+                    </div>
+                }
             </div>
         }
 
@@ -596,6 +618,26 @@ else
     private bool _showDungeonSelector = false;
     private string _selectedRegion = "";
     private string _selectedSubRegion = "";
+    private bool _showAccessError = false;
+    private string _accessErrorMessage = string.Empty;
+
+
+    private void ResetNavigation()
+    {
+        _navigationPath.Clear();
+        _showAccessError = false;
+        StateHasChanged();
+    }
+
+    private void NavigateToPathLevel(int level)
+    {
+        if (level < _navigationPath.Count)
+        {
+            _navigationPath = _navigationPath.Take(level).ToList();
+            _showAccessError = false;
+            StateHasChanged();
+        }
+    }
 
     // 定义怪物区域结构
     private class MonsterRegion
@@ -608,120 +650,69 @@ else
     // 用于存储当前导航路径
     private List<string> _navigationPath = new List<string>();
 
-    // 重置导航到根级别
-    private void ResetNavigation()
-    {
-        _navigationPath.Clear();
-        StateHasChanged();
-    }
-
     // 导航到指定区域
     private void NavigateToRegion(string regionId)
     {
+        var region = RegionTemplates.GetById(regionId);
+        if (region == null) return;
+
         _navigationPath.Add(regionId);
+
+        // 检查区域访问限制
+        if (GameState.ActiveCharacter is Player character)
+        {
+            var party = GameState.GetPartyForCharacter(character.Id);
+            bool canAccess = true;
+
+            if (party != null)
+            {
+                var partyMembers = party.MemberIds
+                    .Select(id => GameState.AllCharacters.FirstOrDefault(c => c.Id == id))
+                    .Where(p => p != null)
+                    .Cast<Player>()
+                    .ToList();
+
+                canAccess = region.CanPartyAccess(party, partyMembers);
+            }
+            else
+            {
+                canAccess = region.CanPlayerAccess(character);
+            }
+
+            if (!canAccess)
+            {
+                // 显示无法访问的消息
+                _accessErrorMessage = region.GetAccessRequirementsDescription();
+                _showAccessError = true;
+                _navigationPath.RemoveAt(_navigationPath.Count - 1); // 回退导航
+            }
+        }
+
         StateHasChanged();
     }
 
-    // 导航到指定路径级别（截断后面的路径）
-    private void NavigateToPathLevel(int level)
-    {
-        if (level < _navigationPath.Count)
-        {
-            _navigationPath = _navigationPath.Take(level).ToList();
-            StateHasChanged();
-        }
-    }
-
     // 获取当前导航区域
-    private MonsterRegion GetCurrentRegion()
+    private Region GetCurrentRegion()
     {
-        return GetRegionByPath(_navigationPath);
+        if (_navigationPath.Count == 0)
+            return null;
+
+        return RegionTemplates.GetById(_navigationPath.Last());
     }
 
-    // 获取当前级别应显示的子区域列表
-    private List<MonsterRegion> GetCurrentLevelRegions()
+    private List<Region> GetCurrentLevelRegions()
     {
         if (_navigationPath.Count == 0)
         {
-            return _monsterRegions;
+            return RegionTemplates.GetContinents();
         }
 
-        var parentRegion = GetRegionByPath(_navigationPath);
-        return parentRegion?.SubRegions ?? new List<MonsterRegion>();
+        var currentRegion = RegionTemplates.GetById(_navigationPath.Last());
+        return currentRegion?.SubRegionIds
+            .Select(id => RegionTemplates.GetById(id))
+            .Where(r => r != null)
+            .ToList();
     }
-
-    // 根据路径获取区域
-    private MonsterRegion GetRegionByPath(List<string> path)
-    {
-        if (path == null || !path.Any())
-            return null;
-
-        MonsterRegion region = _monsterRegions.FirstOrDefault(r => r.Id == path[0]);
-
-        for (int i = 1; i < path.Count && region != null; i++)
-        {
-            region = region.SubRegions.FirstOrDefault(r => r.Id == path[i]);
-        }
-
-        return region;
-    }
-    // 示例区域数据 - 实际应用中可能需要从服务端获取
-    private List<MonsterRegion> _monsterRegions = new List<MonsterRegion>
-    {
-        new MonsterRegion
-        {
-            Id = "azeroth",
-            Name = "艾泽拉斯",
-            SubRegions = new List<MonsterRegion>
-            {
-                new MonsterRegion
-                {
-                    Id = "eastern-kingdoms",
-                    Name = "东部王国",
-                    SubRegions = new List<MonsterRegion>
-                    {
-                        new MonsterRegion
-                        {
-                            Id = "elwynn-forest",
-                            Name = "艾尔文森林",
-                            SubRegions = new List<MonsterRegion>(),
-                            MonsterIds = new List<string>{ "wolf", "murloc", "kobold" }
-                        },
-                        new MonsterRegion
-                        {
-                            Id = "westfall",
-                            Name = "西部荒野",
-                            SubRegions = new List<MonsterRegion>(),
-                            MonsterIds = new List<string>{ "defias", "harvest-golem", "vulture" }
-                        }
-                    },
-                    MonsterIds = new List<string>()
-                },
-                new MonsterRegion
-                {
-                    Id = "kalimdor",
-                    Name = "卡利姆多",
-                    SubRegions = new List<MonsterRegion>(),
-                    MonsterIds = new List<string>{ "boar", "quilboar", "centaur" }
-                }
-            }
-        },
-        new MonsterRegion
-        {
-            Id = "outland",
-            Name = "外域",
-            SubRegions = new List<MonsterRegion>
-            {
-                new MonsterRegion
-                {
-                    Id = "hellfire",
-                    Name = "地狱火半岛",
-                    SubRegions = new List<MonsterRegion>(),
-                    MonsterIds = new List<string>{ "fel-orc", "demon" }
-                }
-            }
-        }
-    };
 
     private void ToggleMonsterSelector()
     {

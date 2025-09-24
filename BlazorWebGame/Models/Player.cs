@@ -68,6 +68,11 @@ namespace BlazorWebGame.Models
         // 用于记录本周期（今天/本周）已完成的任务ID，防止重复完成
         public List<string> CompletedQuestIds { get; set; } = new();
 
+        // 在Player类中添加这些属性
+        public List<string> CompletedDungeons { get; set; } = new List<string>();
+        public List<string> KilledMonsters { get; set; } = new List<string>();
+        public List<string> CompletedQuests { get; set; } = new List<string>();
+
         public PlayerActionState CurrentAction { get; set; } = PlayerActionState.Idle;
         public HashSet<string> DefeatedMonsterIds { get; set; } = new();
         public HashSet<string> LearnedRecipeIds { get; set; } = new();
@@ -235,6 +240,12 @@ namespace BlazorWebGame.Models
                 .Sum(b => b.BuffValue);
 
             return baseHealth + equipmentHealth + (int)buffHealth;
+        }
+
+        // 检查是否有物品的辅助方法
+        public bool HasItemInInventory(string itemId)
+        {
+            return Inventory.Any(s => !s.IsEmpty && s.ItemId == itemId);
         }
     }
 }
