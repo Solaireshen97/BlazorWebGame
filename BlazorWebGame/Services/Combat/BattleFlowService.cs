@@ -15,7 +15,10 @@ namespace BlazorWebGame.Services.Combat
     public class BattleFlowService
     {
         private const double BattleRefreshCooldown = 3.0;
+        private const double DungeonWaveRefreshCooldown = 2.0;  // 副本波次间隔时间
+        private const double DungeonCompleteRefreshCooldown = 5.0;  // 副本完成后刷新时间
         private readonly Dictionary<Guid, BattleRefreshState> _battleRefreshStates = new();
+        private readonly Dictionary<Guid, DungeonWaveRefreshState> _dungeonWaveRefreshStates = new();  // 副本波次刷新状态
         private readonly List<Player> _allCharacters;
 
         public BattleFlowService(List<Player> allCharacters)
@@ -53,11 +56,16 @@ namespace BlazorWebGame.Services.Combat
                 }
             }
 
+            // 根据战斗类型决定刷新时间
+            double refreshCooldown = battle.BattleType == BattleType.Dungeon 
+                ? DungeonCompleteRefreshCooldown 
+                : BattleRefreshCooldown;
+
             // 创建刷新状态
             _battleRefreshStates[battle.Id] = new BattleRefreshState
             {
                 OriginalBattle = battle,
-                RemainingCooldown = BattleRefreshCooldown,
+                RemainingCooldown = refreshCooldown,
                 BattleType = battle.BattleType,
                 EnemyInfos = enemyInfos,
                 DungeonId = battle.DungeonId
@@ -69,6 +77,7 @@ namespace BlazorWebGame.Services.Combat
         /// </summary>
         public void ProcessBattleRefresh(double elapsedSeconds, BattleManager battleManager)
         {
+            // 处理普通战斗和副本完成后的刷新
             var refreshesToRemove = new List<Guid>();
 
             foreach (var kvp in _battleRefreshStates)
@@ -86,6 +95,40 @@ namespace BlazorWebGame.Services.Combat
             foreach (var id in refreshesToRemove)
             {
                 _battleRefreshStates.Remove(id);
+            }
+
+            // 处理副本波次刷新
+            ProcessDungeonWaveRefresh(elapsedSeconds, battleManager);
+        }
+
+        /// <summary>
+        /// 处理副本波次刷新
+        /// </summary>
+        private void ProcessDungeonWaveRefresh(double elapsedSeconds, BattleManager battleManager)
+        {
+            var waveRefreshesToRemove = new List<Guid>();
+
+            foreach (var kvp in _dungeonWaveRefreshStates)
+            {
+                var waveRefreshState = kvp.Value;
+                waveRefreshState.RemainingCooldown -= elapsedSeconds;
+
+                if (waveRefreshState.RemainingCooldown <= 0)
+                {
+                    // 准备下一波
+                    PrepareDungeonWave(
+                        waveRefreshState.Battle, 
+                        waveRefreshState.Dungeon, 
+                        waveRefreshState.NextWaveNumber, 
+                        waveRefreshState.SkillSystem
+                    );
+                    waveRefreshesToRemove.Add(kvp.Key);
+                }
+            }
+
+            foreach (var id in waveRefreshesToRemove)
+            {
+                _dungeonWaveRefreshStates.Remove(id);
             }
         }
 
@@ -329,7 +372,7 @@ namespace BlazorWebGame.Services.Combat
         }
 
         /// <summary>
-        /// 处理副本下一波
+        /// 处理副本下一波（带刷新时间）
         /// </summary>
         public void ProcessDungeonNextWave(BattleContext battle, Dungeon dungeon, SkillSystem skillSystem)
         {
@@ -352,8 +395,15 @@ namespace BlazorWebGame.Services.Combat
                     player.AttackCooldown = 0;
                 }
 
-                // 进入下一波
-                PrepareDungeonWave(battle, dungeon, battle.WaveNumber + 1, skillSystem);
+                // 创建波次刷新状态，等待刷新时间后进入下一波
+                _dungeonWaveRefreshStates[Guid.NewGuid()] = new DungeonWaveRefreshState
+                {
+                    Battle = battle,
+                    Dungeon = dungeon,
+                    NextWaveNumber = battle.WaveNumber + 1,
+                    RemainingCooldown = DungeonWaveRefreshCooldown,
+                    SkillSystem = skillSystem
+                };
             }
         }
 
@@ -362,6 +412,7 @@ namespace BlazorWebGame.Services.Combat
         /// </summary>
         public bool IsPlayerInBattleRefresh(string playerId)
         {
+            // 检查普通战斗刷新
             foreach (var refreshState in _battleRefreshStates.Values)
             {
                 if (refreshState.OriginalBattle.Players.Any(p => p.Id == playerId))
@@ -369,6 +420,16 @@ namespace BlazorWebGame.Services.Combat
                     return true;
                 }
             }
+
+            // 检查副本波次刷新
+            foreach (var waveRefreshState in _dungeonWaveRefreshStates.Values)
+            {
+                if (waveRefreshState.Battle.Players.Any(p => p.Id == playerId))
+                {
+                    return true;
+                }
+            }
+
             return false;
         }
 
@@ -377,6 +438,7 @@ namespace BlazorWebGame.Services.Combat
         /// </summary>
         public double GetPlayerBattleRefreshTime(string playerId)
         {
+            // 检查普通战斗刷新
             foreach (var refreshState in _battleRefreshStates.Values)
             {
                 if (refreshState.OriginalBattle.Players.Any(p => p.Id == playerId))
@@ -384,6 +446,16 @@ namespace BlazorWebGame.Services.Combat
                     return refreshState.RemainingCooldown;
                 }
             }
+
+            // 检查副本波次刷新
+            foreach (var waveRefreshState in _dungeonWaveRefreshStates.Values)
+            {
+                if (waveRefreshState.Battle.Players.Any(p => p.Id == playerId))
+                {
+                    return waveRefreshState.RemainingCooldown;
+                }
+            }
+
             return 0;
         }
 
@@ -414,6 +486,18 @@ namespace BlazorWebGame.Services.Combat
         public BattleType BattleType { get; set; }
         public List<EnemyInfo> EnemyInfos { get; set; } = new();
         public string? DungeonId { get; set; }
+    }
+
+    /// <summary>
+    /// 副本波次刷新状态
+    /// </summary>
+    public class DungeonWaveRefreshState
+    {
+        public BattleContext Battle { get; set; }
+        public Dungeon Dungeon { get; set; }
+        public int NextWaveNumber { get; set; }
+        public double RemainingCooldown { get; set; }
+        public SkillSystem SkillSystem { get; set; }
     }
 
     /// <summary>
