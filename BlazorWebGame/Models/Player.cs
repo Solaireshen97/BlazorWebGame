@@ -96,7 +96,7 @@ namespace BlazorWebGame.Models
             // 为所有可能的职业初始化经验和技能列表
             foreach (var profession in (BattleProfession[])Enum.GetValues(typeof(BattleProfession)))
             {
-                BattleProfessionXP.TryAdd(profession, 1000);
+                BattleProfessionXP.TryAdd(profession, 10000);
                 EquippedSkills.TryAdd(profession, new List<string>());
             }
             foreach (var profession in (GatheringProfession[])Enum.GetValues(typeof(GatheringProfession)))
@@ -145,7 +145,6 @@ namespace BlazorWebGame.Models
             InitializeCollections();
         }
 
-        // ... (文件的其余部分保持不变) ...
         public void AddGatheringXP(GatheringProfession profession, int amount) { if (GatheringProfessionXP.ContainsKey(profession)) { GatheringProfessionXP[profession] += amount; } }
         public void AddBattleXP(BattleProfession profession, int amount) { if (BattleProfessionXP.ContainsKey(profession)) { BattleProfessionXP[profession] += amount; } }
         /// <summary>
@@ -201,16 +200,32 @@ namespace BlazorWebGame.Models
 
             return equipmentBonus + buffBonus;
         }
-        public int GetLevel(BattleProfession profession) => BattleProfessionXP.TryGetValue(profession, out var xp) ? 1 + (xp / 100) : 1;
-        public int GetLevel(GatheringProfession profession) => GatheringProfessionXP.TryGetValue(profession, out var xp) ? 1 + (xp / 100) : 1;
-        public int GetLevel(int xp) => 1 + (xp / 100);
+        public int GetLevel(BattleProfession profession) => 
+            BattleProfessionXP.TryGetValue(profession, out var xp) ? 
+            ExpSystem.GetLevelFromExp(xp) : 1;
 
-        public int GetLevel(ProductionProfession profession)
-        {
-            var xp = ProductionProfessionXP.GetValueOrDefault(profession, 0);
-            return 1 + (xp / 100); // 修正：使用项目中已有的等级计算公式
-        }
-        // *** 这是修正点 ***
+        public int GetLevel(GatheringProfession profession) => 
+            GatheringProfessionXP.TryGetValue(profession, out var xp) ? 
+            ExpSystem.GetLevelFromExp(xp) : 1;
+
+        // 泛用方法也需要更新
+        public int GetLevel(int xp) => ExpSystem.GetLevelFromExp(xp);
+
+        public int GetLevel(ProductionProfession profession) =>
+            ExpSystem.GetLevelFromExp(ProductionProfessionXP.GetValueOrDefault(profession, 0));
+
+        // 添加一个新方法，获取升级进度
+        public double GetLevelProgress(BattleProfession profession) =>
+            BattleProfessionXP.TryGetValue(profession, out var xp) ?
+            ExpSystem.GetLevelProgressPercentage(xp) : 0;
+            
+        public double GetLevelProgress(GatheringProfession profession) =>
+            GatheringProfessionXP.TryGetValue(profession, out var xp) ?
+            ExpSystem.GetLevelProgressPercentage(xp) : 0;
+
+        public double GetLevelProgress(ProductionProfession profession) =>
+            ExpSystem.GetLevelProgressPercentage(ProductionProfessionXP.GetValueOrDefault(profession, 0));
+
         public int GetTotalAttackPower()
         {
             var attrs = GetTotalAttributes();
