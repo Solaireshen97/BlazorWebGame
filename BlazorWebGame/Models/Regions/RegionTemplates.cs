@@ -81,7 +81,7 @@ namespace BlazorWebGame.Models.Regions
                 RecommendedLevel = 1,
                 MinimumLevel = 1,
                 ParentRegionId = "eastern-kingdoms",
-                MonsterNames = new List<string> { "Wolf", "Kobold", "Murloc", "Goblin", "GoblinElite" }
+                MonsterNames = new List<string> { "È¾²¡µÄÓ×ÀÇ", "È¾²¡µÄÉ­ÁÖÀÇ", "Murloc", "Goblin", "GoblinElite" }
             };
             regions.Add(elwynnForest);
             easternKingdoms.SubRegionIds.Add(elwynnForest.Id);
