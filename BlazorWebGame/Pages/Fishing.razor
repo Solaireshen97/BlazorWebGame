@@ -30,7 +30,7 @@
                 OnSlotCleared="@((slotId) => GameState.ClearQuickSlotItem(ConsumableCategory.Food, slotId, FoodType.Gathering))" />
         </div>
 
-        @if (character.CurrentAction == PlayerActionState.Gathering && character.CurrentGatheringNode is GatheringNode currentNode)
+        @if (character.CurrentAction == PlayerActionState.GatheringFishing && character.CurrentGatheringNode is GatheringNode currentNode)
         {
             @if (currentNode.RequiredProfession == GatheringProfession.Fishing)
             {

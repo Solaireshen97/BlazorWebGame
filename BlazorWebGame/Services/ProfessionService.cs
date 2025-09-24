@@ -142,15 +142,18 @@ namespace BlazorWebGame.Services
         {
             if (character == null || node == null) return;
             
+            // 获取具体的采集状态
+            PlayerActionState gatheringState = GetGatheringActionState(node.RequiredProfession);
+            
             // 如果已经在采集相同节点，则不需要重新开始
-            if (character.CurrentAction == PlayerActionState.Gathering && 
+            if (character.CurrentAction == gatheringState && 
                 character.CurrentGatheringNode?.Id == node.Id) return;
 
             // 停止当前活动
             StopCurrentAction(character);
             
             // 设置采集状态
-            character.CurrentAction = PlayerActionState.Gathering;
+            character.CurrentAction = gatheringState;
             character.CurrentGatheringNode = node;
             character.GatheringCooldown = GetCurrentGatheringTime(character);
             
@@ -167,11 +170,14 @@ namespace BlazorWebGame.Services
             // 检查是否有足够材料
             if (!_inventoryService.CanAffordRecipe(character, recipe)) return;
 
+            // 获取具体的制作状态
+            PlayerActionState craftingState = GetCraftingActionState(recipe.RequiredProfession);
+            
             // 停止当前活动
             StopCurrentAction(character);
             
             // 设置制作状态
-            character.CurrentAction = PlayerActionState.Crafting;
+            character.CurrentAction = craftingState;
             character.CurrentRecipe = recipe;
             character.CraftingCooldown = GetCurrentCraftingTime(character);
             
@@ -229,6 +235,38 @@ namespace BlazorWebGame.Services
             
             double speedBonus = character.GetTotalCraftingSpeedBonus();
             return character.CurrentRecipe.CraftingTimeSeconds / (1 + speedBonus);
+        }
+
+        /// <summary>
+        /// 根据采集职业获取对应的行动状态
+        /// </summary>
+        private PlayerActionState GetGatheringActionState(GatheringProfession profession)
+        {
+            return profession switch
+            {
+                GatheringProfession.Miner => PlayerActionState.GatheringMining,
+                GatheringProfession.Herbalist => PlayerActionState.GatheringHerbalism,
+                GatheringProfession.Fishing => PlayerActionState.GatheringFishing,
+                _ => PlayerActionState.GatheringMining  // 默认使用采矿作为备用
+            };
+        }
+
+        /// <summary>
+        /// 根据制作职业获取对应的行动状态
+        /// </summary>
+        private PlayerActionState GetCraftingActionState(ProductionProfession profession)
+        {
+            return profession switch
+            {
+                ProductionProfession.Cooking => PlayerActionState.CraftingCooking,
+                ProductionProfession.Alchemy => PlayerActionState.CraftingAlchemy,
+                ProductionProfession.Blacksmithing => PlayerActionState.CraftingBlacksmithing,
+                ProductionProfession.Jewelcrafting => PlayerActionState.CraftingJewelcrafting,
+                ProductionProfession.Leatherworking => PlayerActionState.CraftingLeatherworking,
+                ProductionProfession.Tailoring => PlayerActionState.CraftingTailoring,
+                ProductionProfession.Engineering => PlayerActionState.CraftingEngineering,
+                _ => PlayerActionState.CraftingCooking  // 默认使用烹饪作为备用
+            };
         }
 
         /// <summary>

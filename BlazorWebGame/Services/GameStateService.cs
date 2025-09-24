@@ -231,27 +231,27 @@ public class GameStateService : IAsyncDisposable
     /// </summary>
     private void ProcessActiveCharacter(Player character, double elapsedSeconds)
     {
-        switch (character.CurrentAction)
+        var actionState = character.CurrentAction.ToString();
+        
+        if (character.CurrentAction == PlayerActionState.Combat)
         {
-            case PlayerActionState.Combat:
-                ProcessCombatState(character, elapsedSeconds);
-                break;
-                
-            case PlayerActionState.Gathering:
-                _professionService.ProcessGathering(character, elapsedSeconds);
-                break;
-                
-            case PlayerActionState.Crafting:
-                _professionService.ProcessCrafting(character, elapsedSeconds);
-                break;
-                
-            case PlayerActionState.Idle:
-                // 空闲状态无需特殊处理
-                break;
-                
-            default:
-                LogWarning($"未处理的角色状态: {character.CurrentAction} 用于角色 {character.Name}");
-                break;
+            ProcessCombatState(character, elapsedSeconds);
+        }
+        else if (actionState.StartsWith("Gathering"))
+        {
+            _professionService.ProcessGathering(character, elapsedSeconds);
+        }
+        else if (actionState.StartsWith("Crafting"))
+        {
+            _professionService.ProcessCrafting(character, elapsedSeconds);
+        }
+        else if (character.CurrentAction == PlayerActionState.Idle)
+        {
+            // 空闲状态无需特殊处理
+        }
+        else
+        {
+            LogWarning($"未处理的角色状态: {character.CurrentAction} 用于角色 {character.Name}");
         }
     }
 
@@ -437,9 +437,11 @@ public class GameStateService : IAsyncDisposable
             return;
         }
 
+        // 获取当前状态的字符串表示
+        var actionState = character.CurrentAction.ToString();
+
         // 如果不在战斗中，可能在进行专业活动
-        if (character.CurrentAction == PlayerActionState.Gathering ||
-            character.CurrentAction == PlayerActionState.Crafting)
+        if (actionState.StartsWith("Gathering") || actionState.StartsWith("Crafting"))
         {
             _professionService.StopCurrentAction(character);
         }

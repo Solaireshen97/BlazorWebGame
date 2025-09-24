@@ -415,40 +415,41 @@ namespace BlazorWebGame.Services
         public void ProcessAutoConsumables(Player character)
         {
             if (character == null) return;
-            
+
             var allQuickSlotItems = character.PotionQuickSlots
                 .Concat(character.CombatFoodQuickSlots)
                 .Concat(character.GatheringFoodQuickSlots)
                 .Concat(character.ProductionFoodQuickSlots);
-                
+
             foreach (var slot in allQuickSlotItems)
             {
                 var itemId = slot.Value;
-                if (string.IsNullOrEmpty(itemId) || character.ConsumableCooldowns.ContainsKey(itemId)) 
+                if (string.IsNullOrEmpty(itemId) || character.ConsumableCooldowns.ContainsKey(itemId))
                     continue;
-                    
-                if (ItemData.GetItemById(itemId) is not Consumable item) 
+
+                if (ItemData.GetItemById(itemId) is not Consumable item)
                     continue;
-                    
+
                 bool shouldUse = false;
                 switch (item.Category)
                 {
                     case ConsumableCategory.Potion:
-                        if ((double)character.Health / character.GetTotalMaxHealth() < 0.7) 
+                        if ((double)character.Health / character.GetTotalMaxHealth() < 0.7)
                             shouldUse = true;
                         break;
-                        
+
                     case ConsumableCategory.Food:
+                        var actionState = character.CurrentAction.ToString();
                         if (item.FoodType == FoodType.Combat && character.CurrentAction == PlayerActionState.Combat ||
-                            item.FoodType == FoodType.Gathering && character.CurrentAction == PlayerActionState.Gathering ||
-                            item.FoodType == FoodType.Production && character.CurrentAction == PlayerActionState.Crafting)
+                            item.FoodType == FoodType.Gathering && actionState.StartsWith("Gathering") ||
+                            item.FoodType == FoodType.Production && actionState.StartsWith("Crafting"))
                         {
-                            if (!character.ActiveBuffs.Any(b => b.BuffType == item.BuffType)) 
+                            if (!character.ActiveBuffs.Any(b => b.BuffType == item.BuffType))
                                 shouldUse = true;
                         }
                         break;
                 }
-                
+
                 if (shouldUse && RemoveItemFromInventory(character, itemId, 1, out int removedCount) && removedCount > 0)
                 {
                     ApplyConsumableEffect(character, item);

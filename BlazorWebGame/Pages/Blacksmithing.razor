@@ -28,7 +28,7 @@
                           OnSlotCleared="@((slotId) => GameState.ClearQuickSlotItem(ConsumableCategory.Food, slotId, FoodType.Production))" />
         </div>
 
-        @if (character.CurrentAction == PlayerActionState.Crafting && character.CurrentRecipe is Recipe currentRecipe)
+        @if (character.CurrentAction == PlayerActionState.CraftingBlacksmithing && character.CurrentRecipe is Recipe currentRecipe)
         {
             <ActionProgressCard Title="@($"正在锻造: {currentRecipe.Name}")"
                                 ShowProgressBar="true"

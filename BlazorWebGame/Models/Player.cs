@@ -9,8 +9,18 @@ namespace BlazorWebGame.Models
     {
         Idle,
         Combat,
-        Gathering,
-        Crafting
+        // 细分采集活动
+        GatheringMining,       // 采矿
+        GatheringHerbalism,    // 草药学
+        GatheringFishing,      // 钓鱼
+        // 细分制作活动
+        CraftingCooking,       // 烹饪
+        CraftingAlchemy,       // 炼金
+        CraftingBlacksmithing, // 锻造
+        CraftingJewelcrafting, // 珠宝加工
+        CraftingLeatherworking,// 制皮
+        CraftingTailoring,     // 裁缝
+        CraftingEngineering    // 工程学
     }
     public record ReputationTier(string Name, int MinValue, int MaxValue, string BarColorClass);
     public class Player

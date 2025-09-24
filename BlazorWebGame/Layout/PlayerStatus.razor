@@ -11,40 +11,25 @@
         @foreach (var character in GameState.AllCharacters)
         {
             <div class="character-status-row @(character.IsDead ? "player-dead" : "") @(GameState.ActiveCharacter?.Id == character.Id ? "active" : "")">
-
                 <div class="status-display" @onclick="() => SwitchCharacter(character.Id)">
-                    <div class="status-left">
-                        <span>
-                            <strong>@character.Name</strong> (Lv. @character.GetLevel(character.SelectedBattleProfession))
-                            - 状态: <strong>@character.CurrentAction.ToString()</strong>
-                            | 生命: <strong>@character.Health / @character.MaxHealth</strong>
-                            | 金币: <strong>@character.Gold</strong>
-                        </span>
-                        
-                        <!-- 添加经验值进度条 -->
-                        @if (GameState.ActiveCharacter?.Id == character.Id)
+                    <div class="character-basic-info">
+                        <strong>@character.Name</strong> (@GetProfessionNameAndLevel(character))
+                        | 状态: <strong>@GetFormattedStatus(character.CurrentAction)</strong>
+                        @if (IsShowingHealth(character.CurrentAction))
                         {
-                            var currentProfession = character.SelectedBattleProfession;
-                            var professionName = currentProfession.ToString();
-                            var level = character.GetLevel(currentProfession);
-                            var progressPercent = character.GetLevelProgress(currentProfession);
-                            var currentExp = character.BattleProfessionXP.GetValueOrDefault(currentProfession, 0);
-                            var nextLevelExp = ExpSystem.GetExpRequiredForLevel(level + 1);
-                            var currentLevelExp = ExpSystem.GetExpRequiredForLevel(level);
-                            var expToNextLevel = nextLevelExp - currentExp;
-                            
-                            <div class="profession-exp-display">
-                                <div class="profession-info">
-                                    <span class="profession-name">@professionName</span>
-                                    <span class="profession-level">Lv.@level</span>
-                                </div>
-                                
-                                <div class="exp-progress-container">
-                                    <div class="exp-progress-bar" style="width: @progressPercent%"></div>
-                                    <span class="exp-text">经验: @(currentExp - currentLevelExp)/@(nextLevelExp - currentLevelExp)</span>
-                                </div>
-                            </div>
+                            <span>| 生命: <strong>@character.Health / @character.MaxHealth</strong></span>
                         }
+                    </div>
+
+                    @{
+                        var expInfo = GetExpInfo(character);
+                    }
+
+                    <div class="exp-progress-wrapper">
+                        <div class="exp-progress-container">
+                            <div class="exp-progress-bar @GetExpBarClass(character.CurrentAction)" style="width: @expInfo.ProgressPercent%"></div>
+                            <span class="exp-text">@expInfo.ProfessionName: @expInfo.CurrentExpInLevel/@expInfo.ExpForNextLevel (@expInfo.ProgressPercent.ToString("0.0")%)</span>
+                        </div>
                     </div>
 
                     <div class="status-right">
@@ -61,7 +46,6 @@
                         }
                     </div>
                 </div>
-
             </div>
         }
     </div>
@@ -77,7 +61,7 @@ else
     protected override void OnInitialized()
     {
         GameState.OnStateChanged += StateHasChanged;
-        
+
         // 订阅经验值变化事件
         GameState.SubscribeToEvent(GameEventType.ExperienceGained, OnExperienceGained);
         GameState.SubscribeToEvent(GameEventType.LevelUp, _ => StateHasChanged());
@@ -97,10 +81,114 @@ else
         }
     }
 
+    private bool IsShowingHealth(PlayerActionState state) =>
+        state == PlayerActionState.Idle || state == PlayerActionState.Combat;
+
+    private string GetFormattedStatus(PlayerActionState state)
+    {
+        if (state.ToString().StartsWith("Gathering"))
+            return "采集中";
+        if (state.ToString().StartsWith("Crafting"))
+            return "制作中";
+        return state == PlayerActionState.Idle ? "空闲" : "战斗";
+    }
+
+    private string GetExpBarClass(PlayerActionState state)
+    {
+        if (state.ToString().StartsWith("Gathering"))
+            return "gathering-exp";
+        if (state.ToString().StartsWith("Crafting"))
+            return "crafting-exp";
+        return "battle-exp";
+    }
+
+    // 获取当前职业名称和等级
+    // 获取当前职业名称和等级
+    private string GetProfessionNameAndLevel(Player character)
+    {
+        if (character.CurrentAction.ToString().StartsWith("Gathering"))
+        {
+            var profession = GetCurrentGatheringProfession(character.CurrentAction);
+            return $"{profession.ToChineseString()} Lv.{character.GetLevel(profession)}";
+        }
+        else if (character.CurrentAction.ToString().StartsWith("Crafting"))
+        {
+            var profession = GetCurrentProductionProfession(character.CurrentAction);
+            return $"{profession.ToChineseString()} Lv.{character.GetLevel(profession)}";
+        }
+        else
+        {
+            return $"{character.SelectedBattleProfession.ToChineseString()} Lv.{character.GetLevel(character.SelectedBattleProfession)}";
+        }
+    }
+
+    // 获取当前采集职业
+    private GatheringProfession GetCurrentGatheringProfession(PlayerActionState state)
+    {
+        return state switch
+        {
+            PlayerActionState.GatheringMining => GatheringProfession.Miner,
+            PlayerActionState.GatheringHerbalism => GatheringProfession.Herbalist,
+            PlayerActionState.GatheringFishing => GatheringProfession.Fishing,
+            _ => GatheringProfession.Miner  // 默认
+        };
+    }
+
+    // 获取当前生产职业
+    private ProductionProfession GetCurrentProductionProfession(PlayerActionState state)
+    {
+        return state switch
+        {
+            PlayerActionState.CraftingCooking => ProductionProfession.Cooking,
+            PlayerActionState.CraftingAlchemy => ProductionProfession.Alchemy,
+            PlayerActionState.CraftingBlacksmithing => ProductionProfession.Blacksmithing,
+            PlayerActionState.CraftingJewelcrafting => ProductionProfession.Jewelcrafting,
+            PlayerActionState.CraftingLeatherworking => ProductionProfession.Leatherworking,
+            PlayerActionState.CraftingTailoring => ProductionProfession.Tailoring,
+            PlayerActionState.CraftingEngineering => ProductionProfession.Engineering,
+            _ => ProductionProfession.Cooking  // 默认
+        };
+    }
+
+    // 获取当前经验信息
+    private (string ProfessionName, double ProgressPercent, long CurrentExpInLevel, long ExpForNextLevel) GetExpInfo(Player character)
+    {
+        if (character.CurrentAction.ToString().StartsWith("Gathering"))
+        {
+            var profession = GetCurrentGatheringProfession(character.CurrentAction);
+            var level = character.GetLevel(profession);
+            var progress = character.GetLevelProgress(profession);
+            var currentExp = character.GatheringProfessionXP.GetValueOrDefault(profession, 0);
+            var currentLevelExp = ExpSystem.GetExpRequiredForLevel(level);
+            var nextLevelExp = ExpSystem.GetExpRequiredForLevel(level + 1);
+            return (profession.ToChineseString(), progress, currentExp - currentLevelExp, nextLevelExp - currentLevelExp);
+        }
+        else if (character.CurrentAction.ToString().StartsWith("Crafting"))
+        {
+            var profession = GetCurrentProductionProfession(character.CurrentAction);
+            var level = character.GetLevel(profession);
+            var progress = character.GetLevelProgress(profession);
+            var currentExp = character.ProductionProfessionXP.GetValueOrDefault(profession, 0);
+            var currentLevelExp = ExpSystem.GetExpRequiredForLevel(level);
+            var nextLevelExp = ExpSystem.GetExpRequiredForLevel(level + 1);
+            return (profession.ToChineseString(), progress, currentExp - currentLevelExp, nextLevelExp - currentLevelExp);
+        }
+        else
+        {
+            var profession = character.SelectedBattleProfession;
+            var level = character.GetLevel(profession);
+            var progress = character.GetLevelProgress(profession);
+            var currentExp = character.BattleProfessionXP.GetValueOrDefault(profession, 0);
+            var currentLevelExp = ExpSystem.GetExpRequiredForLevel(level);
+            var nextLevelExp = ExpSystem.GetExpRequiredForLevel(level + 1);
+            return (profession.ToChineseString(), progress, currentExp - currentLevelExp, nextLevelExp - currentLevelExp);
+        }
+    }
+
     public void Dispose()
     {
         GameState.OnStateChanged -= StateHasChanged;
-        
+
         // 取消订阅事件
         GameState.UnsubscribeFromEvent(GameEventType.ExperienceGained, OnExperienceGained);
         GameState.UnsubscribeFromEvent(GameEventType.LevelUp, _ => StateHasChanged());
