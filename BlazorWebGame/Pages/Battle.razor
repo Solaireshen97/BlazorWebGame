@@ -25,7 +25,7 @@
             {
                 <button class="monster-select-card @(IsCurrentlyFightingMonster(monsterTemplate.Name, battleContext) ? "active" : "")"
                         @onclick="() => StartBattle(monsterTemplate)"
-                        disabled="@(isPartyMemberAndNotCaptain || IsInBattleRefresh(character.Id))">
+                        disabled="@(isPartyMemberAndNotCaptain || IsInBattleRefresh(character.Id) || IsInDungeonBattle(battleContext))">
                     @monsterTemplate.Name
                 </button>
             }
@@ -34,7 +34,8 @@
             @if (party != null && party.CaptainId == character.Id)
             {
                 <div class="dungeon-options mt-3">
-                    <button class="btn btn-info" @onclick="() => _currentView = BattleView.Party">
+                    <button class="btn btn-info" @onclick="() => _currentView = BattleView.Party"
+                            disabled="@(battleContext != null && battleContext.BattleType == BattleType.Dungeon)">
                         查看可用副本
                     </button>
                 </div>
@@ -275,7 +276,7 @@
                 {
                     <h4 class="mb-3">创建或加入队伍</h4>
                     <p>@character.Name 当前不在任何队伍中。</p>
-                    <button class="btn btn-success mb-3" @onclick="GameState.CreateParty">创建新队伍</button>
+                    <button class="btn btn-success mb-3" @onclick="CreatePartyAndStopBattle">创建新队伍</button>
 
                     var availableParties = GameState.Parties.Where(p => p.CaptainId != character.Id).ToList();
                     @if (availableParties.Any())
@@ -287,10 +288,11 @@
                                 @if (p.MemberIds.Count < Party.MaxMembers)
                                 {
                                     var captainName = GameState.AllCharacters.FirstOrDefault(c => c.Id == p.CaptainId)?.Name;
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        @captainName 的队伍 (@p.MemberIds.Count/@Party.MaxMembers 人)
-                                        <button class="btn btn-primary btn-sm" @onclick="() => GameState.JoinParty(p.Id)">加入</button>
-                                    </li>
+                                    var partyId = p.Id; // 创建本地变量以便在lambda中使用
+                                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                            @captainName 的队伍 (@p.MemberIds.Count/@Party.MaxMembers 人)
+                                                            <button class="btn btn-primary btn-sm" @onclick="() => JoinPartyAndStopBattle(partyId)">加入</button>
+                                                        </li>
                                 }
                             }
                         </ul>
@@ -498,6 +500,14 @@ else
         return _combatService?.IsPlayerInBattleRefresh(playerId) ?? false;
     }
 
+    /// <summary>
+    /// 检查是否在副本战斗中
+    /// </summary>
+    private bool IsInDungeonBattle(BattleContext? battleContext)
+    {
+        return battleContext != null && battleContext.BattleType == BattleType.Dungeon;
+    }
+
     // 获取战斗刷新倒计时
     private double GetBattleRefreshTime(string playerId)
     {
@@ -515,10 +525,44 @@ else
         };
     }
 
+    /// <summary>
+    /// 创建队伍前先停止当前战斗
+    /// </summary>
+    private void CreatePartyAndStopBattle()
+    {
+        // 如果玩家在战斗中，先停止战斗
+        if (GameState.ActiveCharacter?.CurrentAction == PlayerActionState.Combat)
+        {
+            GameState.StopCurrentAction();
+        }
+
+        // 然后创建队伍
+        GameState.CreateParty();
+    }
+
+    /// <summary>
+    /// 加入队伍前先停止当前战斗
+    /// </summary>
+    private void JoinPartyAndStopBattle(Guid partyId)
+    {
+        // 如果玩家在战斗中，先停止战斗
+        if (GameState.ActiveCharacter?.CurrentAction == PlayerActionState.Combat)
+        {
+            GameState.StopCurrentAction();
+        }
+
+        // 然后加入队伍
+        GameState.JoinParty(partyId);
+    }
+
     // 检查是否正在战斗该怪物
     private bool IsCurrentlyFightingMonster(string monsterName, BattleContext? battleContext)
     {
-        if (battleContext == null) return false;
+        // 在副本战斗中，不高亮显示任何怪物按钮
+        if (battleContext == null || battleContext.BattleType == BattleType.Dungeon)
+            return false;
+
+        // 只在普通战斗或队伍战斗中高亮显示对应的怪物按钮
         return battleContext.Enemies.Any(e => e.Name == monsterName);
     }
 
