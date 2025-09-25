@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using BlazorWebGame.Services.Equipments;
 
 namespace BlazorWebGame.Models.Items
 {
@@ -8,6 +9,16 @@ namespace BlazorWebGame.Models.Items
     /// </summary>
     public static class EquipmentData
     {
+        // 静态构造函数，用于初始化生成的装备
+        static EquipmentData()
+        {
+            // 添加预设的装备实例
+            // 注：_items 已通过静态初始化器定义了一些基本装备
+
+            // 添加通过装备生成器生成的装备
+            AddGeneratedEquipment();
+        }
+
         private static readonly List<Equipment> _items = new()
         {
             // --- 武器装备 ---
@@ -127,5 +138,83 @@ namespace BlazorWebGame.Models.Items
         /// 获取所有装备物品作为Item类型
         /// </summary>
         public static List<Item> AllAsItems => _items.Cast<Item>().ToList();
+
+        /// <summary>
+        /// 添加通过装备生成器生成的装备
+        /// </summary>
+        private static void AddGeneratedEquipment()
+        {
+            // 生成不同级别、不同品质的武器装备
+            var weapon1 = EquipmentGenerator.GenerateEquipment(
+                name: "锋利的短剑",
+                level: 1,
+                slot: EquipmentSlot.MainHand,
+                quality: EquipmentGenerator.EquipmentQuality.Common,
+                weaponType: WeaponType.Sword);
+            weapon1.Id = "EQ_WEP_GEN_001";
+            weapon1.ShopPurchaseInfo = new PurchaseInfo { ShopCategory = "武器", Price = 1 };
+            _items.Add(weapon1);
+
+            var weapon2 = EquipmentGenerator.GenerateEquipment(
+                name: "精工猎弓",
+                level: 10,
+                slot: EquipmentSlot.MainHand,
+                quality: EquipmentGenerator.EquipmentQuality.Uncommon,
+                weaponType: WeaponType.Bow,
+                isTwoHanded: true);
+            weapon2.Id = "EQ_WEP_GEN_002";
+            _items.Add(weapon2);
+
+            // 生成防具装备
+            var armor1 = EquipmentGenerator.GenerateEquipment(
+                name: "坚固的皮甲",
+                level: 8,
+                slot: EquipmentSlot.Chest,
+                quality: EquipmentGenerator.EquipmentQuality.Common,
+                armorType: ArmorType.Leather);
+            armor1.Id = "EQ_CHEST_GEN_001";
+            _items.Add(armor1);
+
+            // 生成饰品装备
+            var accessory1 = EquipmentGenerator.GenerateEquipment(
+                name: "幸运石戒指",
+                level: 12,
+                slot: EquipmentSlot.Finger1,
+                quality: EquipmentGenerator.EquipmentQuality.Rare);
+            accessory1.Id = "EQ_RING_GEN_001";
+            _items.Add(accessory1);
+        }
+
+        /// <summary>
+        /// 公开方法：添加一个新的生成的装备
+        /// </summary>
+        public static Equipment AddNewGeneratedEquipment(
+            string name,
+            int level,
+            EquipmentSlot slot,
+            EquipmentGenerator.EquipmentQuality quality,
+            WeaponType weaponType = WeaponType.None,
+            ArmorType armorType = ArmorType.None,
+            bool isTwoHanded = false)
+        {
+            // 生成唯一ID
+            string id = $"EQ_GEN_{_items.Count + 1:D3}";
+
+            // 生成装备
+            var equipment = EquipmentGenerator.GenerateEquipment(
+                name: name,
+                level: level,
+                slot: slot,
+                quality: quality,
+                weaponType: weaponType,
+                armorType: armorType,
+                isTwoHanded: isTwoHanded);
+
+            // 设置ID并添加到列表
+            equipment.Id = id;
+            _items.Add(equipment);
+
+            return equipment;
+        }
     }
 }
