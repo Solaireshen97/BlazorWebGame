@@ -1,5 +1,7 @@
 using BlazorWebGame.Server.Hubs;
 using BlazorWebGame.Server.Services;
+using BlazorWebGame.Server;
+using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,6 +36,22 @@ builder.Services.AddSingleton<GameEngineService>();
 builder.Services.AddHostedService<GameLoopService>();
 
 var app = builder.Build();
+
+// 在开发环境中运行战斗系统测试
+if (app.Environment.IsDevelopment())
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    
+    // 运行战斗系统测试
+    try
+    {
+        TestBattleSystem.RunBattleTest(logger);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Battle system test failed");
+    }
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
