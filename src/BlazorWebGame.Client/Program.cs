@@ -19,6 +19,7 @@ builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https:/
 // 添加新的API服务
 builder.Services.AddScoped<GameApiService>();
 builder.Services.AddScoped<ClientGameStateService>();
+builder.Services.AddScoped<ClientPartyService>();
 builder.Services.AddScoped<OfflineService>();
 
 // 添加服务端集成服务

@@ -169,4 +169,171 @@ public class GameApiService
             return false;
         }
     }
+
+    #region Party API Methods
+
+    /// <summary>
+    /// 创建组队
+    /// </summary>
+    public async Task<ApiResponse<PartyDto>> CreatePartyAsync(string characterId)
+    {
+        try
+        {
+            var request = new CreatePartyRequest { CharacterId = characterId };
+            var response = await _httpClient.PostAsJsonAsync("api/party/create", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<ApiResponse<PartyDto>>() 
+                    ?? new ApiResponse<PartyDto> { Success = false };
+            }
+
+            return new ApiResponse<PartyDto>
+            {
+                Success = false,
+                Message = $"Server returned {response.StatusCode}"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating party for character {CharacterId}", characterId);
+            return new ApiResponse<PartyDto>
+            {
+                Success = false,
+                Message = "Network error occurred"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 加入组队
+    /// </summary>
+    public async Task<ApiResponse<bool>> JoinPartyAsync(string characterId, Guid partyId)
+    {
+        try
+        {
+            var request = new JoinPartyRequest { CharacterId = characterId, PartyId = partyId };
+            var response = await _httpClient.PostAsJsonAsync("api/party/join", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<ApiResponse<bool>>() 
+                    ?? new ApiResponse<bool> { Success = false };
+            }
+
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Message = $"Server returned {response.StatusCode}"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error joining party for character {CharacterId}", characterId);
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "Network error occurred"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 离开组队
+    /// </summary>
+    public async Task<ApiResponse<bool>> LeavePartyAsync(string characterId)
+    {
+        try
+        {
+            var request = new LeavePartyRequest { CharacterId = characterId };
+            var response = await _httpClient.PostAsJsonAsync("api/party/leave", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<ApiResponse<bool>>() 
+                    ?? new ApiResponse<bool> { Success = false };
+            }
+
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Message = $"Server returned {response.StatusCode}"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error leaving party for character {CharacterId}", characterId);
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "Network error occurred"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 获取角色的组队信息
+    /// </summary>
+    public async Task<ApiResponse<PartyDto>> GetPartyForCharacterAsync(string characterId)
+    {
+        try
+        {
+            return await _httpClient.GetFromJsonAsync<ApiResponse<PartyDto>>(
+                $"api/party/character/{characterId}") 
+                ?? new ApiResponse<PartyDto> { Success = false };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting party for character {CharacterId}", characterId);
+            return new ApiResponse<PartyDto>
+            {
+                Success = false,
+                Message = "Network error occurred"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 获取所有组队列表
+    /// </summary>
+    public async Task<ApiResponse<List<PartyDto>>> GetAllPartiesAsync()
+    {
+        try
+        {
+            return await _httpClient.GetFromJsonAsync<ApiResponse<List<PartyDto>>>("api/party/all") 
+                ?? new ApiResponse<List<PartyDto>> { Success = false };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting all parties");
+            return new ApiResponse<List<PartyDto>>
+            {
+                Success = false,
+                Message = "Network error occurred"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 根据ID获取组队信息
+    /// </summary>
+    public async Task<ApiResponse<PartyDto>> GetPartyAsync(Guid partyId)
+    {
+        try
+        {
+            return await _httpClient.GetFromJsonAsync<ApiResponse<PartyDto>>($"api/party/{partyId}") 
+                ?? new ApiResponse<PartyDto> { Success = false };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting party {PartyId}", partyId);
+            return new ApiResponse<PartyDto>
+            {
+                Success = false,
+                Message = "Network error occurred"
+            };
+        }
+    }
+
+    #endregion
 }

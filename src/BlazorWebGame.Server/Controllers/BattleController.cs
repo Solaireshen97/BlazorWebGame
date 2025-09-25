@@ -9,11 +9,13 @@ namespace BlazorWebGame.Server.Controllers;
 public class BattleController : ControllerBase
 {
     private readonly GameEngineService _gameEngine;
+    private readonly ServerPartyService _partyService;
     private readonly ILogger<BattleController> _logger;
 
-    public BattleController(GameEngineService gameEngine, ILogger<BattleController> logger)
+    public BattleController(GameEngineService gameEngine, ServerPartyService partyService, ILogger<BattleController> logger)
     {
         _gameEngine = gameEngine;
+        _partyService = partyService;
         _logger = logger;
     }
 
@@ -33,6 +35,23 @@ public class BattleController : ControllerBase
                     Success = false,
                     Message = "CharacterId and EnemyId are required"
                 });
+            }
+
+            // 如果指定了PartyId，验证组队权限
+            if (!string.IsNullOrEmpty(request.PartyId) && Guid.TryParse(request.PartyId, out var partyGuid))
+            {
+                // 检查角色是否可以发起组队战斗（通常只有队长可以）
+                if (!_partyService.CanStartPartyBattle(request.CharacterId))
+                {
+                    return BadRequest(new ApiResponse<BattleStateDto>
+                    {
+                        Success = false,
+                        Message = "Only party leader can start party battles, or character is not in the specified party"
+                    });
+                }
+
+                _logger.LogInformation("Starting party battle for party {PartyId} by character {CharacterId}", 
+                    partyGuid, request.CharacterId);
             }
 
             var battleState = _gameEngine.StartBattle(request);

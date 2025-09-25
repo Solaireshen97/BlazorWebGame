@@ -3,6 +3,7 @@ using BlazorWebGame.Models;
 using BlazorWebGame.Models.Items;
 using BlazorWebGame.Models.Monsters;
 using BlazorWebGame.Utils;
+using BlazorWebGame.Client.Services.Api;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
@@ -24,6 +25,7 @@ public class GameStateService : IAsyncDisposable
     private readonly CombatService _combatService;
     private readonly ProfessionService _professionService;
     private readonly CharacterService _characterService;
+    private readonly ClientPartyService? _clientPartyService; // 新的服务端组队服务
     private readonly System.IServiceProvider _serviceProvider;
     private System.Timers.Timer? _gameLoopTimer;
     private const int GameLoopIntervalMs = 100;
@@ -71,6 +73,9 @@ public class GameStateService : IAsyncDisposable
         _characterService = characterService;
         _serviceProvider = serviceProvider;
 
+        // 尝试获取可选的客户端组队服务
+        _clientPartyService = serviceProvider.GetService<ClientPartyService>();
+
         // 订阅各个服务的状态变更事件，转发到新的事件系统
         _partyService.OnStateChanged += () => RaiseEvent(GameEventType.GenericStateChanged);
         _inventoryService.OnStateChanged += () => RaiseEvent(GameEventType.GenericStateChanged);
@@ -78,6 +83,17 @@ public class GameStateService : IAsyncDisposable
         _professionService.OnStateChanged += () => RaiseEvent(GameEventType.GenericStateChanged);
         _characterService.OnStateChanged += () => RaiseEvent(GameEventType.GenericStateChanged);
         _questService.OnStateChanged += () => RaiseEvent(GameEventType.GenericStateChanged);
+        
+        // 订阅客户端组队服务的事件
+        if (_clientPartyService != null)
+        {
+            _clientPartyService.OnPartyChanged += _ => RaiseEvent(GameEventType.GenericStateChanged);
+            _clientPartyService.OnPartyMessage += message => 
+            {
+                // 可以在这里显示组队消息
+                Console.WriteLine($"[Party] {message}");
+            };
+        }
         
         // 为兼容性，订阅GenericStateChanged事件到旧的OnStateChanged
         _eventManager.Subscribe(GameEventType.GenericStateChanged, _ => OnStateChanged?.Invoke());
@@ -111,6 +127,9 @@ public class GameStateService : IAsyncDisposable
         _partyService.SetAllCharacters(AllCharacters);
         _combatService.SetAllCharacters(AllCharacters);
 
+        // 初始化组队服务
+        await InitializePartyServiceAsync();
+
         // 启动游戏循环
         StartGameLoop();
         
@@ -120,10 +139,13 @@ public class GameStateService : IAsyncDisposable
     private T GetService<T>() where T : class => _serviceProvider.GetService<T>() ?? throw new InvalidOperationException($"服务 {typeof(T).Name} 未注册");
 
 
-    public void SetActiveCharacter(string characterId)
+    public async void SetActiveCharacter(string characterId)
     {
         if (_characterService.SetActiveCharacter(characterId))
         {
+            // 重新初始化组队服务
+            await InitializePartyServiceAsync();
+            
             // 触发角色变更事件
             RaiseEvent(GameEventType.ActiveCharacterChanged, ActiveCharacter);
         }
@@ -366,45 +388,167 @@ public class GameStateService : IAsyncDisposable
 
     /// <summary>
     /// 使用当前激活的角色创建一个新队伍，该角色将成为队长。
+    /// 优先使用服务端组队服务，如果不可用则回退到客户端服务
     /// </summary>
-    public void CreateParty()
+    public async Task<bool> CreatePartyAsync()
     {
-        if (ActiveCharacter != null)
+        if (ActiveCharacter == null) return false;
+
+        // 优先使用服务端组队服务
+        if (_clientPartyService != null && await IsServerAvailableAsync())
         {
-            _partyService.CreateParty(ActiveCharacter);
+            return await _clientPartyService.CreatePartyAsync(ActiveCharacter.Id);
+        }
+        else
+        {
+            // 回退到客户端组队服务
+            return _partyService.CreateParty(ActiveCharacter);
         }
     }
 
     /// <summary>
     /// 让当前激活的角色加入一个指定的队伍。
+    /// 优先使用服务端组队服务，如果不可用则回退到客户端服务
+    /// </summary>
+    /// <param name="partyId">要加入的队伍的ID</param>
+    public async Task<bool> JoinPartyAsync(Guid partyId)
+    {
+        if (ActiveCharacter == null) return false;
+
+        // 优先使用服务端组队服务
+        if (_clientPartyService != null && await IsServerAvailableAsync())
+        {
+            return await _clientPartyService.JoinPartyAsync(ActiveCharacter.Id, partyId);
+        }
+        else
+        {
+            // 回退到客户端组队服务
+            return _partyService.JoinParty(ActiveCharacter, partyId);
+        }
+    }
+
+    /// <summary>
+    /// 让当前激活的角色离开他所在的队伍。
+    /// 优先使用服务端组队服务，如果不可用则回退到客户端服务
+    /// </summary>
+    public async Task<bool> LeavePartyAsync()
+    {
+        if (ActiveCharacter == null) return false;
+
+        // 优先使用服务端组队服务
+        if (_clientPartyService != null && await IsServerAvailableAsync())
+        {
+            return await _clientPartyService.LeavePartyAsync(ActiveCharacter.Id);
+        }
+        else
+        {
+            // 回退到客户端组队服务
+            return _partyService.LeaveParty(ActiveCharacter);
+        }
+    }
+
+    /// <summary>
+    /// 检查服务器是否可用
+    /// </summary>
+    private async Task<bool> IsServerAvailableAsync()
+    {
+        try
+        {
+            var gameApiService = _serviceProvider.GetService<GameApiService>();
+            return gameApiService != null && await gameApiService.IsServerAvailableAsync();
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 初始化组队服务（在游戏启动时调用）
+    /// </summary>
+    public async Task InitializePartyServiceAsync()
+    {
+        if (_clientPartyService != null && ActiveCharacter != null)
+        {
+            await _clientPartyService.InitializeAsync(ActiveCharacter.Id);
+        }
+    }
+
+    #region 兼容性方法 - 同步版本
+
+    /// <summary>
+    /// 使用当前激活的角色创建一个新队伍（同步版本，向后兼容）
+    /// </summary>
+    public void CreateParty()
+    {
+        if (ActiveCharacter != null)
+        {
+            // 尝试异步调用，但不等待结果
+            _ = Task.Run(async () => await CreatePartyAsync());
+        }
+    }
+
+    /// <summary>
+    /// 让当前激活的角色加入一个指定的队伍（同步版本，向后兼容）
     /// </summary>
     /// <param name="partyId">要加入的队伍的ID</param>
     public void JoinParty(Guid partyId)
     {
         if (ActiveCharacter != null)
         {
-            _partyService.JoinParty(ActiveCharacter, partyId);
+            // 尝试异步调用，但不等待结果
+            _ = Task.Run(async () => await JoinPartyAsync(partyId));
         }
     }
 
-
     /// <summary>
-    /// 让当前激活的角色离开他所在的队伍。
+    /// 让当前激活的角色离开他所在的队伍（同步版本，向后兼容）
     /// </summary>
     public void LeaveParty()
     {
         if (ActiveCharacter != null)
         {
-            _partyService.LeaveParty(ActiveCharacter);
+            // 尝试异步调用，但不等待结果
+            _ = Task.Run(async () => await LeavePartyAsync());
         }
+    }
+
+    #endregion
+
+    public async Task StartCombatAsync(Enemy enemyTemplate)
+    {
+        if (ActiveCharacter == null) return;
+
+        // 检查是否可以使用服务端战斗系统
+        if (_clientPartyService != null && await IsServerAvailableAsync())
+        {
+            var gameApiService = _serviceProvider.GetService<GameApiService>();
+            var clientGameStateService = _serviceProvider.GetService<ClientGameStateService>();
+            
+            if (gameApiService != null && clientGameStateService != null)
+            {
+                // 获取组队信息
+                string? partyId = null;
+                if (_clientPartyService.IsInParty(ActiveCharacter.Id))
+                {
+                    partyId = _clientPartyService.CurrentParty?.Id.ToString();
+                }
+
+                // 启动服务端战斗
+                await clientGameStateService.StartBattleAsync(enemyTemplate.Name, partyId);
+                return;
+            }
+        }
+
+        // 回退到客户端战斗系统
+        var party = GetPartyForCharacter(ActiveCharacter.Id);
+        _combatService.SmartStartBattle(ActiveCharacter, enemyTemplate, party);
     }
 
     public void StartCombat(Enemy enemyTemplate)
     {
-        if (ActiveCharacter == null) return;
-
-        var party = GetPartyForCharacter(ActiveCharacter.Id);
-        _combatService.SmartStartBattle(ActiveCharacter, enemyTemplate, party);
+        // 同步版本，向后兼容
+        _ = Task.Run(async () => await StartCombatAsync(enemyTemplate));
     }
     // 修改委托方法使用ProfessionService
     public void StartGathering(GatheringNode node) =>_professionService.StartGathering(ActiveCharacter, node);
@@ -472,7 +616,20 @@ public class GameStateService : IAsyncDisposable
     }
 
     public async Task SaveStateAsync(Player character) =>await _characterService.SaveStateAsync(character);
-    public async ValueTask DisposeAsync() { StopGameLoop(); if (_gameLoopTimer != null) { _gameLoopTimer.Dispose(); } }
+    public async ValueTask DisposeAsync() 
+    { 
+        StopGameLoop(); 
+        if (_gameLoopTimer != null) 
+        { 
+            _gameLoopTimer.Dispose(); 
+        }
+        
+        // 清理客户端组队服务
+        if (_clientPartyService != null)
+        {
+            await _clientPartyService.DisposeAsync();
+        }
+    }
 
     // 新的事件系统相关方法
     
