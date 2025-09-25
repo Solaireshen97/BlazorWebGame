@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36121.58
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlazorWebGame.Client", "src\BlazorWebGame.Client\BlazorWebGame.csproj", "{BDE3FF59-1823-4D7F-A8F5-DB7E6CD066F3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlazorWebGame", "src\BlazorWebGame.Client\BlazorWebGame.csproj", "{BDE3FF59-1823-4D7F-A8F5-DB7E6CD066F3}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlazorWebGame.Server", "src\BlazorWebGame.Server\BlazorWebGame.Server.csproj", "{E4B7B9A4-8F3D-4C2E-9A1B-5F4E6D7C8B9A}"
 EndProject
