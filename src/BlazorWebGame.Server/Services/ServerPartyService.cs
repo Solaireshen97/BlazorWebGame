@@ -15,7 +15,7 @@ public class ServerPartyService
     private readonly ILogger<ServerPartyService> _logger;
     private readonly IHubContext<GameHub> _hubContext;
 
-    public ServerPartyService(ILogger<ServerPartyService> logger, IHubContext<GameHub> hubContext)
+    public ServerPartyService(ILogger<ServerPartyService> logger, IHubContext<GameHub>? hubContext = null)
     {
         _logger = logger;
         _hubContext = hubContext;
@@ -217,6 +217,12 @@ public class ServerPartyService
     /// </summary>
     private async Task BroadcastPartyUpdate(PartyDto party, string eventType)
     {
+        if (_hubContext == null)
+        {
+            _logger.LogDebug("Hub context not available, skipping party update broadcast");
+            return;
+        }
+
         try
         {
             // 向组队成员广播更新

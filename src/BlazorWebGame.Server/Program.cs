@@ -57,6 +57,16 @@ if (app.Environment.IsDevelopment())
     {
         logger.LogError(ex, "Battle system test failed");
     }
+    
+    // 运行组队系统测试
+    try
+    {
+        TestPartySystem.RunPartyTest(logger);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Party system test failed");
+    }
 }
 
 // Configure the HTTP request pipeline.
