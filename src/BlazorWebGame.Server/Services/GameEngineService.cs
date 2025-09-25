@@ -14,12 +14,15 @@ public class GameEngineService
     private readonly Dictionary<Guid, ServerBattleContext> _serverBattleContexts = new();
     private readonly ILogger<GameEngineService> _logger;
     private readonly ServerCombatEngine _combatEngine;
+    private readonly ServerPartyService _partyService;
     private readonly IHubContext<GameHub> _hubContext;
 
-    public GameEngineService(ILogger<GameEngineService> logger, ServerCombatEngine combatEngine, IHubContext<GameHub> hubContext)
+    public GameEngineService(ILogger<GameEngineService> logger, ServerCombatEngine combatEngine, 
+        ServerPartyService partyService, IHubContext<GameHub> hubContext)
     {
         _logger = logger;
         _combatEngine = combatEngine;
+        _partyService = partyService;
         _hubContext = hubContext;
     }
 
@@ -56,43 +59,70 @@ public class GameEngineService
             PartyId = request.PartyId
         };
 
-        // 创建玩家（从请求中获取数据，实际应从数据库获取）
-        var player = new ServerBattlePlayer
+        // 如果有 PartyId，获取组队成员
+        List<string> participantIds;
+        if (!string.IsNullOrEmpty(request.PartyId) && Guid.TryParse(request.PartyId, out var partyGuid))
         {
-            Id = request.CharacterId,
-            Name = "英雄", // 应从数据库获取
-            Health = 100,
-            MaxHealth = 100,
-            BaseAttackPower = 15,
-            AttacksPerSecond = 1.2,
-            Level = 1,
-            SelectedBattleProfession = "Warrior",
-            EquippedSkills = new List<string> { "warrior_charge", "warrior_shield_bash" } // 示例装备的技能
-        };
-        context.Players.Add(player);
-
-        // 创建敌人（从模板获取数据，实际应从数据库获取）
-        var enemy = new ServerBattleEnemy
-        {
-            Id = request.EnemyId,
-            Name = "哥布林", // 应从数据库获取
-            Health = 80,
-            MaxHealth = 80,
-            BaseAttackPower = 12,
-            AttacksPerSecond = 1.0,
-            Level = 1,
-            XpReward = 25,
-            MinGoldReward = 5,
-            MaxGoldReward = 15,
-            EnemyType = "Goblin",
-            LootTable = new Dictionary<string, double>
+            participantIds = _partyService.GetActivePartyMembers(partyGuid);
+            
+            // 确保发起者在列表中
+            if (!participantIds.Contains(request.CharacterId))
             {
-                { "iron_sword", 0.1 },
-                { "health_potion", 0.3 }
-            },
-            EquippedSkills = new List<string> { "goblin_slash" } // 敌人技能
-        };
-        context.Enemies.Add(enemy);
+                participantIds.Add(request.CharacterId);
+            }
+            
+            _logger.LogInformation("Starting party battle with {MemberCount} members", participantIds.Count);
+        }
+        else
+        {
+            // 单人战斗
+            participantIds = new List<string> { request.CharacterId };
+        }
+
+        // 为每个参与者创建玩家实例
+        foreach (var characterId in participantIds)
+        {
+            var player = new ServerBattlePlayer
+            {
+                Id = characterId,
+                Name = $"英雄-{characterId[^4..]}", // 使用后4位作为显示名，实际应从数据库获取
+                Health = 100,
+                MaxHealth = 100,
+                BaseAttackPower = 15,
+                AttacksPerSecond = 1.2,
+                Level = 1,
+                SelectedBattleProfession = "Warrior",
+                EquippedSkills = new List<string> { "warrior_charge", "warrior_shield_bash" }
+            };
+            context.Players.Add(player);
+        }
+
+        // 创建敌人（根据参与者数量调整敌人强度）
+        int enemyCount = Math.Max(1, participantIds.Count / 2); // 每2个玩家对应1个敌人，至少1个
+        for (int i = 0; i < enemyCount; i++)
+        {
+            var enemy = new ServerBattleEnemy
+            {
+                Id = $"{request.EnemyId}-{i}",
+                Name = $"哥布林-{i + 1}",
+                Health = 80 + (participantIds.Count * 10), // 根据队伍大小调整血量
+                MaxHealth = 80 + (participantIds.Count * 10),
+                BaseAttackPower = 12 + (participantIds.Count * 2), // 根据队伍大小调整攻击力
+                AttacksPerSecond = 1.0,
+                Level = 1,
+                XpReward = 25,
+                MinGoldReward = 5,
+                MaxGoldReward = 15,
+                EnemyType = "Goblin",
+                LootTable = new Dictionary<string, double>
+                {
+                    { "iron_sword", 0.1 },
+                    { "health_potion", 0.3 }
+                },
+                EquippedSkills = new List<string> { "goblin_slash" }
+            };
+            context.Enemies.Add(enemy);
+        }
 
         return context;
     }
@@ -178,6 +208,9 @@ public class GameEngineService
             .ToList();
 
         dto.PlayerTargets = context.PlayerTargets;
+
+        // 填充组队成员ID列表
+        dto.PartyMemberIds = context.Players.Select(p => p.Id).ToList();
 
         // 设置兼容的简单属性
         var firstPlayer = context.Players.FirstOrDefault();

@@ -35,6 +35,7 @@ builder.Services.AddSingleton<BlazorWebGame.Shared.Events.GameEventManager>();
 builder.Services.AddSingleton<ServerSkillSystem>();
 builder.Services.AddSingleton<ServerLootService>();
 builder.Services.AddSingleton<ServerCombatEngine>();
+builder.Services.AddSingleton<ServerPartyService>();
 builder.Services.AddSingleton<GameEngineService>();
 builder.Services.AddSingleton<ServerCharacterService>();
 builder.Services.AddSingleton<ServerEventService>();

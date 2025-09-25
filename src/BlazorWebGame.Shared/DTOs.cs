@@ -217,3 +217,41 @@ public class UpdateCharacterStatusRequest
     public string Action { get; set; } = string.Empty;
     public Dictionary<string, object> Data { get; set; } = new();
 }
+
+/// <summary>
+/// 组队数据传输对象
+/// </summary>
+public class PartyDto
+{
+    public Guid Id { get; set; }
+    public string CaptainId { get; set; } = string.Empty;
+    public List<string> MemberIds { get; set; } = new();
+    public DateTime CreatedAt { get; set; }
+    public DateTime LastUpdated { get; set; }
+    public int MaxMembers { get; set; } = 5;
+}
+
+/// <summary>
+/// 创建组队请求
+/// </summary>
+public class CreatePartyRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 加入组队请求
+/// </summary>
+public class JoinPartyRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public Guid PartyId { get; set; }
+}
+
+/// <summary>
+/// 离开组队请求
+/// </summary>
+public class LeavePartyRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+}
