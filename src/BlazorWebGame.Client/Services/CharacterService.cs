@@ -1,4 +1,5 @@
 using BlazorWebGame.Models;
+using BlazorWebGame.Services.PlayerServices;
 using BlazorWebGame.Utils;
 using System;
 using System.Collections.Generic;
@@ -8,40 +9,51 @@ using System.Threading.Tasks;
 namespace BlazorWebGame.Services
 {
     /// <summary>
-    /// ½ÇÉ«ÏµÍ³·şÎñ£¬¸ºÔğ¹ÜÀí½ÇÉ«µÄ´´½¨¡¢¼ÓÔØ¡¢×´Ì¬ºÍÊôĞÔ
+    /// è§’è‰²ç³»ç»ŸæœåŠ¡ï¼Œè´Ÿè´£ç®¡ç†è§’è‰²çš„åˆ›å»ºã€å­˜å‚¨ã€çŠ¶æ€å’Œç”Ÿå‘½å‘¨æœŸ
     /// </summary>
     public class CharacterService
     {
         private readonly GameStorage _gameStorage;
         private readonly CombatService _combatService;
+        private readonly IPlayerAttributeService _playerAttributeService;
+        private readonly IPlayerProfessionService _playerProfessionService;
+        private readonly IPlayerUtilityService _playerUtilityService;
 
         /// <summary>
-        /// ËùÓĞ½ÇÉ«ÁĞ±í
+        /// æ‰€æœ‰è§’è‰²åˆ—è¡¨
         /// </summary>
         public List<Player> AllCharacters { get; private set; } = new();
         
         /// <summary>
-        /// µ±Ç°»îÔ¾½ÇÉ«
+        /// å½“å‰æ¿€æ´»è§’è‰²
         /// </summary>
         public Player? ActiveCharacter { get; private set; }
         
         /// <summary>
-        /// ×´Ì¬±ä¸üÊÂ¼ş
+        /// çŠ¶æ€æ”¹å˜äº‹ä»¶
         /// </summary>
         public event Action? OnStateChanged;
 
-        public CharacterService(GameStorage gameStorage, CombatService combatService)
+        public CharacterService(
+            GameStorage gameStorage, 
+            CombatService combatService,
+            IPlayerAttributeService playerAttributeService,
+            IPlayerProfessionService playerProfessionService,
+            IPlayerUtilityService playerUtilityService)
         {
             _gameStorage = gameStorage;
             _combatService = combatService;
+            _playerAttributeService = playerAttributeService;
+            _playerProfessionService = playerProfessionService;
+            _playerUtilityService = playerUtilityService;
         }
 
         /// <summary>
-        /// ³õÊ¼»¯½ÇÉ«ÏµÍ³
+        /// åˆå§‹åŒ–è§’è‰²ç³»ç»Ÿ
         /// </summary>
         public async Task InitializeAsync()
         {
-            // TODO: ´Ó´æ´¢ÖĞ¼ÓÔØ½ÇÉ«
+            // TODO: ä»å­˜å‚¨ä¸­åŠ è½½è§’è‰²
             // var loadedCharacters = await _gameStorage.LoadCharactersAsync();
             // if (loadedCharacters != null && loadedCharacters.Any())
             // {
@@ -49,24 +61,24 @@ namespace BlazorWebGame.Services
             // }
             // else
             // {
-                // ´´½¨Ä¬ÈÏ½ÇÉ«
-                AllCharacters.Add(new Player { Name = "Ë÷À­¶û" });
-                AllCharacters.Add(new Player { Name = "°¢¶ûÌØÁôË¹", Gold = 50 });
+                // åˆ›å»ºé»˜è®¤è§’è‰²
+                AllCharacters.Add(new Player { Name = "æµ‹è¯•è€…" });
+                AllCharacters.Add(new Player { Name = "é˜¿å°”å¿’å¼¥æ–¯", Gold = 50 });
             // }
             
-            // ÉèÖÃ»îÔ¾½ÇÉ«
+            // è®¾ç½®æ¿€æ´»è§’è‰²
             ActiveCharacter = AllCharacters.FirstOrDefault();
 
-            // ³õÊ¼»¯Ã¿¸ö½ÇÉ«µÄ×´Ì¬
+            // åˆå§‹åŒ–æ¯ä¸ªè§’è‰²çš„çŠ¶æ€
             foreach (var character in AllCharacters)
             {
-                character.EnsureDataConsistency();
+                _playerUtilityService.EnsureDataConsistency(character);
                 InitializePlayerState(character);
             }
         }
 
         /// <summary>
-        /// ÉèÖÃ»îÔ¾½ÇÉ«
+        /// è®¾ç½®æ¿€æ´»è§’è‰²
         /// </summary>
         public bool SetActiveCharacter(string characterId)
         {
@@ -84,46 +96,27 @@ namespace BlazorWebGame.Services
         }
 
         /// <summary>
-        /// ³õÊ¼»¯½ÇÉ«×´Ì¬
+        /// åˆå§‹åŒ–è§’è‰²çŠ¶æ€
         /// </summary>
         public void InitializePlayerState(Player character)
         {
             if (character == null) return;
             
-            // ³õÊ¼»¯½ÇÉ«»ù´¡ÊôĞÔ
-            InitializePlayerAttributes(character);
+            // åˆå§‹åŒ–è§’è‰²çš„å±æ€§
+            _playerAttributeService.InitializePlayerAttributes(character);
             
-            // ³õÊ¼»¯Õ½¶·Ö°Òµ¼¼ÄÜ
+            // åˆå§‹åŒ–æˆ˜æ–—èŒä¸šæŠ€èƒ½
             foreach (var profession in (BattleProfession[])Enum.GetValues(typeof(BattleProfession)))
             {
-                _combatService.CheckForNewSkillUnlocks(character, profession, character.GetLevel(profession), true);
+                _combatService.CheckForNewSkillUnlocks(character, profession, _playerProfessionService.GetLevel(character, profession), true);
             }
             
-            // ÖØÖÃ¼¼ÄÜÀäÈ´
+            // é‡ç½®æŠ€èƒ½å†·å´
             _combatService.ResetPlayerSkillCooldowns(character);
         }
 
-        // ¸üĞÂ³õÊ¼»¯Íæ¼ÒÊôĞÔµÄ·½·¨
-        public void InitializePlayerAttributes(Player character)
-        {
-            if (character == null) return;
-
-            // È·±£»ù´¡ÊôĞÔÒÑÉèÖÃ
-            if (character.BaseAttributes == null)
-            {
-                character.BaseAttributes = new AttributeSet();
-            }
-
-            // ¸üĞÂ»ù´¡ÊôĞÔ
-            character.UpdateBaseAttributes();
-
-            // ÉèÖÃÉúÃüÖµÎª×î´óÖµ
-            character.MaxHealth = character.GetTotalMaxHealth();
-            character.Health = character.MaxHealth;
-        }
-
         /// <summary>
-        /// ¸üĞÂ½ÇÉ«Buff×´Ì¬
+        /// æ›´æ–°è§’è‰²BuffçŠ¶æ€
         /// </summary>
         public void UpdateBuffs(Player character, double elapsedSeconds)
         {
@@ -131,13 +124,13 @@ namespace BlazorWebGame.Services
             
             bool buffsChanged = false;
             
-            // ´ÓºóÍùÇ°±éÀú£¬ÒÔ±ã°²È«µØÉ¾³ı¹ıÆÚµÄbuff
+            // ä»åå¾€å‰éå†ä»¥ä¾¿å®‰å…¨åœ°åˆ é™¤è¿‡æœŸçš„buff
             for (int i = character.ActiveBuffs.Count - 1; i >= 0; i--)
             {
                 var buff = character.ActiveBuffs[i];
                 buff.TimeRemainingSeconds -= elapsedSeconds;
                 
-                // Èç¹ûbuffÒÑ¹ıÆÚ£¬ÒÆ³ıËü
+                // å¦‚æœbuffå·²è¿‡æœŸï¼Œç§»é™¤å®ƒ
                 if (buff.TimeRemainingSeconds <= 0)
                 {
                     character.ActiveBuffs.RemoveAt(i);
@@ -145,30 +138,30 @@ namespace BlazorWebGame.Services
                 }
             }
             
-            // Èç¹ûbuff·¢ÉúÁË±ä»¯£¬ÖØĞÂ¼ÆËãÉúÃüÉÏÏŞ
+            // å¦‚æœbuffå‘ç”Ÿäº†å˜åŒ–ï¼Œé‡æ–°è®¡ç®—æœ€å¤§ç”Ÿå‘½å€¼
             if (buffsChanged) 
             {
-                character.Health = Math.Min(character.Health, character.GetTotalMaxHealth());
+                character.Health = Math.Min(character.Health, _playerAttributeService.GetTotalMaxHealth(character));
                 NotifyStateChanged();
             }
         }
 
         /// <summary>
-        /// ´´½¨ĞÂ½ÇÉ«
+        /// åˆ›å»ºæ–°è§’è‰²
         /// </summary>
         public void CreateCharacter(string name)
         {
             if (string.IsNullOrWhiteSpace(name)) return;
             
             var newCharacter = new Player { Name = name };
-            newCharacter.EnsureDataConsistency();
+            _playerUtilityService.EnsureDataConsistency(newCharacter);
             
-            // ³õÊ¼»¯½ÇÉ«×´Ì¬
+            // åˆå§‹åŒ–è§’è‰²çŠ¶æ€
             InitializePlayerState(newCharacter);
             
             AllCharacters.Add(newCharacter);
             
-            // Èç¹ûÕâÊÇµÚÒ»¸ö½ÇÉ«£¬×Ô¶¯ÉèÎª»îÔ¾½ÇÉ«
+            // å¦‚æœè¿™æ˜¯ç¬¬ä¸€ä¸ªè§’è‰²ï¼Œè‡ªåŠ¨è®¾ä¸ºæ¿€æ´»è§’è‰²
             if (ActiveCharacter == null)
             {
                 ActiveCharacter = newCharacter;
@@ -178,11 +171,11 @@ namespace BlazorWebGame.Services
         }
 
         /// <summary>
-        /// ±£´æ½ÇÉ«×´Ì¬
+        /// ä¿å­˜è§’è‰²çŠ¶æ€
         /// </summary>
         public async Task SaveStateAsync(Player? character = null)
         {
-            // Èç¹ûÃ»ÓĞÖ¸¶¨½ÇÉ«£¬±£´æ»îÔ¾½ÇÉ«
+            // å¦‚æœæ²¡æœ‰æŒ‡å®šè§’è‰²ï¼Œä¿å­˜æ¿€æ´»è§’è‰²
             character ??= ActiveCharacter;
             
             if (character != null)
@@ -192,7 +185,7 @@ namespace BlazorWebGame.Services
         }
 
         /// <summary>
-        /// ±£´æËùÓĞ½ÇÉ«×´Ì¬
+        /// ä¿å­˜æ‰€æœ‰è§’è‰²çŠ¶æ€
         /// </summary>
         public async Task SaveAllCharactersAsync()
         {
@@ -203,90 +196,104 @@ namespace BlazorWebGame.Services
         }
 
         /// <summary>
-        /// ´¥·¢×´Ì¬±ä¸üÊÂ¼ş
+        /// è§¦å‘çŠ¶æ€æ”¹å˜äº‹ä»¶
         /// </summary>
         private void NotifyStateChanged() => OnStateChanged?.Invoke();
 
         /// <summary>
-        /// Îª½ÇÉ«Ìí¼ÓÕ½¶·¾­ÑéÖµ£¬´¦ÀíµÈ¼¶ÌáÉıºÍÊÂ¼ş
+        /// ä¸ºè§’è‰²æ·»åŠ æˆ˜æ–—ç»éªŒå€¼ï¼Œå¤„ç†å‡çº§å’Œç›¸å…³äº‹ä»¶
         /// </summary>
         public void AddBattleXP(Player player, BattleProfession profession, int amount)
         {
             if (player == null) return;
             
-            int oldLevel = player.GetLevel(profession);
-            long oldXp = player.BattleProfessionXP.GetValueOrDefault(profession, 0);
+            var (leveledUp, oldLevel, newLevel) = _playerProfessionService.AddBattleXP(player, profession, amount);
             
-            // Ôö¼Ó¾­ÑéÖµ
-            player.AddBattleXP(profession, amount);
-            
-            // ¼ì²éÊÇ·ñÉı¼¶
-            int newLevel = player.GetLevel(profession);
-            bool leveledUp = newLevel > oldLevel;
-            
-            // Èç¹ûÉı¼¶£¬ĞèÒª¸üĞÂÊôĞÔ
+            // å¦‚æœå‡çº§äº†éœ€è¦å¤„ç†ç›¸å…³é€»è¾‘
             if (leveledUp)
             {
-                player.UpdateBaseAttributes();
+                _playerAttributeService.UpdateBaseAttributes(player);
                 
-                // ¼ì²éĞÂ¼¼ÄÜ½âËø
+                // æ£€æŸ¥æ–°æŠ€èƒ½è§£é”
                 _combatService.CheckForNewSkillUnlocks(player, profession, newLevel, false);
             }
             
-            // ´¥·¢ÊÂ¼ş - ÕâĞèÒªGameStateServiceµÄÊÂ¼ş¹ÜÀíÆ÷
-            // ÉÔºó½â¾öÕâ¸öÎÊÌâ
+            // è§¦å‘äº‹ä»¶ - æœªæ¥å¯èƒ½éœ€è¦GameStateServiceæˆ–å…¶å®ƒç»„ä»¶
+            // ä»¥åå¯ä»¥åœ¨è¿™é‡Œæ·»åŠ 
             
             NotifyStateChanged();
         }
 
         /// <summary>
-        /// Îª½ÇÉ«Ìí¼Ó²É¼¯¾­ÑéÖµ
+        /// ä¸ºè§’è‰²æ·»åŠ é‡‡é›†ç»éªŒå€¼
         /// </summary>
         public void AddGatheringXP(Player player, GatheringProfession profession, int amount)
         {
             if (player == null) return;
             
-            int oldLevel = player.GetLevel(profession);
+            int oldLevel = _playerProfessionService.GetLevel(player, profession);
             
-            // Ôö¼Ó¾­ÑéÖµ
-            player.AddGatheringXP(profession, amount);
+            // æ·»åŠ ç»éªŒå€¼
+            _playerProfessionService.AddGatheringXP(player, profession, amount);
             
-            // ¼ì²éÊÇ·ñÉı¼¶
-            int newLevel = player.GetLevel(profession);
+            // æ£€æŸ¥æ˜¯å¦å‡çº§
+            int newLevel = _playerProfessionService.GetLevel(player, profession);
             bool leveledUp = newLevel > oldLevel;
             
-            // Èç¹ûÉı¼¶´¦Àí¶îÍâÂß¼­
+            // å¤„ç†å‡çº§ç›¸å…³é€»è¾‘
             if (leveledUp)
             {
-                // ²É¼¯×¨ÒµÉı¼¶Âß¼­
+                // é‡‡é›†ä¸“ä¸šå‡çº§é€»è¾‘
             }
             
             NotifyStateChanged();
         }
 
         /// <summary>
-        /// Îª½ÇÉ«Ìí¼ÓÉú²ú¾­ÑéÖµ
+        /// ä¸ºè§’è‰²æ·»åŠ ç”Ÿäº§ç»éªŒå€¼
         /// </summary>
         public void AddProductionXP(Player player, ProductionProfession profession, int amount)
         {
             if (player == null) return;
             
-            int oldLevel = player.GetLevel(profession);
+            var (leveledUp, oldLevel, newLevel) = _playerProfessionService.AddProductionXP(player, profession, amount);
             
-            // Ôö¼Ó¾­ÑéÖµ
-            player.AddProductionXP(profession, amount);
-            
-            // ¼ì²éÊÇ·ñÉı¼¶
-            int newLevel = player.GetLevel(profession);
-            bool leveledUp = newLevel > oldLevel;
-            
-            // Èç¹ûÉı¼¶´¦Àí¶îÍâÂß¼­
+            // å¤„ç†å‡çº§ç›¸å…³é€»è¾‘
             if (leveledUp)
             {
-                // Éú²ú×¨ÒµÉı¼¶Âß¼­
+                // ç”Ÿäº§ä¸“ä¸šå‡çº§é€»è¾‘
             }
             
             NotifyStateChanged();
         }
+
+        /// <summary>
+        /// è·å–è§’è‰²å±æ€§ä¿¡æ¯ï¼ˆä½¿ç”¨æ–°çš„æœåŠ¡ï¼‰
+        /// </summary>
+        public AttributeSet GetTotalAttributes(Player player) => _playerAttributeService.GetTotalAttributes(player);
+        public int GetTotalAttackPower(Player player) => _playerAttributeService.GetTotalAttackPower(player);
+        public int GetTotalMaxHealth(Player player) => _playerAttributeService.GetTotalMaxHealth(player);
+        public double GetDamageMultiplier(Player player) => _playerAttributeService.GetDamageMultiplier(player);
+        public int GetTotalAccuracy(Player player) => _playerAttributeService.GetTotalAccuracy(player);
+
+        /// <summary>
+        /// è·å–è§’è‰²ä¸“ä¸šä¿¡æ¯ï¼ˆä½¿ç”¨æ–°çš„æœåŠ¡ï¼‰
+        /// </summary>
+        public int GetLevel(Player player, BattleProfession profession) => _playerProfessionService.GetLevel(player, profession);
+        public int GetLevel(Player player, GatheringProfession profession) => _playerProfessionService.GetLevel(player, profession);
+        public int GetLevel(Player player, ProductionProfession profession) => _playerProfessionService.GetLevel(player, profession);
+        public double GetLevelProgress(Player player, BattleProfession profession) => _playerProfessionService.GetLevelProgress(player, profession);
+        public double GetLevelProgress(Player player, GatheringProfession profession) => _playerProfessionService.GetLevelProgress(player, profession);
+        public double GetLevelProgress(Player player, ProductionProfession profession) => _playerProfessionService.GetLevelProgress(player, profession);
+        public double GetTotalGatheringSpeedBonus(Player player) => _playerProfessionService.GetTotalGatheringSpeedBonus(player);
+        public double GetTotalExtraLootChance(Player player) => _playerProfessionService.GetTotalExtraLootChance(player);
+        public double GetTotalCraftingSpeedBonus(Player player) => _playerProfessionService.GetTotalCraftingSpeedBonus(player);
+
+        /// <summary>
+        /// è·å–è§’è‰²å®ç”¨ä¿¡æ¯ï¼ˆä½¿ç”¨æ–°çš„æœåŠ¡ï¼‰
+        /// </summary>
+        public bool HasItemInInventory(Player player, string itemId) => _playerUtilityService.HasItemInInventory(player, itemId);
+        public ReputationTier GetReputationLevel(Player player, Faction faction) => _playerUtilityService.GetReputationLevel(player, faction);
+        public double GetReputationProgressPercentage(Player player, Faction faction) => _playerUtilityService.GetReputationProgressPercentage(player, faction);
     }
 }

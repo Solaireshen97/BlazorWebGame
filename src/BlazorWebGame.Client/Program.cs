@@ -2,6 +2,7 @@ using BlazorWebGame;
 using BlazorWebGame.Client.Services.Api;
 using BlazorWebGame.Models;
 using BlazorWebGame.Services;
+using BlazorWebGame.Services.PlayerServices;
 using BlazorWebGame.Utils;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
@@ -25,6 +26,11 @@ var sharedPlayerList = new List<Player>();
 // 注册存储系统
 builder.Services.AddSingleton<GameStorage>();
 
+// 注册新的Player服务
+builder.Services.AddSingleton<IPlayerAttributeService, PlayerAttributeService>();
+builder.Services.AddSingleton<IPlayerProfessionService, PlayerProfessionService>();
+builder.Services.AddSingleton<IPlayerUtilityService, PlayerUtilityService>();
+
 // 注册业务逻辑系统组件
 builder.Services.AddSingleton<InventoryService>();
 builder.Services.AddSingleton<PartyService>(sp => new PartyService(sharedPlayerList));
@@ -42,11 +48,14 @@ builder.Services.AddSingleton<QuestService>(sp => {
     return new QuestService(inventoryService);
 });
 
-// 注册角色服务
+// 注册角色服务（现在使用新的Player服务）
 builder.Services.AddSingleton<CharacterService>(sp => {
     var gameStorage = sp.GetRequiredService<GameStorage>();
     var combatService = sp.GetRequiredService<CombatService>();
-    return new CharacterService(gameStorage, combatService);
+    var playerAttributeService = sp.GetRequiredService<IPlayerAttributeService>();
+    var playerProfessionService = sp.GetRequiredService<IPlayerProfessionService>();
+    var playerUtilityService = sp.GetRequiredService<IPlayerUtilityService>();
+    return new CharacterService(gameStorage, combatService, playerAttributeService, playerProfessionService, playerUtilityService);
 });
 
 // 保留原有的GameStateService（可能需要逐步迁移）
