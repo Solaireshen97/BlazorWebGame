@@ -255,3 +255,65 @@ public class LeavePartyRequest
 {
     public string CharacterId { get; set; } = string.Empty;
 }
+
+// ====== 生产系统 DTOs ======
+
+/// <summary>
+/// 采集节点 DTO
+/// </summary>
+public class GatheringNodeDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public double GatheringTimeSeconds { get; set; }
+    public string ResultingItemId { get; set; } = string.Empty;
+    public int ResultingItemQuantity { get; set; } = 1;
+    public int XpReward { get; set; }
+    public string RequiredProfession { get; set; } = string.Empty; // Mining, Herbalist, Fishing
+    public int RequiredLevel { get; set; }
+    public string? RequiredMonsterId { get; set; }
+}
+
+/// <summary>
+/// 开始采集请求
+/// </summary>
+public class StartGatheringRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string NodeId { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 采集状态 DTO
+/// </summary>
+public class GatheringStateDto
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string? CurrentNodeId { get; set; }
+    public double RemainingTimeSeconds { get; set; }
+    public bool IsGathering { get; set; }
+    public DateTime? StartTime { get; set; }
+    public DateTime? EstimatedCompletionTime { get; set; }
+}
+
+/// <summary>
+/// 采集完成结果
+/// </summary>
+public class GatheringResultDto
+{
+    public bool Success { get; set; }
+    public string ItemId { get; set; } = string.Empty;
+    public int Quantity { get; set; }
+    public int XpGained { get; set; }
+    public bool ExtraLoot { get; set; }
+    public string Message { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 停止采集请求
+/// </summary>
+public class StopGatheringRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+}

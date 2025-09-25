@@ -6,14 +6,17 @@ namespace BlazorWebGame.Server.Services;
 public class GameLoopService : BackgroundService
 {
     private readonly GameEngineService _gameEngine;
+    private readonly ServerProductionService _productionService;
     private readonly ILogger<GameLoopService> _logger;
     private readonly TimeSpan _tickInterval = TimeSpan.FromMilliseconds(500); // 500ms 间隔
 
     public GameLoopService(
-        GameEngineService gameEngine, 
+        GameEngineService gameEngine,
+        ServerProductionService productionService,
         ILogger<GameLoopService> logger)
     {
         _gameEngine = gameEngine;
+        _productionService = productionService;
         _logger = logger;
     }
 
@@ -35,6 +38,9 @@ public class GameLoopService : BackgroundService
 
                 // 处理游戏逻辑 - 这已经包含了SignalR实时更新
                 await _gameEngine.ProcessBattleTickAsync(deltaTime);
+                
+                // 处理生产系统逻辑
+                await _productionService.UpdateGatheringStatesAsync(deltaTime);
             }
             catch (Exception ex)
             {
