@@ -3,6 +3,7 @@ using BlazorWebGame.Models;
 using BlazorWebGame.Models.Items;
 using BlazorWebGame.Models.Monsters;
 using BlazorWebGame.Utils;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -23,7 +24,7 @@ public class GameStateService : IAsyncDisposable
     private readonly CombatService _combatService;
     private readonly ProfessionService _professionService;
     private readonly CharacterService _characterService;
-    private readonly IServiceProvider _serviceProvider;
+    private readonly System.IServiceProvider _serviceProvider;
     private System.Timers.Timer? _gameLoopTimer;
     private const int GameLoopIntervalMs = 100;
     private const double RevivalDuration = 2;
@@ -58,7 +59,8 @@ public class GameStateService : IAsyncDisposable
         InventoryService inventoryService,
         CombatService combatService,
         ProfessionService professionService,
-        CharacterService characterService)
+        CharacterService characterService,
+        System.IServiceProvider serviceProvider)
     {
         _gameStorage = gameStorage;
         _questService = questService;
@@ -67,7 +69,7 @@ public class GameStateService : IAsyncDisposable
         _combatService = combatService;
         _professionService = professionService;
         _characterService = characterService;
-        _serviceProvider = new ServiceProvider(); // 初始化服务提供者
+        _serviceProvider = serviceProvider;
 
         // 订阅各个服务的状态变更事件，转发到新的事件系统
         _partyService.OnStateChanged += () => RaiseEvent(GameEventType.GenericStateChanged);
