@@ -51,7 +51,7 @@ if (app.Environment.IsDevelopment())
     // 运行战斗系统测试
     try
     {
-        TestBattleSystem.RunBattleTest(logger);
+        TestBattleSystem.RunBattleTest(app.Services, logger);
     }
     catch (Exception ex)
     {

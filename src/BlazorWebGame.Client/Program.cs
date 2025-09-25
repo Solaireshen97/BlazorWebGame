@@ -13,7 +13,7 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-// 配置HTTP客户端，指向服务器
+// 配置HTTP客户端，指向服务器（与服务器实际运行端口匹配）
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://localhost:7000") });
 
 // 添加新的API服务
