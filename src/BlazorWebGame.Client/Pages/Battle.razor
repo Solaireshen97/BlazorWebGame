@@ -8,9 +8,10 @@
 @using BlazorWebGame.Services
 @using static BlazorWebGame.Services.CombatService
 @inject GameStateService GameState
+@inject CharacterService CharacterService
 @implements IDisposable
 
-<PageTitle>×Ô¶¯Õ½¶·</PageTitle>
+<PageTitle>ï¿½Ô¶ï¿½Õ½ï¿½ï¿½</PageTitle>
 
 @if (GameState.ActiveCharacter is Player character)
 {
@@ -20,45 +21,45 @@
     var isPartyMemberAndNotCaptain = party != null && party.CaptainId != character.Id;
 
     <div class="battle-page-layout">
-        <!-- ¹ÖÎïÑ¡Ôñ -->
+        <!-- ï¿½ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½ -->
         <div class="battle-control-bar">
             <button class="btn btn-outline-primary" @onclick="ToggleMonsterSelector">
-                <i class="bi bi-list-ul"></i> Ñ¡ÔñÕ½¶·Ä¿±ê
+                <i class="bi bi-list-ul"></i> Ñ¡ï¿½ï¿½Õ½ï¿½ï¿½Ä¿ï¿½ï¿½
             </button>
 
             @if (party != null && party.CaptainId == character.Id)
             {
                 <button class="btn btn-outline-info" @onclick="ToggleDungeonSelector"
                         disabled="@(battleContext != null && battleContext.BattleType == BattleType.Dungeon)">
-                    <i class="bi bi-dungeon"></i> Ñ¡Ôñ¸±±¾
+                    <i class="bi bi-dungeon"></i> Ñ¡ï¿½ñ¸±±ï¿½
                 </button>
             }
 
             <div class="view-switcher d-flex gap-2">
                 <button class="btn @(_currentView == BattleView.Battle ? "btn-primary" : "btn-outline-primary")" @onclick="() => _currentView = BattleView.Battle">
-                    Õ½¶·
+                    Õ½ï¿½ï¿½
                 </button>
                 <button class="btn @(_currentView == BattleView.Party ? "btn-primary" : "btn-outline-primary")" @onclick="() => _currentView = BattleView.Party">
-                    ¶ÓÎé
+                    ï¿½ï¿½ï¿½ï¿½
                 </button>
             </div>
         </div>
-        <!-- ¹ÖÎïÑ¡ÔñÐü¸¡´° -->
+        <!-- ï¿½ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ -->
         @if (_showMonsterSelector)
         {
             <div class="modal-backdrop" @onclick="CloseSelectors"></div>
             <div class="monster-selector-modal">
                 <div class="selector-header">
-                    <h5>Ñ¡ÔñÕ½¶·Ä¿±ê</h5>
+                    <h5>Ñ¡ï¿½ï¿½Õ½ï¿½ï¿½Ä¿ï¿½ï¿½</h5>
                     <button type="button" class="btn-close" @onclick="CloseSelectors"></button>
                 </div>
 
                 <div class="region-navigation-container">
-                    <!-- ×ó²àÇøÓòµ¼º½ -->
+                    <!-- ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½òµ¼ºï¿½ -->
                     <div class="region-navigation">
-                        <!-- Ãæ°üÐ¼µ¼º½ -->
+                        <!-- ï¿½ï¿½ï¿½Ð¼ï¿½ï¿½ï¿½ï¿½ -->
                         <div class="breadcrumb-navigation">
-                            <span class="breadcrumb-item" @onclick="() => ResetNavigation()">ËùÓÐÇøÓò</span>
+                            <span class="breadcrumb-item" @onclick="() => ResetNavigation()">ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½</span>
                             @for (int i = 0; i < _navigationPath.Count; i++)
                             {
                                 var index = i;
@@ -74,7 +75,7 @@
                             }
                         </div>
 
-                        <!-- µ±Ç°¼¶±ðÇøÓòÁÐ±í -->
+                        <!-- ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð±ï¿½ -->
                         <div class="region-level">
                             @{
                                 var currentRegions = GetCurrentLevelRegions();
@@ -82,26 +83,26 @@
 
                             @foreach (var region in currentRegions)
                             {
-                                <div class="region-item @(region.MinimumLevel > character.GetLevel(character.SelectedBattleProfession) ? "disabled" : "")"
+                                <div class="region-item @(region.MinimumLevel > CharacterService.GetLevel(character, character.SelectedBattleProfession) ? "disabled" : "")"
                                      @onclick="() => NavigateToRegion(region.Id)"
                                      title="@region.Description">
                                     <div class="region-name">@region.Name</div>
                                     <div class="region-level-info">
                                         @if (region.MinimumLevel > 1)
                                         {
-                                            <span class="level-req">ÐèÒªµÈ¼¶: @region.MinimumLevel+</span>
+                                            <span class="level-req">ï¿½ï¿½Òªï¿½È¼ï¿½: @region.MinimumLevel+</span>
                                         }
                                     </div>
                                 </div>
                             }
                         </div>
 
-                        <!-- ÇøÓòÄÚ¹ÖÎïÁÐ±í -->
+                        <!-- ï¿½ï¿½ï¿½ï¿½ï¿½Ú¹ï¿½ï¿½ï¿½ï¿½Ð±ï¿½ -->
                         @{
                             var currentRegion = GetCurrentRegion();
                             var hasSubRegions = currentRegion?.SubRegionIds?.Any() == true;
 
-                            // Ö»ÓÐµ±µ±Ç°ÇøÓòÃ»ÓÐ×ÓÇøÓòÊ±²ÅÏÔÊ¾¹ÖÎïÁÐ±í
+                            // Ö»ï¿½Ðµï¿½ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½Ã»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½Ê¾ï¿½ï¿½ï¿½ï¿½ï¿½Ð±ï¿½
                             if (currentRegion != null && !hasSubRegions)
                             {
                                 <div class="monsters-in-region">
@@ -123,14 +124,14 @@
 
                                     @if (!monsters.Any())
                                     {
-                                        <div class="no-monsters-message">¸ÃÇøÓòÃ»ÓÐ¿ÉÑ¡ÔñµÄ¹ÖÎï</div>
+                                        <div class="no-monsters-message">ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ã»ï¿½Ð¿ï¿½Ñ¡ï¿½ï¿½Ä¹ï¿½ï¿½ï¿½</div>
                                     }
                                 </div>
                             }
                         }
                     </div>
 
-                    <!-- ÓÒ²à¹ÖÎïÏêÇéÃæ°å -->
+                    <!-- ï¿½Ò²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ -->
                     <div class="monster-details-panel">
                         @if (_selectedMonster != null)
                         {
@@ -146,44 +147,44 @@
                             </div>
 
                             <div class="monster-stats">
-                                <!-- ±£ÁôÔ­ÓÐÊôÐÔ -->
+                                <!-- ï¿½ï¿½ï¿½ï¿½Ô­ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ -->
                                 <div class="stat-item">
-                                    <div class="stat-label">ÉúÃüÖµ</div>
+                                    <div class="stat-label">ï¿½ï¿½ï¿½ï¿½Öµ</div>
                                     <div class="stat-value">@_selectedMonster.MaxHealth</div>
                                 </div>
                                 <div class="stat-item">
-                                    <div class="stat-label">¹¥»÷Á¦</div>
+                                    <div class="stat-label">ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½</div>
                                     <div class="stat-value">@_selectedMonster.AttackPower</div>
                                 </div>
-                                <!-- ¹ÖÎïÑ¡ÔñÆ÷ÖÐµÄ¹¥»÷ËÙ¶ÈÏÔÊ¾ -->
+                                <!-- ï¿½ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½ï¿½ï¿½ï¿½ÐµÄ¹ï¿½ï¿½ï¿½ï¿½Ù¶ï¿½ï¿½ï¿½Ê¾ -->
                                 <div class="stat-item">
-                                    <div class="stat-label">¹¥ËÙ</div>
-                                    <div class="stat-value">@((1 / _selectedMonster.AttacksPerSecond).ToString("F2"))Ãë/´Î</div>
+                                    <div class="stat-label">ï¿½ï¿½ï¿½ï¿½</div>
+                                    <div class="stat-value">@((1 / _selectedMonster.AttacksPerSecond).ToString("F2"))ï¿½ï¿½/ï¿½ï¿½</div>
                                 </div>
 
-                                <!-- Ìí¼ÓÐÂÊôÐÔ -->
+                                <!-- ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ -->
                                 <div class="stat-item">
-                                    <div class="stat-label">ÉÁ±ÜÂÊ</div>
+                                    <div class="stat-label">ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½</div>
                                     <div class="stat-value">@(_selectedMonster.DodgeChance.ToString("P1"))</div>
                                 </div>
                                 <div class="stat-item">
-                                    <div class="stat-label">±©»÷ÂÊ</div>
+                                    <div class="stat-label">ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½</div>
                                     <div class="stat-value">@(_selectedMonster.CriticalChance.ToString("P0"))</div>
                                 </div>
 
-                                <!-- ±£ÁôÔ­ÓÐÊôÐÔ -->
+                                <!-- ï¿½ï¿½ï¿½ï¿½Ô­ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ -->
                                 <div class="stat-item">
-                                    <div class="stat-label">¾­ÑéÖµ</div>
+                                    <div class="stat-label">ï¿½ï¿½ï¿½ï¿½Öµ</div>
                                     <div class="stat-value">@_selectedMonster.XpReward</div>
                                 </div>
                                 <div class="stat-item">
-                                    <div class="stat-label">½ð±Ò</div>
+                                    <div class="stat-label">ï¿½ï¿½ï¿½</div>
                                     <div class="stat-value">@_selectedMonster.MinGold-@_selectedMonster.MaxGold</div>
                                 </div>
                             </div>
 
                             <div class="monster-loot">
-                                <h5>¿ÉÄÜµôÂä</h5>
+                                <h5>ï¿½ï¿½ï¿½Üµï¿½ï¿½ï¿½</h5>
                                 <div class="loot-list">
                                     @if (_selectedMonster.LootTable.Count > 0)
                                     {
@@ -199,7 +200,7 @@
                                                         <input type="checkbox"
                                                                checked="@(character.AutoSellItemIds.Contains(item.Id))"
                                                                @onchange="() => GameState.ToggleAutoSellItem(item.Id)" />
-                                                        <span>×Ô¶¯³öÊÛ</span>
+                                                        <span>ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½ï¿½</span>
                                                     </label>
                                                 </div>
                                             }
@@ -207,13 +208,13 @@
                                     }
                                     else
                                     {
-                                        <div class="no-loot-message">ÎÞÎïÆ·µôÂä</div>
+                                        <div class="no-loot-message">ï¿½ï¿½ï¿½ï¿½Æ·ï¿½ï¿½ï¿½ï¿½</div>
                                     }
                                 </div>
                             </div>
 
                             <div class="monster-skills">
-                                <h5>¼¼ÄÜ</h5>
+                                <h5>ï¿½ï¿½ï¿½ï¿½</h5>
                                 <div class="skills-list">
                                     @if (_selectedMonster.SkillIds.Count > 0)
                                     {
@@ -230,14 +231,14 @@
                                     }
                                     else
                                     {
-                                        <div class="no-skills-message">ÎÞÌØÊâ¼¼ÄÜ</div>
+                                        <div class="no-skills-message">ï¿½ï¿½ï¿½ï¿½ï¿½â¼¼ï¿½ï¿½</div>
                                     }
                                 </div>
                             </div>
 
                             <div class="battle-actions">
                                 <button class="btn btn-primary" @onclick="() => StartBattle(_selectedMonster)">
-                                    <i class="bi bi-sword"></i> ¿ªÊ¼Õ½¶·
+                                    <i class="bi bi-sword"></i> ï¿½ï¿½Ê¼Õ½ï¿½ï¿½
                                 </button>
                             </div>
                         }
@@ -245,20 +246,20 @@
                         {
                             <div class="no-selection-message">
                                 <i class="bi bi-arrow-left-circle"></i>
-                                <p>ÇëÑ¡ÔñÒ»¸ö¹ÖÎï²é¿´ÏêÇé</p>
+                                <p>ï¿½ï¿½Ñ¡ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½é¿´ï¿½ï¿½ï¿½ï¿½</p>
                             </div>
                         }
                     </div>
                 </div>
             </div>
         }
-        <!-- ¸±±¾Ñ¡ÔñÐü¸¡´° -->
+        <!-- ï¿½ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ -->
         @if (_showDungeonSelector)
         {
             <div class="modal-backdrop" @onclick="CloseSelectors"></div>
             <div class="dungeon-selector-modal">
                 <div class="selector-header">
-                    <h5>Ñ¡Ôñ¸±±¾</h5>
+                    <h5>Ñ¡ï¿½ñ¸±±ï¿½</h5>
                     <button type="button" class="btn-close" @onclick="CloseSelectors"></button>
                 </div>
 
@@ -271,8 +272,8 @@
                              @onclick="() => { if (canEnter) StartDungeon(dungeon.Id); }">
                             <div class="dungeon-info">
                                 <div class="dungeon-name">@dungeon.Name</div>
-                                <div class="dungeon-level">ÍÆ¼öµÈ¼¶: @dungeon.RecommendedLevel</div>
-                                <div class="dungeon-players">@dungeon.MinPlayers-@dungeon.MaxPlayers ÈË</div>
+                                <div class="dungeon-level">ï¿½Æ¼ï¿½ï¿½È¼ï¿½: @dungeon.RecommendedLevel</div>
+                                <div class="dungeon-players">@dungeon.MinPlayers-@dungeon.MaxPlayers ï¿½ï¿½</div>
                             </div>
                             <div class="dungeon-description">@dungeon.Description</div>
                             @if (!canEnter)
@@ -286,7 +287,7 @@
 
                     @if (!DungeonTemplates.All.Any())
                     {
-                        <div class="no-dungeons-message">Ã»ÓÐ¿ÉÓÃµÄ¸±±¾</div>
+                        <div class="no-dungeons-message">Ã»ï¿½Ð¿ï¿½ï¿½ÃµÄ¸ï¿½ï¿½ï¿½</div>
                     }
                 </div>
             </div>
@@ -301,17 +302,17 @@
                     <div class="battle-status active">
                         <h5 class="battle-title">
                             @(battleContext.BattleType == BattleType.Dungeon ?
-                                            $"¸±±¾Õ½¶·: {GetDungeonName(battleContext.DungeonId)} (²¨´Î {battleContext.WaveNumber})" :
+                                            $"ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½: {GetDungeonName(battleContext.DungeonId)} (ï¿½ï¿½ï¿½ï¿½ {battleContext.WaveNumber})" :
                                             battleContext.BattleType == BattleType.Party ?
-                                            $"ÍÅ¶ÓÕ½¶· ({battleContext.Players.Count}v{battleContext.Enemies.Count})" :
-                                            $"µ¥ÈËÕ½¶· (1v{battleContext.Enemies.Count})")
+                                            $"ï¿½Å¶ï¿½Õ½ï¿½ï¿½ ({battleContext.Players.Count}v{battleContext.Enemies.Count})" :
+                                            $"ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ (1v{battleContext.Enemies.Count})")
                 <button class="btn btn-danger btn-sm" @onclick="GameState.StopCurrentAction">
-                    <i class="bi bi-stop-circle"></i> ½áÊøÕ½¶·
+                    <i class="bi bi-stop-circle"></i> ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½
                 </button>
             </h5>
             <div class="battle-status-text d-flex justify-content-between align-items-center">
                 <div>
-                    <i class="bi bi-play-circle"></i> ×Ô¶¯Õ½¶·ÖÐ - µÐÈË: @battleContext.Enemies.Count ¸öÊ£Óà
+                    <i class="bi bi-play-circle"></i> ï¿½Ô¶ï¿½Õ½ï¿½ï¿½ï¿½ï¿½ - ï¿½ï¿½ï¿½ï¿½: @battleContext.Enemies.Count ï¿½ï¿½Ê£ï¿½ï¿½
                 </div>
             </div>
         </div>
@@ -320,33 +321,33 @@
                 {
                     <div class="battle-status cooldown">
                         <h5 class="battle-title d-flex justify-content-between align-items-center">
-                            <span>Õ½¶·ÀäÈ´ÖÐ</span>
+                            <span>Õ½ï¿½ï¿½ï¿½ï¿½È´ï¿½ï¿½</span>
                             <button class="btn btn-danger btn-sm" @onclick="GameState.StopCurrentAction">
-                                <i class="bi bi-stop-circle"></i> ½áÊøÕ½¶·
+                                <i class="bi bi-stop-circle"></i> ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½
                             </button>
                         </h5>
                         <div class="battle-status-text">
-                            <i class="bi bi-hourglass-split"></i> @GetBattleRefreshTime(character.Id).ToString("F1")Ãëºó×Ô¶¯¿ªÊ¼ÏÂÒ»³¡Õ½¶·
+                            <i class="bi bi-hourglass-split"></i> @GetBattleRefreshTime(character.Id).ToString("F1")ï¿½ï¿½ï¿½ï¿½Ô¶ï¿½ï¿½ï¿½Ê¼ï¿½ï¿½Ò»ï¿½ï¿½Õ½ï¿½ï¿½
                         </div>
                     </div>
                 }
                 else
                 {
                     <div class="battle-status waiting">
-                        <h5 class="battle-title">µÈ´ý¿ªÊ¼Õ½¶·</h5>
+                        <h5 class="battle-title">ï¿½È´ï¿½ï¿½ï¿½Ê¼Õ½ï¿½ï¿½</h5>
                         <div class="battle-status-text">
-                            <i class="bi bi-info-circle"></i> ÇëÑ¡ÔñÒ»¸ö¹ÖÎï½øÐÐÕ½¶·
+                            <i class="bi bi-info-circle"></i> ï¿½ï¿½Ñ¡ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½
                         </div>
                     </div>
                 }
             </div>
 
-            <!-- ================= BATTLE VIEW (Õ½¶·ÊÓÍ¼) ================= -->
-            <!-- ºËÐÄÕ½¶·Çø -->
+            <!-- ================= BATTLE VIEW (Õ½ï¿½ï¿½ï¿½ï¿½Í¼) ================= -->
+            <!-- ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ï¿½ï¿½ -->
             <div class="battle-core-area">
-                <!-- ×ó²àÇøÓò£ºÍæ¼ÒºÍ¶ÓÎé³ÉÔ± -->
+                <!-- ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÒºÍ¶ï¿½ï¿½ï¿½ï¿½Ô± -->
                 <div class="battle-left-side">
-                    <!-- ¶ÓÎé³ÉÔ±ÁÐ±í - ·ÅÔÚÍæ¼Ò×ó²à -->
+                    <!-- ï¿½ï¿½ï¿½ï¿½ï¿½Ô±ï¿½Ð±ï¿½ - ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ -->
                     @if (party != null)
                     {
                         <div class="party-members-container horizontal">
@@ -357,7 +358,7 @@
                                 .Where(p => p != null)
                                 .ToList();
 
-                                // ¼ÆËãÓ¦¸ÃÏÔÊ¾µÄ¿ÕÎ»ÊýÁ¿
+                                // ï¿½ï¿½ï¿½ï¿½Ó¦ï¿½ï¿½ï¿½ï¿½Ê¾ï¿½Ä¿ï¿½Î»ï¿½ï¿½ï¿½ï¿½
                                 var emptySlots = Math.Max(0, Party.MaxMembers - 1 - otherPartyMembers.Count);
                             }
 
@@ -370,13 +371,13 @@
                                 member.Health;
                                 var memberMaxHealth = isInBattle ?
                                 battleContext.Players.First(p => p.Id == member.Id).GetTotalMaxHealth() :
-                                member.GetTotalMaxHealth();
+                                CharacterService.GetTotalMaxHealth(member);
 
                                 <div class="party-member-card @(member.IsDead ? "member-dead" : "") @(isCaptain ? "captain" : "")">
                                     <div class="member-avatar">@member.Name.Substring(0, 1)</div>
                                     <div class="member-info">
                                         <div class="member-name">
-                                            @member.Name @(isCaptain ? "(¶Ó³¤)" : "")
+                                            @member.Name @(isCaptain ? "(ï¿½Ó³ï¿½)" : "")
                                         </div>
                                         <div class="member-profession">
                                             @member.SelectedBattleProfession.ToChineseString()
@@ -394,35 +395,35 @@
                                 <div class="party-member-card empty">
                                     <div class="member-avatar empty">?</div>
                                     <div class="member-info">
-                                        <div class="member-name">¿ÕÎ»</div>
-                                        <div class="member-profession">µÈ´ý¼ÓÈë</div>
+                                        <div class="member-name">ï¿½ï¿½Î»</div>
+                                        <div class="member-profession">ï¿½È´ï¿½ï¿½ï¿½ï¿½ï¿½</div>
                                     </div>
                                 </div>
                             }
                         </div>
                     }
 
-                    <!-- Íæ¼Ò¿¨Æ¬ -->
+                    <!-- ï¿½ï¿½Ò¿ï¿½Æ¬ -->
                     <div class="character-card player-card">
                         @if (character.IsDead)
                         {
                             <div class="player-dead-card">
-                                <h3>Äã±»»÷°ÜÁË...</h3>
-                                <p>¸´»îµ¹¼ÆÊ±: @character.RevivalTimeRemaining.ToString("F1")s</p>
+                                <h3>ï¿½ã±»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½...</h3>
+                                <p>ï¿½ï¿½ï¿½îµ¹ï¿½ï¿½Ê±: @character.RevivalTimeRemaining.ToString("F1")s</p>
                             </div>
                         }
                         else
                         {
-                            <div class="character-image-placeholder"><span>Í·Ïñ</span></div>
+                            <div class="character-image-placeholder"><span>Í·ï¿½ï¿½</span></div>
                             <div class="player-name-container">
                                 <div class="player-level-badge">
-                                    @character.SelectedBattleProfession.ToChineseString() Lv.@character.GetLevel(character.SelectedBattleProfession)
+                                    @character.SelectedBattleProfession.ToChineseString() Lv.@CharacterService.GetLevel(character, character.SelectedBattleProfession)
                                 </div>
                                 <h5 class="player-name">@character.Name</h5>
                             </div>
                             <div class="health-bar-container">
-                                <div class="health-bar player-health" style="width: @(GetHealthPercentage(character.Health, character.GetTotalMaxHealth()))%;"></div>
-                                <span class="health-text">@character.Health / @character.GetTotalMaxHealth()</span>
+                                <div class="health-bar player-health" style="width: @(GetHealthPercentage(character.Health, CharacterService.GetTotalMaxHealth(character)))%;"></div>
+                                <span class="health-text">@character.Health / @CharacterService.GetTotalMaxHealth(character)</span>
                             </div>
                             <div class="attack-progress-container">
                                 <div class="attack-progress-bar" style="width: @(GetAttackProgress(character.AttackCooldown, character.AttacksPerSecond))%;"></div>
@@ -449,18 +450,18 @@
                     </div>
                 </div>
 
-                <!-- ÓÒ²àÇøÓò£ºµÐÈËºÍÆäËûµÐÈËÁÐ±í -->
+                <!-- ï¿½Ò²ï¿½ï¿½ï¿½ï¿½ò£ºµï¿½ï¿½Ëºï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð±ï¿½ -->
                 <div class="battle-right-side">
-                    <!-- ¹ÖÎï¿¨Æ¬£¨ÔÚ¶à¶Ô¶àÕ½¶·ÖÐÏÔÊ¾Ä¿±êµÐÈË£© -->
+                    <!-- ï¿½ï¿½ï¿½ï¿¨Æ¬ï¿½ï¿½ï¿½Ú¶ï¿½Ô¶ï¿½Õ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¾Ä¿ï¿½ï¿½ï¿½ï¿½Ë£ï¿½ -->
                     <div class="character-card enemy-card">
                         @if (currentEnemy is null)
                         {
-                            <div class="character-image-placeholder"><span>¹ÖÎï</span></div>
-                            <h5 class="text-muted">ÇëÑ¡Ôñ¹ÖÎï</h5>
+                            <div class="character-image-placeholder"><span>ï¿½ï¿½ï¿½ï¿½</span></div>
+                            <h5 class="text-muted">ï¿½ï¿½Ñ¡ï¿½ï¿½ï¿½ï¿½ï¿½</h5>
                         }
                         else
                         {
-                            <div class="character-image-placeholder"><span>¹Ö</span></div>
+                            <div class="character-image-placeholder"><span>ï¿½ï¿½</span></div>
                             <h5>@currentEnemy.Name</h5>
                             <div class="health-bar-container">
                                 <div class="health-bar enemy-health" style="width: @(GetHealthPercentage(currentEnemy.Health, currentEnemy.MaxHealth))%;"></div>
@@ -490,7 +491,7 @@
                         }
                     </div>
 
-                    <!-- ¶à¶Ô¶àÕ½¶·ÖÐÏÔÊ¾ÆäËûµÐÈËÁÐ±í -->
+                    <!-- ï¿½ï¿½Ô¶ï¿½Õ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð±ï¿½ -->
                     @if (battleContext != null && battleContext.Enemies.Count > 1)
                     {
                         <div class="other-enemies-list horizontal">
@@ -517,32 +518,32 @@
         }
         else // _currentView == BattleView.Party
         {
-            <!-- ================= PARTY VIEW (¶ÓÎéÊÓÍ¼) ================= -->
+            <!-- ================= PARTY VIEW (ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¼) ================= -->
             <div class="party-management-view p-3">
                 @if (party == null)
                 {
-                    <h4 class="mb-3">´´½¨»ò¼ÓÈë¶ÓÎé</h4>
-                    <p>@character.Name µ±Ç°²»ÔÚÈÎºÎ¶ÓÎéÖÐ¡£</p>
-                    <button class="btn btn-success mb-3" @onclick="CreatePartyAndStopBattle">´´½¨ÐÂ¶ÓÎé</button>
+                    <h4 class="mb-3">ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½</h4>
+                    <p>@character.Name ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ÎºÎ¶ï¿½ï¿½ï¿½ï¿½Ð¡ï¿½</p>
+                    <button class="btn btn-success mb-3" @onclick="CreatePartyAndStopBattle">ï¿½ï¿½ï¿½ï¿½ï¿½Â¶ï¿½ï¿½ï¿½</button>
 
                     var availableParties = GameState.Parties
-                    .Where(p => p.CaptainId != character.Id) // ²»ÏÔÊ¾×Ô¼º´´½¨µÄ¶ÓÎé
-                    .Where(p => p.MemberIds.Count < Party.MaxMembers) // ¶ÓÎéÎ´Âú
-                    .Where(p => !IsPartyInBattle(p)) // ¶ÓÎé²»ÔÚÕ½¶·ÖÐ
+                    .Where(p => p.CaptainId != character.Id) // ï¿½ï¿½ï¿½ï¿½Ê¾ï¿½Ô¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¶ï¿½ï¿½ï¿½
+                    .Where(p => p.MemberIds.Count < Party.MaxMembers) // ï¿½ï¿½ï¿½ï¿½Î´ï¿½ï¿½
+                    .Where(p => !IsPartyInBattle(p)) // ï¿½ï¿½ï¿½é²»ï¿½ï¿½Õ½ï¿½ï¿½ï¿½ï¿½
                     .ToList();
                     @if (availableParties.Any())
                     {
-                        <h5>¿É¼ÓÈëµÄ¶ÓÎé:</h5>
+                        <h5>ï¿½É¼ï¿½ï¿½ï¿½Ä¶ï¿½ï¿½ï¿½:</h5>
                         <ul class="list-group">
                             @foreach (var p in availableParties)
                             {
                                 @if (p.MemberIds.Count < Party.MaxMembers)
                                 {
                                     var captainName = GameState.AllCharacters.FirstOrDefault(c => c.Id == p.CaptainId)?.Name;
-                                    var partyId = p.Id; // ´´½¨±¾µØ±äÁ¿ÒÔ±ãÔÚlambdaÖÐÊ¹ÓÃ
+                                    var partyId = p.Id; // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ø±ï¿½ï¿½ï¿½ï¿½Ô±ï¿½ï¿½ï¿½lambdaï¿½ï¿½Ê¹ï¿½ï¿½
                                                         <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                            @captainName µÄ¶ÓÎé (@p.MemberIds.Count/@Party.MaxMembers ÈË)
-                                                            <button class="btn btn-primary btn-sm" @onclick="() => JoinPartyAndStopBattle(partyId)">¼ÓÈë</button>
+                                                            @captainName ï¿½Ä¶ï¿½ï¿½ï¿½ (@p.MemberIds.Count/@Party.MaxMembers ï¿½ï¿½)
+                                                            <button class="btn btn-primary btn-sm" @onclick="() => JoinPartyAndStopBattle(partyId)">ï¿½ï¿½ï¿½ï¿½</button>
                                                         </li>
                                 }
                             }
@@ -552,13 +553,13 @@
                 else
                 {
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h4 class="mb-0">¶ÓÎéÐÅÏ¢ (@party.MemberIds.Count/@Party.MaxMembers)</h4>
+                        <h4 class="mb-0">ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢ (@party.MemberIds.Count/@Party.MaxMembers)</h4>
                         <button class="btn btn-danger btn-sm" @onclick="LeavePartyAndStopBattle">
-                            @(party.CaptainId == character.Id ? "½âÉ¢¶ÓÎé" : "Àë¿ª¶ÓÎé")
+                            @(party.CaptainId == character.Id ? "ï¿½ï¿½É¢ï¿½ï¿½ï¿½ï¿½" : "ï¿½ë¿ªï¿½ï¿½ï¿½ï¿½")
                         </button>
                     </div>
 
-                    <h5>¶ÓÎé³ÉÔ±:</h5>
+                    <h5>ï¿½ï¿½ï¿½ï¿½ï¿½Ô±:</h5>
                     <ul class="list-group">
                         @foreach (var memberId in party.MemberIds)
                         {
@@ -566,26 +567,26 @@
                             if (member != null)
                             {
                                 <li class="list-group-item @(member.Id == party.CaptainId ? "list-group-item-primary" : "")">
-                                    @member.Name @(member.Id == party.CaptainId ? "(¶Ó³¤)" : "")
+                                    @member.Name @(member.Id == party.CaptainId ? "(ï¿½Ó³ï¿½)" : "")
                                 </li>
                             }
                         }
                     </ul>
 
-                    <!-- ¶Ó³¤¿ÉÒÔÑ¡Ôñ½øÈë¸±±¾ -->
+                    <!-- ï¿½Ó³ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½ï¿½ï¿½ë¸±ï¿½ï¿½ -->
                     @if (party.CaptainId == character.Id)
                     {
                         <div class="dungeon-options mt-4">
-                            <h5>¿ÉÓÃ¸±±¾:</h5>
+                            <h5>ï¿½ï¿½ï¿½Ã¸ï¿½ï¿½ï¿½:</h5>
                             <div class="dungeon-list">
                                 @foreach (var dungeon in DungeonTemplates.All.Where(d => CanEnterDungeon(character, party, d)))
                                 {
                                     <div class="dungeon-card p-3 border rounded mb-2">
-                                        <h6>@dungeon.Name (ÍÆ¼öµÈ¼¶: @dungeon.RecommendedLevel)</h6>
+                                        <h6>@dungeon.Name (ï¿½Æ¼ï¿½ï¿½È¼ï¿½: @dungeon.RecommendedLevel)</h6>
                                         <p>@dungeon.Description</p>
-                                        <p><small>²ÎÓëÈËÊý: @dungeon.MinPlayers-@dungeon.MaxPlayers ÈË</small></p>
+                                        <p><small>ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½: @dungeon.MinPlayers-@dungeon.MaxPlayers ï¿½ï¿½</small></p>
                                         <button class="btn btn-primary btn-sm" @onclick="() => StartDungeon(dungeon.Id)">
-                                            ¿ªÊ¼¸±±¾
+                                            ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½
                                         </button>
                                     </div>
                                 }
@@ -597,24 +598,24 @@
         }
     </div>
 
-    <!-- ÏêÏ¸ÐÅÏ¢ÇøÓò£º¸ÄÎªË®Æ½²¼¾Ö -->
+    <!-- ï¿½ï¿½Ï¸ï¿½ï¿½Ï¢ï¿½ï¿½ï¿½ò£º¸ï¿½ÎªË®Æ½ï¿½ï¿½ï¿½ï¿½ -->
     <div class="details-area d-flex flex-row">
-        <!-- ×ó²à£ºÍæ¼ÒÊôÐÔ¿¨Æ¬ -->
+        <!-- ï¿½ï¿½à£ºï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô¿ï¿½Æ¬ -->
         <div class="details-card player-details-card flex-grow-1 me-2">
-            <h5>@character.Name ÊôÐÔ</h5>
-            <!-- ¿ì½ÝÀ¸ÕûºÏµ½Íæ¼ÒÊôÐÔ¿¨ÖÐ -->
+            <h5>@character.Name ï¿½ï¿½ï¿½ï¿½</h5>
+            <!-- ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ïµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô¿ï¿½ï¿½ï¿½ -->
             <div class="player-quick-access">
                 <div class="quick-slot-section">
-                    <h6>Õ½¶·ÏûºÄÆ·</h6>
+                    <h6>Õ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ·</h6>
                     <div class="quick-slots-container">
-                        <!-- Ò©Ë®¿ì½ÝÀ¸ -->
+                        <!-- Ò©Ë®ï¿½ï¿½ï¿½ï¿½ï¿½ -->
                         @for (int i = 0; i < 2; i++)
                         {
                             var slotId = i;
                             <div class="quick-slot" @onclick="() => OpenQuickSlotPicker(ConsumableCategory.Potion, slotId, FoodType.None)" @oncontextmenu:preventDefault @oncontextmenu="() => GameState.ClearQuickSlotItem(ConsumableCategory.Potion, slotId)">
                                 @if (character.PotionQuickSlots.TryGetValue(slotId, out var itemId) && !string.IsNullOrEmpty(itemId) && ItemData.GetItemById(itemId) is Consumable item)
                                 {
-                                    <div class="quick-slot-item @(GetItemCountInInventory(character, itemId) == 0 ? "depleted" : "")" title="@item.Name (@GetItemCountInInventory(character, itemId)) - ÓÒ¼üÇå¿Õ">
+                                    <div class="quick-slot-item @(GetItemCountInInventory(character, itemId) == 0 ? "depleted" : "")" title="@item.Name (@GetItemCountInInventory(character, itemId)) - ï¿½Ò¼ï¿½ï¿½ï¿½ï¿½">
                                         <div class="item-icon">@item.Name.Substring(0, 1)</div>
                                         <span class="item-count">@GetItemCountInInventory(character, itemId)</span>
                                         @if (character.ConsumableCooldowns.GetValueOrDefault(itemId, 0) > 0)
@@ -625,19 +626,19 @@
                                 }
                                 else
                                 {
-                                    <div class="quick-slot-empty" title="µã»÷ÉèÖÃÒ©Ë®"></div>
+                                    <div class="quick-slot-empty" title="ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò©Ë®"></div>
                                 }
                             </div>
                         }
 
-                        <!-- Õ½¶·Ê³Îï¿ì½ÝÀ¸ -->
+                        <!-- Õ½ï¿½ï¿½Ê³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ -->
                         @for (int i = 0; i < 2; i++)
                         {
                             var slotId = i;
                             <div class="quick-slot" @onclick="() => OpenQuickSlotPicker(ConsumableCategory.Food, slotId, FoodType.Combat)" @oncontextmenu:preventDefault @oncontextmenu="() => GameState.ClearQuickSlotItem(ConsumableCategory.Food, slotId, FoodType.Combat)">
                                 @if (character.CombatFoodQuickSlots.TryGetValue(slotId, out var itemId) && !string.IsNullOrEmpty(itemId) && ItemData.GetItemById(itemId) is Consumable item)
                                 {
-                                    <div class="quick-slot-item @(GetItemCountInInventory(character, itemId) == 0 ? "depleted" : "")" title="@item.Name (@GetItemCountInInventory(character, itemId)) - ÓÒ¼üÇå¿Õ">
+                                    <div class="quick-slot-item @(GetItemCountInInventory(character, itemId) == 0 ? "depleted" : "")" title="@item.Name (@GetItemCountInInventory(character, itemId)) - ï¿½Ò¼ï¿½ï¿½ï¿½ï¿½">
                                         <div class="item-icon">@item.Name.Substring(0, 1)</div>
                                         <span class="item-count">@GetItemCountInInventory(character, itemId)</span>
                                         @if (character.ConsumableCooldowns.GetValueOrDefault(itemId, 0) > 0)
@@ -648,7 +649,7 @@
                                 }
                                 else
                                 {
-                                    <div class="quick-slot-empty" title="µã»÷ÉèÖÃÕ½¶·Ê³Îï"></div>
+                                    <div class="quick-slot-empty" title="ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½Ê³ï¿½ï¿½"></div>
                                 }
                             </div>
                         }
@@ -657,112 +658,112 @@
             </div>
             <hr />
             <div class="player-stats d-flex flex-row flex-wrap">
-                <!-- »ù´¡Õ½¶·ÊôÐÔ -->
+                <!-- ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ -->
                 <div class="stats-section flex-grow-1 me-2 mb-2" style="min-width: 180px; max-width: 48%;">
-                    <h6>Õ½¶·ÊôÐÔ</h6>
+                    <h6>Õ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½</h6>
                     <div class="stat-row">
-                        <div class="stat-label">¹¥»÷Á¦</div>
-                        <div class="stat-value">@character.GetTotalAttackPower()</div>
+                        <div class="stat-label">ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½</div>
+                        <div class="stat-value">@CharacterService.GetTotalAttackPower(character)</div>
                     </div>
                     <div class="stat-row">
-                        <div class="stat-label">ÉúÃüÖµ</div>
-                        <div class="stat-value">@character.Health/@character.GetTotalMaxHealth()</div>
+                        <div class="stat-label">ï¿½ï¿½ï¿½ï¿½Öµ</div>
+                        <div class="stat-value">@character.Health/@CharacterService.GetTotalMaxHealth(character)</div>
                     </div>
-                    <!-- Íæ¼ÒÊôÐÔ¿¨Æ¬ÖÐµÄ¹¥»÷ËÙ¶ÈÏÔÊ¾ -->
+                    <!-- ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô¿ï¿½Æ¬ï¿½ÐµÄ¹ï¿½ï¿½ï¿½ï¿½Ù¶ï¿½ï¿½ï¿½Ê¾ -->
                     <div class="stat-row">
-                        <div class="stat-label">¹¥»÷ËÙ¶È</div>
-                        <div class="stat-value">@((1 / character.AttacksPerSecond).ToString("F2"))Ãë/´Î</div>
+                        <div class="stat-label">ï¿½ï¿½ï¿½ï¿½ï¿½Ù¶ï¿½</div>
+                        <div class="stat-value">@((1 / character.AttacksPerSecond).ToString("F2"))ï¿½ï¿½/ï¿½ï¿½</div>
                     </div>
                     <div class="stat-row">
-                        <div class="stat-label">ÃüÖÐÂÊ</div>
-                        <div class="stat-value">@character.GetTotalAccuracy()</div>
+                        <div class="stat-label">ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½</div>
+                        <div class="stat-value">@CharacterService.GetTotalAccuracy(character)</div>
                     </div>
                 </div>
 
-                <!-- »ù´¡ÊôÐÔ -->
+                <!-- ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ -->
                 @{
-                    var attributes = character.GetTotalAttributes();
+                    var attributes = CharacterService.GetTotalAttributes(character);
                 }
                 <div class="stats-section flex-grow-1 ms-2 mb-2" style="min-width: 180px; max-width: 48%;">
-                    <h6>»ù´¡ÊôÐÔ</h6>
+                    <h6>ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½</h6>
                     <div class="stat-row">
-                        <div class="stat-label">Á¦Á¿</div>
+                        <div class="stat-label">ï¿½ï¿½ï¿½ï¿½</div>
                         <div class="stat-value">@attributes.Strength</div>
                     </div>
                     <div class="stat-row">
-                        <div class="stat-label">Ãô½Ý</div>
+                        <div class="stat-label">ï¿½ï¿½ï¿½ï¿½</div>
                         <div class="stat-value">@attributes.Agility</div>
                     </div>
                     <div class="stat-row">
-                        <div class="stat-label">ÖÇÁ¦</div>
+                        <div class="stat-label">ï¿½ï¿½ï¿½ï¿½</div>
                         <div class="stat-value">@attributes.Intellect</div>
                     </div>
                     <div class="stat-row">
-                        <div class="stat-label">¾«Éñ</div>
+                        <div class="stat-label">ï¿½ï¿½ï¿½ï¿½</div>
                         <div class="stat-value">@attributes.Spirit</div>
                     </div>
                     <div class="stat-row">
-                        <div class="stat-label">ÄÍÁ¦</div>
+                        <div class="stat-label">ï¿½ï¿½ï¿½ï¿½</div>
                         <div class="stat-value">@attributes.Stamina</div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- ÓÒ²à£º¹ÖÎïÊôÐÔ¿¨Æ¬ -->
+        <!-- ï¿½Ò²à£ºï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô¿ï¿½Æ¬ -->
         <div class="details-card enemy-details-card flex-grow-1 ms-2">
-            <h5>@(currentEnemy != null ? currentEnemy.Name : "¹ÖÎï") ÊôÐÔ</h5>
+            <h5>@(currentEnemy != null ? currentEnemy.Name : "ï¿½ï¿½ï¿½ï¿½") ï¿½ï¿½ï¿½ï¿½</h5>
             @if (currentEnemy != null || _lastBattleEnemy != null)
             {
                 var displayEnemy = currentEnemy ?? _lastBattleEnemy;
                 <div class="enemy-stats">
                     <div class="stats-section">
-                        <h6>Õ½¶·ÊôÐÔ</h6>
+                        <h6>Õ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½</h6>
                         <div class="stat-row">
-                            <div class="stat-label">¹¥»÷Á¦</div>
+                            <div class="stat-label">ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½</div>
                             <div class="stat-value">@displayEnemy.AttackPower</div>
                         </div>
                         <div class="stat-row">
-                            <div class="stat-label">ÉúÃüÖµ</div>
+                            <div class="stat-label">ï¿½ï¿½ï¿½ï¿½Öµ</div>
                             <div class="stat-value">@displayEnemy.Health/@displayEnemy.MaxHealth</div>
                         </div>
                         <div class="stat-row">
-                            <div class="stat-label">¹¥»÷ËÙ¶È</div>
-                            <div class="stat-value">@((1 / displayEnemy.AttacksPerSecond).ToString("F2"))Ãë/´Î</div>
+                            <div class="stat-label">ï¿½ï¿½ï¿½ï¿½ï¿½Ù¶ï¿½</div>
+                            <div class="stat-value">@((1 / displayEnemy.AttacksPerSecond).ToString("F2"))ï¿½ï¿½/ï¿½ï¿½</div>
                         </div>
                         <div class="stat-row">
-                            <div class="stat-label">ÃüÖÐµÈ¼¶</div>
+                            <div class="stat-label">ï¿½ï¿½ï¿½ÐµÈ¼ï¿½</div>
                             <div class="stat-value">@displayEnemy.AccuracyRating</div>
                         </div>
                         <div class="stat-row">
-                            <div class="stat-label">ÉÁ±ÜµÈ¼¶</div>
+                            <div class="stat-label">ï¿½ï¿½ï¿½ÜµÈ¼ï¿½</div>
                             <div class="stat-value">@displayEnemy.AvoidanceRating</div>
                         </div>
                         <div class="stat-row">
-                            <div class="stat-label">ÉÁ±Ü¼¸ÂÊ</div>
+                            <div class="stat-label">ï¿½ï¿½ï¿½Ü¼ï¿½ï¿½ï¿½</div>
                             <div class="stat-value">@(displayEnemy.DodgeChance.ToString("P1"))</div>
                         </div>
 
-                        <!-- ±©»÷ÊôÐÔ -->
+                        <!-- ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ -->
                         <div class="stat-row">
-                            <div class="stat-label">±©»÷ÂÊ</div>
+                            <div class="stat-label">ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½</div>
                             <div class="stat-value">@(displayEnemy.CriticalChance.ToString("P0"))</div>
                         </div>
                         <div class="stat-row">
-                            <div class="stat-label">±©»÷ÉËº¦</div>
+                            <div class="stat-label">ï¿½ï¿½ï¿½ï¿½ï¿½Ëºï¿½</div>
                             <div class="stat-value">@(displayEnemy.CriticalMultiplier.ToString("P0"))</div>
                         </div>
                     </div>
 
-                    <!-- ÔªËØ¿¹ÐÔ²¿·Ö£¬Èç¹ûÓÐµÄ»° -->
+                    <!-- Ôªï¿½Ø¿ï¿½ï¿½Ô²ï¿½ï¿½Ö£ï¿½ï¿½ï¿½ï¿½ï¿½ÐµÄ»ï¿½ -->
                     @if (displayEnemy.ElementalResistances.Any())
                     {
                         <div class="stats-section">
-                            <h6>ÔªËØ¿¹ÐÔ</h6>
+                            <h6>Ôªï¿½Ø¿ï¿½ï¿½ï¿½</h6>
                             @foreach (var resistance in displayEnemy.ElementalResistances)
                             {
                                 <div class="stat-row">
-                                    <div class="stat-label">@resistance.Key ¿¹ÐÔ</div>
+                                    <div class="stat-label">@resistance.Key ï¿½ï¿½ï¿½ï¿½</div>
                                     <div class="stat-value @(resistance.Value < 0 ? "negative" : "positive")">
                                         @(resistance.Value.ToString("P0"))
                                     </div>
@@ -771,13 +772,13 @@
                         </div>
                     }
 
-                    <!-- ±£ÁôÔ­ÓÐµÄ¾­ÑéºÍµôÂä²¿·Ö -->
+                    <!-- ï¿½ï¿½ï¿½ï¿½Ô­ï¿½ÐµÄ¾ï¿½ï¿½ï¿½Íµï¿½ï¿½ä²¿ï¿½ï¿½ -->
                     <hr />
                     <div class="stat-row">
-                        <div class="stat-label">¾­ÑéÖµ</div>
+                        <div class="stat-label">ï¿½ï¿½ï¿½ï¿½Öµ</div>
                         <div class="stat-value">@displayEnemy.XpReward</div>
                     </div>
-                    <h6>¿ÉÄÜµôÂä</h6>
+                    <h6>ï¿½ï¿½ï¿½Üµï¿½ï¿½ï¿½</h6>
                     <div class="loot-table">
                         @foreach (var lootEntry in displayEnemy.LootTable)
                         {
@@ -790,7 +791,7 @@
                                         <input type="checkbox" class="form-check-input"
                                                checked="@(character.AutoSellItemIds.Contains(item.Id))"
                                                @onchange="() => GameState.ToggleAutoSellItem(item.Id)" />
-                                        ×Ô¶¯³öÊÛ
+                                        ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½ï¿½
                                     </label>
                                 </div>
                             }
@@ -801,18 +802,18 @@
             else
             {
                 <div class="enemy-stats empty-stats">
-                    <p class="text-muted">ÇëÑ¡Ôñ¹ÖÎï¿ªÊ¼Õ½¶·</p>
+                    <p class="text-muted">ï¿½ï¿½Ñ¡ï¿½ï¿½ï¿½ï¿½ï¿ªÊ¼Õ½ï¿½ï¿½</p>
                 </div>
             }
        </div>
     </div>
 
-    <!-- ¿ì½ÝÀ¸Ñ¡ÔñÆ÷ -->
+    <!-- ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½ï¿½ï¿½ -->
     @if (_isPickerVisible)
     {
         <div class="modal-backdrop" @onclick="CloseQuickSlotPicker"></div>
         <div class="quick-slot-picker">
-            <h5>Ñ¡ÔñÒ»¸öÎïÆ·</h5>
+            <h5>Ñ¡ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½Æ·</h5>
             <div class="picker-item-list">
                 @foreach (var item in GetAvailableConsumablesForPicker(character))
                 {
@@ -822,13 +823,13 @@
                     </div>
                 }
             </div>
-            <button class="btn btn-secondary mt-2" @onclick="CloseQuickSlotPicker">¹Ø±Õ</button>
+            <button class="btn btn-secondary mt-2" @onclick="CloseQuickSlotPicker">ï¿½Ø±ï¿½</button>
         </div>
     }
 }
 else
 {
-    <p>ÕýÔÚ¼ÓÔØ½ÇÉ«ÐÅÏ¢...</p>
+    <p>ï¿½ï¿½ï¿½Ú¼ï¿½ï¿½Ø½ï¿½É«ï¿½ï¿½Ï¢...</p>
 }
 
 @code {
@@ -840,25 +841,25 @@ else
     private string _accessErrorMessage = string.Empty;
 
 
-    // Ìí¼ÓÐÂµÄ×´Ì¬±äÁ¿
+    // ï¿½ï¿½ï¿½ï¿½ï¿½Âµï¿½×´Ì¬ï¿½ï¿½ï¿½ï¿½
     private Enemy? _selectedMonster;
     private Dungeon? _selectedDungeon;
     private Enemy? _lastBattleEnemy;
-    // Ñ¡Ôñ¹ÖÎïµÄ·½·¨
+    // Ñ¡ï¿½ï¿½ï¿½ï¿½ï¿½Ä·ï¿½ï¿½ï¿½
     private void SelectMonster(Enemy monster)
     {
         _selectedMonster = monster;
-        // ²»Á¢¼´¿ªÊ¼Õ½¶·£¬µÈ´ýÍæ¼Òµã»÷Õ½¶·°´Å¥
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¼Õ½ï¿½ï¿½ï¿½ï¿½ï¿½È´ï¿½ï¿½ï¿½Òµï¿½ï¿½Õ½ï¿½ï¿½ï¿½ï¿½Å¥
     }
 
-    // Ñ¡Ôñ¸±±¾µÄ·½·¨
+    // Ñ¡ï¿½ñ¸±±ï¿½ï¿½Ä·ï¿½ï¿½ï¿½
     private void SelectDungeon(Dungeon dungeon)
     {
         _selectedDungeon = dungeon;
-        // ²»Á¢¼´¿ªÊ¼¸±±¾£¬µÈ´ýÍæ¼Òµã»÷¿ªÊ¼°´Å¥
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È´ï¿½ï¿½ï¿½Òµï¿½ï¿½ï¿½ï¿½Ê¼ï¿½ï¿½Å¥
     }
 
-    // ¹Ø±ÕÑ¡ÔñÆ÷Ê±Çå¿ÕÑ¡Ôñ
+    // ï¿½Ø±ï¿½Ñ¡ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½
     private void CloseSelectors()
     {
         _showMonsterSelector = false;
@@ -867,19 +868,19 @@ else
         _selectedDungeon = null;
     }
 
-    // »ñÈ¡¹ÖÎïÀàÐÍÎÄ±¾
+    // ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä±ï¿½
     private string GetMonsterTypeText(MonsterType type)
     {
         return type switch
         {
-            MonsterType.Normal => "ÆÕÍ¨",
-            MonsterType.Elite => "¾«Ó¢",
-            MonsterType.Boss => "Ê×Áì",
+            MonsterType.Normal => "ï¿½ï¿½Í¨",
+            MonsterType.Elite => "ï¿½ï¿½Ó¢",
+            MonsterType.Boss => "ï¿½ï¿½ï¿½ï¿½",
             _ => "Î´Öª"
         };
     }
 
-    // »ñÈ¡¹ÖÎïÀàÐÍÑùÊ½
+    // ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê½
     private string GetMonsterTypeBadgeClass(MonsterType type)
     {
         return type switch
@@ -907,7 +908,7 @@ else
         }
     }
 
-    // ¶¨Òå¹ÖÎïÇøÓò½á¹¹
+    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½á¹¹
     private class MonsterRegion
     {
         public string Id { get; set; }
@@ -915,10 +916,10 @@ else
         public List<MonsterRegion> SubRegions { get; set; } = new List<MonsterRegion>();
         public List<string> MonsterIds { get; set; } = new List<string>();
     }
-    // ÓÃÓÚ´æ´¢µ±Ç°µ¼º½Â·¾¶
+    // ï¿½ï¿½ï¿½Ú´æ´¢ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½Â·ï¿½ï¿½
     private List<string> _navigationPath = new List<string>();
 
-    // µ¼º½µ½Ö¸¶¨ÇøÓò
+    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     private void NavigateToRegion(string regionId)
     {
         var region = RegionTemplates.GetById(regionId);
@@ -926,7 +927,7 @@ else
 
         _navigationPath.Add(regionId);
 
-        // ¼ì²éÇøÓò·ÃÎÊÏÞÖÆ
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         if (GameState.ActiveCharacter is Player character)
         {
             var party = GameState.GetPartyForCharacter(character.Id);
@@ -949,17 +950,17 @@ else
 
             if (!canAccess)
             {
-                // ÏÔÊ¾ÎÞ·¨·ÃÎÊµÄÏûÏ¢
+                // ï¿½ï¿½Ê¾ï¿½Þ·ï¿½ï¿½ï¿½ï¿½Êµï¿½ï¿½ï¿½Ï¢
                 _accessErrorMessage = region.GetAccessRequirementsDescription();
                 _showAccessError = true;
-                _navigationPath.RemoveAt(_navigationPath.Count - 1); // »ØÍËµ¼º½
+                _navigationPath.RemoveAt(_navigationPath.Count - 1); // ï¿½ï¿½ï¿½Ëµï¿½ï¿½ï¿½
             }
         }
 
         StateHasChanged();
     }
 
-    // »ñÈ¡µ±Ç°µ¼º½ÇøÓò
+    // ï¿½ï¿½È¡ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     private Region GetCurrentRegion()
     {
         if (_navigationPath.Count == 0)
@@ -1009,30 +1010,30 @@ else
     {
         List<string> requirements = new List<string>();
 
-        // ¼ì²éµÈ¼¶
-        if (character.GetLevel(character.SelectedBattleProfession) < dungeon.RecommendedLevel)
+        // ï¿½ï¿½ï¿½È¼ï¿½
+        if (CharacterService.GetLevel(character, character.SelectedBattleProfession) < dungeon.RecommendedLevel)
         {
-            requirements.Add($"ÐèÒªµÈ¼¶ {dungeon.RecommendedLevel}+");
+            requirements.Add($"ï¿½ï¿½Òªï¿½È¼ï¿½ {dungeon.RecommendedLevel}+");
         }
 
-        // ¼ì²éÈËÊý
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         int memberCount = party?.MemberIds.Count ?? 0;
         if (memberCount < dungeon.MinPlayers)
         {
-            requirements.Add($"ÖÁÉÙÐèÒª {dungeon.MinPlayers} ÈË");
+            requirements.Add($"ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Òª {dungeon.MinPlayers} ï¿½ï¿½");
         }
         else if (memberCount > dungeon.MaxPlayers)
         {
-            requirements.Add($"×î¶àÔÊÐí {dungeon.MaxPlayers} ÈË");
+            requirements.Add($"ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ {dungeon.MaxPlayers} ï¿½ï¿½");
         }
 
-        // ¼ì²éÏÈ¾öÌõ¼þ
+        // ï¿½ï¿½ï¿½ï¿½È¾ï¿½ï¿½ï¿½ï¿½ï¿½
         foreach (var prerequisite in dungeon.Prerequisites)
         {
             var prereqDungeon = DungeonTemplates.GetDungeonById(prerequisite);
             if (prereqDungeon != null)
             {
-                requirements.Add($"ÐèÒªÍê³É {prereqDungeon.Name}");
+                requirements.Add($"ï¿½ï¿½Òªï¿½ï¿½ï¿½ {prereqDungeon.Name}");
             }
         }
 
@@ -1046,85 +1047,85 @@ else
     private enum BattleView { Battle, Party }
     private BattleView _currentView = BattleView.Battle;
 
-    // »ñÈ¡CombatServiceÊµÀý
+    // ï¿½ï¿½È¡CombatServiceÊµï¿½ï¿½
     private CombatService? _combatService;
 
-    // ÐÞ¸ÄOnInitialized·½·¨
+    // ï¿½Þ¸ï¿½OnInitializedï¿½ï¿½ï¿½ï¿½
     protected override void OnInitialized()
     {
         GameState.OnStateChanged += HandleStateChanged;
         _combatService = ServiceLocator.GetService<CombatService>();
     }
 
-    // ¼ì²éÊÇ·ñ´¦ÓÚÕ½¶·Ë¢ÐÂ×´Ì¬
+    // ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½Õ½ï¿½ï¿½Ë¢ï¿½ï¿½×´Ì¬
     private bool IsInBattleRefresh(string playerId)
     {
         return _combatService?.IsPlayerInBattleRefresh(playerId) ?? false;
     }
 
     /// <summary>
-    /// ¼ì²éÊÇ·ñÔÚ¸±±¾Õ½¶·ÖÐ
+    /// ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½Ú¸ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ï¿½ï¿½
     /// </summary>
     private bool IsInDungeonBattle(BattleContext? battleContext)
     {
         return battleContext != null && battleContext.BattleType == BattleType.Dungeon;
     }
 
-    // »ñÈ¡Õ½¶·Ë¢ÐÂµ¹¼ÆÊ±
+    // ï¿½ï¿½È¡Õ½ï¿½ï¿½Ë¢ï¿½Âµï¿½ï¿½ï¿½Ê±
     private double GetBattleRefreshTime(string playerId)
     {
         return _combatService?.GetPlayerBattleRefreshTime(playerId) ?? 0;
     }
 
-    // »ñÈ¡Õ½¶·Ä£Ê½ÎÄ±¾
+    // ï¿½ï¿½È¡Õ½ï¿½ï¿½Ä£Ê½ï¿½Ä±ï¿½
     private string GetBattleModeText(BattleContext battleContext)
     {
         return battleContext.BattleType switch
         {
-            BattleType.Dungeon => $"¸±±¾Õ½¶· - {GetDungeonName(battleContext.DungeonId)}",
-            BattleType.Party => $"ÍÅ¶ÓÕ½¶· ({battleContext.Players.Count}v{battleContext.Enemies.Count})",
-            _ => $"µ¥ÈËÕ½¶· (1v{battleContext.Enemies.Count})"
+            BattleType.Dungeon => $"ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ - {GetDungeonName(battleContext.DungeonId)}",
+            BattleType.Party => $"ï¿½Å¶ï¿½Õ½ï¿½ï¿½ ({battleContext.Players.Count}v{battleContext.Enemies.Count})",
+            _ => $"ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ (1v{battleContext.Enemies.Count})"
         };
     }
 
     /// <summary>
-    /// ´´½¨¶ÓÎéÇ°ÏÈÍ£Ö¹µ±Ç°Õ½¶·
+    /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç°ï¿½ï¿½Í£Ö¹ï¿½ï¿½Ç°Õ½ï¿½ï¿½
     /// </summary>
     private void CreatePartyAndStopBattle()
     {
-        // Èç¹ûÍæ¼ÒÔÚÕ½¶·ÖÐ£¬ÏÈÍ£Ö¹Õ½¶·
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ï¿½Ð£ï¿½ï¿½ï¿½Í£Ö¹Õ½ï¿½ï¿½
         if (GameState.ActiveCharacter?.CurrentAction == PlayerActionState.Combat)
         {
             GameState.StopCurrentAction();
         }
 
-        // È»ºó´´½¨¶ÓÎé
+        // È»ï¿½ó´´½ï¿½ï¿½ï¿½ï¿½ï¿½
         GameState.CreateParty();
     }
 
     /// <summary>
-    /// ¼ÓÈë¶ÓÎéÇ°ÏÈÍ£Ö¹µ±Ç°Õ½¶·
+    /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç°ï¿½ï¿½Í£Ö¹ï¿½ï¿½Ç°Õ½ï¿½ï¿½
     /// </summary>
     private void JoinPartyAndStopBattle(Guid partyId)
     {
-        // Èç¹ûÍæ¼ÒÔÚÕ½¶·ÖÐ£¬ÏÈÍ£Ö¹Õ½¶·
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ï¿½Ð£ï¿½ï¿½ï¿½Í£Ö¹Õ½ï¿½ï¿½
         if (GameState.ActiveCharacter?.CurrentAction == PlayerActionState.Combat)
         {
             GameState.StopCurrentAction();
         }
 
-        // È»ºó¼ÓÈë¶ÓÎé
+        // È»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         GameState.JoinParty(partyId);
     }
 
-    // ¼ì²éÊÇ·ñÕýÔÚÕ½¶·¸Ã¹ÖÎï
+    // ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ï¿½Ã¹ï¿½ï¿½ï¿½
     private bool IsCurrentlyFightingMonster(string monsterName, BattleContext? battleContext)
     {
-        // ÔÚ¸±±¾Õ½¶·ÖÐ£¬²»¸ßÁÁÏÔÊ¾ÈÎºÎ¹ÖÎï°´Å¥
+        // ï¿½Ú¸ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ï¿½Ð£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¾ï¿½ÎºÎ¹ï¿½ï¿½ï°´Å¥
         if (battleContext == null || battleContext.BattleType == BattleType.Dungeon)
             return false;
 
-        // Ö»ÔÚÆÕÍ¨Õ½¶·»ò¶ÓÎéÕ½¶·ÖÐ¸ßÁÁÏÔÊ¾¶ÔÓ¦µÄ¹ÖÎï°´Å¥
+        // Ö»ï¿½ï¿½ï¿½ï¿½Í¨Õ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ï¿½Ð¸ï¿½ï¿½ï¿½ï¿½ï¿½Ê¾ï¿½ï¿½Ó¦ï¿½Ä¹ï¿½ï¿½ï°´Å¥
         return battleContext.Enemies.Any(e => e.Name == monsterName);
     }
 
@@ -1147,39 +1148,39 @@ else
         if (battleContext == null || !battleContext.Enemies.Any())
             return null;
 
-        // ¼ì²éÍæ¼ÒÊÇ·ñÓÐÖ¸¶¨Ä¿±ê
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½Ö¸ï¿½ï¿½Ä¿ï¿½ï¿½
         if (battleContext.PlayerTargets.TryGetValue(character.Id, out var targetName))
         {
             var target = battleContext.Enemies.FirstOrDefault(e => e.Name == targetName);
             if (target != null)
             {
-                _lastBattleEnemy = target; // ±£´æµ±Ç°µÐÈË
+                _lastBattleEnemy = target; // ï¿½ï¿½ï¿½æµ±Ç°ï¿½ï¿½ï¿½ï¿½
                 return target;
             }
         }
 
-        // Ä¬ÈÏ·µ»ØµÚÒ»¸öµÐÈË
+        // Ä¬ï¿½Ï·ï¿½ï¿½Øµï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         var firstEnemy = battleContext.Enemies.First();
-        _lastBattleEnemy = firstEnemy; // ±£´æµ±Ç°µÐÈË
+        _lastBattleEnemy = firstEnemy; // ï¿½ï¿½ï¿½æµ±Ç°ï¿½ï¿½ï¿½ï¿½
         return firstEnemy;
     }
 
     /// <summary>
-    /// Æô¶¯Õ½¶·£¬Ê¹ÓÃÖÇÄÜÕ½¶·ÏµÍ³
+    /// ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ï¿½ï¿½Ê¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ÏµÍ³
     /// </summary>
     private void StartBattle(Enemy enemyTemplate)
     {
         if (GameState.ActiveCharacter == null || _combatService == null)
             return;
 
-        // »ñÈ¡µ±Ç°Íæ¼Ò
+        // ï¿½ï¿½È¡ï¿½ï¿½Ç°ï¿½ï¿½ï¿½
         var character = GameState.ActiveCharacter;
 
-        // ¼ì²éÍæ¼ÒÊÇ·ñÒÑÔÚÕ½¶·ÖÐ£¨»îÔ¾Õ½¶·»òÕ½¶·Ë¢ÐÂ×´Ì¬£©
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ï¿½Ð£ï¿½ï¿½ï¿½Ô¾Õ½ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½Ë¢ï¿½ï¿½×´Ì¬ï¿½ï¿½
         var battleContext = _combatService.GetBattleContextForPlayer(character.Id);
         var isInBattleRefresh = _combatService.IsPlayerInBattleRefresh(character.Id);
 
-        // Èç¹ûÒÑÔÚÕ½¶·£¬ÏÈÍ£Ö¹µ±Ç°Õ½¶·
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í£Ö¹ï¿½ï¿½Ç°Õ½ï¿½ï¿½
         if (battleContext != null || isInBattleRefresh || character.CurrentAction == PlayerActionState.Combat)
         {
             GameState.StopCurrentAction();
@@ -1187,10 +1188,10 @@ else
 
         var party = GameState.GetPartyForCharacter(character.Id);
 
-        // Ê¹ÓÃÖÇÄÜÕ½¶·ÏµÍ³£¬ÉèÖÃignoreRefreshCheck=trueÒÔÈ·±£¼´Ê¹ÔÚË¢ÐÂ×´Ì¬Ò²ÄÜ¿ªÊ¼Õ½¶·
+        // Ê¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ÏµÍ³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ignoreRefreshCheck=trueï¿½ï¿½È·ï¿½ï¿½ï¿½ï¿½Ê¹ï¿½ï¿½Ë¢ï¿½ï¿½×´Ì¬Ò²ï¿½Ü¿ï¿½Ê¼Õ½ï¿½ï¿½
         bool battleStarted = _combatService.SmartStartBattle(character, enemyTemplate, party, true);
 
-        // Èç¹ûÕ½¶·³É¹¦Æô¶¯£¬¹Ø±ÕÐü¸¡´°
+        // ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ï¿½É¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ø±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         if (battleStarted)
         {
             CloseSelectors();
@@ -1198,7 +1199,7 @@ else
     }
 
     /// <summary>
-    /// ÉèÖÃÍæ¼ÒµÄÄ¿±êµÐÈË
+    /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Òµï¿½Ä¿ï¿½ï¿½ï¿½ï¿½ï¿½
     /// </summary>
     private void SetPlayerTarget(string playerId, Enemy enemy, BattleContext battleContext)
     {
@@ -1206,7 +1207,7 @@ else
     }
 
     /// <summary>
-    /// ¼ì²éµÐÈËÊÇ·ñÊÇÍæ¼ÒµÄµ±Ç°Ä¿±ê
+    /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½ï¿½ï¿½ÒµÄµï¿½Ç°Ä¿ï¿½ï¿½
     /// </summary>
     private bool IsPlayerTarget(string playerId, Enemy enemy, BattleContext battleContext)
     {
@@ -1214,7 +1215,7 @@ else
     }
 
     /// <summary>
-    /// Æô¶¯¸±±¾Õ½¶·
+    /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½
     /// </summary>
     private void StartDungeon(string dungeonId)
     {
@@ -1223,7 +1224,7 @@ else
         {
             bool dungeonStarted = _combatService.StartDungeon(party, dungeonId);
 
-            // Èç¹û¸±±¾³É¹¦Æô¶¯£¬¹Ø±ÕÐü¸¡´°²¢ÇÐ»»µ½Õ½¶·ÊÓÍ¼
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ø±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð»ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ï¿½ï¿½Í¼
             if (dungeonStarted)
             {
                 CloseSelectors();
@@ -1233,14 +1234,14 @@ else
     }
 
     /// <summary>
-    /// Àë¿ª¶ÓÎéÇ°ÏÈÍ£Ö¹µ±Ç°Õ½¶·
+    /// ï¿½ë¿ªï¿½ï¿½ï¿½ï¿½Ç°ï¿½ï¿½Í£Ö¹ï¿½ï¿½Ç°Õ½ï¿½ï¿½
     /// </summary>
     private void LeavePartyAndStopBattle()
     {
         var party = GameState.GetPartyForCharacter(GameState.ActiveCharacter?.Id);
         if (party != null)
         {
-            // Èç¹ûÊÇ¶ÓÎéÕ½¶·£¬ÏÈÍ£Ö¹ËùÓÐ³ÉÔ±µÄÕ½¶·
+            // ï¿½ï¿½ï¿½ï¿½Ç¶ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í£Ö¹ï¿½ï¿½ï¿½Ð³ï¿½Ô±ï¿½ï¿½Õ½ï¿½ï¿½
             var battleContext = _combatService?.GetBattleContextForParty(party.Id);
             if (battleContext != null)
             {
@@ -1248,22 +1249,22 @@ else
             }
         }
 
-        // È»ºóÀë¿ª¶ÓÎé
+        // È»ï¿½ï¿½ï¿½ë¿ªï¿½ï¿½ï¿½ï¿½
         GameState.LeaveParty();
     }
 
     /// <summary>
-    /// ¼ì²é¶ÓÎéÊÇ·ñÓÐÈÎºÎ³ÉÔ±ÔÚÕ½¶·ÖÐ
+    /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½ï¿½ÎºÎ³ï¿½Ô±ï¿½ï¿½Õ½ï¿½ï¿½ï¿½ï¿½
     /// </summary>
     private bool IsPartyInBattle(Party party)
     {
-        // ¼ì²é¶ÓÎéÊÇ·ñÓÐÕ½¶·ÉÏÏÂÎÄ
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         if (_combatService?.GetBattleContextForParty(party.Id) != null)
         {
             return true;
         }
 
-        // ¼ì²é¶ÓÎéÖÐµÄÃ¿¸ö³ÉÔ±ÊÇ·ñÓÐÈËÔÚÕ½¶·ÖÐ
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ðµï¿½Ã¿ï¿½ï¿½ï¿½ï¿½Ô±ï¿½Ç·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ï¿½ï¿½
         foreach (var memberId in party.MemberIds)
         {
             var member = GameState.AllCharacters.FirstOrDefault(c => c.Id == memberId);
@@ -1277,20 +1278,20 @@ else
     }
 
     /// <summary>
-    /// ¼ì²éÊÇ·ñ¿ÉÒÔ½øÈë¸±±¾
+    /// ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½Ô½ï¿½ï¿½ë¸±ï¿½ï¿½
     /// </summary>
     private bool CanEnterDungeon(Player character, Party party, Dungeon dungeon)
     {
-        // ¼ì²é¶ÓÎéÈËÊý
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         var memberCount = party.MemberIds.Count;
         if (memberCount < dungeon.MinPlayers || memberCount > dungeon.MaxPlayers)
             return false;
 
-        // ¼ì²é¶Ó³¤µÈ¼¶
-        if (character.GetLevel(character.SelectedBattleProfession) < dungeon.RecommendedLevel)
+        // ï¿½ï¿½ï¿½Ó³ï¿½ï¿½È¼ï¿½
+        if (CharacterService.GetLevel(character, character.SelectedBattleProfession) < dungeon.RecommendedLevel)
             return false;
 
-        // ¼ì²éÏÈ¾öÌõ¼þ
+        // ï¿½ï¿½ï¿½ï¿½È¾ï¿½ï¿½ï¿½ï¿½ï¿½
         foreach (var prerequisite in dungeon.Prerequisites)
         {
             // if (!character.CompletedDungeons.Contains(prerequisite))
@@ -1301,15 +1302,15 @@ else
     }
 
     /// <summary>
-    /// »ñÈ¡¸±±¾Ãû³Æ
+    /// ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     /// </summary>
     private string GetDungeonName(string? dungeonId)
     {
         if (string.IsNullOrEmpty(dungeonId))
-            return "Î´Öª¸±±¾";
+            return "Î´Öªï¿½ï¿½ï¿½ï¿½";
 
         var dungeon = DungeonTemplates.GetDungeonById(dungeonId);
-        return dungeon?.Name ?? "Î´Öª¸±±¾";
+        return dungeon?.Name ?? "Î´Öªï¿½ï¿½ï¿½ï¿½";
     }
 
     private void OpenQuickSlotPicker(ConsumableCategory category, int slotId, FoodType foodType)
@@ -1363,10 +1364,10 @@ else
     }
     private void HandleStateChanged()
     {
-        // Ö»ÓÐÍ¬Ê±Âú×ãÒÔÏÂÈý¸öÌõ¼þÊ±²ÅÇå¿Õ×îºóµÄµÐÈË:
-        // 1. ½ÇÉ«²»ÔÚÕ½¶·×´Ì¬
-        // 2. Ã»ÓÐÕ½¶·ÉÏÏÂÎÄ
-        // 3. Ã»ÓÐÔÚÕ½¶·Ë¢ÐÂ×´Ì¬(²»ÔÚµÈ´ýÏÂÒ»²¨)
+        // Ö»ï¿½ï¿½Í¬Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Äµï¿½ï¿½ï¿½:
+        // 1. ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½×´Ì¬
+        // 2. Ã»ï¿½ï¿½Õ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+        // 3. Ã»ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½Ë¢ï¿½ï¿½×´Ì¬(ï¿½ï¿½ï¿½ÚµÈ´ï¿½ï¿½ï¿½Ò»ï¿½ï¿½)
         if (GameState.ActiveCharacter?.CurrentAction != PlayerActionState.Combat &&
             _combatService?.GetBattleContextForPlayer(GameState.ActiveCharacter?.Id) == null &&
             !(_combatService?.IsPlayerInBattleRefresh(GameState.ActiveCharacter?.Id) ?? false))
