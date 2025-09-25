@@ -148,6 +148,40 @@ public class ClientGameStateService : IAsyncDisposable
     }
 
     /// <summary>
+    /// 执行战斗动作
+    /// </summary>
+    public async Task<bool> ExecuteBattleActionAsync(Guid battleId, string playerId, BattleActionType actionType, string? targetId = null, string? skillId = null)
+    {
+        try
+        {
+            var request = new BattleActionRequest
+            {
+                BattleId = battleId,
+                PlayerId = playerId,
+                ActionType = actionType,
+                TargetId = targetId,
+                SkillId = skillId
+            };
+
+            var response = await _gameApi.ExecuteBattleActionAsync(request);
+            
+            if (response.Success)
+            {
+                _logger.LogDebug("Battle action executed successfully for battle {BattleId}", battleId);
+                return true;
+            }
+
+            _logger.LogWarning("Failed to execute battle action: {Message}", response.Message);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error executing battle action for battle {BattleId}", battleId);
+            return false;
+        }
+    }
+
+    /// <summary>
     /// 停止战斗
     /// </summary>
     public async Task<bool> StopBattleAsync(Guid battleId)

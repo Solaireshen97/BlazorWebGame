@@ -90,6 +90,38 @@ public class GameApiService
     }
 
     /// <summary>
+    /// 执行战斗动作
+    /// </summary>
+    public async Task<ApiResponse<bool>> ExecuteBattleActionAsync(BattleActionRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/battle/action", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<ApiResponse<bool>>() 
+                    ?? new ApiResponse<bool> { Success = false };
+            }
+
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Message = $"Server returned {response.StatusCode}"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error executing battle action");
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "Network error occurred"
+            };
+        }
+    }
+
+    /// <summary>
     /// 停止战斗
     /// </summary>
     public async Task<ApiResponse<bool>> StopBattleAsync(Guid battleId)

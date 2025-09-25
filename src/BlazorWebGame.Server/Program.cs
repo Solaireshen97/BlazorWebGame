@@ -27,6 +27,7 @@ builder.Services.AddCors(options =>
 });
 
 // 注册游戏服务
+builder.Services.AddSingleton<ServerCombatEngine>();
 builder.Services.AddSingleton<GameEngineService>();
 builder.Services.AddHostedService<GameLoopService>();
 
