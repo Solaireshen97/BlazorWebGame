@@ -1,4 +1,5 @@
 using BlazorWebGame;
+using BlazorWebGame.Client.Services.Api;
 using BlazorWebGame.Models;
 using BlazorWebGame.Services;
 using BlazorWebGame.Utils;
@@ -10,15 +11,21 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+// é…ç½®HTTPå®¢æˆ·ç«¯ï¼ŒæŒ‡å‘æœåŠ¡å™¨
+builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://localhost:7290") });
 
-// ´´½¨¹²ÏíµÄÍæ¼ÒÁĞ±í
+// æ·»åŠ æ–°çš„APIæœåŠ¡
+builder.Services.AddScoped<GameApiService>();
+builder.Services.AddScoped<ClientGameStateService>();
+builder.Services.AddScoped<OfflineService>();
+
+// ä¿ç•™å…±äº«çš„ç©å®¶åˆ—è¡¨
 var sharedPlayerList = new List<Player>();
 
-// ×¢²á»ù´¡·şÎñ
+// æ³¨å†Œå­˜å‚¨ç³»ç»Ÿ
 builder.Services.AddSingleton<GameStorage>();
 
-// ×¢²áÒµÎñ×ÓÏµÍ³·şÎñ
+// æ³¨å†Œä¸šåŠ¡é€»è¾‘ç³»ç»Ÿç»„ä»¶
 builder.Services.AddSingleton<InventoryService>();
 builder.Services.AddSingleton<PartyService>(sp => new PartyService(sharedPlayerList));
 builder.Services.AddSingleton<CombatService>(sp => {
@@ -34,14 +41,15 @@ builder.Services.AddSingleton<QuestService>(sp => {
     var inventoryService = sp.GetRequiredService<InventoryService>();
     return new QuestService(inventoryService);
 });
-// ×¢²á½ÇÉ«·şÎñ
+
+// æ³¨å†Œè§’è‰²æœåŠ¡
 builder.Services.AddSingleton<CharacterService>(sp => {
     var gameStorage = sp.GetRequiredService<GameStorage>();
     var combatService = sp.GetRequiredService<CombatService>();
     return new CharacterService(gameStorage, combatService);
 });
 
-// ×îºó×¢²áºËĞÄ·şÎñ
+// ä¿ç•™åŸæœ‰çš„GameStateServiceï¼ˆå¯èƒ½éœ€è¦é€æ­¥è¿ç§»ï¼‰
 builder.Services.AddSingleton<GameStateService>();
 
 await builder.Build().RunAsync();
