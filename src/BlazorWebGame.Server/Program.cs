@@ -31,6 +31,9 @@ builder.Services.AddCors(options =>
 // 注册共享事件管理器
 builder.Services.AddSingleton<BlazorWebGame.Shared.Events.GameEventManager>();
 
+// 注册服务定位器（单例模式）
+builder.Services.AddSingleton<ServerServiceLocator>();
+
 // 注册游戏服务
 builder.Services.AddSingleton<ServerSkillSystem>();
 builder.Services.AddSingleton<ServerLootService>();
@@ -46,6 +49,9 @@ builder.Services.AddSingleton<ServerEventService>();
 builder.Services.AddHostedService<GameLoopService>();
 
 var app = builder.Build();
+
+// 初始化服务定位器
+ServerServiceLocator.Initialize(app.Services);
 
 // 在开发环境中运行战斗系统测试
 if (app.Environment.IsDevelopment())
