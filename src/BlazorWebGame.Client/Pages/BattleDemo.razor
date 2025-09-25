@@ -8,6 +8,7 @@
 @inject ClientGameStateService NewGameState
 @inject GameApiService GameApi
 @inject OfflineService OfflineService
+@inject CharacterService CharacterService
 @inject ILogger<BattleDemo> Logger
 @implements IDisposable
 
@@ -58,7 +59,7 @@
             @if (OldGameState.ActiveCharacter is Player character)
             {
                 <div class="mb-3">
-                    <strong>角色:</strong> @character.Name (Level @character.GetLevel(character.SelectedBattleProfession)) 
+                    <strong>角色:</strong> @character.Name (Level @CharacterService.GetLevel(character, character.SelectedBattleProfession)) 
                     <span class="text-success">HP: @character.Health/@character.MaxHealth</span>
                 </div>
                 

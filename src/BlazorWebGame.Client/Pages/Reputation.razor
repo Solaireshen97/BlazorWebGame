@@ -3,6 +3,7 @@
 @using BlazorWebGame.Models.Items
 @using BlazorWebGame.Services
 @inject GameStateService GameState
+@inject CharacterService CharacterService
 @implements IDisposable
 
 <PageTitle>声望与委托</PageTitle>
@@ -24,8 +25,8 @@
         @foreach (Faction faction in Enum.GetValues(typeof(Faction)))
         {
             var repValue = character.Reputation.GetValueOrDefault(faction, 0);
-            var repTier = character.GetReputationLevel(faction);
-            var progressPercent = character.GetReputationProgressPercentage(faction);
+            var repTier = CharacterService.GetReputationLevel(character, faction);
+            var progressPercent = CharacterService.GetReputationProgressPercentage(character, faction);
 
             <div class="faction-rep-bar mb-2">
                 <span class="faction-name">@FactionData.GetName(faction)</span>

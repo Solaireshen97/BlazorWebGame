@@ -6,6 +6,7 @@
 @using BlazorWebGame.Utils
 @using BlazorWebGame.Shared.Professions
 @inject GameStateService GameState
+@inject CharacterService CharacterService
 @implements IDisposable
 
 <PageTitle>采矿</PageTitle>
@@ -18,8 +19,8 @@
                               ProfessionType="Mining"
                               Level="@character.GetLevel(GatheringProfession.Miner)"
                               Experience="@character.GatheringProfessionXP.GetValueOrDefault(GatheringProfession.Miner)"
-                              GatheringSpeedBonus="@character.GetTotalGatheringSpeedBonus()"
-                              ExtraLootChance="@character.GetTotalExtraLootChance()" />
+                              GatheringSpeedBonus="@CharacterService.GetTotalGatheringSpeedBonus(character)"
+                              ExtraLootChance="@CharacterService.GetTotalExtraLootChance(character)" />
 
             <QuickSlotBar Title="采集食物"
                           QuickSlots="@character.GatheringFoodQuickSlots"

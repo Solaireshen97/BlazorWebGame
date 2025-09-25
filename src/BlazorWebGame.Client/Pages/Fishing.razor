@@ -6,6 +6,7 @@
 @using BlazorWebGame.Utils
 @using BlazorWebGame.Shared.Professions
 @inject GameStateService GameState
+@inject CharacterService CharacterService
 @implements IDisposable
 
 <PageTitle>钓鱼</PageTitle>
@@ -16,10 +17,10 @@
         <div class="header-section">
             <ProfessionHeader Title="钓鱼"
                               ProfessionType="Fishing"
-                              Level="@character.GetLevel(GatheringProfession.Fishing)"
+                              Level="@CharacterService.GetLevel(character, GatheringProfession.Fishing)"
                               Experience="@character.GatheringProfessionXP.GetValueOrDefault(GatheringProfession.Fishing)"
-                              GatheringSpeedBonus="@character.GetTotalGatheringSpeedBonus()"
-                              ExtraLootChance="@character.GetTotalExtraLootChance()" />
+                              GatheringSpeedBonus="@CharacterService.GetTotalGatheringSpeedBonus(character)"
+                              ExtraLootChance="@CharacterService.GetTotalExtraLootChance(character)" />
 
             <QuickSlotBar 
                 Title="采集食物" 

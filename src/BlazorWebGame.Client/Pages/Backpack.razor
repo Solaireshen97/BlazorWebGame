@@ -5,6 +5,7 @@
 @using BlazorWebGame.Services
 @using BlazorWebGame.Shared
 @inject GameStateService GameState
+@inject CharacterService CharacterService
 @implements IDisposable
 
 <PageTitle>背包</PageTitle>
@@ -18,8 +19,8 @@
         <div class="equipment-panel">
             <h3>装备</h3>
             <div class="player-stats">
-                <p>生命值: @character.Health / @character.GetTotalMaxHealth()</p>
-                <p>攻击力: @character.GetTotalAttackPower()</p>
+                <p>生命值: @character.Health / @CharacterService.GetTotalMaxHealth(character)</p>
+                <p>攻击力: @CharacterService.GetTotalAttackPower(character)</p>
                 <p>金币: @character.Gold</p>
             </div>
 

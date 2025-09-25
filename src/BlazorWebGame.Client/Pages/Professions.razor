@@ -2,6 +2,7 @@
 @using BlazorWebGame.Services
 @using BlazorWebGame.Models
 @inject GameStateService GameState
+@inject CharacterService CharacterService
 @implements IDisposable
 
 <PageTitle>职业与技能</PageTitle>
@@ -186,7 +187,7 @@
 
         var profession = skill.RequiredProfession.Value;
         var requiredLevel = skill.RequiredLevel;
-        var playerLevel = character.GetLevel(profession);
+        var playerLevel = CharacterService.GetLevel(character, profession);
         return playerLevel >= requiredLevel;
     }
 
