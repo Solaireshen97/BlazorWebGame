@@ -85,7 +85,7 @@ namespace BlazorWebGame.Models
         // 核心战斗属性
         // - 对武器
         public int WeaponDamage { get; set; } = 0;       // 武器伤害
-        public double AttackSpeed { get; set; } = 0;     // 攻击速度（每秒）
+        public double AttackSpeed { get; set; } = 0;     // 攻击速度（每秒攻击次数）
         public bool IsTwoHanded { get; set; } = false;   // 是否为双手武器
 
         // - 对防具

@@ -1,27 +1,57 @@
 ﻿@using BlazorWebGame.Models
 @using BlazorWebGame.Models.Items
+@using BlazorWebGame.Models.Monsters
 @using BlazorWebGame.Services
 @inject GameStateService GameState
 @implements IDisposable
 
-@* 
-    将整个组件包裹在一个根元素中，这是Blazor组件的最佳实践。
-    我们直接在这个根元素上应用所有动态类和事件。
-*@
 <div class="equipment-slot-display @(GetSlotClass())" @onclick="HandleClick">
-
     @if (GetEquippedItem() is Equipment item)
     {
-        // --- 槽位有装备时 ---
+        <div class="item-container">
+            @* 物品名称及稀有度颜色 *@
+            <span class="item-name" style="color: @GetItemRarityColor(item)">@item.Name</span>
+            
+            @* 物品等级要求(如果有) *@
+            @if (item.RequiredLevel > 1)
+            {
+                <small class="required-level @(IsRequirementMet(item) ? "" : "requirement-not-met")">需要等级 @item.RequiredLevel</small>
+            }
+        </div>
 
-        @* 1. 只显示物品名字 *@
-        <span class="item-name">@item.Name</span>
-
-        @* 2. 悬浮提示窗 (Tooltip) *@
         <div class="item-tooltip">
-            <strong style="color: #00bfff;">@item.Name</strong>
-            <small> (@item.Slot.ToString())</small>
+            <div class="tooltip-header">
+                <strong style="color: @GetItemRarityColor(item)">@item.Name</strong>
+                <small> (@item.Slot.ToString())</small>
+                @if (item.ArmorType != ArmorType.None)
+                {
+                    <span class="armor-type">@GetArmorTypeName(item.ArmorType)</span>
+                }
+                @if (item.WeaponType != WeaponType.None)
+                {
+                    <span class="weapon-type">@GetWeaponTypeName(item.WeaponType) @(item.IsTwoHanded ? "(双手)" : "")</span>
+                }
+            </div>
+            
             <hr />
+            
+            @* 主要属性 *@
+            <div class="tooltip-primary-stats">
+                @if (item.ArmorValue > 0)
+                {
+                    <p>护甲值: <span>@item.ArmorValue</span></p>
+                }
+                @if (item.WeaponDamage > 0)
+                {
+                    <p>伤害: <span>@item.WeaponDamage</span></p>
+                }
+                @if (item.AttackSpeed > 0)
+                {
+                    <p>攻击速度: <span>@item.AttackSpeed.ToString("F2")</span></p>
+                }
+            </div>
+            
+            @* 属性加成 *@
             <div class="tooltip-stats">
                 @if (item.HealthBonus > 0)
                 {
@@ -43,22 +73,64 @@
                 {
                     <p>额外掉落: <span class="stat-bonus">+@((item.ExtraLootChanceBonus * 100).ToString("F0"))%</span></p>
                 }
+                
+                @* 显示基本属性加成 *@
+                @if (item.AttributeBonuses.Strength > 0)
+                {
+                    <p>力量: <span class="stat-bonus">+@item.AttributeBonuses.Strength</span></p>
+                }
+                @if (item.AttributeBonuses.Agility > 0)
+                {
+                    <p>敏捷: <span class="stat-bonus">+@item.AttributeBonuses.Agility</span></p>
+                }
+                @if (item.AttributeBonuses.Intellect > 0)
+                {
+                    <p>智力: <span class="stat-bonus">+@item.AttributeBonuses.Intellect</span></p>
+                }
+                @if (item.AttributeBonuses.Spirit > 0)
+                {
+                    <p>精神: <span class="stat-bonus">+@item.AttributeBonuses.Spirit</span></p>
+                }
+                @if (item.AttributeBonuses.Stamina > 0)
+                {
+                    <p>耐力: <span class="stat-bonus">+@item.AttributeBonuses.Stamina</span></p>
+                }
             </div>
+            
+            @* 元素抗性 *@
+            @if (item.ElementalResistances.Count > 0)
+            {
+                <div class="tooltip-resistances">
+                    @foreach (var resistance in item.ElementalResistances)
+                    {
+                        <p>@GetElementTypeName(resistance.Key)抗性: <span class="resistance-bonus">+@((resistance.Value * 100).ToString("F0"))%</span></p>
+                    }
+                </div>
+            }
+            
             @if (!string.IsNullOrEmpty(item.Description))
             {
                 <hr />
-                <small>@item.Description</small>
+                <div class="item-description">@item.Description</div>
             }
+            
+            @* 职业限制 *@
+            @if (item.AllowedProfessions.Count > 0)
+            {
+                <hr />
+                <div class="profession-requirements @(IsProfessionAllowed(item) ? "" : "requirement-not-met")">
+                    <small>职业限制: @string.Join(", ", item.AllowedProfessions.Select(GetProfessionName))</small>
+                </div>
+            }
+            
             <hr />
-            <small style="color: #888;">点击卸下</small>
+            <div class="tooltip-action"><small style="color: #888;">点击卸下</small></div>
         </div>
     }
     else
     {
-        // --- 槽位为空时 ---
-        <span>@Label</span>
+        <span class="empty-slot">@Label</span>
     }
-
 </div>
 
 @code {
@@ -68,21 +140,147 @@
     [Parameter]
     public string Label { get; set; } = "";
 
-    // --- vvv 这是唯一的、但也是最核心的修改 vvv ---
     private Equipment? GetEquippedItem()
     {
-        // 从 GameState.ActiveCharacter 获取装备信息，而不是 GameState.Player
-        if (GameState.ActiveCharacter is Player character && character.EquippedItems.TryGetValue(Slot, out var itemId) && !string.IsNullOrEmpty(itemId))
+        if (GameState.ActiveCharacter is Player character && 
+            character.EquippedItems.TryGetValue(Slot, out var itemId) && 
+            !string.IsNullOrEmpty(itemId))
         {
             return ItemData.GetItemById(itemId) as Equipment;
         }
         return null;
     }
-    // --- ^^^ 修改结束 ^^^ ---
 
     private string GetSlotClass()
     {
-        return GetEquippedItem() != null ? "equipped" : "empty";
+        var item = GetEquippedItem();
+        if (item == null)
+            return "empty";
+        
+        // 检查玩家是否满足装备的要求
+        bool meetsRequirements = IsRequirementMet(item) && IsProfessionAllowed(item);
+        return meetsRequirements ? "equipped" : "equipped requirement-not-met";
+    }
+    
+    private bool IsRequirementMet(Equipment item)
+    {
+        // 检查等级要求
+        if (GameState.ActiveCharacter is Player player)
+        {
+            // 如果装备有职业限制，则检查对应职业的等级
+            if (item.AllowedProfessions.Count > 0)
+            {
+                // 检查玩家当前职业是否允许使用该装备
+                var currentProfession = player.SelectedBattleProfession;
+                if (item.AllowedProfessions.Contains(currentProfession))
+                {
+                    // 检查对应职业的等级是否足够
+                    int professionLevel = player.GetLevel(currentProfession);
+                    return professionLevel >= item.RequiredLevel;
+                }
+
+                // 如果当前职业不允许使用，则无论等级如何都不满足要求
+                return false;
+            }
+            else
+            {
+                // 如果没有职业限制，则检查当前选定职业的等级
+                int level = player.GetLevel(player.SelectedBattleProfession);
+                return level >= item.RequiredLevel;
+            }
+        }
+        return true; // 如果不是玩家角色，则默认满足要求
+    }
+    
+    private bool IsProfessionAllowed(Equipment item)
+    {
+        // 如果没有职业限制，则允许所有职业装备
+        if (item.AllowedProfessions.Count == 0)
+            return true;
+            
+        // 检查职业限制
+        if (GameState.ActiveCharacter is Player player)
+        {
+                var currentProfession = player.SelectedBattleProfession;
+                return item.AllowedProfessions.Contains(currentProfession);
+        }
+        return true;
+    }
+    
+    private string GetItemRarityColor(Equipment item)
+    {
+        // 这里可以根据物品的稀有度设置不同颜色
+        // 示例实现，可以根据你游戏的实际情况调整
+        return item.Value switch
+        {
+            >= 1000 => "#ff8000", // 传说物品（橙色）
+            >= 500 => "#a335ee",  // 史诗物品（紫色）
+            >= 200 => "#0070dd",  // 精良物品（蓝色）
+            >= 50 => "#1eff00",   // 优秀物品（绿色）
+            _ => "#ffffff"        // 普通物品（白色）
+        };
+    }
+    
+    // 辅助方法：获取护甲类型名称
+    private string GetArmorTypeName(ArmorType type)
+    {
+        return type switch
+        {
+            ArmorType.Cloth => "布甲",
+            ArmorType.Leather => "皮甲",
+            ArmorType.Mail => "锁甲",
+            ArmorType.Plate => "板甲",
+            _ => "其他"
+        };
+    }
+
+    // 辅助方法：获取武器类型名称
+    private string GetWeaponTypeName(WeaponType type)
+    {
+        return type switch
+        {
+            WeaponType.Sword => "剑",
+            WeaponType.Dagger => "匕首",
+            WeaponType.Axe => "斧",
+            WeaponType.Mace => "锤",
+            WeaponType.Staff => "法杖",
+            WeaponType.Wand => "魔杖",
+            WeaponType.Bow => "弓",
+            WeaponType.Crossbow => "弩",
+            WeaponType.Gun => "枪",
+            WeaponType.Shield => "盾牌",
+            WeaponType.TwoHandSword => "双手剑",
+            WeaponType.TwoHandAxe => "双手斧",
+            WeaponType.TwoHandMace => "双手锤",
+            WeaponType.Polearm => "长柄武器",
+            _ => "其他"
+        };
+    }
+    
+    // 辅助方法：获取职业名称
+    private string GetProfessionName(BattleProfession profession)
+    {
+        return profession switch
+        {
+            BattleProfession.Warrior => "战士",
+            BattleProfession.Mage => "法师",
+            _ => profession.ToString()
+        };
+    }
+    
+    // 辅助方法：获取元素类型名称
+    private string GetElementTypeName(ElementType elementType)
+    {
+        return elementType switch
+        {
+            ElementType.Fire => "火焰",
+            ElementType.Ice => "冰霜",
+            ElementType.Lightning => "闪电",
+            ElementType.Nature => "自然",
+            ElementType.Shadow => "暗影",
+            ElementType.Holy => "神圣",
+            _ => elementType.ToString()
+        };
     }
 
     protected override void OnInitialized()
@@ -94,7 +292,6 @@
     {
         if (GetEquippedItem() != null)
         {
-            // GameState.UnequipItem 内部会自动处理当前激活的角色，无需修改
             GameState.UnequipItem(Slot);
         }
     }
