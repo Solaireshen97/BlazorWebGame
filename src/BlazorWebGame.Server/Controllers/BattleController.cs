@@ -94,6 +94,47 @@ public class BattleController : ControllerBase
     }
 
     /// <summary>
+    /// 执行战斗动作
+    /// </summary>
+    [HttpPost("action")]
+    public ActionResult<ApiResponse<bool>> ExecuteBattleAction(BattleActionRequest request)
+    {
+        try
+        {
+            var success = _gameEngine.ExecuteBattleAction(request);
+            
+            if (success)
+            {
+                return Ok(new ApiResponse<bool>
+                {
+                    Success = true,
+                    Data = true,
+                    Message = "Battle action executed successfully"
+                });
+            }
+            else
+            {
+                return BadRequest(new ApiResponse<bool>
+                {
+                    Success = false,
+                    Data = false,
+                    Message = "Failed to execute battle action"
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error executing battle action for battle {BattleId}", request.BattleId);
+            return StatusCode(500, new ApiResponse<bool>
+            {
+                Success = false,
+                Data = false,
+                Message = "Internal server error"
+            });
+        }
+    }
+
+    /// <summary>
     /// 停止战斗
     /// </summary>
     [HttpPost("stop/{battleId}")]
