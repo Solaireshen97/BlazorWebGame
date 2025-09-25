@@ -290,27 +290,25 @@ public class HybridQuestService
         return quests.Select(q => new QuestDto
         {
             Id = q.Id,
-            Name = q.Name,
+            Name = q.Title, // Quest model uses Title, not Name
             Description = q.Description,
-            Type = q.Type.ToString(),
+            Type = "Daily", // Simplified - the client Quest model doesn't have exact same type system
             Status = "Available", // 客户端版本默认为可用
-            Objectives = q.Objectives?.Select(o => new QuestObjectiveDto
+            Objectives = new List<QuestObjectiveDto>
             {
-                Id = o.Id,
-                Description = o.Description,
-                Type = o.Type.ToString(),
-                TargetId = o.TargetId,
-                RequiredCount = o.RequiredCount,
-                CurrentCount = o.CurrentCount
-            }).ToList() ?? new List<QuestObjectiveDto>(),
-            Rewards = q.Rewards?.Select(r => new QuestRewardDto
-            {
-                Type = r.Type.ToString(),
-                ItemId = r.ItemId,
-                Amount = r.Amount
-            }).ToList() ?? new List<QuestRewardDto>(),
+                new QuestObjectiveDto
+                {
+                    Id = q.TargetId,
+                    Description = q.Description,
+                    Type = q.Type.ToString(),
+                    TargetId = q.TargetId,
+                    RequiredCount = q.RequiredAmount,
+                    CurrentCount = 0
+                }
+            },
+            Rewards = new List<QuestRewardDto>(), // Client Quest model doesn't have detailed rewards
             CreatedAt = DateTime.UtcNow,
-            ExpiresAt = q.Type == QuestType.Daily ? DateTime.UtcNow.AddDays(1) : DateTime.UtcNow.AddDays(7)
+            ExpiresAt = q.IsWeekly ? DateTime.UtcNow.AddDays(7) : DateTime.UtcNow.AddDays(1)
         }).ToList();
     }
 

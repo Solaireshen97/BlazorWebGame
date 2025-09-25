@@ -322,13 +322,13 @@ public class HybridInventoryService
         }
 
         // 转换装备槽
-        foreach (var kvp in character.Equipment)
+        foreach (var kvp in character.EquippedItems)
         {
-            if (kvp.Value != null && !string.IsNullOrEmpty(kvp.Value.ItemId))
+            if (!string.IsNullOrEmpty(kvp.Value))
             {
                 dto.Equipment[kvp.Key.ToString()] = new InventorySlotDto
                 {
-                    ItemId = kvp.Value.ItemId,
+                    ItemId = kvp.Value,
                     Quantity = 1
                 };
             }
@@ -355,13 +355,9 @@ public class HybridInventoryService
         // 应用装备
         foreach (var kvp in dto.Equipment)
         {
-            if (Enum.TryParse<BlazorWebGame.Models.Items.EquipmentSlot>(kvp.Key, out var slot))
+            if (Enum.TryParse<EquipmentSlot>(kvp.Key, out var slot))
             {
-                character.Equipment[slot] = new BlazorWebGame.Models.Items.InventorySlot
-                {
-                    ItemId = kvp.Value.ItemId,
-                    Quantity = kvp.Value.Quantity
-                };
+                character.EquippedItems[slot] = kvp.Value.ItemId;
             }
         }
     }
