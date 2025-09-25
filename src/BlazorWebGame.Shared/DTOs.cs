@@ -156,3 +156,64 @@ public class OfflineAction
     public DateTime Timestamp { get; set; }
     public string Data { get; set; } = string.Empty;
 }
+
+/// <summary>
+/// 角色基本信息DTO
+/// </summary>
+public class CharacterDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public int Health { get; set; }
+    public int MaxHealth { get; set; }
+    public int Gold { get; set; }
+    public bool IsDead { get; set; }
+    public double RevivalTimeRemaining { get; set; }
+    public string CurrentAction { get; set; } = "Idle";
+    public string SelectedBattleProfession { get; set; } = "Warrior";
+    public DateTime LastUpdated { get; set; }
+}
+
+/// <summary>
+/// 角色详细信息DTO
+/// </summary>
+public class CharacterDetailsDto : CharacterDto
+{
+    public Dictionary<string, int> BattleProfessionXP { get; set; } = new();
+    public Dictionary<string, int> GatheringProfessionXP { get; set; } = new();
+    public Dictionary<string, int> ProductionProfessionXP { get; set; } = new();
+    public List<string> LearnedSharedSkills { get; set; } = new();
+    public Dictionary<string, List<string>> EquippedSkills { get; set; } = new();
+    public Dictionary<string, int> Reputation { get; set; } = new();
+    public List<string> CompletedQuestIds { get; set; } = new();
+    public Dictionary<string, int> QuestProgress { get; set; } = new();
+}
+
+/// <summary>
+/// 创建角色请求
+/// </summary>
+public class CreateCharacterRequest
+{
+    public string Name { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 角色经验值更新请求
+/// </summary>
+public class AddExperienceRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string ProfessionType { get; set; } = string.Empty; // "Battle", "Gathering", "Production"
+    public string Profession { get; set; } = string.Empty;
+    public int Amount { get; set; }
+}
+
+/// <summary>
+/// 角色状态更新请求
+/// </summary>
+public class UpdateCharacterStatusRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string Action { get; set; } = string.Empty;
+    public Dictionary<string, object> Data { get; set; } = new();
+}

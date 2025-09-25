@@ -1,5 +1,6 @@
 using BlazorWebGame;
 using BlazorWebGame.Client.Services.Api;
+using BlazorWebGame.Client.Services;
 using BlazorWebGame.Models;
 using BlazorWebGame.Services;
 using BlazorWebGame.Services.PlayerServices;
@@ -19,6 +20,11 @@ builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https:/
 builder.Services.AddScoped<GameApiService>();
 builder.Services.AddScoped<ClientGameStateService>();
 builder.Services.AddScoped<OfflineService>();
+
+// 添加服务端集成服务
+builder.Services.AddScoped<ServerCharacterApiService>();
+builder.Services.AddScoped<HybridCharacterService>();
+builder.Services.AddScoped<HybridEventService>();
 
 // 保留共享的玩家列表
 var sharedPlayerList = new List<Player>();

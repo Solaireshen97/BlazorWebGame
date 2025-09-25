@@ -28,11 +28,16 @@ builder.Services.AddCors(options =>
     });
 });
 
+// 注册共享事件管理器
+builder.Services.AddSingleton<BlazorWebGame.Shared.Events.GameEventManager>();
+
 // 注册游戏服务
 builder.Services.AddSingleton<ServerSkillSystem>();
 builder.Services.AddSingleton<ServerLootService>();
 builder.Services.AddSingleton<ServerCombatEngine>();
 builder.Services.AddSingleton<GameEngineService>();
+builder.Services.AddSingleton<ServerCharacterService>();
+builder.Services.AddSingleton<ServerEventService>();
 builder.Services.AddHostedService<GameLoopService>();
 
 var app = builder.Build();
