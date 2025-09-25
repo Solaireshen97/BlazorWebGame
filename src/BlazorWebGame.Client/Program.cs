@@ -18,26 +18,26 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 builder.Logging.SetMinimumLevel(LogLevel.Information);
 
 // 配置HTTP客户端，指向服务器（与服务器实际运行端口匹配）
-builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://localhost:7000") });
+builder.Services.AddSingleton(sp => new HttpClient { BaseAddress = new Uri("https://localhost:7000") });
 
 // 添加新的API服务
-builder.Services.AddScoped<GameApiService>();
-builder.Services.AddScoped<ClientGameStateService>();
-builder.Services.AddScoped<ClientPartyService>();
-builder.Services.AddScoped<ProductionApiService>();
-builder.Services.AddScoped<HybridProductionService>();
-builder.Services.AddScoped<OfflineService>();
+builder.Services.AddSingleton<GameApiService>();
+builder.Services.AddSingleton<ClientGameStateService>();
+builder.Services.AddSingleton<ClientPartyService>();
+builder.Services.AddSingleton<ProductionApiService>();
+builder.Services.AddSingleton<HybridProductionService>();
+builder.Services.AddSingleton<OfflineService>();
 
 // 添加新的库存和任务API服务
-builder.Services.AddScoped<ClientInventoryApiService>();
-builder.Services.AddScoped<ClientQuestApiService>();
-builder.Services.AddScoped<HybridInventoryService>();
-builder.Services.AddScoped<HybridQuestService>();
+builder.Services.AddSingleton<ClientInventoryApiService>();
+builder.Services.AddSingleton<ClientQuestApiService>();
+builder.Services.AddSingleton<HybridInventoryService>();
+builder.Services.AddSingleton<HybridQuestService>();
 
 // 添加服务端集成服务
-builder.Services.AddScoped<ServerCharacterApiService>();
-builder.Services.AddScoped<HybridCharacterService>();
-builder.Services.AddScoped<HybridEventService>();
+builder.Services.AddSingleton<ServerCharacterApiService>();
+builder.Services.AddSingleton<HybridCharacterService>();
+builder.Services.AddSingleton<HybridEventService>();
 
 // 保留共享的玩家列表
 var sharedPlayerList = new List<Player>();
