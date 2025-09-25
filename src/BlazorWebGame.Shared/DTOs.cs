@@ -317,3 +317,165 @@ public class StopGatheringRequest
 {
     public string CharacterId { get; set; } = string.Empty;
 }
+
+/// <summary>
+/// 物品数据传输对象
+/// </summary>
+public class ItemDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public int Value { get; set; }
+    public string Category { get; set; } = string.Empty;
+    public string Rarity { get; set; } = string.Empty;
+    public bool IsStackable { get; set; }
+    public int MaxStackSize { get; set; } = 99;
+    public Dictionary<string, object> Properties { get; set; } = new();
+}
+
+/// <summary>
+/// 物品槽数据传输对象
+/// </summary>
+public class InventorySlotDto
+{
+    public int SlotIndex { get; set; }
+    public string ItemId { get; set; } = string.Empty;
+    public int Quantity { get; set; }
+    public bool IsEmpty => string.IsNullOrEmpty(ItemId) || Quantity <= 0;
+}
+
+/// <summary>
+/// 角色库存数据传输对象
+/// </summary>
+public class InventoryDto
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public List<InventorySlotDto> Slots { get; set; } = new();
+    public Dictionary<string, InventorySlotDto> Equipment { get; set; } = new();
+    public Dictionary<string, List<InventorySlotDto>> QuickSlots { get; set; } = new();
+}
+
+/// <summary>
+/// 添加物品请求
+/// </summary>
+public class AddItemRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string ItemId { get; set; } = string.Empty;
+    public int Quantity { get; set; } = 1;
+}
+
+/// <summary>
+/// 使用物品请求
+/// </summary>
+public class UseItemRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string ItemId { get; set; } = string.Empty;
+    public int SlotIndex { get; set; } = -1;
+}
+
+/// <summary>
+/// 装备物品请求
+/// </summary>
+public class EquipItemRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string ItemId { get; set; } = string.Empty;
+    public string EquipmentSlot { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 出售物品请求
+/// </summary>
+public class SellItemRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string ItemId { get; set; } = string.Empty;
+    public int Quantity { get; set; } = 1;
+}
+
+/// <summary>
+/// 任务数据传输对象
+/// </summary>
+public class QuestDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty; // Daily, Weekly, Main, etc.
+    public string Status { get; set; } = string.Empty; // Available, Active, Completed
+    public List<QuestObjectiveDto> Objectives { get; set; } = new();
+    public List<QuestRewardDto> Rewards { get; set; } = new();
+    public DateTime CreatedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public DateTime? ExpiresAt { get; set; }
+}
+
+/// <summary>
+/// 任务目标数据传输对象
+/// </summary>
+public class QuestObjectiveDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty; // Kill, Collect, Gather, etc.
+    public string TargetId { get; set; } = string.Empty;
+    public int RequiredCount { get; set; }
+    public int CurrentCount { get; set; }
+    public bool IsCompleted => CurrentCount >= RequiredCount;
+}
+
+/// <summary>
+/// 任务奖励数据传输对象
+/// </summary>
+public class QuestRewardDto
+{
+    public string Type { get; set; } = string.Empty; // Experience, Gold, Item
+    public string? ItemId { get; set; }
+    public int Amount { get; set; }
+    public string? ProfessionType { get; set; }
+}
+
+/// <summary>
+/// 角色任务状态数据传输对象
+/// </summary>
+public class CharacterQuestStatusDto
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public List<QuestDto> ActiveQuests { get; set; } = new();
+    public List<QuestDto> CompletedQuests { get; set; } = new();
+    public List<QuestDto> AvailableQuests { get; set; } = new();
+    public DateTime LastDailyReset { get; set; }
+    public DateTime LastWeeklyReset { get; set; }
+}
+
+/// <summary>
+/// 接受任务请求
+/// </summary>
+public class AcceptQuestRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string QuestId { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 完成任务请求
+/// </summary>
+public class CompleteQuestRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string QuestId { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 更新任务进度请求
+/// </summary>
+public class UpdateQuestProgressRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string QuestId { get; set; } = string.Empty;
+    public string ObjectiveId { get; set; } = string.Empty;
+    public int Progress { get; set; }
+}

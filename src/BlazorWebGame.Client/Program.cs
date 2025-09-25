@@ -28,6 +28,12 @@ builder.Services.AddScoped<ProductionApiService>();
 builder.Services.AddScoped<HybridProductionService>();
 builder.Services.AddScoped<OfflineService>();
 
+// 添加新的库存和任务API服务
+builder.Services.AddScoped<ClientInventoryApiService>();
+builder.Services.AddScoped<ClientQuestApiService>();
+builder.Services.AddScoped<HybridInventoryService>();
+builder.Services.AddScoped<HybridQuestService>();
+
 // 添加服务端集成服务
 builder.Services.AddScoped<ServerCharacterApiService>();
 builder.Services.AddScoped<HybridCharacterService>();
