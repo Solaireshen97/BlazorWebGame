@@ -1,6 +1,3 @@
-using BlazorWebGame.Server.Hubs;
-using Microsoft.AspNetCore.SignalR;
-
 namespace BlazorWebGame.Server.Services;
 
 /// <summary>
@@ -9,17 +6,14 @@ namespace BlazorWebGame.Server.Services;
 public class GameLoopService : BackgroundService
 {
     private readonly GameEngineService _gameEngine;
-    private readonly IHubContext<GameHub> _hubContext;
     private readonly ILogger<GameLoopService> _logger;
     private readonly TimeSpan _tickInterval = TimeSpan.FromMilliseconds(500); // 500ms 间隔
 
     public GameLoopService(
         GameEngineService gameEngine, 
-        IHubContext<GameHub> hubContext,
         ILogger<GameLoopService> logger)
     {
         _gameEngine = gameEngine;
-        _hubContext = hubContext;
         _logger = logger;
     }
 
@@ -39,29 +33,13 @@ public class GameLoopService : BackgroundService
                 var deltaTime = (now - lastTick).TotalSeconds;
                 lastTick = now;
 
-                // 处理游戏逻辑
-                _gameEngine.ProcessBattleTick(deltaTime);
-
-                // 通知客户端更新
-                await NotifyClients();
+                // 处理游戏逻辑 - 这已经包含了SignalR实时更新
+                await _gameEngine.ProcessBattleTickAsync(deltaTime);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in game loop");
             }
-        }
-    }
-
-    private async Task NotifyClients()
-    {
-        // 获取所有活跃战斗并通知相关客户端
-        var updates = _gameEngine.GetAllBattleUpdates();
-        
-        foreach (var update in updates)
-        {
-            await _hubContext.Clients
-                .Group($"battle-{update.BattleId}")
-                .SendAsync("BattleUpdate", update);
         }
     }
 }

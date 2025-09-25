@@ -12,11 +12,15 @@ namespace BlazorWebGame.Server.Services;
 public class ServerCombatEngine
 {
     private readonly ILogger<ServerCombatEngine> _logger;
+    private readonly ServerSkillSystem _skillSystem;
+    private readonly ServerLootService _lootService;
     private readonly Random _random = new();
 
-    public ServerCombatEngine(ILogger<ServerCombatEngine> logger)
+    public ServerCombatEngine(ILogger<ServerCombatEngine> logger, ServerSkillSystem skillSystem, ServerLootService lootService)
     {
         _logger = logger;
+        _skillSystem = skillSystem;
+        _lootService = lootService;
     }
 
     /// <summary>
@@ -24,6 +28,9 @@ public class ServerCombatEngine
     /// </summary>
     public void ProcessPlayerAttack(ServerBattleContext battle, ServerBattlePlayer player, double deltaTime)
     {
+        // 应用技能系统
+        _skillSystem.ApplyPlayerSkills(player, null!, battle, deltaTime);
+        
         player.AttackCooldown -= deltaTime;
         if (player.AttackCooldown <= 0)
         {
@@ -48,11 +55,17 @@ public class ServerCombatEngine
     /// </summary>
     public void ProcessEnemyAttack(ServerBattleContext battle, ServerBattleEnemy enemy, double deltaTime)
     {
+        // 应用敌人技能系统
+        var targetPlayer = SelectTargetForEnemy(battle, enemy);
+        if (targetPlayer != null)
+        {
+            _skillSystem.ApplyEnemySkills(enemy, targetPlayer, battle, deltaTime);
+        }
+        
         enemy.AttackCooldown -= deltaTime;
         if (enemy.AttackCooldown <= 0)
         {
             // 选择目标
-            var targetPlayer = SelectTargetForEnemy(battle, enemy);
             if (targetPlayer != null)
             {
                 // 执行攻击
@@ -289,35 +302,34 @@ public class ServerCombatEngine
     /// </summary>
     public BattleResultDto CalculateBattleRewards(ServerBattleContext battle, bool victory)
     {
-        var result = new BattleResultDto
+        var result = _lootService.CalculateBattleRewards(battle, victory);
+        
+        // 分配经验给玩家
+        if (victory && result.ExperienceGained > 0)
         {
-            Victory = victory,
-            CompletedAt = DateTime.UtcNow
-        };
-
-        if (victory)
-        {
-            // 计算经验和金币奖励
-            result.ExperienceGained = battle.Enemies.Sum(e => e.XpReward);
-            result.GoldGained = battle.Enemies.Sum(e => 
-                _random.Next(e.MinGoldReward, e.MaxGoldReward + 1));
-
-            // 计算掉落物品（简化版）
-            foreach (var enemy in battle.Enemies)
-            {
-                foreach (var loot in enemy.LootTable)
-                {
-                    if (_random.NextDouble() < loot.Value)
-                    {
-                        result.ItemsLooted.Add(loot.Key);
-                    }
-                }
-            }
-
-            _logger.LogInformation("Battle rewards: {Exp} XP, {Gold} gold, {Items} items", 
-                result.ExperienceGained, result.GoldGained, result.ItemsLooted.Count);
+            _lootService.DistributeExperienceToPlayers(battle.Players, result.ExperienceGained);
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// 执行技能攻击
+    /// </summary>
+    public bool ExecuteSkillAttack(ServerBattleContext battle, ServerBattlePlayer player, string skillId, string? targetId)
+    {
+        var target = battle.Enemies.FirstOrDefault(e => e.Id == targetId && e.IsAlive);
+        if (target == null)
+        {
+            // 自动选择目标
+            target = battle.Enemies.FirstOrDefault(e => e.IsAlive);
+        }
+
+        if (target != null)
+        {
+            return _skillSystem.ExecuteSkill(skillId, player, target, battle);
+        }
+
+        return false;
     }
 }

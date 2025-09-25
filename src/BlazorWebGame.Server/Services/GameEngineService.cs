@@ -1,5 +1,7 @@
 using BlazorWebGame.Shared.DTOs;
 using BlazorWebGame.Shared.Models;
+using BlazorWebGame.Server.Hubs;
+using Microsoft.AspNetCore.SignalR;
 
 namespace BlazorWebGame.Server.Services;
 
@@ -12,11 +14,13 @@ public class GameEngineService
     private readonly Dictionary<Guid, ServerBattleContext> _serverBattleContexts = new();
     private readonly ILogger<GameEngineService> _logger;
     private readonly ServerCombatEngine _combatEngine;
+    private readonly IHubContext<GameHub> _hubContext;
 
-    public GameEngineService(ILogger<GameEngineService> logger, ServerCombatEngine combatEngine)
+    public GameEngineService(ILogger<GameEngineService> logger, ServerCombatEngine combatEngine, IHubContext<GameHub> hubContext)
     {
         _logger = logger;
         _combatEngine = combatEngine;
+        _hubContext = hubContext;
     }
 
     /// <summary>
@@ -62,7 +66,8 @@ public class GameEngineService
             BaseAttackPower = 15,
             AttacksPerSecond = 1.2,
             Level = 1,
-            SelectedBattleProfession = "Warrior"
+            SelectedBattleProfession = "Warrior",
+            EquippedSkills = new List<string> { "warrior_charge", "warrior_shield_bash" } // 示例装备的技能
         };
         context.Players.Add(player);
 
@@ -79,11 +84,13 @@ public class GameEngineService
             XpReward = 25,
             MinGoldReward = 5,
             MaxGoldReward = 15,
+            EnemyType = "Goblin",
             LootTable = new Dictionary<string, double>
             {
                 { "iron_sword", 0.1 },
                 { "health_potion", 0.3 }
-            }
+            },
+            EquippedSkills = new List<string> { "goblin_slash" } // 敌人技能
         };
         context.Enemies.Add(enemy);
 
@@ -202,7 +209,7 @@ public class GameEngineService
     /// <summary>
     /// 处理战斗逻辑更新 - 在游戏循环中调用
     /// </summary>
-    public void ProcessBattleTick(double deltaTime)
+    public async Task ProcessBattleTickAsync(double deltaTime)
     {
         var contextsToUpdate = _serverBattleContexts.Values.Where(c => c.IsActive).ToList();
         
@@ -213,8 +220,31 @@ public class GameEngineService
             // 更新对应的DTO
             if (_activeBattles.ContainsKey(context.BattleId))
             {
-                _activeBattles[context.BattleId] = ConvertToDto(context);
+                var previousState = _activeBattles[context.BattleId];
+                var newState = ConvertToDto(context);
+                _activeBattles[context.BattleId] = newState;
+                
+                // 通过SignalR发送实时更新
+                await BroadcastBattleUpdate(newState);
             }
+        }
+    }
+
+    /// <summary>
+    /// 向客户端广播战斗更新
+    /// </summary>
+    private async Task BroadcastBattleUpdate(BattleStateDto battleState)
+    {
+        try
+        {
+            var groupName = $"battle-{battleState.BattleId}";
+            await _hubContext.Clients.Group(groupName).SendAsync("BattleUpdate", battleState);
+            
+            _logger.LogDebug("Battle update broadcasted for battle {BattleId}", battleState.BattleId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error broadcasting battle update for battle {BattleId}", battleState.BattleId);
         }
     }
 
@@ -383,38 +413,12 @@ public class GameEngineService
     /// </summary>
     private bool ExecuteSkillAction(ServerBattleContext context, ServerBattlePlayer player, string? skillId, string? targetId)
     {
-        // 简化的技能系统实现
-        if (string.IsNullOrEmpty(skillId) || !player.EquippedSkills.Contains(skillId))
+        if (string.IsNullOrEmpty(skillId))
         {
             return false;
         }
 
-        if (player.SkillCooldowns.TryGetValue(skillId, out var cooldown) && cooldown > 0)
-        {
-            return false; // 技能还在冷却中
-        }
-
-        // 这里应该根据技能ID执行具体的技能逻辑
-        // 现在简化为一个强化攻击
-        var target = context.Enemies.FirstOrDefault(e => e.Id == targetId && e.IsAlive);
-        if (target != null)
-        {
-            // 临时增加攻击力
-            var originalAttack = player.BaseAttackPower;
-            player.BaseAttackPower = (int)(player.BaseAttackPower * 1.5);
-            
-            _combatEngine.ProcessPlayerAttack(context, player, 0);
-            
-            // 恢复原始攻击力
-            player.BaseAttackPower = originalAttack;
-            
-            // 设置技能冷却
-            player.SkillCooldowns[skillId] = 3.0; // 3秒冷却
-            
-            return true;
-        }
-
-        return false;
+        return _combatEngine.ExecuteSkillAttack(context, player, skillId, targetId);
     }
 
     /// <summary>
