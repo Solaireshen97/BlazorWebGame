@@ -10,7 +10,7 @@ public class GameApiService
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<GameApiService> _logger;
-    private string _baseUrl = "https://localhost:7290"; // 默认服务器地址
+    private string _baseUrl = "https://localhost:7000"; // 默认服务器地址
 
     public string BaseUrl => _baseUrl;
 

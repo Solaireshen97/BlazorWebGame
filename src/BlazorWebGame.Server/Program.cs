@@ -12,12 +12,14 @@ builder.Services.AddSwaggerGen();
 // 添加 SignalR
 builder.Services.AddSignalR();
 
-// 添加 CORS 支持
+// 修改 CORS 支持
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins("https://localhost:7051", "http://localhost:5000")
+        policy.WithOrigins(
+                "https://localhost:7051",  // 客户端 HTTPS
+                "http://localhost:5190")   // 客户端 HTTP
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
