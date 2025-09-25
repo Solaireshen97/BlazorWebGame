@@ -36,6 +36,7 @@ builder.Services.AddSingleton<ServerSkillSystem>();
 builder.Services.AddSingleton<ServerLootService>();
 builder.Services.AddSingleton<ServerCombatEngine>();
 builder.Services.AddSingleton<ServerPartyService>();
+builder.Services.AddSingleton<ServerProductionService>();
 builder.Services.AddSingleton<GameEngineService>();
 builder.Services.AddSingleton<ServerCharacterService>();
 builder.Services.AddSingleton<ServerEventService>();
@@ -51,7 +52,7 @@ if (app.Environment.IsDevelopment())
     // 运行战斗系统测试
     try
     {
-        TestBattleSystem.RunBattleTest(logger);
+        TestBattleSystem.RunBattleTest(app.Services, logger);
     }
     catch (Exception ex)
     {

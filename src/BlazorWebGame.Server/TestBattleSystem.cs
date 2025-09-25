@@ -10,14 +10,12 @@ namespace BlazorWebGame.Server;
 /// </summary>
 public class TestBattleSystem
 {
-    public static void RunBattleTest(ILogger logger)
+    public static void RunBattleTest(IServiceProvider serviceProvider, ILogger logger)
     {
         logger.LogInformation("=== 服务端战斗系统测试开始 ===");
 
-        // 创建测试用的服务
-        var skillSystem = new ServerSkillSystem(logger as ILogger<ServerSkillSystem>);
-        var lootService = new ServerLootService(logger as ILogger<ServerLootService>);
-        var combatEngine = new ServerCombatEngine(logger as ILogger<ServerCombatEngine>, skillSystem, lootService);
+        // 从DI容器获取测试用的服务
+        var combatEngine = serviceProvider.GetRequiredService<ServerCombatEngine>();
 
         // 创建测试战斗上下文
         var battle = CreateTestBattle();
@@ -78,6 +76,7 @@ public class TestBattleSystem
         }
 
         // 测试技能系统
+        var skillSystem = serviceProvider.GetRequiredService<ServerSkillSystem>();
         TestSkillSystem(skillSystem, logger);
 
         logger.LogInformation("=== 服务端战斗系统测试完成 ===");
