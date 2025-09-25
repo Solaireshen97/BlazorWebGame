@@ -1,0 +1,2811 @@
+﻿Blazor WebAssembly 游戏前后端分离迁移方案
+目录
+1.	#1-项目准备阶段
+2.	#2-创建服务端项目
+3.	#3-定义共享数据契约
+4.	#4-实现服务端api
+5.	#5-客户端api服务实现
+6.	#6-渐进式迁移战斗系统
+7.	#7-数据同步与状态管理
+8.	#8-测试与部署
+---
+1. 项目准备阶段
+1.1 备份现有项目
+# 创建项目备份
+git checkout -b pre-migration-backup
+git add .
+git commit -m "备份：迁移前的完整项目状态"
+git push origin pre-migration-backup
+
+# 创建迁移分支
+git checkout -b feature/client-server-separation
+1.2 调整解决方案结构
+创建新的解决方案结构：
+BlazorWebGame/
+├── BlazorWebGame.sln
+├── src/
+│   ├── BlazorWebGame.Client/          # 现有的 Blazor WebAssembly 项目
+│   ├── BlazorWebGame.Server/          # 新建的 ASP.NET Core Web API
+│   ├── BlazorWebGame.Shared/          # 共享的模型和契约
+│   └── BlazorWebGame.Domain/          # 领域逻辑（从Client迁移）
+└── tests/
+    ├── BlazorWebGame.Server.Tests/
+    └── BlazorWebGame.Client.Tests/
+1.3 创建新项目
+# 在 src 目录下执行
+dotnet new webapi -n BlazorWebGame.Server
+dotnet new classlib -n BlazorWebGame.Shared
+dotnet new classlib -n BlazorWebGame.Domain
+
+# 添加项目引用
+cd BlazorWebGame.Server
+dotnet add reference ../BlazorWebGame.Shared/BlazorWebGame.Shared.csproj
+dotnet add reference ../BlazorWebGame.Domain/BlazorWebGame.Domain.csproj
+
+cd ../BlazorWebGame.Client
+dotnet add reference ../BlazorWebGame.Shared/BlazorWebGame.Shared.csproj
+---
+2. 创建服务端项目
+2.1 配置服务端 Program.cs
+// BlazorWebGame.Server/Program.cs
+using BlazorWebGame.Server.Hubs;
+using BlazorWebGame.Server.Services;
+using BlazorWebGame.Server.Middleware;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// 添加服务
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+// 配置 CORS - 允许 Blazor 客户端访问
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("BlazorPolicy", policy =>
+    {
+        policy.WithOrigins(builder.Configuration["ClientUrl"] ?? "https://localhost:7000")
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();
+    });
+});
+
+// 添加 SignalR
+builder.Services.AddSignalR();
+
+// 配置数据库
+builder.Services.AddDbContext<GameDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// 配置身份验证
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+        };
+    });
+
+// 注册游戏服务
+builder.Services.AddSingleton<GameEngine>();
+builder.Services.AddScoped<IBattleService, BattleService>();
+builder.Services.AddScoped<ICharacterService, CharacterService>();
+builder.Services.AddScoped<IInventoryService, InventoryService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+
+// 添加后台服务
+builder.Services.AddHostedService<GameLoopHostedService>();
+
+// 配置日志
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
+
+var app = builder.Build();
+
+// 配置中间件管道
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+app.UseCors("BlazorPolicy");
+app.UseAuthentication();
+app.UseAuthorization();
+
+// 自定义中间件
+app.UseMiddleware<ErrorHandlingMiddleware>();
+app.UseMiddleware<RequestLoggingMiddleware>();
+
+app.MapControllers();
+app.MapHub<GameHub>("/gamehub");
+
+// 确保数据库已创建
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<GameDbContext>();
+    dbContext.Database.EnsureCreated();
+}
+
+app.Run();
+2.2 配置文件 appsettings.json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=BlazorWebGameDb;Trusted_Connection=True;"
+  },
+  "ClientUrl": "https://localhost:7000",
+  "Jwt": {
+    "Key": "your-256-bit-secret-key-here-change-in-production",
+    "Issuer": "BlazorWebGame",
+    "Audience": "BlazorWebGameClient",
+    "ExpireMinutes": 60
+  },
+  "GameSettings": {
+    "BattleTickIntervalMs": 100,
+    "MaxBattlesPerPlayer": 1,
+    "BattleRefreshDelaySeconds": 3
+  }
+}
+2.3 数据库上下文
+// BlazorWebGame.Server/Data/GameDbContext.cs
+using Microsoft.EntityFrameworkCore;
+using BlazorWebGame.Domain.Entities;
+
+namespace BlazorWebGame.Server.Data;
+
+public class GameDbContext : DbContext
+{
+    public GameDbContext(DbContextOptions<GameDbContext> options) : base(options) { }
+
+    public DbSet<CharacterEntity> Characters { get; set; }
+    public DbSet<UserEntity> Users { get; set; }
+    public DbSet<InventoryItemEntity> InventoryItems { get; set; }
+    public DbSet<BattleLogEntity> BattleLogs { get; set; }
+    public DbSet<PartyEntity> Parties { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        // 配置用户实体
+        modelBuilder.Entity<UserEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Username).IsUnique();
+            entity.HasMany(e => e.Characters)
+                  .WithOne(e => e.User)
+                  .HasForeignKey(e => e.UserId);
+        });
+
+        // 配置角色实体
+        modelBuilder.Entity<CharacterEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasMaxLength(50);
+            entity.HasMany(e => e.InventoryItems)
+                  .WithOne(e => e.Character)
+                  .HasForeignKey(e => e.CharacterId);
+        });
+
+        // 配置物品栏实体
+        modelBuilder.Entity<InventoryItemEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.CharacterId, e.SlotIndex }).IsUnique();
+        });
+
+        // 配置战斗日志
+        modelBuilder.Entity<BattleLogEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.CharacterId);
+            entity.HasIndex(e => e.Timestamp);
+        });
+
+        // 配置队伍
+        modelBuilder.Entity<PartyEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.MemberIds)
+                  .HasConversion(
+                      v => string.Join(',', v),
+                      v => v.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList()
+                  );
+        });
+    }
+}
+---
+3. 定义共享数据契约
+3.1 基础响应模型
+// BlazorWebGame.Shared/Responses/ApiResponse.cs
+namespace BlazorWebGame.Shared.Responses;
+
+public class ApiResponse<T>
+{
+    public bool Success { get; set; }
+    public T? Data { get; set; }
+    public string? Message { get; set; }
+    public List<string> Errors { get; set; } = new();
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+}
+
+public class PagedResponse<T> : ApiResponse<List<T>>
+{
+    public int PageNumber { get; set; }
+    public int PageSize { get; set; }
+    public int TotalRecords { get; set; }
+    public int TotalPages => (int)Math.Ceiling(TotalRecords / (double)PageSize);
+}
+3.2 战斗相关契约
+// BlazorWebGame.Shared/Contracts/Battle/BattleRequests.cs
+namespace BlazorWebGame.Shared.Contracts.Battle;
+
+public class StartBattleRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string EnemyId { get; set; } = string.Empty;
+    public Guid? PartyId { get; set; }
+}
+
+public class StartDungeonRequest
+{
+    public Guid PartyId { get; set; }
+    public string DungeonId { get; set; } = string.Empty;
+}
+
+public class SetTargetRequest
+{
+    public Guid BattleId { get; set; }
+    public string PlayerId { get; set; } = string.Empty;
+    public string TargetName { get; set; } = string.Empty;
+}
+
+// BlazorWebGame.Shared/Contracts/Battle/BattleResponses.cs
+public class BattleStateDto
+{
+    public Guid BattleId { get; set; }
+    public BattleStatus Status { get; set; }
+    public BattleType Type { get; set; }
+    public List<PlayerBattleStateDto> Players { get; set; } = new();
+    public List<EnemyBattleStateDto> Enemies { get; set; } = new();
+    public int? WaveNumber { get; set; }
+    public string? DungeonId { get; set; }
+    public DateTime LastUpdate { get; set; }
+    public List<BattleEventDto> RecentEvents { get; set; } = new();
+}
+
+public class PlayerBattleStateDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public int Health { get; set; }
+    public int MaxHealth { get; set; }
+    public double AttackProgress { get; set; } // 0-100
+    public Dictionary<string, int> SkillCooldowns { get; set; } = new();
+    public bool IsDead { get; set; }
+    public string? CurrentTarget { get; set; }
+}
+
+public class EnemyBattleStateDto
+{
+    public string Name { get; set; } = string.Empty;
+    public int Level { get; set; }
+    public int Health { get; set; }
+    public int MaxHealth { get; set; }
+    public double AttackProgress { get; set; }
+    public Dictionary<string, int> SkillCooldowns { get; set; } = new();
+}
+
+public class BattleEventDto
+{
+    public DateTime Timestamp { get; set; }
+    public BattleEventType Type { get; set; }
+    public string ActorName { get; set; } = string.Empty;
+    public string? TargetName { get; set; }
+    public int? Value { get; set; }
+    public string? SkillName { get; set; }
+}
+
+public enum BattleEventType
+{
+    Attack,
+    SkillUse,
+    Damage,
+    Heal,
+    Death,
+    Revive,
+    StatusEffect,
+    WaveComplete,
+    BattleComplete
+}
+3.3 角色相关契约
+// BlazorWebGame.Shared/Contracts/Character/CharacterDtos.cs
+namespace BlazorWebGame.Shared.Contracts.Character;
+
+public class CharacterDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public int Health { get; set; }
+    public int MaxHealth { get; set; }
+    public BattleProfession SelectedProfession { get; set; }
+    public Dictionary<BattleProfession, int> ProfessionLevels { get; set; } = new();
+    public PlayerActionState CurrentAction { get; set; }
+    public AttributesDto Attributes { get; set; } = new();
+    public List<string> EquippedSkillIds { get; set; } = new();
+    public Dictionary<EquipmentSlot, string?> Equipment { get; set; } = new();
+}
+
+public class AttributesDto
+{
+    public int Strength { get; set; }
+    public int Agility { get; set; }
+    public int Intellect { get; set; }
+    public int Spirit { get; set; }
+    public int Stamina { get; set; }
+}
+
+public class CharacterUpdateRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public Dictionary<string, object> Updates { get; set; } = new();
+}
+---
+4. 实现服务端API
+4.1 战斗控制器
+// BlazorWebGame.Server/Controllers/BattleController.cs
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using BlazorWebGame.Shared.Contracts.Battle;
+using BlazorWebGame.Server.Services;
+
+namespace BlazorWebGame.Server.Controllers;
+
+[Authorize]
+[ApiController]
+[Route("api/[controller]")]
+public class BattleController : ControllerBase
+{
+    private readonly IBattleService _battleService;
+    private readonly ILogger<BattleController> _logger;
+
+    public BattleController(IBattleService battleService, ILogger<BattleController> logger)
+    {
+        _battleService = battleService;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// 开始新战斗
+    /// </summary>
+    [HttpPost("start")]
+    public async Task<ActionResult<ApiResponse<BattleStateDto>>> StartBattle(StartBattleRequest request)
+    {
+        try
+        {
+            var userId = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            // 验证角色归属
+            if (!await _battleService.IsCharacterOwnedByUser(request.CharacterId, userId))
+                return Forbid("You don't own this character");
+
+            var result = await _battleService.StartBattleAsync(request);
+            
+            if (result.Success)
+            {
+                _logger.LogInformation("Battle started for character {CharacterId}", request.CharacterId);
+                return Ok(result);
+            }
+
+            return BadRequest(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error starting battle");
+            return StatusCode(500, new ApiResponse<BattleStateDto> 
+            { 
+                Success = false, 
+                Message = "An error occurred while starting the battle" 
+            });
+        }
+    }
+
+    /// <summary>
+    /// 获取当前战斗状态
+    /// </summary>
+    [HttpGet("{battleId}")]
+    public async Task<ActionResult<ApiResponse<BattleStateDto>>> GetBattleState(Guid battleId)
+    {
+        try
+        {
+            var userId = User.FindFirst("UserId")?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            var result = await _battleService.GetBattleStateAsync(battleId, userId);
+            
+            if (result.Success)
+                return Ok(result);
+
+            return NotFound(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting battle state");
+            return StatusCode(500, new ApiResponse<BattleStateDto> 
+            { 
+                Success = false, 
+                Message = "An error occurred while retrieving battle state" 
+            });
+        }
+    }
+
+    /// <summary>
+    /// 获取角色的活跃战斗
+    /// </summary>
+    [HttpGet("character/{characterId}/active")]
+    public async Task<ActionResult<ApiResponse<BattleStateDto>>> GetActiveBattle(string characterId)
+    {
+        try
+        {
+            var userId = User.FindFirst("UserId")?.Value;
+            if (!await _battleService.IsCharacterOwnedByUser(characterId, userId))
+                return Forbid();
+
+            var result = await _battleService.GetActiveBattleForCharacterAsync(characterId);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting active battle");
+            return StatusCode(500, new ApiResponse<BattleStateDto> 
+            { 
+                Success = false, 
+                Message = "An error occurred" 
+            });
+        }
+    }
+
+    /// <summary>
+    /// 设置战斗目标
+    /// </summary>
+    [HttpPost("target")]
+    public async Task<ActionResult<ApiResponse<bool>>> SetTarget(SetTargetRequest request)
+    {
+        try
+        {
+            var userId = User.FindFirst("UserId")?.Value;
+            var result = await _battleService.SetTargetAsync(request, userId);
+            
+            if (result.Success)
+                return Ok(result);
+
+            return BadRequest(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting target");
+            return StatusCode(500, new ApiResponse<bool> 
+            { 
+                Success = false, 
+                Message = "An error occurred" 
+            });
+        }
+    }
+
+    /// <summary>
+    /// 停止战斗
+    /// </summary>
+    [HttpPost("{battleId}/stop")]
+    public async Task<ActionResult<ApiResponse<bool>>> StopBattle(Guid battleId)
+    {
+        try
+        {
+            var userId = User.FindFirst("UserId")?.Value;
+            var result = await _battleService.StopBattleAsync(battleId, userId);
+            
+            if (result.Success)
+            {
+                _logger.LogInformation("Battle {BattleId} stopped", battleId);
+                return Ok(result);
+            }
+
+            return BadRequest(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error stopping battle");
+            return StatusCode(500, new ApiResponse<bool> 
+            { 
+                Success = false, 
+                Message = "An error occurred" 
+            });
+        }
+    }
+
+    /// <summary>
+    /// 开始副本
+    /// </summary>
+    [HttpPost("dungeon/start")]
+    public async Task<ActionResult<ApiResponse<BattleStateDto>>> StartDungeon(StartDungeonRequest request)
+    {
+        try
+        {
+            var userId = User.FindFirst("UserId")?.Value;
+            
+            // 验证是否是队长
+            if (!await _battleService.IsPartyCaptain(request.PartyId, userId))
+                return Forbid("Only party captain can start dungeons");
+
+            var result = await _battleService.StartDungeonAsync(request);
+            
+            if (result.Success)
+            {
+                _logger.LogInformation("Dungeon started for party {PartyId}", request.PartyId);
+                return Ok(result);
+            }
+
+            return BadRequest(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error starting dungeon");
+            return StatusCode(500, new ApiResponse<BattleStateDto> 
+            { 
+                Success = false, 
+                Message = "An error occurred" 
+            });
+        }
+    }
+}
+4.2 战斗服务实现
+// BlazorWebGame.Server/Services/BattleService.cs
+using BlazorWebGame.Server.Data;
+using BlazorWebGame.Shared.Contracts.Battle;
+using Microsoft.EntityFrameworkCore;
+
+namespace BlazorWebGame.Server.Services;
+
+public interface IBattleService
+{
+    Task<ApiResponse<BattleStateDto>> StartBattleAsync(StartBattleRequest request);
+    Task<ApiResponse<BattleStateDto>> GetBattleStateAsync(Guid battleId, string userId);
+    Task<ApiResponse<BattleStateDto>> GetActiveBattleForCharacterAsync(string characterId);
+    Task<ApiResponse<bool>> SetTargetAsync(SetTargetRequest request, string userId);
+    Task<ApiResponse<bool>> StopBattleAsync(Guid battleId, string userId);
+    Task<ApiResponse<BattleStateDto>> StartDungeonAsync(StartDungeonRequest request);
+    Task<bool> IsCharacterOwnedByUser(string characterId, string userId);
+    Task<bool> IsPartyCaptain(Guid partyId, string userId);
+}
+
+public class BattleService : IBattleService
+{
+    private readonly GameEngine _gameEngine;
+    private readonly GameDbContext _dbContext;
+    private readonly ILogger<BattleService> _logger;
+
+    public BattleService(GameEngine gameEngine, GameDbContext dbContext, ILogger<BattleService> logger)
+    {
+        _gameEngine = gameEngine;
+        _dbContext = dbContext;
+        _logger = logger;
+    }
+
+    public async Task<ApiResponse<BattleStateDto>> StartBattleAsync(StartBattleRequest request)
+    {
+        try
+        {
+            // 检查角色是否已在战斗中
+            if (_gameEngine.IsCharacterInBattle(request.CharacterId))
+            {
+                return new ApiResponse<BattleStateDto>
+                {
+                    Success = false,
+                    Message = "Character is already in battle"
+                };
+            }
+
+            // 从数据库加载角色数据
+            var characterEntity = await _dbContext.Characters
+                .Include(c => c.InventoryItems)
+                .FirstOrDefaultAsync(c => c.Id == request.CharacterId);
+
+            if (characterEntity == null)
+            {
+                return new ApiResponse<BattleStateDto>
+                {
+                    Success = false,
+                    Message = "Character not found"
+                };
+            }
+
+            // 转换为领域模型
+            var character = MapToDomainModel(characterEntity);
+
+            // 启动战斗
+            var battleContext = _gameEngine.StartBattle(character, request.EnemyId, request.PartyId);
+
+            // 保存战斗日志
+            await LogBattleStart(battleContext);
+
+            return new ApiResponse<BattleStateDto>
+            {
+                Success = true,
+                Data = MapToBattleStateDto(battleContext)
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in StartBattleAsync");
+            return new ApiResponse<BattleStateDto>
+            {
+                Success = false,
+                Message = "An unexpected error occurred"
+            };
+        }
+    }
+
+    public async Task<ApiResponse<BattleStateDto>> GetBattleStateAsync(Guid battleId, string userId)
+    {
+        var battleContext = _gameEngine.GetBattle(battleId);
+        
+        if (battleContext == null)
+        {
+            return new ApiResponse<BattleStateDto>
+            {
+                Success = false,
+                Message = "Battle not found"
+            };
+        }
+
+        // 验证用户是否有权查看此战斗
+        var hasAccess = await HasAccessToBattle(battleContext, userId);
+        if (!hasAccess)
+        {
+            return new ApiResponse<BattleStateDto>
+            {
+                Success = false,
+                Message = "Access denied"
+            };
+        }
+
+        return new ApiResponse<BattleStateDto>
+        {
+            Success = true,
+            Data = MapToBattleStateDto(battleContext)
+        };
+    }
+
+    // 映射方法
+    private Player MapToDomainModel(CharacterEntity entity)
+    {
+        // 实现实体到领域模型的映射
+        return new Player
+        {
+            Id = entity.Id,
+            Name = entity.Name,
+            Health = entity.Health,
+            // ... 其他属性映射
+        };
+    }
+
+    private BattleStateDto MapToBattleStateDto(BattleContext context)
+    {
+        return new BattleStateDto
+        {
+            BattleId = context.Id,
+            Status = context.IsCompleted ? BattleStatus.Completed : BattleStatus.InProgress,
+            Type = context.BattleType,
+            Players = context.Players.Select(MapToPlayerStateDto).ToList(),
+            Enemies = context.Enemies.Select(MapToEnemyStateDto).ToList(),
+            WaveNumber = context.WaveNumber,
+            DungeonId = context.DungeonId,
+            LastUpdate = DateTime.UtcNow
+        };
+    }
+
+    private PlayerBattleStateDto MapToPlayerStateDto(Player player)
+    {
+        return new PlayerBattleStateDto
+        {
+            Id = player.Id,
+            Name = player.Name,
+            Health = player.Health,
+            MaxHealth = player.GetTotalMaxHealth(),
+            AttackProgress = CalculateAttackProgress(player),
+            SkillCooldowns = player.SkillCooldowns,
+            IsDead = player.IsDead
+        };
+    }
+
+    private EnemyBattleStateDto MapToEnemyStateDto(Enemy enemy)
+    {
+        return new EnemyBattleStateDto
+        {
+            Name = enemy.Name,
+            Level = enemy.Level,
+            Health = enemy.Health,
+            MaxHealth = enemy.MaxHealth,
+            AttackProgress = CalculateAttackProgress(enemy),
+            SkillCooldowns = enemy.SkillCooldowns
+        };
+    }
+
+    private double CalculateAttackProgress(object combatant)
+    {
+        // 计算攻击进度百分比
+        if (combatant is Player player)
+        {
+            var totalCooldown = 1.0 / player.AttacksPerSecond;
+            return Math.Clamp((1 - player.AttackCooldown / totalCooldown) * 100, 0, 100);
+        }
+        else if (combatant is Enemy enemy)
+        {
+            var totalCooldown = 1.0 / enemy.AttacksPerSecond;
+            return Math.Clamp((1 - enemy.EnemyAttackCooldown / totalCooldown) * 100, 0, 100);
+        }
+        return 0;
+    }
+
+    // 其他方法实现...
+}
+4.3 游戏引擎（服务端）
+// BlazorWebGame.Server/Services/GameEngine.cs
+using System.Collections.Concurrent;
+using BlazorWebGame.Domain.Models;
+
+namespace BlazorWebGame.Server.Services;
+
+public class GameEngine
+{
+    private readonly ConcurrentDictionary<Guid, BattleContext> _activeBattles = new();
+    private readonly ConcurrentDictionary<string, Guid> _characterBattleMap = new();
+    private readonly ILogger<GameEngine> _logger;
+    private readonly IServiceProvider _serviceProvider;
+
+    public GameEngine(ILogger<GameEngine> logger, IServiceProvider serviceProvider)
+    {
+        _logger = logger;
+        _serviceProvider = serviceProvider;
+    }
+
+    public BattleContext StartBattle(Player character, string enemyId, Guid? partyId = null)
+    {
+        // 创建敌人实例
+        var enemyTemplate = MonsterTemplates.GetById(enemyId);
+        if (enemyTemplate == null)
+            throw new ArgumentException($"Enemy template {enemyId} not found");
+
+        var enemy = enemyTemplate.Clone();
+
+        // 创建战斗上下文
+        var battleContext = new BattleContext
+        {
+            BattleType = partyId.HasValue ? BattleType.Party : BattleType.Solo,
+            Party = partyId.HasValue ? GetParty(partyId.Value) : null
+        };
+
+        // 添加参与者
+        if (partyId.HasValue && battleContext.Party != null)
+        {
+            // 添加所有队伍成员
+            foreach (var memberId in battleContext.Party.MemberIds)
+            {
+                var member = GetCharacter(memberId);
+                if (member != null && !member.IsDead)
+                {
+                    battleContext.Players.Add(member);
+                    _characterBattleMap[memberId] = battleContext.Id;
+                }
+            }
+        }
+        else
+        {
+            // 单人战斗
+            battleContext.Players.Add(character);
+            _characterBattleMap[character.Id] = battleContext.Id;
+        }
+
+        // 添加敌人
+        battleContext.Enemies.Add(enemy);
+
+        // 保存战斗上下文
+        _activeBattles[battleContext.Id] = battleContext;
+
+        _logger.LogInformation("Battle {BattleId} started with {PlayerCount} players vs {EnemyCount} enemies",
+            battleContext.Id, battleContext.Players.Count, battleContext.Enemies.Count);
+
+        return battleContext;
+    }
+
+    public void ProcessBattleTick(double deltaTime)
+    {
+        var battlesToRemove = new List<Guid>();
+
+        foreach (var battle in _activeBattles.Values)
+        {
+            try
+            {
+                ProcessSingleBattle(battle, deltaTime);
+
+                if (battle.IsCompleted)
+                {
+                    battlesToRemove.Add(battle.Id);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing battle {BattleId}", battle.Id);
+            }
+        }
+
+        // 清理完成的战斗
+        foreach (var battleId in battlesToRemove)
+        {
+            CompleteBattle(battleId);
+        }
+    }
+
+    private void ProcessSingleBattle(BattleContext battle, double deltaTime)
+    {
+        // 处理玩家行动
+        foreach (var player in battle.Players.Where(p => !p.IsDead))
+        {
+            ProcessPlayerTurn(player, battle, deltaTime);
+        }
+
+        // 处理敌人行动
+        foreach (var enemy in battle.Enemies.Where(e => e.Health > 0))
+        {
+            ProcessEnemyTurn(enemy, battle, deltaTime);
+        }
+
+        // 检查战斗结束条件
+        CheckBattleCompletion(battle);
+    }
+
+    private void ProcessPlayerTurn(Player player, BattleContext battle, double deltaTime)
+    {
+        // 更新冷却时间
+        player.AttackCooldown = Math.Max(0, player.AttackCooldown - deltaTime);
+        UpdateSkillCooldowns(player.SkillCooldowns, deltaTime);
+
+        // 如果可以攻击
+        if (player.AttackCooldown <= 0)
+        {
+            var target = SelectPlayerTarget(player, battle);
+            if (target != null)
+            {
+                PerformPlayerAttack(player, target, battle);
+                player.AttackCooldown = 1.0 / player.AttacksPerSecond;
+            }
+        }
+
+        // 处理技能
+        ProcessPlayerSkills(player, battle, deltaTime);
+    }
+
+    private void ProcessEnemyTurn(Enemy enemy, BattleContext battle, double deltaTime)
+    {
+        // 更新冷却时间
+        enemy.EnemyAttackCooldown = Math.Max(0, enemy.EnemyAttackCooldown - deltaTime);
+        UpdateSkillCooldowns(enemy.SkillCooldowns, deltaTime);
+
+        // 如果可以攻击
+        if (enemy.EnemyAttackCooldown <= 0)
+        {
+            var target = SelectEnemyTarget(enemy, battle);
+            if (target != null)
+            {
+                PerformEnemyAttack(enemy, target, battle);
+                enemy.EnemyAttackCooldown = 1.0 / enemy.AttacksPerSecond;
+            }
+        }
+
+        // 处理技能
+        ProcessEnemySkills(enemy, battle, deltaTime);
+    }
+
+    private void UpdateSkillCooldowns(Dictionary<string, int> cooldowns, double deltaTime)
+    {
+        var keysToUpdate = cooldowns.Keys.ToList();
+        foreach (var key in keysToUpdate)
+        {
+            cooldowns[key] = Math.Max(0, cooldowns[key] - (int)(deltaTime * 1000));
+        }
+    }
+
+    // 获取战斗相关方法
+    public BattleContext? GetBattle(Guid battleId)
+    {
+        return _activeBattles.TryGetValue(battleId, out var battle) ? battle : null;
+    }
+
+    public bool IsCharacterInBattle(string characterId)
+    {
+        return _characterBattleMap.ContainsKey(characterId);
+    }
+
+    public Guid? GetCharacterBattleId(string characterId)
+    {
+        return _characterBattleMap.TryGetValue(characterId, out var battleId) ? battleId : null;
+    }
+
+    // 辅助方法...
+    private Player? GetCharacter(string characterId)
+    {
+        // 从服务获取角色数据
+        using var scope = _serviceProvider.CreateScope();
+        var characterService = scope.ServiceProvider.GetRequiredService<ICharacterService>();
+        return characterService.GetCharacterAsync(characterId).Result;
+    }
+
+    private Party? GetParty(Guid partyId)
+    {
+        // 从服务获取队伍数据
+        using var scope = _serviceProvider.CreateScope();
+        var partyService = scope.ServiceProvider.GetRequiredService<IPartyService>();
+        return partyService.GetPartyAsync(partyId).Result;
+    }
+}
+4.4 后台游戏循环服务
+// BlazorWebGame.Server/Services/GameLoopHostedService.cs
+namespace BlazorWebGame.Server.Services;
+
+public class GameLoopHostedService : BackgroundService
+{
+    private readonly GameEngine _gameEngine;
+    private readonly IHubContext<GameHub> _hubContext;
+    private readonly ILogger<GameLoopHostedService> _logger;
+    private readonly IConfiguration _configuration;
+    private readonly TimeSpan _tickInterval;
+
+    public GameLoopHostedService(
+        GameEngine gameEngine,
+        IHubContext<GameHub> hubContext,
+        ILogger<GameLoopHostedService> logger,
+        IConfiguration configuration)
+    {
+        _gameEngine = gameEngine;
+        _hubContext = hubContext;
+        _logger = logger;
+        _configuration = configuration;
+        _tickInterval = TimeSpan.FromMilliseconds(
+            configuration.GetValue<int>("GameSettings:BattleTickIntervalMs", 100));
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        _logger.LogInformation("Game loop service started with tick interval: {Interval}ms", 
+            _tickInterval.TotalMilliseconds);
+
+        var timer = new PeriodicTimer(_tickInterval);
+        var lastTick = DateTime.UtcNow;
+
+        while (await timer.WaitForNextTickAsync(stoppingToken))
+        {
+            try
+            {
+                var now = DateTime.UtcNow;
+                var deltaTime = (now - lastTick).TotalSeconds;
+                lastTick = now;
+
+                // 处理游戏逻辑
+                _gameEngine.ProcessBattleTick(deltaTime);
+
+                // 通知客户端更新
+                await NotifyClients();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in game loop");
+            }
+        }
+    }
+
+    private async Task NotifyClients()
+    {
+        // 获取所有活跃战斗并通知相关客户端
+        var updates = _gameEngine.GetAllBattleUpdates();
+        
+        foreach (var update in updates)
+        {
+            await _hubContext.Clients
+                .Group($"battle-{update.BattleId}")
+                .SendAsync("BattleUpdate", update);
+        }
+    }
+}
+---
+5. 客户端API服务实现
+5.1 HTTP客户端服务
+// BlazorWebGame.Client/Services/GameApiService.cs
+using System.Net.Http.Json;
+using BlazorWebGame.Shared.Contracts.Battle;
+using BlazorWebGame.Shared.Responses;
+
+namespace BlazorWebGame.Client.Services;
+
+public class GameApiService
+{
+    private readonly HttpClient _httpClient;
+    private readonly ILogger<GameApiService> _logger;
+    private readonly TokenService _tokenService;
+
+    public GameApiService(HttpClient httpClient, ILogger<GameApiService> logger, TokenService tokenService)
+    {
+        _httpClient = httpClient;
+        _logger = logger;
+        _tokenService = tokenService;
+    }
+
+    // 配置请求头
+    private async Task ConfigureHeaders()
+    {
+        var token = await _tokenService.GetTokenAsync();
+        if (!string.IsNullOrEmpty(token))
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = 
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        }
+    }
+
+    // 战斗相关API
+    public async Task<ApiResponse<BattleStateDto>> StartBattleAsync(StartBattleRequest request)
+    {
+        try
+        {
+            await ConfigureHeaders();
+            var response = await _httpClient.PostAsJsonAsync("api/battle/start", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<ApiResponse<BattleStateDto>>() 
+                    ?? new ApiResponse<BattleStateDto> { Success = false };
+            }
+
+            return new ApiResponse<BattleStateDto>
+            {
+                Success = false,
+                Message = $"Server returned {response.StatusCode}"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error starting battle");
+            return new ApiResponse<BattleStateDto>
+            {
+                Success = false,
+                Message = "Network error occurred"
+            };
+        }
+    }
+
+    public async Task<ApiResponse<BattleStateDto>> GetBattleStateAsync(Guid battleId)
+    {
+        try
+        {
+            await ConfigureHeaders();
+            return await _httpClient.GetFromJsonAsync<ApiResponse<BattleStateDto>>(
+                $"api/battle/{battleId}") ?? new ApiResponse<BattleStateDto> { Success = false };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting battle state");
+            return new ApiResponse<BattleStateDto>
+            {
+                Success = false,
+                Message = "Failed to get battle state"
+            };
+        }
+    }
+
+    public async Task<ApiResponse<BattleStateDto>> GetActiveBattleAsync(string characterId)
+    {
+        try
+        {
+            await ConfigureHeaders();
+            return await _httpClient.GetFromJsonAsync<ApiResponse<BattleStateDto>>(
+                $"api/battle/character/{characterId}/active") 
+                ?? new ApiResponse<BattleStateDto> { Success = false };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting active battle");
+            return new ApiResponse<BattleStateDto>
+            {
+                Success = false,
+                Message = "Failed to get active battle"
+            };
+        }
+    }
+
+    public async Task<ApiResponse<bool>> StopBattleAsync(Guid battleId)
+    {
+        try
+        {
+            await ConfigureHeaders();
+            var response = await _httpClient.PostAsync($"api/battle/{battleId}/stop", null);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<ApiResponse<bool>>() 
+                    ?? new ApiResponse<bool> { Success = false };
+            }
+
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Message = $"Server returned {response.StatusCode}"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error stopping battle");
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "Failed to stop battle"
+            };
+        }
+    }
+
+    // 其他API方法...
+}
+5.2 SignalR 客户端服务
+// BlazorWebGame.Client/Services/GameHubService.cs
+using Microsoft.AspNetCore.SignalR.Client;
+using BlazorWebGame.Shared.Contracts.Battle;
+
+namespace BlazorWebGame.Client.Services;
+
+public class GameHubService : IAsyncDisposable
+{
+    private HubConnection? _hubConnection;
+    private readonly ILogger<GameHubService> _logger;
+    private readonly TokenService _tokenService;
+    private readonly string _hubUrl;
+
+    public event Action<BattleStateDto>? OnBattleUpdate;
+    public event Action<string>? OnNotification;
+    public event Action<bool>? OnConnectionChanged;
+
+    public bool IsConnected => _hubConnection?.State == HubConnectionState.Connected;
+
+    public GameHubService(IConfiguration configuration, ILogger<GameHubService> logger, TokenService tokenService)
+    {
+        _logger = logger;
+        _tokenService = tokenService;
+        _hubUrl = configuration["ServerUrl"] + "/gamehub";
+    }
+
+    public async Task StartAsync()
+    {
+        try
+        {
+            var token = await _tokenService.GetTokenAsync();
+            
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl(_hubUrl, options =>
+                {
+                    options.AccessTokenProvider = () => Task.FromResult(token);
+                })
+                .WithAutomaticReconnect()
+                .Build();
+
+            // 注册事件处理
+            _hubConnection.On<BattleStateDto>("BattleUpdate", battleState =>
+            {
+                _logger.LogDebug("Received battle update");
+                OnBattleUpdate?.Invoke(battleState);
+            });
+
+            _hubConnection.On<string>("Notification", message =>
+            {
+                _logger.LogDebug("Received notification: {Message}", message);
+                OnNotification?.Invoke(message);
+            });
+
+            // 连接状态变化
+            _hubConnection.Closed += async (error) =>
+            {
+                OnConnectionChanged?.Invoke(false);
+                _logger.LogWarning("Hub connection closed: {Error}", error?.Message);
+                await Task.Delay(5000);
+                await StartAsync(); // 自动重连
+            };
+
+            _hubConnection.Reconnected += (connectionId) =>
+            {
+                OnConnectionChanged?.Invoke(true);
+                _logger.LogInformation("Hub reconnected with ID: {ConnectionId}", connectionId);
+                return Task.CompletedTask;
+            };
+
+            await _hubConnection.StartAsync();
+            OnConnectionChanged?.Invoke(true);
+            _logger.LogInformation("Hub connection started");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error starting hub connection");
+            OnConnectionChanged?.Invoke(false);
+        }
+    }
+
+    public async Task JoinBattleGroupAsync(Guid battleId)
+    {
+        if (_hubConnection?.State == HubConnectionState.Connected)
+        {
+            try
+            {
+                await _hubConnection.InvokeAsync("JoinBattleGroup", battleId);
+                _logger.LogDebug("Joined battle group: {BattleId}", battleId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error joining battle group");
+            }
+        }
+    }
+
+    public async Task LeaveBattleGroupAsync(Guid battleId)
+    {
+        if (_hubConnection?.State == HubConnectionState.Connected)
+        {
+            try
+            {
+                await _hubConnection.InvokeAsync("LeaveBattleGroup", battleId);
+                _logger.LogDebug("Left battle group: {BattleId}", battleId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error leaving battle group");
+            }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection != null)
+        {
+            await _hubConnection.DisposeAsync();
+        }
+    }
+}
+5.3 客户端状态管理服务
+// BlazorWebGame.Client/Services/ClientGameStateService.cs
+namespace BlazorWebGame.Client.Services;
+
+/// <summary>
+/// 客户端游戏状态管理服务 - 替代原有的 GameStateService
+/// </summary>
+public class ClientGameStateService
+{
+    private readonly GameApiService _apiService;
+    private readonly GameHubService _hubService;
+    private readonly ILogger<ClientGameStateService> _logger;
+    
+    // 缓存的状态
+    private CharacterDto? _activeCharacter;
+    private BattleStateDto? _currentBattleState;
+    private readonly Dictionary<string, CharacterDto> _characterCache = new();
+    
+    // 事件
+    public event Action? OnStateChanged;
+    public event Action<BattleStateDto>? OnBattleStateChanged;
+    
+    public CharacterDto? ActiveCharacter => _activeCharacter;
+    public BattleStateDto? CurrentBattleState => _currentBattleState;
+
+    public ClientGameStateService(
+        GameApiService apiService, 
+        GameHubService hubService,
+        ILogger<ClientGameStateService> logger)
+    {
+        _apiService = apiService;
+        _hubService = hubService;
+        _logger = logger;
+        
+        // 订阅 SignalR 事件
+        _hubService.OnBattleUpdate += HandleBattleUpdate;
+    }
+
+    /// <summary>
+    /// 初始化客户端状态
+    /// </summary>
+    public async Task InitializeAsync()
+    {
+        try
+        {
+            // 启动 SignalR 连接
+            await _hubService.StartAsync();
+            
+            // 加载角色数据
+            await LoadCharactersAsync();
+            
+            // 检查是否有活跃战斗
+            if (_activeCharacter != null)
+            {
+                var battleResponse = await _apiService.GetActiveBattleAsync(_activeCharacter.Id);
+                if (battleResponse.Success && battleResponse.Data != null)
+                {
+                    _currentBattleState = battleResponse.Data;
+                    await _hubService.JoinBattleGroupAsync(battleResponse.Data.BattleId);
+                }
+            }
+            
+            NotifyStateChanged();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error initializing client state");
+        }
+    }
+
+    /// <summary>
+    /// 开始战斗
+    /// </summary>
+    public async Task<bool> StartBattleAsync(string enemyId, Guid? partyId = null)
+    {
+        if (_activeCharacter == null)
+        {
+            _logger.LogWarning("No active character to start battle");
+            return false;
+        }
+
+        try
+        {
+            var request = new StartBattleRequest
+            {
+                CharacterId = _activeCharacter.Id,
+                EnemyId = enemyId,
+                PartyId = partyId
+            };
+
+            var response = await _apiService.StartBattleAsync(request);
+            
+            if (response.Success && response.Data != null)
+            {
+                _currentBattleState = response.Data;
+                await _hubService.JoinBattleGroupAsync(response.Data.BattleId);
+                OnBattleStateChanged?.Invoke(response.Data);
+                NotifyStateChanged();
+                return true;
+            }
+            
+            _logger.LogWarning("Failed to start battle: {Message}", response.Message);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error starting battle");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 停止当前战斗
+    /// </summary>
+    public async Task StopCurrentBattleAsync()
+    {
+        if (_currentBattleState == null)
+        {
+            _logger.LogWarning("No active battle to stop");
+            return;
+        }
+
+        try
+        {
+            var battleId = _currentBattleState.BattleId;
+            var response = await _apiService.StopBattleAsync(battleId);
+            
+            if (response.Success)
+            {
+                await _hubService.LeaveBattleGroupAsync(battleId);
+                _currentBattleState = null;
+                OnBattleStateChanged?.Invoke(null);
+                NotifyStateChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error stopping battle");
+        }
+    }
+
+    /// <summary>
+    /// 处理来自 SignalR 的战斗更新
+    /// </summary>
+    private void HandleBattleUpdate(BattleStateDto battleState)
+    {
+        if (_currentBattleState?.BattleId == battleState.BattleId)
+        {
+            _currentBattleState = battleState;
+            OnBattleStateChanged?.Invoke(battleState);
+            NotifyStateChanged();
+            
+            // 如果战斗结束，清理状态
+            if (battleState.Status == BattleStatus.Completed)
+            {
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(3000); // 显示结果3秒
+                    await _hubService.LeaveBattleGroupAsync(battleState.BattleId);
+                    _currentBattleState = null;
+                    OnBattleStateChanged?.Invoke(null);
+                    NotifyStateChanged();
+                });
+            }
+        }
+    }
+
+    private void NotifyStateChanged()
+    {
+        OnStateChanged?.Invoke();
+    }
+
+    // 其他辅助方法...
+}
+---
+6. 渐进式迁移战斗系统
+6.1 修改 Battle.razor 支持双模式
+@* BlazorWebGame.Client/Pages/Battle.razor - 渐进式迁移版本 *@
+@page "/battle"
+@using BlazorWebGame.Models
+@using BlazorWebGame.Services
+@using BlazorWebGame.Client.Services
+@using BlazorWebGame.Shared.Contracts.Battle
+@inject GameStateService OldGameState @* 保留旧服务 *@
+@inject ClientGameStateService NewGameState @* 新的客户端服务 *@
+@inject GameApiService GameApi
+@inject IConfiguration Configuration
+@implements IDisposable
+
+<PageTitle>自动战斗</PageTitle>
+
+@code {
+    // 功能开关 - 可以从配置读取
+    private bool _useNewBattleSystem = false;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        // 从配置读取是否使用新系统
+        _useNewBattleSystem = Configuration.GetValue<bool>("Features:UseServerBattle", false);
+        
+        if (_useNewBattleSystem)
+        {
+            // 使用新系统
+            NewGameState.OnBattleStateChanged += HandleNewBattleUpdate;
+            await NewGameState.InitializeAsync();
+        }
+        else
+        {
+            // 使用旧系统
+            OldGameState.OnStateChanged += HandleOldStateChanged;
+            _combatService = ServiceLocator.GetService<CombatService>();
+        }
+    }
+
+    /// <summary>
+    /// 启动战斗 - 兼容新旧系统
+    /// </summary>
+    private async Task StartBattle(Enemy enemyTemplate)
+    {
+        if (_useNewBattleSystem)
+        {
+            // 新系统：调用服务端API
+            var success = await NewGameState.StartBattleAsync(enemyTemplate.Id, GetCurrentPartyId());
+            if (success)
+            {
+                CloseSelectors();
+            }
+        }
+        else
+        {
+            // 旧系统：本地战斗
+            StartBattleOldSystem(enemyTemplate);
+        }
+    }
+
+    /// <summary>
+    /// 获取当前战斗状态 - 兼容新旧系统
+    /// </summary>
+    private BattleInfo? GetCurrentBattleInfo()
+    {
+        if (_useNewBattleSystem)
+        {
+            // 从新系统获取
+            var battleState = NewGameState.CurrentBattleState;
+            if (battleState != null)
+            {
+                return new BattleInfo
+                {
+                    IsActive = true,
+                    PlayerHealth = battleState.Players.FirstOrDefault()?.Health ?? 0,
+                    PlayerMaxHealth = battleState.Players.FirstOrDefault()?.MaxHealth ?? 1,
+                    EnemyHealth = battleState.Enemies.FirstOrDefault()?.Health ?? 0,
+                    EnemyMaxHealth = battleState.Enemies.FirstOrDefault()?.MaxHealth ?? 1,
+                    // 其他映射...
+                };
+            }
+        }
+        else
+        {
+            // 从旧系统获取
+            var character = OldGameState.ActiveCharacter;
+            var battleContext = _combatService?.GetBattleContextForPlayer(character?.Id);
+            if (battleContext != null)
+            {
+                return new BattleInfo
+                {
+                    IsActive = true,
+                    PlayerHealth = character.Health,
+                    PlayerMaxHealth = character.GetTotalMaxHealth(),
+                    // 其他映射...
+                };
+            }
+        }
+        
+        return null;
+    }
+
+    // 新系统的战斗更新处理
+    private void HandleNewBattleUpdate(BattleStateDto? battleState)
+    {
+        InvokeAsync(() =>
+        {
+            StateHasChanged();
+        });
+    }
+
+    // 旧系统的状态更新处理
+    private void HandleOldStateChanged()
+    {
+        // 保持原有逻辑
+        HandleStateChanged();
+    }
+
+    public void Dispose()
+    {
+        if (_useNewBattleSystem)
+        {
+            NewGameState.OnBattleStateChanged -= HandleNewBattleUpdate;
+        }
+        else
+        {
+            OldGameState.OnStateChanged -= HandleOldStateChanged;
+        }
+    }
+}
+
+@* 内部数据结构用于统一显示 *@
+@code {
+    private class BattleInfo
+    {
+        public bool IsActive { get; set; }
+        public int PlayerHealth { get; set; }
+        public int PlayerMaxHealth { get; set; }
+        public int EnemyHealth { get; set; }
+        public int EnemyMaxHealth { get; set; }
+        // 其他需要的属性...
+    }
+}
+6.2 配置客户端服务
+// BlazorWebGame.Client/Program.cs
+using BlazorWebGame.Client.Services;
+
+var builder = WebAssemblyHostBuilder.CreateDefault(args);
+builder.RootComponents.Add<App>("#app");
+
+// 配置 HTTP 客户端
+builder.Services.AddScoped(sp => new HttpClient 
+{ 
+    BaseAddress = new Uri(builder.Configuration["ServerUrl"] ?? "https://localhost:7001/") 
+});
+
+// 注册新服务
+builder.Services.AddScoped<TokenService>();
+builder.Services.AddScoped<GameApiService>();
+builder.Services.AddScoped<GameHubService>();
+builder.Services.AddScoped<ClientGameStateService>();
+
+// 保留旧服务以便渐进式迁移
+builder.Services.AddScoped<GameStateService>();
+builder.Services.AddScoped<GameStorage>();
+// ... 其他旧服务
+
+// 配置日志
+builder.Logging.SetMinimumLevel(LogLevel.Debug);
+
+await builder.Build().RunAsync();
+6.3 特性开关配置
+// BlazorWebGame.Client/wwwroot/appsettings.json
+{
+  "ServerUrl": "https://localhost:7001",
+  "Features": {
+    "UseServerBattle": false,     // 开始时设为 false，逐步开启
+    "UseServerInventory": false,
+    "UseServerCharacter": false
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "BlazorWebGame": "Debug"
+    }
+  }
+}
+---
+7. 数据同步与状态管理
+7.1 实现双向数据同步
+// BlazorWebGame.Client/Services/DataSyncService.cs
+namespace BlazorWebGame.Client.Services;
+
+/// <summary>
+/// 数据同步服务 - 在迁移期间保持客户端和服务端数据同步
+/// </summary>
+public class DataSyncService
+{
+    private readonly GameApiService _apiService;
+    private readonly GameStateService _oldGameState;
+    private readonly ILogger<DataSyncService> _logger;
+    private Timer? _syncTimer;
+    private readonly TimeSpan _syncInterval = TimeSpan.FromSeconds(30);
+
+    public DataSyncService(
+        GameApiService apiService, 
+        GameStateService oldGameState,
+        ILogger<DataSyncService> logger)
+    {
+        _apiService = apiService;
+        _oldGameState = oldGameState;
+        _logger = logger;
+    }
+
+    public void StartSync()
+    {
+        _syncTimer = new Timer(async _ => await SyncData(), null, TimeSpan.Zero, _syncInterval);
+    }
+
+    private async Task SyncData()
+    {
+        try
+        {
+            var character = _oldGameState.ActiveCharacter;
+            if (character == null) return;
+
+            // 同步角色数据到服务端
+            await _apiService.UpdateCharacterAsync(new CharacterUpdateRequest
+            {
+                CharacterId = character.Id,
+                Updates = new Dictionary<string, object>
+                {
+                    ["Health"] = character.Health,
+                    ["Level"] = character.GetLevel(character.SelectedBattleProfession),
+                    ["Gold"] = character.Gold,
+                    // 其他需要同步的数据...
+                }
+            });
+
+            _logger.LogDebug("Data synced to server");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error syncing data");
+        }
+    }
+
+    public void StopSync()
+    {
+        _syncTimer?.Dispose();
+    }
+}
+7.2 错误处理和重试机制
+// BlazorWebGame.Client/Services/ResilientApiService.cs
+using Polly;
+using Polly.Extensions.Http;
+
+namespace BlazorWebGame.Client.Services;
+
+/// <summary>
+/// 带有重试和容错的 API 服务包装器
+/// </summary>
+public class ResilientApiService
+{
+    private readonly GameApiService _apiService;
+    private readonly IAsyncPolicy<HttpResponseMessage> _retryPolicy;
+    private readonly ILogger<ResilientApiService> _logger;
+
+    public ResilientApiService(
+        GameApiService apiService,
+        ILogger<ResilientApiService> logger)
+    {
+        _apiService = apiService;
+        _logger = logger;
+
+        // 配置重试策略
+        _retryPolicy = HttpPolicyExtensions
+            .HandleTransientHttpError() // 处理网络错误和5XX错误
+            .OrResult(msg => !msg.IsSuccessStatusCode)
+            .WaitAndRetryAsync(
+                3, // 重试3次
+                retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)), // 指数退避
+                onRetry: (outcome, timespan, retryCount, context) =>
+                {
+                    _logger.LogWarning("API调用失败，{RetryCount}秒后重试第{RetryCount}次", 
+                        timespan.TotalSeconds, retryCount);
+                });
+    }
+
+    /// <summary>
+    /// 带重试的战斗开始请求
+    /// </summary>
+    public async Task<ApiResponse<BattleStateDto>> StartBattleWithRetry(StartBattleRequest request)
+    {
+        try
+        {
+            // 使用 Polly 执行带重试的请求
+            var response = await _retryPolicy.ExecuteAsync(async () =>
+            {
+                var result = await _apiService.StartBattleAsync(request);
+                if (!result.Success)
+                {
+                    throw new HttpRequestException($"API返回失败: {result.Message}");
+                }
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            });
+
+            return await _apiService.StartBattleAsync(request);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "启动战斗失败，所有重试都已用尽");
+            return new ApiResponse<BattleStateDto>
+            {
+                Success = false,
+                Message = "无法连接到服务器，请检查网络连接"
+            };
+        }
+    }
+}
+7.3 离线模式支持
+// BlazorWebGame.Client/Services/OfflineService.cs
+namespace BlazorWebGame.Client.Services;
+
+/// <summary>
+/// 离线模式服务 - 在服务器不可用时提供基本功能
+/// </summary>
+public class OfflineService
+{
+    private readonly ILogger<OfflineService> _logger;
+    private readonly GameStorage _storage;
+    private bool _isOfflineMode = false;
+    private readonly Queue<OfflineAction> _pendingActions = new();
+
+    public bool IsOfflineMode => _isOfflineMode;
+    public event Action<bool>? OnOfflineModeChanged;
+
+    public OfflineService(ILogger<OfflineService> logger, GameStorage storage)
+    {
+        _logger = logger;
+        _storage = storage;
+    }
+
+    /// <summary>
+    /// 进入离线模式
+    /// </summary>
+    public async Task EnterOfflineMode()
+    {
+        _isOfflineMode = true;
+        _logger.LogWarning("进入离线模式");
+        
+        // 保存当前状态到本地
+        await SaveCurrentStateLocally();
+        
+        OnOfflineModeChanged?.Invoke(true);
+    }
+
+    /// <summary>
+    /// 退出离线模式并同步数据
+    /// </summary>
+    public async Task<bool> ExitOfflineMode(GameApiService apiService)
+    {
+        try
+        {
+            _logger.LogInformation("尝试退出离线模式并同步数据");
+            
+            // 执行所有待处理的操作
+            while (_pendingActions.Count > 0)
+            {
+                var action = _pendingActions.Dequeue();
+                await ExecutePendingAction(action, apiService);
+            }
+            
+            _isOfflineMode = false;
+            OnOfflineModeChanged?.Invoke(false);
+            _logger.LogInformation("成功退出离线模式");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "退出离线模式失败");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 记录离线操作
+    /// </summary>
+    public void RecordOfflineAction(OfflineActionType type, object data)
+    {
+        var action = new OfflineAction
+        {
+            Id = Guid.NewGuid(),
+            Type = type,
+            Data = JsonSerializer.Serialize(data),
+            Timestamp = DateTime.UtcNow
+        };
+        
+        _pendingActions.Enqueue(action);
+        _logger.LogDebug("记录离线操作: {Type}", type);
+    }
+
+    private async Task SaveCurrentStateLocally()
+    {
+        // 保存当前游戏状态到 localStorage
+        var offlineData = new OfflineGameData
+        {
+            SavedAt = DateTime.UtcNow,
+            PendingActions = _pendingActions.ToList()
+        };
+        
+        await _storage.SaveOfflineDataAsync(offlineData);
+    }
+
+    private async Task ExecutePendingAction(OfflineAction action, GameApiService apiService)
+    {
+        _logger.LogDebug("执行离线操作: {Type}", action.Type);
+        
+        switch (action.Type)
+        {
+            case OfflineActionType.StartBattle:
+                var battleRequest = JsonSerializer.Deserialize<StartBattleRequest>(action.Data);
+                if (battleRequest != null)
+                {
+                    await apiService.StartBattleAsync(battleRequest);
+                }
+                break;
+                
+            case OfflineActionType.UpdateCharacter:
+                var updateRequest = JsonSerializer.Deserialize<CharacterUpdateRequest>(action.Data);
+                if (updateRequest != null)
+                {
+                    await apiService.UpdateCharacterAsync(updateRequest);
+                }
+                break;
+                
+            // 其他操作类型...
+        }
+    }
+}
+
+/// <summary>
+/// 离线操作类型
+/// </summary>
+public enum OfflineActionType
+{
+    StartBattle,
+    StopBattle,
+    UpdateCharacter,
+    UseItem,
+    EquipItem
+}
+
+/// <summary>
+/// 离线操作记录
+/// </summary>
+public class OfflineAction
+{
+    public Guid Id { get; set; }
+    public OfflineActionType Type { get; set; }
+    public string Data { get; set; } = string.Empty;
+    public DateTime Timestamp { get; set; }
+}
+
+/// <summary>
+/// 离线游戏数据
+/// </summary>
+public class OfflineGameData
+{
+    public DateTime SavedAt { get; set; }
+    public List<OfflineAction> PendingActions { get; set; } = new();
+}
+7.4 更新后的 Battle.razor 完整版（支持新旧双模式）
+@* BlazorWebGame.Client/Pages/Battle.razor - 完整的双模式版本 *@
+@page "/battle"
+@using BlazorWebGame.Models
+@using BlazorWebGame.Services
+@using BlazorWebGame.Client.Services
+@using BlazorWebGame.Shared.Contracts.Battle
+@inject GameStateService OldGameState
+@inject ClientGameStateService NewGameState
+@inject GameApiService GameApi
+@inject GameHubService GameHub
+@inject OfflineService OfflineService
+@inject IConfiguration Configuration
+@inject ILogger<Battle> Logger
+@implements IDisposable
+
+<PageTitle>自动战斗</PageTitle>
+
+@* 离线模式提示 *@
+@if (OfflineService.IsOfflineMode)
+{
+    <div class="alert alert-warning">
+        <i class="bi bi-wifi-off"></i> 离线模式 - 数据将在恢复连接后同步
+    </div>
+}
+
+@code {
+    // 功能开关
+    private bool _useNewBattleSystem = false;
+    private bool _isConnected = false;
+    private BattleStateDto? _serverBattleState;
+    private System.Threading.Timer? _fallbackPoller;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // 从配置读取是否使用新系统
+            _useNewBattleSystem = Configuration.GetValue<bool>("Features:UseServerBattle", false);
+            
+            if (_useNewBattleSystem)
+            {
+                // 初始化新系统
+                await InitializeNewSystem();
+            }
+            else
+            {
+                // 使用旧系统
+                InitializeOldSystem();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "初始化战斗页面时出错");
+        }
+    }
+    
+    /// <summary>
+    /// 初始化新的客户端-服务器系统
+    /// </summary>
+    private async Task InitializeNewSystem()
+    {
+        // 订阅事件
+        NewGameState.OnBattleStateChanged += HandleNewBattleUpdate;
+        GameHub.OnBattleUpdate += HandleSignalRBattleUpdate;
+        GameHub.OnConnectionChanged += HandleConnectionChanged;
+        OfflineService.OnOfflineModeChanged += HandleOfflineModeChanged;
+        
+        try
+        {
+            // 初始化游戏状态
+            await NewGameState.InitializeAsync();
+            
+            // 启动 SignalR 连接
+            await GameHub.StartAsync();
+            _isConnected = GameHub.IsConnected;
+            
+            // 如果 SignalR 连接失败，启动轮询作为备用
+            if (!_isConnected)
+            {
+                StartFallbackPolling();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "初始化新系统失败，切换到离线模式");
+            await OfflineService.EnterOfflineMode();
+        }
+    }
+    
+    /// <summary>
+    /// 初始化旧系统
+    /// </summary>
+    private void InitializeOldSystem()
+    {
+        OldGameState.OnStateChanged += HandleOldStateChanged;
+        _combatService = ServiceLocator.GetService<CombatService>();
+    }
+    
+    /// <summary>
+    /// 启动备用轮询机制
+    /// </summary>
+    private void StartFallbackPolling()
+    {
+        _fallbackPoller = new System.Threading.Timer(async _ =>
+        {
+            if (_serverBattleState != null && !_isConnected)
+            {
+                try
+                {
+                    var response = await GameApi.GetBattleStateAsync(_serverBattleState.BattleId);
+                    if (response.Success && response.Data != null)
+                    {
+                        await InvokeAsync(() =>
+                        {
+                            _serverBattleState = response.Data;
+                            StateHasChanged();
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "轮询战斗状态失败");
+                }
+            }
+        }, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(500));
+    }
+    
+    /// <summary>
+    /// 处理连接状态变化
+    /// </summary>
+    private void HandleConnectionChanged(bool isConnected)
+    {
+        _isConnected = isConnected;
+        
+        InvokeAsync(async () =>
+        {
+            if (isConnected)
+            {
+                // 连接恢复，停止轮询
+                _fallbackPoller?.Dispose();
+                _fallbackPoller = null;
+                
+                // 如果在离线模式，尝试同步
+                if (OfflineService.IsOfflineMode)
+                {
+                    await OfflineService.ExitOfflineMode(GameApi);
+                }
+            }
+            else
+            {
+                // 连接断开，启动轮询
+                StartFallbackPolling();
+            }
+            
+            StateHasChanged();
+        });
+    }
+    
+    /// <summary>
+    /// 处理离线模式变化
+    /// </summary>
+    private void HandleOfflineModeChanged(bool isOffline)
+    {
+        InvokeAsync(() =>
+        {
+            StateHasChanged();
+        });
+    }
+    
+    /// <summary>
+    /// 处理 SignalR 战斗更新
+    /// </summary>
+    private void HandleSignalRBattleUpdate(BattleStateDto battleState)
+    {
+        InvokeAsync(() =>
+        {
+            _serverBattleState = battleState;
+            StateHasChanged();
+        });
+    }
+    
+    /// <summary>
+    /// 处理新系统的战斗更新
+    /// </summary>
+    private void HandleNewBattleUpdate(BattleStateDto? battleState)
+    {
+        InvokeAsync(() =>
+        {
+            _serverBattleState = battleState;
+            StateHasChanged();
+        });
+    }
+}
+
+@* 统一的 UI 部分 - 根据模式显示不同数据 *@
+@if (GetActiveCharacter() is Player character)
+{
+    var battleInfo = GetCurrentBattleInfo();
+    var party = GetPartyForCharacter(character.Id);
+    
+    <div class="battle-page-layout">
+        <!-- 控制栏保持不变 -->
+        <div class="battle-control-bar">
+            <button class="btn btn-outline-primary" @onclick="ToggleMonsterSelector">
+                <i class="bi bi-list-ul"></i> 选择战斗目标
+            </button>
+            
+            @if (party != null && party.CaptainId == character.Id)
+            {
+                <button class="btn btn-outline-info" @onclick="ToggleDungeonSelector"
+                        disabled="@(battleInfo?.IsInDungeonBattle ?? false)">
+                    <i class="bi bi-dungeon"></i> 选择副本
+                </button>
+            }
+            
+            <div class="view-switcher d-flex gap-2">
+                <button class="btn @(_currentView == BattleView.Battle ? "btn-primary" : "btn-outline-primary")" 
+                        @onclick="() => _currentView = BattleView.Battle">
+                    战斗
+                </button>
+                <button class="btn @(_currentView == BattleView.Party ? "btn-primary" : "btn-outline-primary")" 
+                        @onclick="() => _currentView = BattleView.Party">
+                    队伍
+                </button>
+            </div>
+        </div>
+        
+        @* 战斗视图 *@
+        @if (_currentView == BattleView.Battle)
+        {
+            <!-- 战斗信息面板 -->
+            <div class="battle-info-panel mb-3">
+                @if (battleInfo?.IsActive == true)
+                {
+                    <div class="battle-status active">
+                        <h5 class="battle-title">
+                            @battleInfo.BattleTitle
+                            <button class="btn btn-danger btn-sm" @onclick="StopCurrentBattle">
+                                <i class="bi bi-stop-circle"></i> 结束战斗
+                            </button>
+                        </h5>
+                        <div class="battle-status-text">
+                            <i class="bi bi-play-circle"></i> @battleInfo.StatusText
+                        </div>
+                    </div>
+                }
+                else if (battleInfo?.IsInRefresh == true)
+                {
+                    <div class="battle-status cooldown">
+                        <h5 class="battle-title">
+                            <span>战斗冷却中</span>
+                            <button class="btn btn-danger btn-sm" @onclick="StopCurrentBattle">
+                                <i class="bi bi-stop-circle"></i> 结束战斗
+                            </button>
+                        </h5>
+                        <div class="battle-status-text">
+                            <i class="bi bi-hourglass-split"></i> @battleInfo.RefreshTimeRemaining.ToString("F1")秒后自动开始下一场战斗
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="battle-status waiting">
+                        <h5 class="battle-title">等待开始战斗</h5>
+                        <div class="battle-status-text">
+                            <i class="bi bi-info-circle"></i> 请选择一个怪物进行战斗
+                        </div>
+                    </div>
+                }
+            </div>
+            
+            <!-- 战斗核心区域 -->
+            <div class="battle-core-area">
+                <!-- 左侧：玩家和队伍 -->
+                <div class="battle-left-side">
+                    @if (party != null)
+                    {
+                        <!-- 队伍成员显示 -->
+                        <div class="party-members-container horizontal">
+                            @foreach (var memberInfo in GetPartyMembersInfo(party, battleInfo))
+                            {
+                                <div class="party-member-card @(memberInfo.IsDead ? "member-dead" : "") @(memberInfo.IsCaptain ? "captain" : "")">
+                                    <div class="member-avatar">@memberInfo.Name.Substring(0, 1)</div>
+                                    <div class="member-info">
+                                        <div class="member-name">
+                                            @memberInfo.Name @(memberInfo.IsCaptain ? "(队长)" : "")
+                                        </div>
+                                        <div class="member-profession">
+                                            @memberInfo.Profession
+                                        </div>
+                                        <div class="mini-health-bar">
+                                            <div class="mini-health-fill" style="width: @memberInfo.HealthPercentage%"></div>
+                                            <span class="mini-health-text">@memberInfo.Health/@memberInfo.MaxHealth</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    
+                    <!-- 玩家卡片 -->
+                    <div class="character-card player-card">
+                        @if (character.IsDead)
+                        {
+                            <div class="player-dead-card">
+                                <h3>你被击败了...</h3>
+                                <p>复活倒计时: @character.RevivalTimeRemaining.ToString("F1")s</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <!-- 玩家信息显示 -->
+                            @{
+                                var playerInfo = GetPlayerBattleInfo(character, battleInfo);
+                            }
+                            <div class="character-image-placeholder"><span>头像</span></div>
+                            <div class="player-name-container">
+                                <div class="player-level-badge">
+                                    @playerInfo.Profession Lv.@playerInfo.Level
+                                </div>
+                                <h5 class="player-name">@playerInfo.Name</h5>
+                            </div>
+                            <div class="health-bar-container">
+                                <div class="health-bar player-health" style="width: @playerInfo.HealthPercentage%;"></div>
+                                <span class="health-text">@playerInfo.Health / @playerInfo.MaxHealth</span>
+                            </div>
+                            <div class="attack-progress-container">
+                                <div class="attack-progress-bar" style="width: @playerInfo.AttackProgress%;"></div>
+                            </div>
+                            <!-- 技能显示 -->
+                            <div class="action-bar">
+                                <div class="equipped-skills-display">
+                                    @foreach (var skill in playerInfo.EquippedSkills)
+                                    {
+                                        <div class="skill-icon-container" title="@skill.Name: @skill.Description">
+                                            <div class="skill-icon">@skill.Name.Substring(0, 1)</div>
+                                            @if (skill.Cooldown > 0)
+                                            {
+                                                <div class="cooldown-overlay"><span>@skill.Cooldown</span></div>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+                
+                <!-- 右侧：敌人 -->
+                <div class="battle-right-side">
+                    @{
+                        var enemyInfo = GetCurrentEnemyInfo(battleInfo);
+                    }
+                    
+                    <!-- 主要敌人卡片 -->
+                    <div class="character-card enemy-card">
+                        @if (enemyInfo != null)
+                        {
+                            <div class="character-image-placeholder"><span>怪</span></div>
+                            <h5>@enemyInfo.Name</h5>
+                            <div class="health-bar-container">
+                                <div class="health-bar enemy-health" style="width: @enemyInfo.HealthPercentage%;"></div>
+                                <span class="health-text">@enemyInfo.Health / @enemyInfo.MaxHealth</span>
+                            </div>
+                            <div class="attack-progress-container">
+                                <div class="attack-progress-bar" style="width: @enemyInfo.AttackProgress%;"></div>
+                            </div>
+                            <!-- 敌人技能 -->
+                            <div class="action-bar">
+                                <div class="equipped-skills-display">
+                                    @foreach (var skill in enemyInfo.Skills)
+                                    {
+                                        <div class="skill-icon-container" title="@skill.Name: @skill.Description">
+                                            <div class="skill-icon">@skill.Name.Substring(0, 1)</div>
+                                            @if (skill.Cooldown > 0)
+                                            {
+                                                <div class="cooldown-overlay"><span>@skill.Cooldown</span></div>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="character-image-placeholder"><span>怪物</span></div>
+                            <h5 class="text-muted">请选择怪物</h5>
+                        }
+                    </div>
+                    
+                    <!-- 其他敌人列表 -->
+                    @if (battleInfo?.OtherEnemies?.Any() == true)
+                    {
+                        <div class="other-enemies-list horizontal">
+                            <div class="enemy-list">
+                                @foreach (var enemy in battleInfo.OtherEnemies)
+                                {
+                                    <div class="enemy-mini-card @(enemy.IsTargeted ? "border-primary" : "")"
+                                         @onclick="() => SetEnemyTarget(enemy.Name)">
+                                        <div class="d-flex justify-content-between">
+                                            <span>@enemy.Name</span>
+                                            <span>Lv.@enemy.Level</span>
+                                        </div>
+                                        <div class="mini-health-bar">
+                                            <div class="mini-health-fill" style="width: @enemy.HealthPercentage%"></div>
+                                            <span class="mini-health-text">@enemy.Health/@enemy.MaxHealth</span>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+        
+        @* 保留原有的队伍视图和其他UI元素... *@
+    </div>
+}
+
+@code {
+    /// <summary>
+    /// 统一的战斗启动方法
+    /// </summary>
+    private async Task StartBattle(Enemy enemyTemplate)
+    {
+        try
+        {
+            if (_useNewBattleSystem)
+            {
+                // 新系统
+                if (OfflineService.IsOfflineMode)
+                {
+                    // 离线模式：记录操作
+                    OfflineService.RecordOfflineAction(OfflineActionType.StartBattle, new StartBattleRequest
+                    {
+                        CharacterId = NewGameState.ActiveCharacter?.Id ?? "",
+                        EnemyId = enemyTemplate.Name,
+                        PartyId = GetCurrentPartyId()
+                    });
+                    
+                    // 本地模拟战斗
+                    SimulateLocalBattle(enemyTemplate);
+                }
+                else
+                {
+                    // 在线模式：调用服务器
+                    var success = await NewGameState.StartBattleAsync(enemyTemplate.Name, GetCurrentPartyId());
+                    if (success)
+                    {
+                        CloseSelectors();
+                    }
+                }
+            }
+            else
+            {
+                // 旧系统
+                StartBattleOldSystem(enemyTemplate);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "启动战斗失败");
+            // 显示错误消息给用户
+        }
+    }
+    
+    /// <summary>
+    /// 停止当前战斗
+    /// </summary>
+    private async Task StopCurrentBattle()
+    {
+        if (_useNewBattleSystem)
+        {
+            if (OfflineService.IsOfflineMode)
+            {
+                OfflineService.RecordOfflineAction(OfflineActionType.StopBattle, new { });
+            }
+            else
+            {
+                await NewGameState.StopCurrentBattleAsync();
+            }
+        }
+        else
+        {
+            OldGameState.StopCurrentAction();
+        }
+    }
+    
+    /// <summary>
+    /// 获取当前活跃角色（兼容新旧系统）
+    /// </summary>
+    private Player? GetActiveCharacter()
+    {
+        if (_useNewBattleSystem)
+        {
+            // 新系统需要转换 DTO 到本地模型
+            var dto = NewGameState.ActiveCharacter;
+            if (dto != null)
+            {
+                return ConvertDtoToPlayer(dto);
+            }
+            return null;
+        }
+        else
+        {
+            return OldGameState.ActiveCharacter;
+        }
+    }
+    
+    /// <summary>
+    /// 获取统一的战斗信息
+    /// </summary>
+    private UnifiedBattleInfo? GetCurrentBattleInfo()
+    {
+        if (_useNewBattleSystem)
+        {
+            return ConvertNewSystemBattleInfo(_serverBattleState);
+        }
+        else
+        {
+            return ConvertOldSystemBattleInfo();
+        }
+    }
+    
+    /// <summary>
+    /// DTO 转换方法
+    /// </summary>
+    private Player ConvertDtoToPlayer(CharacterDto dto)
+    {
+        // 实现 DTO 到 Player 模型的转换
+        return new Player
+        {
+            Id = dto.Id,
+            Name = dto.Name,
+            Health = dto.Health,
+            SelectedBattleProfession = dto.SelectedProfession,
+            // ... 其他属性映射
+        };
+    }
+    
+    public void Dispose()
+    {
+        // 清理所有事件订阅
+        if (_useNewBattleSystem)
+        {
+            NewGameState.OnBattleStateChanged -= HandleNewBattleUpdate;
+            GameHub.OnBattleUpdate -= HandleSignalRBattleUpdate;
+            GameHub.OnConnectionChanged -= HandleConnectionChanged;
+            OfflineService.OnOfflineModeChanged -= HandleOfflineModeChanged;
+            _fallbackPoller?.Dispose();
+        }
+        else
+        {
+            OldGameState.OnStateChanged -= HandleOldStateChanged;
+        }
+    }
+}
+
+@* 定义统一的数据结构 *@
+@code {
+    /// <summary>
+    /// 统一的战斗信息结构
+    /// </summary>
+    private class UnifiedBattleInfo
+    {
+        public bool IsActive { get; set; }
+        public bool IsInRefresh { get; set; }
+        public bool IsInDungeonBattle { get; set; }
+        public string BattleTitle { get; set; } = "";
+        public string StatusText { get; set; } = "";
+        public double RefreshTimeRemaining { get; set; }
+        public List<EnemyInfo> OtherEnemies { get; set; } = new();
+    }
+    
+    /// <summary>
+    /// 统一的敌人信息
+    /// </summary>
+    private class EnemyInfo
+    {
+        public string Name { get; set; } = "";
+        public int Level { get; set; }
+        public int Health { get; set; }
+        public int MaxHealth { get; set; }
+        public double HealthPercentage { get; set; }
+        public double AttackProgress { get; set; }
+        public bool IsTargeted { get; set; }
+        public List<SkillInfo> Skills { get; set; } = new();
+    }
+    
+    /// <summary>
+    /// 统一的技能信息
+    /// </summary>
+    private class SkillInfo
+    {
+        public string Name { get; set; } = "";
+        public string Description { get; set; } = "";
+        public int Cooldown { get; set; }
+    }
+}
+---
+8. 测试与部署
+8.1 测试策略
+// BlazorWebGame.Tests/IntegrationTests/BattleApiTests.cs
+using Microsoft.AspNetCore.Mvc.Testing;
+using System.Net.Http.Json;
+using Xunit;
+
+namespace BlazorWebGame.Tests.IntegrationTests;
+
+public class BattleApiTests : IClassFixture<WebApplicationFactory<Program>>
+{
+    private readonly WebApplicationFactory<Program> _factory;
+    private readonly HttpClient _client;
+
+    public BattleApiTests(WebApplicationFactory<Program> factory)
+    {
+        _factory = factory;
+        _client = _factory.CreateClient();
+    }
+
+    [Fact]
+    public async Task StartBattle_ShouldReturnSuccess_WhenValidRequest()
+    {
+        // Arrange
+        var request = new StartBattleRequest
+        {
+            CharacterId = "test-character",
+            EnemyId = "slime",
+            PartyId = null
+        };
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/battle/start", request);
+        
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadFromJsonAsync<ApiResponse<BattleStateDto>>();
+        Assert.NotNull(result);
+        Assert.True(result.Success);
+        Assert.NotNull(result.Data);
+    }
+
+    [Fact]
+    public async Task GetBattleState_ShouldReturnNotFound_WhenBattleDoesNotExist()
+    {
+        // Arrange
+        var nonExistentBattleId = Guid.NewGuid();
+
+        // Act
+        var response = await _client.GetAsync($"/api/battle/{nonExistentBattleId}");
+        
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+}
+8.2 兼容性测试
+// BlazorWebGame.Tests/CompatibilityTests/DualModeTests.cs
+namespace BlazorWebGame.Tests.CompatibilityTests;
+
+public class DualModeTests
+{
+    [Fact]
+    public void OldSystem_ShouldWorkIndependently()
+    {
+        // 测试旧系统独立运行
+        var oldGameState = new GameStateService(/* dependencies */);
+        var character = new Player { Id = "test", Name = "TestPlayer" };
+        
+        // 执行旧系统操作
+        oldGameState.StartCombat(new Enemy { Name = "TestEnemy" });
+        
+        // 验证旧系统行为
+        Assert.Equal(PlayerActionState.Combat, character.CurrentAction);
+    }
+
+    [Fact]
+    public async Task NewSystem_ShouldWorkWithServer()
+    {
+        // 测试新系统与服务器通信
+        var apiService = new Mock<GameApiService>();
+        var newGameState = new ClientGameStateService(apiService.Object, /* other deps */);
+        
+        // 模拟服务器响应
+        apiService.Setup(x => x.StartBattleAsync(It.IsAny<StartBattleRequest>()))
+            .ReturnsAsync(new ApiResponse<BattleStateDto> { Success = true });
+        
+        // 执行新系统操作
+        var result = await newGameState.StartBattleAsync("enemy-id");
+        
+        // 验证新系统行为
+        Assert.True(result);
+    }
+}
+8.3 部署配置
+8.3.1 Docker 配置
+# BlazorWebGame.Server/Dockerfile
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+WORKDIR /app
+EXPOSE 80
+EXPOSE 443
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+COPY ["BlazorWebGame.Server/BlazorWebGame.Server.csproj", "BlazorWebGame.Server/"]
+COPY ["BlazorWebGame.Shared/BlazorWebGame.Shared.csproj", "BlazorWebGame.Shared/"]
+COPY ["BlazorWebGame.Domain/BlazorWebGame.Domain.csproj", "BlazorWebGame.Domain/"]
+RUN dotnet restore "BlazorWebGame.Server/BlazorWebGame.Server.csproj"
+COPY . .
+WORKDIR "/src/BlazorWebGame.Server"
+RUN dotnet build "BlazorWebGame.Server.csproj" -c Release -o /app/build
+
+FROM build AS publish
+RUN dotnet publish "BlazorWebGame.Server.csproj" -c Release -o /app/publish
+
+FROM base AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+ENTRYPOINT ["dotnet", "BlazorWebGame.Server.dll"]
+8.3.2 Docker Compose 配置
+# docker-compose.yml
+version: '3.8'
+
+services:
+  blazor-server:
+    build:
+      context: .
+      dockerfile: BlazorWebGame.Server/Dockerfile
+    ports:
+      - "7001:80"
+      - "7002:443"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Server=db;Database=BlazorWebGameDb;User=sa;Password=Your_password123
+    depends_on:
+      - db
+    networks:
+      - game-network
+
+  blazor-client:
+    build:
+      context: .
+      dockerfile: BlazorWebGame.Client/Dockerfile
+    ports:
+      - "7000:80"
+    environment:
+      - ServerUrl=http://blazor-server:80
+    depends_on:
+      - blazor-server
+    networks:
+      - game-network
+
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=Your_password123
+    ports:
+      - "1433:1433"
+    volumes:
+      - sql-data:/var/opt/mssql
+    networks:
+      - game-network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - game-network
+
+networks:
+  game-network:
+    driver: bridge
+
+volumes:
+  sql-data:
+8.4 监控和日志
+// BlazorWebGame.Server/Monitoring/HealthChecks.cs
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+
+namespace BlazorWebGame.Server.Monitoring;
+
+public class GameEngineHealthCheck : IHealthCheck
+{
+    private readonly GameEngine _gameEngine;
+
+    public GameEngineHealthCheck(GameEngine gameEngine)
+    {
+        _gameEngine = gameEngine;
+    }
+
+    public Task<HealthCheckResult> CheckHealthAsync(
+        HealthCheckContext context,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var activeBattles = _gameEngine.GetActiveBattleCount();
+            var data = new Dictionary<string, object>
+            {
+                ["active_battles"] = activeBattles,
+                ["uptime"] = _gameEngine.GetUptime()
+            };
+
+            return Task.FromResult(HealthCheckResult.Healthy("Game engine is running", data));
+        }
+        catch (Exception ex)
+        {
+            return Task.FromResult(HealthCheckResult.Unhealthy("Game engine error", ex));
+        }
+    }
+}
+
+// 在 Program.cs 中配置
+builder.Services.AddHealthChecks()
+    .AddCheck<GameEngineHealthCheck>("game_engine")
+    .AddDbContextCheck<GameDbContext>()
+    .AddRedis(redisConnectionString);
+
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+});
+
+8.5 迁移步骤总结
+1.	第一阶段：准备工作（1-2周）
+•	创建新的项目结构
+•	设置开发环境
+•	配置 CI/CD 管道
+2.	第二阶段：服务端开发（2-3周）
+•	实现核心 API
+•	迁移游戏逻辑到服务端
+•	实现数据持久化
+3.	第三阶段：客户端适配（2-3周）
+•	实现 API 客户端
+•	添加 SignalR 实时通信
+•	实现离线模式
+4.	第四阶段：双模式运行（1-2周）
+•	实现功能开关
+•	确保新旧系统可以共存
+•	逐步迁移用户
+5.	第五阶段：测试和优化（1-2周）
+•	性能测试
+•	安全测试
+•	用户体验优化
+6.	第六阶段：完全迁移（1周）
+•	关闭旧系统
+•	清理遗留代码
+•	文档更新
+8.6 注意事项
+1.	数据一致性
+•	在迁移期间保持数据同步
+•	实现冲突解决机制
+•	定期数据校验
+2.	性能考虑
+•	使用缓存减少数据库访问
+•	实现请求限流
+•	优化网络传输
+3.	安全性
+•	实现 JWT 认证
+•	使用 HTTPS
+•	防止作弊和数据篡改
+4.	用户体验
+•	保持 UI 响应性
+•	提供离线功能
+•	优雅的错误处理
+这个迁移方案可以让你安全地将 Blazor WebAssembly 游戏从纯客户端架构迁移到前后端分离架构，为未来的多人联网功能打下基础。整个过程是渐进式的，可以根据实际情况调整节奏。
