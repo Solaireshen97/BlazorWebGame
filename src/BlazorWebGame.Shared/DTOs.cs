@@ -158,6 +158,103 @@ public class OfflineAction
 }
 
 /// <summary>
+/// 装备生成质量等级
+/// </summary>
+public enum EquipmentQuality
+{
+    Common,     // 白装
+    Uncommon,   // 绿装
+    Rare,       // 蓝装
+    Epic        // 紫装
+}
+
+/// <summary>
+/// 装备属性等级
+/// </summary>
+public enum AttributeTier
+{
+    T1, // 低等级 (0.8±0.05)
+    T2, // 中等级 (1±0.05)
+    T3  // 高等级 (1.2±0.05)
+}
+
+/// <summary>
+/// 装备生成请求
+/// </summary>
+public class EquipmentGenerationRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public int Level { get; set; }
+    public string Slot { get; set; } = string.Empty;
+    public EquipmentQuality Quality { get; set; }
+    public AttributeTier AttributeTier { get; set; } = AttributeTier.T2;
+    public string WeaponType { get; set; } = "None";
+    public string ArmorType { get; set; } = "None";
+    public bool IsTwoHanded { get; set; }
+    public List<string> AllowedProfessions { get; set; } = new();
+    public List<string> SecondaryAttributePool { get; set; } = new();
+    public Dictionary<string, object> CustomAttributes { get; set; } = new();
+}
+
+/// <summary>
+/// 装备数据传输对象
+/// </summary>
+public class EquipmentDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public int RequiredLevel { get; set; }
+    public string Slot { get; set; } = string.Empty;
+    public string WeaponType { get; set; } = "None";
+    public string ArmorType { get; set; } = "None";
+    public bool IsTwoHanded { get; set; }
+    public List<string> AllowedProfessions { get; set; } = new();
+    
+    // 武器属性
+    public int WeaponDamage { get; set; }
+    public double AttackSpeed { get; set; } = 1.0;
+    
+    // 护甲属性
+    public int ArmorValue { get; set; }
+    public int BlockChance { get; set; }
+    
+    // 主属性加成
+    public Dictionary<string, int> AttributeBonuses { get; set; } = new();
+    
+    // 其他属性加成
+    public int AttackBonus { get; set; }
+    public int HealthBonus { get; set; }
+    public double CriticalChanceBonus { get; set; }
+    public double CriticalDamageBonus { get; set; }
+    public double AttackSpeedBonus { get; set; }
+    public int AccuracyBonus { get; set; }
+    public double DodgeChanceBonus { get; set; }
+    
+    // 生产和采集加成
+    public double GatheringSpeedBonus { get; set; }
+    public double ExtraLootChanceBonus { get; set; }
+    public double CraftingSuccessBonus { get; set; }
+    public double ResourceConservationBonus { get; set; }
+    
+    // 元素抗性
+    public Dictionary<string, double> ElementalResistances { get; set; } = new();
+    
+    // 经济属性
+    public int Value { get; set; }
+    public ShopPurchaseInfoDto? ShopPurchaseInfo { get; set; }
+}
+
+/// <summary>
+/// 商店购买信息
+/// </summary>
+public class ShopPurchaseInfoDto
+{
+    public string ShopCategory { get; set; } = string.Empty;
+    public int Price { get; set; }
+}
+
+/// <summary>
 /// 角色基本信息DTO
 /// </summary>
 public class CharacterDto

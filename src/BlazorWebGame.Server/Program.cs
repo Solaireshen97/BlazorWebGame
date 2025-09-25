@@ -39,6 +39,7 @@ builder.Services.AddSingleton<ServerPartyService>();
 builder.Services.AddSingleton<ServerProductionService>();
 builder.Services.AddSingleton<ServerInventoryService>();
 builder.Services.AddSingleton<ServerQuestService>();
+builder.Services.AddSingleton<ServerEquipmentService>();  // 添加装备服务
 builder.Services.AddSingleton<GameEngineService>();
 builder.Services.AddSingleton<ServerCharacterService>();
 builder.Services.AddSingleton<ServerEventService>();
