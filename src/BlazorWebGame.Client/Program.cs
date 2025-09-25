@@ -7,11 +7,15 @@ using BlazorWebGame.Services.PlayerServices;
 using BlazorWebGame.Utils;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
+
+// 配置日志服务 - 对于Blazor WebAssembly，默认已经配置了控制台日志
+builder.Logging.SetMinimumLevel(LogLevel.Information);
 
 // 配置HTTP客户端，指向服务器（与服务器实际运行端口匹配）
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://localhost:7000") });
