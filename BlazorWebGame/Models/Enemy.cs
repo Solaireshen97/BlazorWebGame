@@ -51,15 +51,46 @@ namespace BlazorWebGame.Models
             return new System.Random().Next(MinGold, MaxGold + 1);
         }
 
-        public Enemy Clone()
+        public Enemy Regenerate()
         {
-            var clone = (Enemy)this.MemberwiseClone();
-            // 为引用类型创建新的实例
-            clone.SkillIds = new List<string>(this.SkillIds);
-            clone.SkillCooldowns = new Dictionary<string, int>(this.SkillCooldowns);
-            clone.LootTable = new Dictionary<string, double>(this.LootTable);
-            clone.ElementalResistances = new Dictionary<ElementType, double>(this.ElementalResistances);
-            return clone;
+            // 创建随机数生成器用于添加一些随机变化
+            var random = new System.Random();
+
+            // 为经验和掉落比例添加一些小的随机变化 (±5%)
+            double expRatioVariance = 0.9 + random.NextDouble() * 0.1;
+            double lootRatioVariance = 0.9 + random.NextDouble() * 0.1;
+
+            // 估计原始的经验和掉落比例 (这是一个简单的估计)
+            double baseExpRatio = this.XpReward > 0 ? 0.6 * expRatioVariance : 0.6;
+            double baseLootRatio = this.ItemValue > 0 ? 0.2 * lootRatioVariance : 0.2;
+            this.XpReward = 0;
+            // 使用当前怪物作为模板，通过MonsterAttributeCalculator重新生成
+            return MonsterAttributeCalculator.GenerateMonster(
+                level: this.Level,
+                expRatio: baseExpRatio,
+                lootRatio: baseLootRatio,
+                monsterType: this.Type,
+                predefinedEnemy: this);
+        }
+
+        public Enemy Clone(bool regenerate = true)
+        {
+            if (regenerate)
+            {
+                // 使用 Regenerate 生成有变化的怪物实例
+                return this.Regenerate();
+            }
+            else
+            {
+                // 原有的完全复制逻辑
+                var clone = (Enemy)this.MemberwiseClone();
+                // 为引用类型创建新的实例
+                clone.SkillIds = new List<string>(this.SkillIds);
+                clone.SkillCooldowns = new Dictionary<string, int>(this.SkillCooldowns);
+                clone.LootTable = new Dictionary<string, double>(this.LootTable);
+                clone.ElementalResistances = new Dictionary<ElementType, double>(this.ElementalResistances);
+                return clone;
+            }
         }
     }
 }

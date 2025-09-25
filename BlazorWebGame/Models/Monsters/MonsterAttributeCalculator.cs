@@ -111,7 +111,7 @@ namespace BlazorWebGame.Models.Monsters
         private static double CalculateLeveledMonsterValue(int level, double baseValue)
         {
             // 应用怪物价值随等级的增长公式
-            double expNeededForLevel = ExpSystem.GetExpRequiredForLevel(level + 1) - ExpSystem.GetExpRequiredForLevel(level);
+            double expNeededForLevel = ExpSystem.GetExpRequiredForLevel(level+1);
             double offlineSecondsPerSecond = expNeededForLevel / MonsterAttributeConfig.ExpToOfflineSecondsRatio;
 
             return baseValue * offlineSecondsPerSecond;
