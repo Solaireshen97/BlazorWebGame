@@ -10,27 +10,27 @@ namespace BlazorWebGame.Models
     {
         Idle,
         Combat,
-        // Ï¸·Ö²É¼¯»î¶¯
-        GatheringMining,       // ²É¿ó
-        GatheringHerbalism,    // ²İÒ©Ñ§
-        GatheringFishing,      // µöÓã
-        // Ï¸·ÖÖÆ×÷»î¶¯
-        CraftingCooking,       // Åëâ¿
-        CraftingAlchemy,       // Á¶½ğ
-        CraftingBlacksmithing, // ¶ÍÔì
-        CraftingJewelcrafting, // Öé±¦¼Ó¹¤
-        CraftingLeatherworking,// ÖÆÆ¤
-        CraftingTailoring,     // ²Ã·ì
-        CraftingEngineering    // ¹¤³ÌÑ§
+        // Ï¸ï¿½Ö²É¼ï¿½ï¿½î¶¯
+        GatheringMining,       // ï¿½É¿ï¿½
+        GatheringHerbalism,    // ï¿½ï¿½Ò©Ñ§
+        GatheringFishing,      // ï¿½ï¿½ï¿½ï¿½
+        // Ï¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½î¶¯
+        CraftingCooking,       // ï¿½ï¿½ï¿½
+        CraftingAlchemy,       // ï¿½ï¿½ï¿½ï¿½
+        CraftingBlacksmithing, // ï¿½ï¿½ï¿½ï¿½
+        CraftingJewelcrafting, // ï¿½é±¦ï¿½Ó¹ï¿½
+        CraftingLeatherworking,// ï¿½ï¿½Æ¤
+        CraftingTailoring,     // ï¿½Ã·ï¿½
+        CraftingEngineering    // ï¿½ï¿½ï¿½ï¿½Ñ§
     }
     public record ReputationTier(string Name, int MinValue, int MaxValue, string BarColorClass);
     public class Player
     {
-        public string Id { get; set; } = Guid.NewGuid().ToString(); // ¸³ÓèÃ¿¸ö½ÇÉ«Î¨Ò»ID
+        public string Id { get; set; } = Guid.NewGuid().ToString(); // ï¿½ï¿½ï¿½ï¿½Ã¿ï¿½ï¿½ï¿½ï¿½É«Î¨Ò»ID
         public bool IsDead { get; set; } = false;
         public double RevivalTimeRemaining { get; set; } = 0;
-        // ¿ÉÒÔ±ê¼ÇÎª¹ıÊ±£¬»òÔÚÈ·ÈÏÃ»ÓĞÆäËûµØ·½Ê¹ÓÃºóÖ±½ÓÉ¾³ı
-        [Obsolete("Ê¹ÓÃĞÂµÄÕ½¶·ÏµÍ³")]
+        // ï¿½ï¿½ï¿½Ô±ï¿½ï¿½Îªï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È·ï¿½ï¿½Ã»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ø·ï¿½Ê¹ï¿½Ãºï¿½Ö±ï¿½ï¿½É¾ï¿½ï¿½
+        [Obsolete("Ê¹ï¿½ï¿½ï¿½Âµï¿½Õ½ï¿½ï¿½ÏµÍ³")]
         public Enemy? CurrentEnemy { get; set; }
         public GatheringNode? CurrentGatheringNode { get; set; }
         public Recipe? CurrentRecipe { get; set; }
@@ -38,7 +38,7 @@ namespace BlazorWebGame.Models
         public double GatheringCooldown { get; set; }
         public double CraftingCooldown { get; set; }
 
-        public string Name { get; set; } = "Ó¢ĞÛ";
+        public string Name { get; set; } = "Ó¢ï¿½ï¿½";
         public int Gold { get; set; } = 10000;
         public int Health { get; set; } = 100;
         public int MaxHealth { get; set; } = 100;
@@ -48,11 +48,11 @@ namespace BlazorWebGame.Models
         public BattleProfession SelectedBattleProfession { get; set; } = BattleProfession.Warrior;
         public static readonly List<ReputationTier> ReputationTiers = new()
         {
-            // ÎªÁËÑİÊ¾£¬ÎÒÃÇÊ¹ÓÃ½ÏĞ¡µÄãĞÖµ
-            new ReputationTier("ÖĞÁ¢", 0, 1000, "bg-info"),
-            new ReputationTier("ÓÑÉÆ", 1000, 3000, "bg-success"),
-            new ReputationTier("×ğ¾´", 3000, 6000, "bg-primary"),
-            new ReputationTier("³ç°İ", 6000, 6001, "bg-warning") // ³ç°İÊÇ¶¥¼¶
+            // Îªï¿½ï¿½ï¿½ï¿½Ê¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¹ï¿½Ã½ï¿½Ğ¡ï¿½ï¿½ï¿½ï¿½Öµ
+            new ReputationTier("ï¿½ï¿½ï¿½ï¿½", 0, 1000, "bg-info"),
+            new ReputationTier("ï¿½ï¿½ï¿½ï¿½", 1000, 3000, "bg-success"),
+            new ReputationTier("ï¿½ï¿½", 3000, 6000, "bg-primary"),
+            new ReputationTier("ï¿½ï¿½ï¿½", 6000, 6001, "bg-warning") // ï¿½ï¿½ï¿½ï¿½Ç¶ï¿½ï¿½ï¿½
         };
         public Dictionary<BattleProfession, int> BattleProfessionXP { get; set; } = new();
         public Dictionary<GatheringProfession, int> GatheringProfessionXP { get; set; } = new();
@@ -69,17 +69,17 @@ namespace BlazorWebGame.Models
         public Dictionary<int, string> PotionQuickSlots { get; set; } = new();
         public Dictionary<int, string> CombatFoodQuickSlots { get; set; } = new();
         public Dictionary<int, string> GatheringFoodQuickSlots { get; set; } = new();
-        public Dictionary<int, string> ProductionFoodQuickSlots { get; set; } = new(); // *** ÕâÊÇĞÂÔöµÄĞĞ ***
+        public Dictionary<int, string> ProductionFoodQuickSlots { get; set; } = new(); // *** ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ***
         public Dictionary<string, double> ConsumableCooldowns { get; set; } = new();
         public Dictionary<Faction, int> Reputation { get; set; } = new();
 
-        // ÓÃÓÚ´æ´¢Íæ¼ÒËùÓĞÈÎÎñµÄµ±Ç°½ø¶È£¬¼üÊÇÈÎÎñID£¬ÖµÊÇµ±Ç°Íê³ÉÊıÁ¿
+        // ï¿½ï¿½ï¿½Ú´æ´¢ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Äµï¿½Ç°ï¿½ï¿½ï¿½È£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½IDï¿½ï¿½Öµï¿½Çµï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         public Dictionary<string, int> QuestProgress { get; set; } = new();
 
-        // ÓÃÓÚ¼ÇÂ¼±¾ÖÜÆÚ£¨½ñÌì/±¾ÖÜ£©ÒÑÍê³ÉµÄÈÎÎñID£¬·ÀÖ¹ÖØ¸´Íê³É
+        // ï¿½ï¿½ï¿½Ú¼ï¿½Â¼ï¿½ï¿½ï¿½ï¿½ï¿½Ú£ï¿½ï¿½ï¿½ï¿½ï¿½/ï¿½ï¿½ï¿½Ü£ï¿½ï¿½ï¿½ï¿½ï¿½Éµï¿½ï¿½ï¿½ï¿½ï¿½IDï¿½ï¿½ï¿½ï¿½Ö¹ï¿½Ø¸ï¿½ï¿½ï¿½ï¿½
         public List<string> CompletedQuestIds { get; set; } = new();
 
-        // ÔÚPlayerÀàÖĞÌí¼ÓÕâĞ©ÊôĞÔ
+        // ï¿½ï¿½Playerï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ğ©ï¿½ï¿½ï¿½ï¿½
         public List<string> CompletedDungeons { get; set; } = new List<string>();
         public List<string> KilledMonsters { get; set; } = new List<string>();
         public List<string> CompletedQuests { get; set; } = new List<string>();
@@ -89,22 +89,23 @@ namespace BlazorWebGame.Models
         public HashSet<string> LearnedRecipeIds { get; set; } = new();
         public Player()
         {
-            // ¹¹Ôìº¯ÊıÏÖÔÚÖ»µ÷ÓÃ³õÊ¼»¯·½·¨
+            // ï¿½ï¿½ï¿½ìº¯ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö»ï¿½ï¿½ï¿½Ã³ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
             InitializeCollections();
         }
 
         /// <summary>
-        /// È·±£ËùÓĞ¼¯ºÏºÍ×Öµä¶¼ÒÑ³õÊ¼»¯£¬·ÀÖ¹´Ó¾É´æµµ¼ÓÔØÊ±³öÏÖnullÒıÓÃ¡£
+        /// åˆå§‹åŒ–é›†åˆæ•°æ®ï¼ˆå·²ç§»åŠ¨åˆ°PlayerUtilityServiceï¼‰
         /// </summary>
+        [Obsolete("Use PlayerUtilityService.InitializeCollections instead")]
         private void InitializeCollections()
         {
-            // Ê¹ÓÃ '??=' ²Ù×÷·û£¬Èç¹ûÊôĞÔÊÇ null£¬¾Í¸øËü·ÖÅäÒ»¸öĞÂµÄÊµÀı¡£
+            // ä½¿ç”¨ '??=' æ“ä½œç¬¦ï¼Œä»…åœ¨é›†åˆä¸º nullæ—¶æ‰ç»™å®ƒä»¬åˆ†é…ä¸€ä¸ªæ–°çš„å®ä¾‹ã€‚
             BattleProfessionXP ??= new();
             GatheringProfessionXP ??= new();
             ProductionProfessionXP ??= new();
             EquippedSkills ??= new();
 
-            // ÎªËùÓĞ¿ÉÄÜµÄÖ°Òµ³õÊ¼»¯¾­ÑéºÍ¼¼ÄÜÁĞ±í
+            // ä¸ºæ‰€æœ‰å¯èƒ½çš„èŒä¸šåˆå§‹åŒ–ç»éªŒå­—å…¸å’ŒæŠ€èƒ½åˆ—è¡¨
             foreach (var profession in (BattleProfession[])Enum.GetValues(typeof(BattleProfession)))
             {
                 BattleProfessionXP.TryAdd(profession, 10000);
@@ -118,12 +119,12 @@ namespace BlazorWebGame.Models
             {
                 ProductionProfessionXP.TryAdd(profession, 0);
             }
-            // È·±£Ä¬ÈÏÅä·½ÒÑ±»Ñ§Ï°
+            // ç¡®ä¿é»˜è®¤é…æ–¹å·²è¢«å­¦ä¹ 
             foreach (var recipe in RecipeData.AllRecipes.Where(r => r.IsDefault))
             {
                 LearnedRecipeIds.Add(recipe.Id);
             }
-            // ³õÊ¼»¯±³°ü
+            // åˆå§‹åŒ–èƒŒåŒ…
             if (Inventory == null || !Inventory.Any())
             {
                 Inventory = new List<InventorySlot>();
@@ -133,7 +134,7 @@ namespace BlazorWebGame.Models
                 }
             }
 
-            // *** ÕâÊÇ×î¹Ø¼üµÄĞŞÕı²¿·Ö£ºÈ·±£ËùÓĞĞÂ¾É¼¯ºÏ¶¼·Ç¿Õ ***
+            // *** ç¡®ä¿å„ç§å…³é”®é›†åˆå’Œå­—å…¸ï¼Œç¡®ä¿ç°æœ‰å’Œæ—§é›†åˆéƒ½æ˜¯éç©º ***
             ActiveBuffs ??= new();
             LearnedSharedSkills ??= new();
             SkillCooldowns ??= new();
@@ -149,75 +150,81 @@ namespace BlazorWebGame.Models
         }
 
         /// <summary>
-        /// µ±´Ó´æ´¢¼ÓÔØÍæ¼ÒÊı¾İºó£¬µ÷ÓÃ´Ë·½·¨À´È·±£Êı¾İÒ»ÖÂĞÔ¡£
+        /// ç¡®ä¿æ•°æ®ä¸€è‡´æ€§ï¼ˆå·²ç§»åŠ¨åˆ°PlayerUtilityServiceï¼‰
         /// </summary>
+        [Obsolete("Use PlayerUtilityService.EnsureDataConsistency instead")]
         public void EnsureDataConsistency()
         {
             InitializeCollections();
         }
 
-        public void AddGatheringXP(GatheringProfession profession, int amount) { if (GatheringProfessionXP.ContainsKey(profession)) { GatheringProfessionXP[profession] += amount; } }
         /// <summary>
-        /// ÎªÖ¸¶¨µÄÕ½¶·Ö°ÒµÌí¼Ó¾­ÑéÖµ£¬²¢·µ»ØÉı¼¶½á¹û
+        /// ä¸ºæŒ‡å®šé‡‡é›†èŒä¸šæ·»åŠ ç»éªŒå€¼ï¼ˆå·²ç§»åŠ¨åˆ°PlayerProfessionServiceï¼‰
         /// </summary>
-        /// <param name="profession">Ö°Òµ</param>
-        /// <param name="amount">¾­ÑéÖµÊıÁ¿</param>
-        /// <returns>°üº¬Éı¼¶ĞÅÏ¢µÄÔª×é</returns>
+        [Obsolete("Use PlayerProfessionService.AddGatheringXP instead")]
+        public void AddGatheringXP(GatheringProfession profession, int amount) 
+        { 
+            if (GatheringProfessionXP.ContainsKey(profession)) 
+            { 
+                GatheringProfessionXP[profession] += amount; 
+            } 
+        }
+        
+        /// <summary>
+        /// ä¸ºæŒ‡å®šæˆ˜æ–—èŒä¸šæ·»åŠ ç»éªŒå€¼ï¼ˆå·²ç§»åŠ¨åˆ°PlayerProfessionServiceï¼‰
+        /// </summary>
+        [Obsolete("Use PlayerProfessionService.AddBattleXP instead")]
         public (bool LeveledUp, int OldLevel, int NewLevel) AddBattleXP(BattleProfession profession, int amount) 
         { 
             if (BattleProfessionXP.ContainsKey(profession)) 
             {
                 int oldLevel = GetLevel(profession);
-                
-                // Ôö¼Ó¾­ÑéÖµ
                 BattleProfessionXP[profession] += amount;
-                
-                // ¼ì²éÊÇ·ñÉı¼¶
                 int newLevel = GetLevel(profession);
                 bool leveledUp = newLevel > oldLevel;
-                
-                // ·µ»ØÉı¼¶ĞÅÏ¢£¬ÈÃ·şÎñ²ã¾ö¶¨ÈçºÎ´¦Àí
                 return (leveledUp, oldLevel, newLevel);
             }
-            
             return (false, 0, 0);
         }
+        
         /// <summary>
-        /// ÎªÖ¸¶¨µÄÉú²úÖ°ÒµÔö¼Ó¾­ÑéÖµ
+        /// ä¸ºæŒ‡å®šç”Ÿäº§èŒä¸šæ·»åŠ ç»éªŒå€¼ï¼ˆå·²ç§»åŠ¨åˆ°PlayerProfessionServiceï¼‰
         /// </summary>
+        [Obsolete("Use PlayerProfessionService.AddProductionXP instead")]
         public (bool LeveledUp, int OldLevel, int NewLevel) AddProductionXP(ProductionProfession profession, int amount)
         {
             if (ProductionProfessionXP.ContainsKey(profession))
             {
                 int oldLevel = GetLevel(profession);
-                
-                // Ôö¼Ó¾­ÑéÖµ
                 ProductionProfessionXP[profession] += amount;
-                
-                // ¼ì²éÊÇ·ñÉı¼¶
                 int newLevel = GetLevel(profession);
                 bool leveledUp = newLevel > oldLevel;
-                
                 return (leveledUp, oldLevel, newLevel);
             }
-            
             return (false, 0, 0);
         }
 
-        // ¿ÉÒÔÌí¼ÓÒ»¸ö¸¨Öú·½·¨À´»ñÈ¡ÉùÍûµÈ¼¶
+        /// <summary>
+        /// è·å–å£°æœ›ç­‰çº§ï¼ˆå·²ç§»åŠ¨åˆ°PlayerUtilityServiceï¼‰
+        /// </summary>
+        [Obsolete("Use PlayerUtilityService.GetReputationLevel instead")]
         public ReputationTier GetReputationLevel(Faction faction)
         {
             var rep = Reputation.GetValueOrDefault(faction, 0);
-            // ´Ó¸ßµ½µÍ²éÕÒ£¬·µ»ØµÚÒ»¸öÂú×ãÌõ¼şµÄµÈ¼¶
+            // ï¿½Ó¸ßµï¿½ï¿½Í²ï¿½ï¿½Ò£ï¿½ï¿½ï¿½ï¿½Øµï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÄµÈ¼ï¿½
             return ReputationTiers.LastOrDefault(t => rep >= t.MinValue) ?? ReputationTiers.First();
         }
 
+        /// <summary>
+        /// è·å–å£°æœ›è¿›åº¦ç™¾åˆ†æ¯”ï¼ˆå·²ç§»åŠ¨åˆ°PlayerUtilityServiceï¼‰
+        /// </summary>
+        [Obsolete("Use PlayerUtilityService.GetReputationProgressPercentage instead")]
         public double GetReputationProgressPercentage(Faction faction)
         {
             var rep = Reputation.GetValueOrDefault(faction, 0);
             var tier = GetReputationLevel(faction);
 
-            // Èç¹ûÊÇ×î¸ßµÈ¼¶£¬½ø¶ÈÌõÖ±½ÓÀ­Âú
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ßµÈ¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
             if (tier.MaxValue - tier.MinValue <= 1)
             {
                 return 100.0;
@@ -229,150 +236,180 @@ namespace BlazorWebGame.Models
             return (double)progressInTier / totalForTier * 100.0;
         }
 
-        public double GetTotalGatheringSpeedBonus() { double equipmentBonus = EquippedItems.Values.Select(itemId => ItemData.GetItemById(itemId) as Equipment).Where(eq => eq != null).Sum(eq => eq!.GatheringSpeedBonus); double buffBonus = ActiveBuffs.Where(b => b.BuffType == StatBuffType.GatheringSpeed).Sum(b => b.BuffValue / 100.0); return equipmentBonus + buffBonus; }
-        public double GetTotalExtraLootChance() { double equipmentBonus = EquippedItems.Values.Select(itemId => ItemData.GetItemById(itemId) as Equipment).Where(eq => eq != null).Sum(eq => eq!.ExtraLootChanceBonus); double buffBonus = ActiveBuffs.Where(b => b.BuffType == StatBuffType.ExtraLootChance).Sum(b => b.BuffValue / 100.0); return equipmentBonus + buffBonus; }
         /// <summary>
-        /// »ñÈ¡×ÜµÄÖÆ×÷ËÙ¶È¼Ó³É£¨ÒÔĞ¡ÊıĞÎÊ½£¬ÀıÈç 0.1 ´ú±í +10%£©
+        /// è·å–æ€»é‡‡é›†é€Ÿåº¦åŠ æˆï¼ˆå·²ç§»åŠ¨åˆ°PlayerProfessionServiceï¼‰
         /// </summary>
+        [Obsolete("Use PlayerProfessionService.GetTotalGatheringSpeedBonus instead")]
+        public double GetTotalGatheringSpeedBonus() 
+        { 
+            double equipmentBonus = EquippedItems.Values.Select(itemId => ItemData.GetItemById(itemId) as Equipment).Where(eq => eq != null).Sum(eq => eq!.GatheringSpeedBonus); 
+            double buffBonus = ActiveBuffs.Where(b => b.BuffType == StatBuffType.GatheringSpeed).Sum(b => b.BuffValue / 100.0); 
+            return equipmentBonus + buffBonus; 
+        }
+        
+        /// <summary>
+        /// è·å–é¢å¤–æˆ˜åˆ©å“å‡ ç‡ï¼ˆå·²ç§»åŠ¨åˆ°PlayerProfessionServiceï¼‰
+        /// </summary>
+        [Obsolete("Use PlayerProfessionService.GetTotalExtraLootChance instead")]
+        public double GetTotalExtraLootChance() 
+        { 
+            double equipmentBonus = EquippedItems.Values.Select(itemId => ItemData.GetItemById(itemId) as Equipment).Where(eq => eq != null).Sum(eq => eq!.ExtraLootChanceBonus); 
+            double buffBonus = ActiveBuffs.Where(b => b.BuffType == StatBuffType.ExtraLootChance).Sum(b => b.BuffValue / 100.0); 
+            return equipmentBonus + buffBonus; 
+        }
+        
+        /// <summary>
+        /// è·å–æ€»åˆ¶ä½œé€Ÿåº¦åŠ æˆï¼ˆå·²ç§»åŠ¨åˆ°PlayerProfessionServiceï¼‰
+        /// </summary>
+        [Obsolete("Use PlayerProfessionService.GetTotalCraftingSpeedBonus instead")]
         public double GetTotalCraftingSpeedBonus()
         {
-            // Î´À´¿ÉÒÔÎª×°±¸Ôö¼ÓÖÆ×÷ËÙ¶È¼Ó³É
             double equipmentBonus = 0.0;
-
-            // ´ÓBuffÖĞ»ñÈ¡¼Ó³É
             double buffBonus = ActiveBuffs
                 .Where(b => b.BuffType == StatBuffType.CraftingSpeed)
-                .Sum(b => b.BuffValue / 100.0); // ½«ÕûÊı°Ù·Ö±È (Èç 15) ×ª»»ÎªĞ¡Êı (0.15)
-
+                .Sum(b => b.BuffValue / 100.0);
             return equipmentBonus + buffBonus;
         }
+        /// <summary>
+        /// è·å–æˆ˜æ–—èŒä¸šç­‰çº§ï¼ˆå·²ç§»åŠ¨åˆ°PlayerProfessionServiceï¼‰
+        /// </summary>
+        [Obsolete("Use PlayerProfessionService.GetLevel instead")]
         public int GetLevel(BattleProfession profession) => 
             BattleProfessionXP.TryGetValue(profession, out var xp) ? 
             ExpSystem.GetLevelFromExp(xp) : 1;
 
+        /// <summary>
+        /// è·å–é‡‡é›†èŒä¸šç­‰çº§ï¼ˆå·²ç§»åŠ¨åˆ°PlayerProfessionServiceï¼‰
+        /// </summary>
+        [Obsolete("Use PlayerProfessionService.GetLevel instead")]
         public int GetLevel(GatheringProfession profession) => 
             GatheringProfessionXP.TryGetValue(profession, out var xp) ? 
             ExpSystem.GetLevelFromExp(xp) : 1;
 
-        // ·ºÓÃ·½·¨Ò²ĞèÒª¸üĞÂ
+        // é€šç”¨æ–¹æ³•ä¹Ÿéœ€è¦ä¿ç•™
         public int GetLevel(int xp) => ExpSystem.GetLevelFromExp(xp);
 
+        /// <summary>
+        /// è·å–ç”Ÿäº§èŒä¸šç­‰çº§ï¼ˆå·²ç§»åŠ¨åˆ°PlayerProfessionServiceï¼‰
+        /// </summary>
+        [Obsolete("Use PlayerProfessionService.GetLevel instead")]
         public int GetLevel(ProductionProfession profession) =>
             ExpSystem.GetLevelFromExp(ProductionProfessionXP.GetValueOrDefault(profession, 0));
 
-        // Ìí¼ÓÒ»¸öĞÂ·½·¨£¬»ñÈ¡Éı¼¶½ø¶È
+        /// <summary>
+        /// è·å–æˆ˜æ–—èŒä¸šè¿›åº¦ç™¾åˆ†æ¯”ï¼ˆå·²ç§»åŠ¨åˆ°PlayerProfessionServiceï¼‰
+        /// </summary>
+        [Obsolete("Use PlayerProfessionService.GetLevelProgress instead")]
         public double GetLevelProgress(BattleProfession profession) =>
             BattleProfessionXP.TryGetValue(profession, out var xp) ?
             ExpSystem.GetLevelProgressPercentage(xp) : 0;
-            
+
+        /// <summary>
+        /// è·å–é‡‡é›†èŒä¸šè¿›åº¦ç™¾åˆ†æ¯”ï¼ˆå·²ç§»åŠ¨åˆ°PlayerProfessionServiceï¼‰
+        /// </summary>  
+        [Obsolete("Use PlayerProfessionService.GetLevelProgress instead")]
         public double GetLevelProgress(GatheringProfession profession) =>
             GatheringProfessionXP.TryGetValue(profession, out var xp) ?
             ExpSystem.GetLevelProgressPercentage(xp) : 0;
 
+        /// <summary>
+        /// è·å–ç”Ÿäº§èŒä¸šè¿›åº¦ç™¾åˆ†æ¯”ï¼ˆå·²ç§»åŠ¨åˆ°PlayerProfessionServiceï¼‰
+        /// </summary>
+        [Obsolete("Use PlayerProfessionService.GetLevelProgress instead")]
         public double GetLevelProgress(ProductionProfession profession) =>
             ExpSystem.GetLevelProgressPercentage(ProductionProfessionXP.GetValueOrDefault(profession, 0));
 
+        /// <summary>
+        /// è·å–æ€»æ”»å‡»åŠ›ï¼ˆå·²ç§»åŠ¨åˆ°PlayerAttributeServiceï¼‰
+        /// </summary>
+        [Obsolete("Use PlayerAttributeService.GetTotalAttackPower instead")]
         public int GetTotalAttackPower()
         {
             var attrs = GetTotalAttributes();
-
-            // »ñÈ¡Ö÷ÊôĞÔÖµ
             int primaryAttrValue = GetPrimaryAttributeValue();
-
-            // Ê¹ÓÃÅäÖÃÖĞµÄÖ÷ÊôĞÔµ½¹¥»÷Á¦×ª»»ÏµÊı
             double apRatio = AttributeSystemConfig.MainAttributeToAPRatio;
             int primaryAttrBonus = (int)(primaryAttrValue * apRatio);
-
-            // ¼ÆËã×°±¸ºÍbuff¼Ó³É
             var equipmentAttack = EquippedItems
                 .Select(kv => ItemData.GetItemById(kv.Value) as Equipment)
                 .Where(eq => eq != null)
                 .Sum(eq => eq!.AttackBonus);
-
             var buffAttack = ActiveBuffs
                 .Where(b => b.BuffType == StatBuffType.AttackPower)
                 .Sum(b => b.BuffValue);
-
             return primaryAttrBonus + equipmentAttack + (int)buffAttack;
         }
 
+        /// <summary>
+        /// è·å–ä¼¤å®³å€æ•°ï¼ˆå·²ç§»åŠ¨åˆ°PlayerAttributeServiceï¼‰
+        /// </summary>
+        [Obsolete("Use PlayerAttributeService.GetDamageMultiplier instead")]
         public double GetDamageMultiplier()
         {
-            // »ñÈ¡Ö÷ÊôĞÔÖµ
             int primaryAttrValue = GetPrimaryAttributeValue();
-
-            // Ê¹ÓÃÅäÖÃÖĞµÄÖ÷ÊôĞÔµ½ÉËº¦±¶ÂÊÏµÊı
             double damageMultiplier = 1.0 + (primaryAttrValue * AttributeSystemConfig.MainAttributeToDamageMultiplier);
-
             return damageMultiplier;
         }
 
+        /// <summary>
+        /// è·å–æ€»ç”Ÿå‘½å€¼ä¸Šé™ï¼ˆå·²ç§»åŠ¨åˆ°PlayerAttributeServiceï¼‰
+        /// </summary>
+        [Obsolete("Use PlayerAttributeService.GetTotalMaxHealth instead")]
         public int GetTotalMaxHealth()
         {
             var attrs = GetTotalAttributes();
-
-            // Ê¹ÓÃÅäÖÃÖĞµÄ»ù´¡ÉúÃüÖµ
             int baseHealth = AttributeSystemConfig.BaseHealth;
-
-            // Ê¹ÓÃÅäÖÃÖĞµÄÄÍÁ¦×ª»»ÏµÊı
             double staminaRatio = AttributeSystemConfig.StaminaToHealthRatio;
             var staminaBonus = (int)(attrs.Stamina * staminaRatio);
-
-            // ¼ÆËã×°±¸ºÍbuff¼Ó³É
             var equipmentHealth = EquippedItems
                 .Select(kv => ItemData.GetItemById(kv.Value) as Equipment)
                 .Where(eq => eq != null)
                 .Sum(eq => eq!.HealthBonus);
-
             var buffHealth = ActiveBuffs
                 .Where(b => b.BuffType == StatBuffType.MaxHealth)
                 .Sum(b => b.BuffValue);
-
             return baseHealth + staminaBonus + equipmentHealth + (int)buffHealth;
         }
 
-        // ¼ì²éÊÇ·ñÓĞÎïÆ·µÄ¸¨Öú·½·¨
+        /// <summary>
+        /// æ£€æŸ¥æ˜¯å¦æ‹¥æœ‰ç‰©å“çš„ä¸ªæ•°ï¼ˆå·²ç§»åŠ¨åˆ°PlayerUtilityServiceï¼‰
+        /// </summary>
+        [Obsolete("Use PlayerUtilityService.HasItemInInventory instead")]
         public bool HasItemInInventory(string itemId)
         {
             return Inventory.Any(s => !s.IsEmpty && s.ItemId == itemId);
         }
 
-        // ĞÂÔöÊôĞÔ
-        public int AccuracyRating { get; set; } = 0;   // ÃüÖĞµÈ¼¶£¬Ó°ÏìÃüÖĞÂÊ
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+        public int AccuracyRating { get; set; } = 0;   // ï¿½ï¿½ï¿½ĞµÈ¼ï¿½ï¿½ï¿½Ó°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
-        // ĞÂÔö½ÇÉ«»ù´¡ÊôĞÔ
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         public AttributeSet BaseAttributes { get; set; } = new AttributeSet();
         
-        // ĞÂÔöÊôĞÔ·½·¨
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô·ï¿½ï¿½ï¿½
         
         /// <summary>
-        /// »ñÈ¡½ÇÉ«µÄ×ÜÊôĞÔÖµ£¨»ù´¡+×°±¸+buff£©
+        /// è·å–è§’è‰²çš„æ€»å±æ€§å€¼ï¼ˆå·²ç§»åŠ¨åˆ°PlayerAttributeServiceï¼‰
         /// </summary>
+        [Obsolete("Use PlayerAttributeService.GetTotalAttributes instead")]
         public AttributeSet GetTotalAttributes()
         {
-            // »ñÈ¡»ù´¡ÊôĞÔ
             var total = BaseAttributes.Clone();
-            
-            // Ìí¼Ó×°±¸ÊôĞÔ¼Ó³É
             foreach (var itemId in EquippedItems.Values)
             {
                 if (string.IsNullOrEmpty(itemId)) continue;
-                
                 var item = ItemData.GetItemById(itemId) as Equipment;
                 if (item?.AttributeBonuses != null)
                 {
                     total.Add(item.AttributeBonuses);
                 }
             }
-            
-            // TODO: Èç¹ûÓĞbuffÊôĞÔ¼Ó³É£¬ÔÚÕâÀïÌí¼Ó
-    
             return total;
         }
         
         /// <summary>
-        /// »ñÈ¡µ±Ç°Ö°ÒµµÄÖ÷ÊôĞÔÖµ
+        /// è·å–å½“å‰èŒä¸šçš„ä¸»å±æ€§å€¼ï¼ˆå·²ç§»åŠ¨åˆ°PlayerAttributeServiceï¼‰
         /// </summary>
+        [Obsolete("Use PlayerAttributeService.GetPrimaryAttributeValue instead")]
         public int GetPrimaryAttributeValue()
         {
             var primaryAttr = ProfessionAttributes.GetPrimaryAttribute(SelectedBattleProfession);
@@ -390,8 +427,9 @@ namespace BlazorWebGame.Models
         }
 
         /// <summary>
-        /// ¸üĞÂ½ÇÉ«»ù´¡ÊôĞÔ£¬Ó¦ÔÚ´´½¨½ÇÉ«»ò±ä¸üÖ°ÒµÊ±µ÷ÓÃ
+        /// æ›´æ–°è§’è‰²åŸºç¡€å±æ€§ï¼ˆå·²ç§»åŠ¨åˆ°PlayerAttributeServiceï¼‰
         /// </summary>
+        [Obsolete("Use PlayerAttributeService.UpdateBaseAttributes instead")]
         public void UpdateBaseAttributes()
         {
             if (BaseAttributes == null)
@@ -399,40 +437,30 @@ namespace BlazorWebGame.Models
                 BaseAttributes = new AttributeSet();
             }
 
-            // »ñÈ¡Ö°Òµ³õÊ¼ÊôĞÔ
             var initialAttrs = ProfessionAttributes.GetInitialAttributes(SelectedBattleProfession);
-
-            // »ñÈ¡µ±Ç°µÈ¼¶
             int level = GetLevel(SelectedBattleProfession);
-
-            // ÉèÖÃ»ù´¡ÊôĞÔ = ³õÊ¼ÊôĞÔ
             BaseAttributes = initialAttrs.Clone();
 
-            // ÀÛ¼ÓÃ¿¼¶³É³¤
             for (int i = 1; i < level; i++)
             {
-                int currentLevel = i + 1; // ´ÓµÚ2¼¶¿ªÊ¼¼ÆËãÊôĞÔ³É³¤
+                int currentLevel = i + 1;
                 var levelUpAttrs = ProfessionAttributes.GetLevelUpAttributesForLevel(SelectedBattleProfession, currentLevel);
                 BaseAttributes.Add(levelUpAttrs);
             }
         }
 
+        /// <summary>
+        /// è·å–æ€»ç²¾ç¡®åº¦ï¼ˆå·²ç§»åŠ¨åˆ°PlayerAttributeServiceï¼‰
+        /// </summary>  
+        [Obsolete("Use PlayerAttributeService.GetTotalAccuracy instead")]
         public int GetTotalAccuracy()
         {
-            // »ñÈ¡ÊôĞÔ×ÜÖµ
             var attrs = GetTotalAttributes();
-
-            // Ö÷ÊôĞÔ¼Ó³É
             int primaryAttrBonus = GetPrimaryAttributeValue() / 2;
-
-            // ×°±¸Ö±½ÓÃüÖĞÂÊ¼Ó³É
             var equipmentAccuracy = EquippedItems.Values
                 .Select(itemId => ItemData.GetItemById(itemId) as Equipment)
                 .Where(eq => eq != null)
                 .Sum(eq => eq!.AccuracyBonus);
-
-            // TODO: Èç¹ûÓĞbuffÃüÖĞÂÊ¼Ó³É£¬ÔÚÕâÀïÌí¼Ó
-
             return primaryAttrBonus + equipmentAccuracy;
         }
     }
