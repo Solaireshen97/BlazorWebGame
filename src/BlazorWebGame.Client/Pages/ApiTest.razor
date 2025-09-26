@@ -3,6 +3,7 @@
 @using BlazorWebGame.Shared.DTOs
 @inject GameApiClient ApiClient
 @inject GameApiService LegacyApi
+@inject ShopApiService ShopApi
 
 <PageTitle>API 测试页面</PageTitle>
 
@@ -97,6 +98,55 @@
                     <button class="btn btn-info mb-2" @onclick="TestProductionOperations">测试生产操作</button>
                     <div class="alert alert-success small">
                         <strong>采集节点:</strong> @_nodeCount 个
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-3">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>🛒 商店服务测试</h5>
+                </div>
+                <div class="card-body">
+                    <button class="btn btn-success mb-2" @onclick="TestGetShopItems">获取商店物品</button>
+                    <button class="btn btn-info mb-2" @onclick="TestGetShopCategories">获取商店分类</button>
+                    <button class="btn btn-warning mb-2" @onclick="TestPurchaseItem">测试购买物品</button>
+                    <button class="btn btn-danger mb-2" @onclick="TestSellItem">测试出售物品</button>
+                    <div class="alert alert-info small">
+                        <strong>商店状态:</strong> @_shopStatus
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5>📊 商店测试结果</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>商店物品数量</h6>
+                            <div class="alert alert-primary small">@_shopItemCount 个物品</div>
+                            
+                            <h6>商店分类数量</h6>
+                            <div class="alert alert-success small">@_shopCategoryCount 个分类</div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>最后操作结果</h6>
+                            <div class="alert alert-@(_lastShopTestSuccess ? "success" : "danger") small">
+                                @_lastShopTestMessage
+                            </div>
+                            
+                            <h6>测试统计</h6>
+                            <div class="alert alert-info small">
+                                成功: @_shopTestSuccessCount, 失败: @_shopTestFailureCount
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -224,6 +274,15 @@
     private string _productionTestStatus = "未测试";
     private string _performanceMetrics = "无数据";
     private string _integrationTestStatus = "未测试";
+    
+    // Shop test status variables
+    private string _shopStatus = "未测试";
+    private int _shopItemCount = 0;
+    private int _shopCategoryCount = 0;
+    private bool _lastShopTestSuccess = false;
+    private string _lastShopTestMessage = "尚未进行测试";
+    private int _shopTestSuccessCount = 0;
+    private int _shopTestFailureCount = 0;
 
     private void AddLog(string message)
     {
@@ -1087,6 +1146,183 @@
         {
             AddLog($"❌ 压力场景测试异常: {ex.Message}");
             _integrationTestStatus = "压力测试异常";
+        }
+    }
+    
+    // Shop API Test Methods
+    private async Task TestGetShopItems()
+    {
+        try
+        {
+            AddLog("🛒 获取商店物品...");
+            var response = await ShopApi.GetShopItemsAsync();
+            
+            if (response.Success && response.Data != null)
+            {
+                _shopItemCount = response.Data.Count;
+                _lastShopTestSuccess = true;
+                _lastShopTestMessage = $"成功获取 {_shopItemCount} 个商店物品";
+                _shopTestSuccessCount++;
+                AddLog($"✅ 获取到 {_shopItemCount} 个商店物品");
+                
+                foreach (var item in response.Data.Take(3))
+                {
+                    AddLog($"   - {item.Name} ({item.Category}) - {item.Price} {(item.Currency == CurrencyTypeDto.Gold ? "金币" : "物品")}");
+                }
+                
+                if (response.Data.Count > 3)
+                {
+                    AddLog($"   ... 还有 {response.Data.Count - 3} 个物品");
+                }
+            }
+            else
+            {
+                _lastShopTestSuccess = false;
+                _lastShopTestMessage = response.Message;
+                _shopTestFailureCount++;
+                AddLog($"⚠️ 获取商店物品失败: {response.Message}");
+            }
+            
+            _shopStatus = "已测试";
+        }
+        catch (Exception ex)
+        {
+            _lastShopTestSuccess = false;
+            _lastShopTestMessage = $"异常: {ex.Message}";
+            _shopTestFailureCount++;
+            AddLog($"❌ 商店物品测试失败: {ex.Message}");
+            _shopStatus = "测试异常";
+        }
+    }
+    
+    private async Task TestGetShopCategories()
+    {
+        try
+        {
+            AddLog("🏷️ 获取商店分类...");
+            var response = await ShopApi.GetShopCategoriesAsync();
+            
+            if (response.Success && response.Data != null)
+            {
+                _shopCategoryCount = response.Data.Count;
+                _lastShopTestSuccess = true;
+                _lastShopTestMessage = $"成功获取 {_shopCategoryCount} 个商店分类";
+                _shopTestSuccessCount++;
+                AddLog($"✅ 获取到 {_shopCategoryCount} 个商店分类");
+                
+                foreach (var category in response.Data)
+                {
+                    AddLog($"   - {category.Name} ({category.ItemCount} 个物品)");
+                }
+            }
+            else
+            {
+                _lastShopTestSuccess = false;
+                _lastShopTestMessage = response.Message;
+                _shopTestFailureCount++;
+                AddLog($"⚠️ 获取商店分类失败: {response.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _lastShopTestSuccess = false;
+            _lastShopTestMessage = $"异常: {ex.Message}";
+            _shopTestFailureCount++;
+            AddLog($"❌ 商店分类测试失败: {ex.Message}");
+        }
+    }
+    
+    private async Task TestPurchaseItem()
+    {
+        try
+        {
+            AddLog("💰 测试购买物品...");
+            
+            // 首先获取可购买的物品
+            var itemsResponse = await ShopApi.GetShopItemsAsync();
+            if (!itemsResponse.Success || itemsResponse.Data == null || !itemsResponse.Data.Any())
+            {
+                AddLog("⚠️ 没有可购买的物品，跳过购买测试");
+                return;
+            }
+            
+            var testItem = itemsResponse.Data.First();
+            AddLog($"📦 尝试购买物品: {testItem.Name}");
+            
+            var purchaseRequest = new PurchaseRequestDto
+            {
+                CharacterId = "test-character-id",
+                ItemId = testItem.Id,
+                Quantity = 1
+            };
+            
+            var response = await ShopApi.PurchaseItemAsync(purchaseRequest);
+            
+            if (response.Success && response.Data != null)
+            {
+                _lastShopTestSuccess = true;
+                _lastShopTestMessage = $"购买测试: {response.Data.Message}";
+                _shopTestSuccessCount++;
+                AddLog($"✅ 购买测试结果: {response.Data.Message}");
+                AddLog($"💰 剩余金币: {response.Data.RemainingGold}");
+            }
+            else
+            {
+                _lastShopTestSuccess = false;
+                _lastShopTestMessage = response.Message;
+                _shopTestFailureCount++;
+                AddLog($"⚠️ 购买测试失败: {response.Message}");
+                AddLog("ℹ️ 这通常是因为测试角色不存在或金币不足，这是正常的");
+            }
+        }
+        catch (Exception ex)
+        {
+            _lastShopTestSuccess = false;
+            _lastShopTestMessage = $"异常: {ex.Message}";
+            _shopTestFailureCount++;
+            AddLog($"❌ 购买测试异常: {ex.Message}");
+        }
+    }
+    
+    private async Task TestSellItem()
+    {
+        try
+        {
+            AddLog("💎 测试出售物品...");
+            
+            var sellRequest = new SellRequestDto
+            {
+                CharacterId = "test-character-id",
+                ItemId = "EQ_WEP_001", // 假设存在的物品ID
+                Quantity = 1
+            };
+            
+            var response = await ShopApi.SellItemAsync(sellRequest);
+            
+            if (response.Success && response.Data != null)
+            {
+                _lastShopTestSuccess = true;
+                _lastShopTestMessage = $"出售测试: {response.Data.Message}";
+                _shopTestSuccessCount++;
+                AddLog($"✅ 出售测试结果: {response.Data.Message}");
+                AddLog($"💰 获得金币: {response.Data.GoldEarned}");
+                AddLog($"💰 剩余金币: {response.Data.RemainingGold}");
+            }
+            else
+            {
+                _lastShopTestSuccess = false;
+                _lastShopTestMessage = response.Message;
+                _shopTestFailureCount++;
+                AddLog($"⚠️ 出售测试失败: {response.Message}");
+                AddLog("ℹ️ 这通常是因为测试角色不存在或物品不足，这是正常的");
+            }
+        }
+        catch (Exception ex)
+        {
+            _lastShopTestSuccess = false;
+            _lastShopTestMessage = $"异常: {ex.Message}";
+            _shopTestFailureCount++;
+            AddLog($"❌ 出售测试异常: {ex.Message}");
         }
     }
 }
