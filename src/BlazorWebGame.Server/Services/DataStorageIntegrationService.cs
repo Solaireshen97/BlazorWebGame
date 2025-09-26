@@ -1,4 +1,6 @@
+using BlazorWebGame.Models;
 using BlazorWebGame.Shared.DTOs;
+using BlazorWebGame.Shared.Enums;
 using BlazorWebGame.Shared.Interfaces;
 using BlazorWebGame.Shared.Models;
 using Microsoft.Extensions.Logging;
@@ -323,13 +325,13 @@ public class DataStorageIntegrationService
         };
 
         // 设置选中的战斗职业
-        if (Enum.TryParse<BlazorWebGame.Models.BattleProfession>(dto.SelectedBattleProfession, out var profession))
+        if (Enum.TryParse<BattleProfession>(dto.SelectedBattleProfession, out var profession))
         {
             player.SelectedBattleProfession = profession;
         }
 
         // 设置当前动作状态
-        if (Enum.TryParse<BlazorWebGame.Models.PlayerActionState>(dto.CurrentAction, out var actionState))
+        if (Enum.TryParse<PlayerActionState>(dto.CurrentAction, out var actionState))
         {
             player.CurrentAction = actionState;
         }

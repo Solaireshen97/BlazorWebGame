@@ -1,5 +1,4 @@
 using BlazorWebGame.GameConfig;
-using BlazorWebGame.Models;
 using BlazorWebGame.Models.Items;
 using System.Linq;
 
@@ -9,6 +8,8 @@ using BlazorWebGame.Shared.Models.Items;
 using BlazorWebGame.Shared.Models.Skills;
 using BlazorWebGame.Shared.Models.Base;
 using BlazorWebGame.Shared.Models.Combat;
+using BlazorWebGame.Models;
+using Equipment = BlazorWebGame.Shared.Models.Items.Equipment;
 namespace BlazorWebGame.Services.PlayerServices;
 
 /// <summary>

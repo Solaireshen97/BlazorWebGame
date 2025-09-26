@@ -1,6 +1,7 @@
 using BlazorWebGame.GameConfig;
 using BlazorWebGame.Models;
 using BlazorWebGame.Shared.DTOs;
+using BlazorWebGame.Shared.Enums;
 using System;
 using System.Linq;
 

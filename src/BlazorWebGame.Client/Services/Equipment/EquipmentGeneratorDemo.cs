@@ -2,6 +2,8 @@ using BlazorWebGame.Models;
 using BlazorWebGame.Models.Items;
 using BlazorWebGame.Models.Monsters;
 using BlazorWebGame.Services.Equipments;
+using BlazorWebGame.Shared.Enums;
+using BlazorWebGame.Shared.Models.Base;
 using System.Collections.Generic;
 
 namespace BlazorWebGame.Services

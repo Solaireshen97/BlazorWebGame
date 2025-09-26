@@ -2,6 +2,7 @@ using BlazorWebGame.Client.Services.Api;
 using BlazorWebGame.Models;
 using BlazorWebGame.Services;
 using BlazorWebGame.Shared.DTOs;
+using BlazorWebGame.Shared.Enums;
 
 namespace BlazorWebGame.Client.Services;
 

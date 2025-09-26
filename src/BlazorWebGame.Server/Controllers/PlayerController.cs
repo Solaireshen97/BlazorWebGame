@@ -1,5 +1,6 @@
 using BlazorWebGame.Server.Services;
 using BlazorWebGame.Shared.DTOs;
+using BlazorWebGame.Shared.Enums;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BlazorWebGame.Server.Controllers
@@ -136,11 +137,11 @@ namespace BlazorWebGame.Server.Controllers
                 double progress = professionType.ToLower() switch
                 {
                     "battle" => _playerProfessionService.GetLevelProgress(character,
-                        Enum.Parse<BlazorWebGame.Models.BattleProfession>(profession)),
+                        Enum.Parse<BattleProfession>(profession)),
                     "gathering" => _playerProfessionService.GetLevelProgress(character,
-                        Enum.Parse<BlazorWebGame.Models.GatheringProfession>(profession)),
+                        Enum.Parse<GatheringProfession>(profession)),
                     "production" => _playerProfessionService.GetLevelProgress(character,
-                        Enum.Parse<BlazorWebGame.Models.ProductionProfession>(profession)),
+                        Enum.Parse<ProductionProfession>(profession)),
                     _ => 0.0
                 };
 

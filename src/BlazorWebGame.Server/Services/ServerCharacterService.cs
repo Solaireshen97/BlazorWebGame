@@ -1,4 +1,5 @@
 using BlazorWebGame.Shared.DTOs;
+using BlazorWebGame.Shared.Enums;
 using BlazorWebGame.Shared.Events;
 using System.Collections.Concurrent;
 
@@ -126,11 +127,11 @@ namespace BlazorWebGame.Server.Services
             (bool leveledUp, int oldLevel, int newLevel) = request.ProfessionType.ToLower() switch
             {
                 "battle" => _playerProfessionService.AddBattleXP(character, 
-                    Enum.Parse<BlazorWebGame.Models.BattleProfession>(request.Profession), request.Amount),
+                    Enum.Parse<BattleProfession>(request.Profession), request.Amount),
                 "gathering" => _playerProfessionService.AddGatheringXP(character,
-                    Enum.Parse<BlazorWebGame.Models.GatheringProfession>(request.Profession), request.Amount),
+                    Enum.Parse<GatheringProfession>(request.Profession), request.Amount),
                 "production" => _playerProfessionService.AddProductionXP(character,
-                    Enum.Parse<BlazorWebGame.Models.ProductionProfession>(request.Profession), request.Amount),
+                    Enum.Parse<ProductionProfession>(request.Profession), request.Amount),
                 _ => (false, 0, 0)
             };
 
@@ -234,11 +235,11 @@ namespace BlazorWebGame.Server.Services
             return professionType.ToLower() switch
             {
                 "battle" => _playerProfessionService.GetLevel(character, 
-                    Enum.Parse<BlazorWebGame.Models.BattleProfession>(profession)),
+                    Enum.Parse<BattleProfession>(profession)),
                 "gathering" => _playerProfessionService.GetLevel(character,
-                    Enum.Parse<BlazorWebGame.Models.GatheringProfession>(profession)),
+                    Enum.Parse<GatheringProfession>(profession)),
                 "production" => _playerProfessionService.GetLevel(character,
-                    Enum.Parse<BlazorWebGame.Models.ProductionProfession>(profession)),
+                    Enum.Parse<ProductionProfession>(profession)),
                 _ => 1
             };
         }
@@ -251,7 +252,7 @@ namespace BlazorWebGame.Server.Services
             if (!_characters.TryGetValue(characterId, out var character))
                 return false;
 
-            var battleProfession = Enum.Parse<BlazorWebGame.Models.BattleProfession>(profession);
+            var battleProfession = Enum.Parse<BattleProfession>(profession);
             return _playerUtilityService.MeetsLevelRequirement(character, battleProfession, requiredLevel);
         }
 

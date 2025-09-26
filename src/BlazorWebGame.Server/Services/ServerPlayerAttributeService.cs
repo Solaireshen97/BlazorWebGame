@@ -2,6 +2,8 @@ using BlazorWebGame.GameConfig;
 using BlazorWebGame.Models;
 using BlazorWebGame.Models.Items;
 using BlazorWebGame.Shared.DTOs;
+using BlazorWebGame.Shared.Enums;
+using BlazorWebGame.Shared.Models.Base;
 using System.Linq;
 
 namespace BlazorWebGame.Server.Services

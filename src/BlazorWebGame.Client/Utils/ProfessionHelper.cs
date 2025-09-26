@@ -1,5 +1,6 @@
 using BlazorWebGame.Models;
 using BlazorWebGame.Models.Monsters;
+using BlazorWebGame.Shared.Enums;
 
 namespace BlazorWebGame.Utils
 {

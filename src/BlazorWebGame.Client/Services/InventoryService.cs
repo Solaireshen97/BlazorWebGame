@@ -10,6 +10,7 @@ using BlazorWebGame.Shared.Models.Items;
 using BlazorWebGame.Shared.Models.Skills;
 using BlazorWebGame.Shared.Models.Base;
 using BlazorWebGame.Shared.Models.Combat;
+using Equipment = BlazorWebGame.Shared.Models.Items.Equipment;
 namespace BlazorWebGame.Services
 {
     /// <summary>

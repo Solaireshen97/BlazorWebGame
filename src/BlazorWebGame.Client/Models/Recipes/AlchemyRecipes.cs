@@ -1,3 +1,4 @@
+using BlazorWebGame.Shared.Enums;
 using System.Collections.Generic;
 
 namespace BlazorWebGame.Models.Recipes

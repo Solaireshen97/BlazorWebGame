@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using DTOWeaponType = BlazorWebGame.Shared.DTOs.WeaponType;
 using DTOArmorType = BlazorWebGame.Shared.DTOs.ArmorType;
+using BlazorWebGame.Shared.Enums;
 
 namespace BlazorWebGame.Server.Services;
 
@@ -49,7 +50,7 @@ public class ServerEquipmentGenerator
     public EquipmentDto GenerateEquipment(
         string name,
         int level,
-        Models.EquipmentSlot slot,
+        EquipmentSlot slot,
         EquipmentQuality quality,
         AttributeTier attributeTier = AttributeTier.T2,
         DTOWeaponType weaponType = DTOWeaponType.None,
@@ -136,7 +137,7 @@ public class ServerEquipmentGenerator
         // 确保武器类型设置正确
         if (weaponType == DTOWeaponType.None)
         {
-            weaponType = equipment.Slot == Models.EquipmentSlot.OffHand.ToString() ? DTOWeaponType.Shield : DTOWeaponType.Sword;
+            weaponType = equipment.Slot == EquipmentSlot.OffHand.ToString() ? DTOWeaponType.Shield : DTOWeaponType.Sword;
         }
 
         // 如果是双手武器类型，确保IsTwoHanded标志设置正确
@@ -172,7 +173,7 @@ public class ServerEquipmentGenerator
         EquipmentQuality quality,
         AttributeTier attributeTier,
         DTOArmorType armorType,
-        Models.EquipmentSlot slot)
+        EquipmentSlot slot)
     {
         // 基础护甲值
         var baseArmor = CalculateBaseArmor(level, quality, armorType, slot);
@@ -193,7 +194,7 @@ public class ServerEquipmentGenerator
         int level,
         EquipmentQuality quality,
         AttributeTier attributeTier,
-        Models.EquipmentSlot slot)
+        EquipmentSlot slot)
     {
         // 饰品主要提供属性加成
         AddJewelryAttributes(equipment, level, quality, attributeTier);
@@ -233,7 +234,7 @@ public class ServerEquipmentGenerator
     /// <summary>
     /// 计算基础护甲值
     /// </summary>
-    private int CalculateBaseArmor(int level, EquipmentQuality quality, DTOArmorType armorType, Models.EquipmentSlot slot)
+    private int CalculateBaseArmor(int level, EquipmentQuality quality, DTOArmorType armorType, EquipmentSlot slot)
     {
         var baseArmor = level * 3 + 10;
         
@@ -260,12 +261,12 @@ public class ServerEquipmentGenerator
         // 部位修正
         var slotMultiplier = slot switch
         {
-            Models.EquipmentSlot.Chest => 1.5,
-            Models.EquipmentSlot.Legs => 1.3,
-            Models.EquipmentSlot.Head => 1.2,
-            Models.EquipmentSlot.Shoulder => 1.0,
-            Models.EquipmentSlot.Hands => 0.8,
-            Models.EquipmentSlot.Feet => 0.9,
+            EquipmentSlot.Chest => 1.5,
+            EquipmentSlot.Legs => 1.3,
+            EquipmentSlot.Head => 1.2,
+            EquipmentSlot.Shoulder => 1.0,
+            EquipmentSlot.Hands => 0.8,
+            EquipmentSlot.Feet => 0.9,
             _ => 1.0
         };
 
@@ -490,7 +491,7 @@ public class ServerEquipmentGenerator
     /// <summary>
     /// 生成装备描述
     /// </summary>
-    private string GenerateDescription(string name, EquipmentQuality quality, int level, Models.EquipmentSlot slot, DTOWeaponType weaponType, DTOArmorType armorType)
+    private string GenerateDescription(string name, EquipmentQuality quality, int level, EquipmentSlot slot, DTOWeaponType weaponType, DTOArmorType armorType)
     {
         var qualityDesc = quality switch
         {
@@ -517,15 +518,15 @@ public class ServerEquipmentGenerator
     /// <summary>
     /// 判断是否为武器
     /// </summary>
-    private bool IsWeapon(Models.EquipmentSlot slot) => slot is Models.EquipmentSlot.MainHand or Models.EquipmentSlot.OffHand;
+    private bool IsWeapon(EquipmentSlot slot) => slot is EquipmentSlot.MainHand or EquipmentSlot.OffHand;
 
     /// <summary>
     /// 判断是否为护甲
     /// </summary>
-    private bool IsArmor(Models.EquipmentSlot slot) => slot is Models.EquipmentSlot.Head or Models.EquipmentSlot.Chest or Models.EquipmentSlot.Legs or Models.EquipmentSlot.Hands or Models.EquipmentSlot.Feet;
+    private bool IsArmor(EquipmentSlot slot) => slot is EquipmentSlot.Head or EquipmentSlot.Chest or EquipmentSlot.Legs or EquipmentSlot.Hands or EquipmentSlot.Feet;
 
     /// <summary>
     /// 判断是否为饰品
     /// </summary>
-    private bool IsJewelry(Models.EquipmentSlot slot) => slot is Models.EquipmentSlot.Finger1 or Models.EquipmentSlot.Finger2 or Models.EquipmentSlot.Neck or Models.EquipmentSlot.Trinket1 or Models.EquipmentSlot.Trinket2;
+    private bool IsJewelry(EquipmentSlot slot) => slot is EquipmentSlot.Finger1 or EquipmentSlot.Finger2 or EquipmentSlot.Neck or EquipmentSlot.Trinket1 or EquipmentSlot.Trinket2;
 }
