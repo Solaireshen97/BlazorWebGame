@@ -12,6 +12,7 @@ namespace BlazorWebGame.Server.Controllers
         private readonly ServerPlayerAttributeService _playerAttributeService;
         private readonly ServerPlayerProfessionService _playerProfessionService;
         private readonly ServerPlayerUtilityService _playerUtilityService;
+        private readonly CharacterStateService _characterStateService;
         private readonly ILogger<PlayerController> _logger;
 
         public PlayerController(
@@ -19,12 +20,14 @@ namespace BlazorWebGame.Server.Controllers
             ServerPlayerAttributeService playerAttributeService,
             ServerPlayerProfessionService playerProfessionService,
             ServerPlayerUtilityService playerUtilityService,
+            CharacterStateService characterStateService,
             ILogger<PlayerController> logger)
         {
             _characterService = characterService;
             _playerAttributeService = playerAttributeService;
             _playerProfessionService = playerProfessionService;
             _playerUtilityService = playerUtilityService;
+            _characterStateService = characterStateService;
             _logger = logger;
         }
 
@@ -320,5 +323,174 @@ namespace BlazorWebGame.Server.Controllers
                 return StatusCode(500, new { message = "Internal server error" });
             }
         }
+
+        #region Character State Endpoints - 角色状态查询端点
+
+        /// <summary>
+        /// 获取单个角色的当前状态（包含动作进度和详细信息）
+        /// </summary>
+        [HttpGet("{characterId}/state")]
+        public async Task<ActionResult<ApiResponse<CharacterStateDto>>> GetCharacterState(string characterId)
+        {
+            try
+            {
+                var characterState = await _characterStateService.GetCharacterStateAsync(characterId);
+                
+                if (characterState == null)
+                {
+                    return NotFound(new ApiResponse<CharacterStateDto>
+                    {
+                        Success = false,
+                        Message = "Character not found or no state available"
+                    });
+                }
+
+                return Ok(new ApiResponse<CharacterStateDto>
+                {
+                    Success = true,
+                    Data = characterState,
+                    Message = "Character state retrieved successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting character state for {CharacterId}", characterId);
+                return StatusCode(500, new ApiResponse<CharacterStateDto>
+                {
+                    Success = false,
+                    Message = "Internal server error"
+                });
+            }
+        }
+
+        /// <summary>
+        /// 批量获取多个角色的状态信息（支持轮询）
+        /// </summary>
+        [HttpPost("states")]
+        public async Task<ActionResult<ApiResponse<CharacterStatesResponse>>> GetCharacterStates(
+            [FromBody] CharacterStatesRequest request)
+        {
+            try
+            {
+                if (request == null || !request.CharacterIds.Any())
+                {
+                    return BadRequest(new ApiResponse<CharacterStatesResponse>
+                    {
+                        Success = false,
+                        Message = "Character IDs are required"
+                    });
+                }
+
+                var response = await _characterStateService.GetCharacterStatesAsync(request);
+
+                return Ok(new ApiResponse<CharacterStatesResponse>
+                {
+                    Success = true,
+                    Data = response,
+                    Message = $"Retrieved {response.Characters.Count} character states"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting character states for batch request");
+                return StatusCode(500, new ApiResponse<CharacterStatesResponse>
+                {
+                    Success = false,
+                    Message = "Internal server error"
+                });
+            }
+        }
+
+        /// <summary>
+        /// 获取所有活跃角色的状态（用于管理界面或概览）
+        /// </summary>
+        [HttpGet("states/active")]
+        public async Task<ActionResult<ApiResponse<List<CharacterStateDto>>>> GetAllActiveCharacterStates()
+        {
+            try
+            {
+                var activeStates = await _characterStateService.GetAllActiveCharacterStatesAsync();
+
+                return Ok(new ApiResponse<List<CharacterStateDto>>
+                {
+                    Success = true,
+                    Data = activeStates,
+                    Message = $"Retrieved {activeStates.Count} active character states"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting all active character states");
+                return StatusCode(500, new ApiResponse<List<CharacterStateDto>>
+                {
+                    Success = false,
+                    Message = "Internal server error"
+                });
+            }
+        }
+
+        /// <summary>
+        /// 获取角色状态服务的性能统计信息
+        /// </summary>
+        [HttpGet("states/stats")]
+        public ActionResult<ApiResponse<BlazorWebGame.Shared.DTOs.CharacterStateServiceStats>> GetCharacterStateStats()
+        {
+            try
+            {
+                var stats = _characterStateService.GetStats();
+
+                return Ok(new ApiResponse<BlazorWebGame.Shared.DTOs.CharacterStateServiceStats>
+                {
+                    Success = true,
+                    Data = new BlazorWebGame.Shared.DTOs.CharacterStateServiceStats
+                    {
+                        TotalStateQueries = stats.TotalStateQueries,
+                        TotalStateUpdates = stats.TotalStateUpdates,
+                        CachedCharacterCount = stats.CachedCharacterCount,
+                        QueuedUpdateCount = stats.QueuedUpdateCount
+                    },
+                    Message = "Character state service statistics retrieved"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting character state service stats");
+                return StatusCode(500, new ApiResponse<BlazorWebGame.Shared.DTOs.CharacterStateServiceStats>
+                {
+                    Success = false,
+                    Message = "Internal server error"
+                });
+            }
+        }
+
+        /// <summary>
+        /// 手动更新角色在线状态
+        /// </summary>
+        [HttpPost("{characterId}/online-status")]
+        public IActionResult UpdateCharacterOnlineStatus(string characterId, [FromBody] bool isOnline)
+        {
+            try
+            {
+                _characterStateService.SetCharacterOnlineStatus(characterId, isOnline);
+                
+                return Ok(new ApiResponse<bool>
+                {
+                    Success = true,
+                    Data = isOnline,
+                    Message = $"Character online status updated to {(isOnline ? "online" : "offline")}"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating online status for character {CharacterId}", characterId);
+                return StatusCode(500, new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "Internal server error"
+                });
+            }
+        }
+
+        #endregion
     }
 }

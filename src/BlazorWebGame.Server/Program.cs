@@ -192,6 +192,13 @@ builder.Services.AddSingleton<GameEngineService>();
 builder.Services.AddSingleton<ServerCharacterService>();
 builder.Services.AddSingleton<ServerEventService>();
 
+// 注册事件驱动的服务系统
+builder.Services.AddSingleton<EventDrivenBattleEngine>();
+builder.Services.AddSingleton<EventDrivenProfessionService>();
+
+// 注册角色状态管理服务
+builder.Services.AddSingleton<CharacterStateService>();
+
 // 注册战斗管理器 - 需要初始化玩家列表
 builder.Services.AddSingleton<ServerBattleManager>(serviceProvider =>
 {

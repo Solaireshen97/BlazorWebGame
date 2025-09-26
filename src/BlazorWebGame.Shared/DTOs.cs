@@ -98,6 +98,104 @@ public class StartBattleRequest
 }
 
 /// <summary>
+/// 角色状态传输对象 - 用于轮询获取所有角色状态
+/// </summary>
+public class CharacterStateDto
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string CharacterName { get; set; } = string.Empty;
+    public PlayerActionStateDto CurrentAction { get; set; } = new();
+    public int Level { get; set; }
+    public int Health { get; set; }
+    public int MaxHealth { get; set; }
+    public int Mana { get; set; }
+    public int MaxMana { get; set; }
+    public DateTime LastUpdated { get; set; }
+    public bool IsOnline { get; set; }
+    public LocationDto? CurrentLocation { get; set; }
+    public EquipmentSummaryDto Equipment { get; set; } = new();
+    public List<ActiveBuffDto> ActiveBuffs { get; set; } = new();
+}
+
+/// <summary>
+/// 玩家动作状态传输对象
+/// </summary>
+public class PlayerActionStateDto
+{
+    public string ActionType { get; set; } = "Idle";
+    public string ActionTarget { get; set; } = string.Empty;
+    public double Progress { get; set; } = 0.0; // 0.0 到 1.0
+    public double Duration { get; set; } = 0.0; // 总持续时间（秒）
+    public double TimeRemaining { get; set; } = 0.0; // 剩余时间（秒）
+    public DateTime StartTime { get; set; }
+    public Dictionary<string, object> ActionData { get; set; } = new();
+}
+
+/// <summary>
+/// 位置信息传输对象
+/// </summary>
+public class LocationDto
+{
+    public string Zone { get; set; } = string.Empty;
+    public string SubZone { get; set; } = string.Empty;
+    public double X { get; set; }
+    public double Y { get; set; }
+}
+
+/// <summary>
+/// 装备摘要传输对象
+/// </summary>
+public class EquipmentSummaryDto
+{
+    public int TotalAttackPower { get; set; }
+    public int TotalDefense { get; set; }
+    public Dictionary<string, string> EquippedItems { get; set; } = new(); // slot -> itemName
+}
+
+/// <summary>
+/// 活跃增益效果传输对象
+/// </summary>
+public class ActiveBuffDto
+{
+    public string BuffId { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public double TimeRemaining { get; set; }
+    public int StackCount { get; set; } = 1;
+}
+
+/// <summary>
+/// 批量角色状态查询请求
+/// </summary>
+public class CharacterStatesRequest
+{
+    public List<string> CharacterIds { get; set; } = new();
+    public bool IncludeOfflineCharacters { get; set; } = false;
+    public DateTime? LastUpdateAfter { get; set; }
+}
+
+/// <summary>
+/// 批量角色状态响应
+/// </summary>
+public class CharacterStatesResponse
+{
+    public List<CharacterStateDto> Characters { get; set; } = new();
+    public DateTime ServerTimestamp { get; set; } = DateTime.UtcNow;
+    public int TotalCount { get; set; }
+}
+
+/// <summary>
+/// 角色状态服务统计信息
+/// </summary>
+public class CharacterStateServiceStats
+{
+    public long TotalStateQueries { get; set; }
+    public long TotalStateUpdates { get; set; }
+    public int CachedCharacterCount { get; set; }
+    public int QueuedUpdateCount { get; set; }
+}
+
+/// <summary>
 /// 战斗动作请求
 /// </summary>
 public class BattleActionRequest
