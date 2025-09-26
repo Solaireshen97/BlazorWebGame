@@ -54,18 +54,24 @@ public class GameEngineService
     /// </summary>
     private ServerBattleContext CreateServerBattleContext(Guid battleId, StartBattleRequest request)
     {
+        Guid? partyGuid = null;
+        if (!string.IsNullOrEmpty(request.PartyId) && Guid.TryParse(request.PartyId, out var parsedPartyGuid))
+        {
+            partyGuid = parsedPartyGuid;
+        }
+
         var context = new ServerBattleContext
         {
             BattleId = battleId,
             BattleType = "Normal",
-            PartyId = request.PartyId
+            PartyId = partyGuid
         };
 
         // 如果有 PartyId，获取组队成员
         List<string> participantIds;
-        if (!string.IsNullOrEmpty(request.PartyId) && Guid.TryParse(request.PartyId, out var partyGuid))
+        if (partyGuid.HasValue)
         {
-            participantIds = _partyService.GetActivePartyMembers(partyGuid);
+            participantIds = _partyService.GetActivePartyMembers(partyGuid.Value);
             
             // 确保发起者在列表中
             if (!participantIds.Contains(request.CharacterId))
@@ -139,7 +145,7 @@ public class GameEngineService
             BattleId = context.BattleId,
             CharacterId = context.Players.FirstOrDefault()?.Id ?? "",
             EnemyId = context.Enemies.FirstOrDefault()?.Id ?? "",
-            PartyId = context.PartyId,
+            PartyId = context.PartyId?.ToString(),
             IsActive = context.IsActive,
             LastUpdated = context.LastUpdate,
             BattleType = context.BattleType == "Normal" ? BattleType.Normal : BattleType.Dungeon,

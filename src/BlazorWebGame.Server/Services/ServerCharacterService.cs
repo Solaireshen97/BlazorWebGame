@@ -305,6 +305,37 @@ namespace BlazorWebGame.Server.Services
         }
 
         /// <summary>
+        /// 检查并处理升级
+        /// </summary>
+        public void CheckLevelUp(BlazorWebGame.Shared.Models.ServerBattlePlayer player)
+        {
+            // 简化的升级检查逻辑
+            var currentLevel = player.Level;
+            var xpForNextLevel = (currentLevel * 1000) + 500; // 简单的升级公式
+            
+            if (player.Experience >= xpForNextLevel)
+            {
+                player.Level++;
+                player.Experience -= xpForNextLevel;
+                
+                // 升级时增加属性
+                player.MaxHealth += 10;
+                player.Health = player.MaxHealth; // 升级时恢复满血
+                player.MaxMana += 5;
+                player.Mana = player.MaxMana;
+                
+                // 增加基础属性
+                player.Strength += 2;
+                player.Agility += 2;
+                player.Intellect += 2;
+                player.Spirit += 2;
+                player.Stamina += 2;
+                
+                _logger.LogInformation("Player {PlayerId} leveled up to level {Level}", player.Id, player.Level);
+            }
+        }
+
+        /// <summary>
         /// 初始化测试角色
         /// </summary>
         private void InitializeTestCharacters()

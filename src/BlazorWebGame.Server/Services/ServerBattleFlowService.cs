@@ -69,7 +69,7 @@ public class ServerBattleFlowService
             RemainingCooldown = refreshCooldown,
             BattleType = battle.BattleType,
             EnemyInfos = enemyInfos,
-            DungeonId = battle.DungeonId
+            DungeonId = battle.DungeonId?.ToString()
         };
 
         _logger.LogInformation("Battle refresh state created for battle {BattleId}, cooldown: {Cooldown}s", 
@@ -177,7 +177,7 @@ public class ServerBattleFlowService
         {
             CharacterId = alivePlayers.First().Id,
             EnemyId = dungeonId,
-            PartyId = originalBattle.PartyId
+            PartyId = originalBattle.PartyId?.ToString()
         };
 
         // 这里应该调用gameEngine的副本开始方法，目前简化处理
@@ -199,7 +199,7 @@ public class ServerBattleFlowService
         {
             CharacterId = alivePlayers.First().Id,
             EnemyId = enemyInfos.FirstOrDefault()?.Name ?? "goblin", // 默认敌人
-            PartyId = originalBattle.PartyId
+            PartyId = originalBattle.PartyId?.ToString()
         };
 
         var newBattle = gameEngine.StartBattle(request);
@@ -415,6 +415,26 @@ public class ServerBattleFlowService
     }
 
     /// <summary>
+    /// 收集敌人信息用于战斗刷新
+    /// </summary>
+    public List<ServerEnemyInfo> CollectEnemyInfos(ServerBattleContext battle)
+    {
+        var enemyInfos = new List<ServerEnemyInfo>();
+        
+        foreach (var enemy in battle.Enemies)
+        {
+            enemyInfos.Add(new ServerEnemyInfo
+            {
+                Name = enemy.Name,
+                Count = 1, // Each enemy counts as 1
+                Level = enemy.Level
+            });
+        }
+        
+        return enemyInfos;
+    }
+
+    /// <summary>
     /// 确定合适的敌人（简化版本）
     /// </summary>
     private string DetermineSuitableEnemy(int playerLevel)
@@ -517,6 +537,7 @@ public class ServerEnemyInfo
 {
     public string Name { get; set; } = string.Empty;
     public int Count { get; set; }
+    public int Level { get; set; } = 1;
 }
 
 /// <summary>

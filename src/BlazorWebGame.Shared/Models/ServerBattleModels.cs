@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using BlazorWebGame.Shared.DTOs;
 
 namespace BlazorWebGame.Shared.Models;
 
@@ -29,7 +30,16 @@ public abstract class ServerBattleParticipant
     
     public abstract bool IsPlayer { get; }
     
-    public bool IsAlive => Health > 0;
+    public virtual bool IsAlive 
+    { 
+        get => Health > 0; 
+        set 
+        { 
+            // Allow setting IsAlive for battle management
+            if (!value && Health > 0)
+                Health = 0;
+        } 
+    }
     public double HealthPercentage => MaxHealth > 0 ? (double)Health / MaxHealth : 0;
 }
 
@@ -46,6 +56,20 @@ public class ServerBattlePlayer : ServerBattleParticipant
     public string SelectedBattleProfession { get; set; } = "Warrior";
     public Dictionary<string, int> Attributes { get; set; } = new();
     public List<string> Inventory { get; set; } = new();
+    
+    // Additional attributes for combat calculations
+    public int Strength { get; set; } = 10;
+    public int Agility { get; set; } = 10;
+    public int Intellect { get; set; } = 10;
+    public int Spirit { get; set; } = 10;
+    public int Stamina { get; set; } = 10;
+    public int Mana { get; set; } = 100;
+    public int MaxMana { get; set; } = 100;
+    
+    // Combat state
+    public string CurrentAction { get; set; } = "Idle";
+    public string? CurrentEnemyId { get; set; }
+    public Guid? PartyId { get; set; }
 }
 
 /// <summary>
@@ -84,14 +108,20 @@ public class ServerBattleContext
     public List<ServerBattleAction> ActionHistory { get; set; } = new();
     
     // Party info (if applicable)
-    public string? PartyId { get; set; }
+    public Guid? PartyId { get; set; }
     
     // Dungeon-specific properties
     public string? DungeonId { get; set; }
     public int WaveNumber { get; set; } = 0;
     public bool AllowAutoRevive { get; set; } = false;
     
-    public bool IsActive => Status == "Active";
+    // Battle result
+    public bool IsVictory { get; set; } = false;
+    
+    // State enum property  
+    public ServerBattleState State { get; set; } = ServerBattleState.Active;
+    
+    public bool IsActive => State == ServerBattleState.Active;
     public bool HasActiveParticipants => 
         Players.Any(p => p.IsAlive) && Enemies.Any(e => e.IsAlive);
 }
@@ -111,4 +141,27 @@ public class ServerBattleAction
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
     public bool IsCritical { get; set; }
     public Dictionary<string, object> AdditionalData { get; set; } = new();
+}
+
+/// <summary>
+/// 服务端战斗刷新状态
+/// </summary>
+public class ServerBattleRefreshState
+{
+    public ServerBattleContext OriginalBattle { get; set; } = new();
+    public double RemainingCooldown { get; set; }
+    public string BattleType { get; set; } = "Normal";
+    public List<ServerEnemyInfo> EnemyInfos { get; set; } = new();
+    public string? DungeonId { get; set; }
+}
+
+/// <summary>
+/// 服务端副本波次刷新状态
+/// </summary>
+public class ServerDungeonWaveRefreshState
+{
+    public Guid DungeonId { get; set; }
+    public int CurrentWave { get; set; }
+    public double RemainingCooldown { get; set; }
+    public List<ServerBattlePlayer> Players { get; set; } = new();
 }
