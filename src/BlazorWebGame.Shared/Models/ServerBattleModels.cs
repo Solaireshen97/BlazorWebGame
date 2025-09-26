@@ -30,7 +30,16 @@ public abstract class ServerBattleParticipant
     
     public abstract bool IsPlayer { get; }
     
-    public bool IsAlive => Health > 0;
+    public virtual bool IsAlive 
+    { 
+        get => Health > 0; 
+        set 
+        { 
+            // Allow setting IsAlive for battle management
+            if (!value && Health > 0)
+                Health = 0;
+        } 
+    }
     public double HealthPercentage => MaxHealth > 0 ? (double)Health / MaxHealth : 0;
 }
 

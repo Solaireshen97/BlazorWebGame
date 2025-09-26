@@ -327,6 +327,94 @@ public class ServerLootService
     }
 
     /// <summary>
+    /// 生成战斗掉落物品
+    /// </summary>
+    public List<string> GenerateBattleLoot(ServerBattleContext battle, ServerBattlePlayer player)
+    {
+        var lootItems = new List<string>();
+        
+        foreach (var enemy in battle.Enemies)
+        {
+            if (enemy.LootTable != null && enemy.LootTable.Any())
+            {
+                // 使用敌人的掉落表
+                foreach (var lootEntry in enemy.LootTable)
+                {
+                    if (_random.NextDouble() < lootEntry.Value)
+                    {
+                        lootItems.Add(lootEntry.Key);
+                    }
+                }
+            }
+            else
+            {
+                // 默认掉落逻辑 - 使用现有的GenerateRandomLoot method for the enemy type
+                var enemyLoot = new List<string>();
+                
+                // 简单的掉落逻辑
+                if (_random.NextDouble() < 0.4) // 40% 概率掉落金币
+                {
+                    enemyLoot.Add("gold");
+                }
+                
+                if (_random.NextDouble() < 0.2) // 20% 概率掉落物品
+                {
+                    var possibleItems = GetPossibleLootByEnemyType(enemy.Name, enemy.Level);
+                    if (possibleItems.Any())
+                    {
+                        enemyLoot.Add(possibleItems[_random.Next(possibleItems.Count)]);
+                    }
+                }
+                
+                lootItems.AddRange(enemyLoot);
+            }
+        }
+        
+        // 额外随机掉落
+        if (_random.NextDouble() < 0.3) // 30% 概率额外掉落
+        {
+            lootItems.Add("bonus_gold");
+        }
+        
+        _logger.LogDebug("Generated {Count} loot items for player {PlayerId} from battle {BattleId}", 
+            lootItems.Count, player.Id, battle.BattleId);
+        
+        return lootItems;
+    }
+
+    /// <summary>
+    /// 根据敌人类型获取可能的掉落物品
+    /// </summary>
+    private List<string> GetPossibleLootByEnemyType(string enemyName, int enemyLevel)
+    {
+        var possibleLoot = new List<string>();
+        
+        switch (enemyName.ToLower())
+        {
+            case "goblin":
+                possibleLoot.AddRange(new[] { "goblin_ear", "rusty_dagger", "small_potion" });
+                if (enemyLevel >= 5) possibleLoot.Add("goblin_crown");
+                break;
+                
+            case "orc":
+                possibleLoot.AddRange(new[] { "orc_tusk", "iron_sword", "leather_armor" });
+                if (enemyLevel >= 10) possibleLoot.Add("orc_axe");
+                break;
+                
+            case "skeleton":
+                possibleLoot.AddRange(new[] { "bone_fragment", "ancient_coin", "scroll" });
+                if (enemyLevel >= 8) possibleLoot.Add("bone_staff");
+                break;
+                
+            default:
+                possibleLoot.AddRange(new[] { "gold", "health_potion", "common_gem" });
+                break;
+        }
+        
+        return possibleLoot;
+    }
+
+    /// <summary>
     /// 计算玩家贡献度
     /// </summary>
     private double CalculatePlayerContribution(ServerBattlePlayer player)

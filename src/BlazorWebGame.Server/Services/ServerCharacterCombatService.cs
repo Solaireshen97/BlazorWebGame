@@ -184,7 +184,7 @@ public class ServerCharacterCombatService
     /// </summary>
     public void ApplyDamageToPlayer(ServerBattlePlayer player, double damage)
     {
-        player.Health = Math.Max(0, player.Health - damage);
+        player.Health = Math.Max(0, (int)(player.Health - Math.Round(damage)));
         
         if (player.Health <= 0)
         {
@@ -198,7 +198,7 @@ public class ServerCharacterCombatService
     /// </summary>
     public void ApplyDamageToEnemy(ServerBattleEnemy enemy, double damage)
     {
-        enemy.Health = Math.Max(0, enemy.Health - damage);
+        enemy.Health = Math.Max(0, (int)(enemy.Health - Math.Round(damage)));
         
         if (enemy.Health <= 0)
         {
@@ -257,7 +257,7 @@ public class ServerCharacterCombatService
     /// </summary>
     public void RestorePlayerHealth(ServerBattlePlayer player, double amount)
     {
-        player.Health = Math.Min(player.MaxHealth, player.Health + amount);
+        player.Health = Math.Min(player.MaxHealth, (int)(player.Health + Math.Round(amount)));
         _logger.LogDebug("Player {PlayerId} restored {Amount} health", player.Id, amount);
     }
 
@@ -266,7 +266,7 @@ public class ServerCharacterCombatService
     /// </summary>
     public void RestorePlayerMana(ServerBattlePlayer player, double amount)
     {
-        player.Mana = Math.Min(player.MaxMana, player.Mana + amount);
+        player.Mana = Math.Min(player.MaxMana, (int)(player.Mana + Math.Round(amount)));
         _logger.LogDebug("Player {PlayerId} restored {Amount} mana", player.Id, amount);
     }
 }

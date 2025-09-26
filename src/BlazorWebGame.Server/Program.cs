@@ -1,6 +1,8 @@
 using BlazorWebGame.Server.Hubs;
 using BlazorWebGame.Server.Services;
 using BlazorWebGame.Server;
+using BlazorWebGame.Shared.Models;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);

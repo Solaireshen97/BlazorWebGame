@@ -102,7 +102,7 @@ public class ServerEquipmentGenerator
             }
             else if (IsArmor(slot))
             {
-                GenerateArmorAttributes(equipment, level, quality, attributeTier, armorType);
+                GenerateArmorAttributes(equipment, level, quality, attributeTier, armorType, slot);
             }
             else if (IsJewelry(slot))
             {
@@ -171,10 +171,11 @@ public class ServerEquipmentGenerator
         int level,
         EquipmentQuality quality,
         AttributeTier attributeTier,
-        DTOArmorType armorType)
+        DTOArmorType armorType,
+        Models.EquipmentSlot slot)
     {
         // 基础护甲值
-        var baseArmor = CalculateBaseArmor(level, quality, armorType, equipment.Slot);
+        var baseArmor = CalculateBaseArmor(level, quality, armorType, slot);
         equipment.AttributeBonuses["Armor"] = baseArmor;
 
         // 根据护甲类型添加属性
