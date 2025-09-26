@@ -33,6 +33,7 @@ builder.Services.AddSingleton<HttpClient>(sp =>
 // 直接注册实现类，保持功能完整性
 builder.Services.AddSingleton<BattleApiService>();
 builder.Services.AddSingleton<CharacterApiService>();
+builder.Services.AddSingleton<CharacterStateApiService>();
 builder.Services.AddSingleton<PartyApiService>();
 builder.Services.AddSingleton<InventoryApiService>();
 builder.Services.AddSingleton<EquipmentApiService>();

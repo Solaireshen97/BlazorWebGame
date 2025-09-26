@@ -120,6 +120,9 @@ namespace BlazorWebGame.Shared.Events
         public const ushort CHARACTER_LEVEL_UP = 101;
         public const ushort CHARACTER_STAT_CHANGED = 102;
         public const ushort EXPERIENCE_GAINED = 103;
+        public const ushort PLAYER_ACTION_STARTED = 104;
+        public const ushort PLAYER_ACTION_COMPLETED = 105;
+        public const ushort PLAYER_LOCATION_CHANGED = 106;
 
         // 物品相关事件 (200-299)
         public const ushort ITEM_ACQUIRED = 200;
