@@ -244,9 +244,25 @@ public class DemoUserService
         var user = GetUserById(userId);
         if (user == null) return false;
 
-        // 简单的角色归属检查，生产环境中应该查询数据库
-        // 这里假设角色ID以用户ID开头
-        return characterId.StartsWith(userId) || user.Roles.Contains("Admin");
+        // Admin users can access any character
+        if (user.Roles.Contains("Admin")) return true;
+
+        // Map demo users to test characters for testing purposes
+        var userCharacterMappings = new Dictionary<string, string[]>
+        {
+            ["demo-user-001"] = new[] { "test-character-1", "test-character-2" },
+            ["player-001"] = new[] { "test-character-1" },
+            ["admin-user-001"] = new[] { "test-character-1", "test-character-2" }
+        };
+
+        // Check if user has access to the specified character
+        if (userCharacterMappings.TryGetValue(userId, out var allowedCharacters))
+        {
+            return allowedCharacters.Contains(characterId);
+        }
+
+        // Fallback: check if character ID starts with user ID (for dynamically created characters)
+        return characterId.StartsWith(userId);
     }
 }
 
