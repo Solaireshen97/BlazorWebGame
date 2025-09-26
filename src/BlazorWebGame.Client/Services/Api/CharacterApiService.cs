@@ -1,12 +1,11 @@
 using BlazorWebGame.Shared.DTOs;
-using BlazorWebGame.Shared.Interfaces;
 
 namespace BlazorWebGame.Client.Services.Api;
 
 /// <summary>
 /// 角色系统API服务实现
 /// </summary>
-public class CharacterApiService : BaseApiService, ICharacterApi
+public class CharacterApiService : BaseApiService
 {
     public CharacterApiService(ConfigurableHttpClientFactory httpClientFactory, ILogger<CharacterApiService> logger)
         : base(httpClientFactory, logger)

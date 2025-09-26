@@ -1,12 +1,11 @@
 using BlazorWebGame.Shared.DTOs;
-using BlazorWebGame.Shared.Interfaces;
 
 namespace BlazorWebGame.Client.Services.Api;
 
 /// <summary>
 /// 离线结算系统API服务实现
 /// </summary>
-public class OfflineSettlementApiService : BaseApiService, IOfflineSettlementApi
+public class OfflineSettlementApiService : BaseApiService
 {
     public OfflineSettlementApiService(ConfigurableHttpClientFactory httpClientFactory, ILogger<OfflineSettlementApiService> logger)
         : base(httpClientFactory, logger)

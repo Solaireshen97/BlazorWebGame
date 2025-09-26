@@ -1,12 +1,11 @@
 using BlazorWebGame.Shared.DTOs;
-using BlazorWebGame.Shared.Interfaces;
 
 namespace BlazorWebGame.Client.Services.Api;
 
 /// <summary>
 /// 组队系统API服务实现
 /// </summary>
-public class PartyApiService : BaseApiService, IPartyApi
+public class PartyApiService : BaseApiService
 {
     public PartyApiService(ConfigurableHttpClientFactory httpClientFactory, ILogger<PartyApiService> logger)
         : base(httpClientFactory, logger)

@@ -1,12 +1,11 @@
 using BlazorWebGame.Shared.DTOs;
-using BlazorWebGame.Shared.Interfaces;
 
 namespace BlazorWebGame.Client.Services.Api;
 
 /// <summary>
 /// 库存系统API服务实现
 /// </summary>
-public class InventoryApiService : BaseApiService, IInventoryApi
+public class InventoryApiService : BaseApiService
 {
     public InventoryApiService(ConfigurableHttpClientFactory httpClientFactory, ILogger<InventoryApiService> logger)
         : base(httpClientFactory, logger)

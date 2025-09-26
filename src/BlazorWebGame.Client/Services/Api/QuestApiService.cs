@@ -1,12 +1,11 @@
 using BlazorWebGame.Shared.DTOs;
-using BlazorWebGame.Shared.Interfaces;
 
 namespace BlazorWebGame.Client.Services.Api;
 
 /// <summary>
 /// 任务系统API服务实现
 /// </summary>
-public class QuestApiService : BaseApiService, IQuestApi
+public class QuestApiService : BaseApiService
 {
     public QuestApiService(ConfigurableHttpClientFactory httpClientFactory, ILogger<QuestApiService> logger)
         : base(httpClientFactory, logger)

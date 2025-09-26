@@ -1,5 +1,4 @@
 using BlazorWebGame.Shared.DTOs;
-using BlazorWebGame.Shared.Interfaces;
 using System.Text.Json;
 
 namespace BlazorWebGame.Client.Services.Api;
@@ -7,7 +6,7 @@ namespace BlazorWebGame.Client.Services.Api;
 /// <summary>
 /// 认证系统API服务实现
 /// </summary>
-public class AuthApiService : BaseApiService, IAuthApi
+public class AuthApiService : BaseApiService
 {
     public AuthApiService(ConfigurableHttpClientFactory httpClientFactory, ILogger<AuthApiService> logger)
         : base(httpClientFactory, logger)

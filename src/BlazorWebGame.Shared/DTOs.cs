@@ -755,3 +755,79 @@ public class TeamProgressUpdateRequest
     public string PartyId { get; set; } = string.Empty;
     public Dictionary<string, object> ProgressData { get; set; } = new();
 }
+
+// ====== Auth API DTOs ======
+
+/// <summary>
+/// 登录请求DTO
+/// </summary>
+public class LoginRequest
+{
+    public string Username { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 注册请求DTO
+/// </summary>
+public class RegisterRequest
+{
+    public string Username { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 刷新令牌请求DTO
+/// </summary>
+public class RefreshTokenRequest
+{
+    public string RefreshToken { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 用户信息DTO
+/// </summary>
+public class UserInfoDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Username { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public List<string> Roles { get; set; } = new();
+}
+
+// ====== Monitoring API DTOs ======
+
+/// <summary>
+/// 系统性能指标DTO
+/// </summary>
+public class SystemMetricsDto
+{
+    public double CpuUsage { get; set; }
+    public long MemoryUsed { get; set; }
+    public long MemoryTotal { get; set; }
+    public int ActiveConnections { get; set; }
+    public TimeSpan Uptime { get; set; }
+}
+
+/// <summary>
+/// 操作性能指标DTO
+/// </summary>
+public class OperationMetricsDto
+{
+    public Dictionary<string, int> RequestCounts { get; set; } = new();
+    public Dictionary<string, double> AverageResponseTimes { get; set; } = new();
+    public Dictionary<string, int> ErrorCounts { get; set; } = new();
+}
+
+/// <summary>
+/// 游戏状态DTO
+/// </summary>
+public class GameStatusDto
+{
+    public int ActivePlayers { get; set; }
+    public int ActiveBattles { get; set; }
+    public int ActiveParties { get; set; }
+    public string ServerStatus { get; set; } = string.Empty;
+    public DateTime LastUpdated { get; set; }
+}

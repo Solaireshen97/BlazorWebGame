@@ -1,12 +1,11 @@
 using BlazorWebGame.Shared.DTOs;
-using BlazorWebGame.Shared.Interfaces;
 
 namespace BlazorWebGame.Client.Services.Api;
 
 /// <summary>
 /// 监控系统API服务实现
 /// </summary>
-public class MonitoringApiService : BaseApiService, IMonitoringApi
+public class MonitoringApiService : BaseApiService
 {
     public MonitoringApiService(ConfigurableHttpClientFactory httpClientFactory, ILogger<MonitoringApiService> logger)
         : base(httpClientFactory, logger)

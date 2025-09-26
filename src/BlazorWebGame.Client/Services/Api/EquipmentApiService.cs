@@ -1,12 +1,11 @@
 using BlazorWebGame.Shared.DTOs;
-using BlazorWebGame.Shared.Interfaces;
 
 namespace BlazorWebGame.Client.Services.Api;
 
 /// <summary>
 /// 装备系统API服务实现
 /// </summary>
-public class EquipmentApiService : BaseApiService, IEquipmentApi
+public class EquipmentApiService : BaseApiService
 {
     public EquipmentApiService(ConfigurableHttpClientFactory httpClientFactory, ILogger<EquipmentApiService> logger)
         : base(httpClientFactory, logger)

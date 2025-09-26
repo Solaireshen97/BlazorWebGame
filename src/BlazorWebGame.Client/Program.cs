@@ -29,21 +29,32 @@ builder.Services.AddSingleton<HttpClient>(sp =>
     return factory.GetHttpClient();
 });
 
-// 添加新的组织化API服务 - 按功能模块分组
-// 注册单独的API服务实现
-builder.Services.AddSingleton<IBattleApi, BattleApiService>();
-builder.Services.AddSingleton<ICharacterApi, CharacterApiService>();
-builder.Services.AddSingleton<IPartyApi, PartyApiService>();
-builder.Services.AddSingleton<IInventoryApi, InventoryApiService>();
-builder.Services.AddSingleton<IEquipmentApi, EquipmentApiService>();
-builder.Services.AddSingleton<IProductionApi, ProductionApiService>();
-builder.Services.AddSingleton<IQuestApi, QuestApiService>();
-builder.Services.AddSingleton<IAuthApi, AuthApiService>();
-builder.Services.AddSingleton<IOfflineSettlementApi, OfflineSettlementApiService>();
-builder.Services.AddSingleton<IMonitoringApi, MonitoringApiService>();
+// 添加新的组织化API服务 - 暂时不使用接口，避免类型冲突
+// 直接注册实现类，保持功能完整性
+builder.Services.AddSingleton<BattleApiService>();
+builder.Services.AddSingleton<CharacterApiService>();
+builder.Services.AddSingleton<PartyApiService>();
+builder.Services.AddSingleton<InventoryApiService>();
+builder.Services.AddSingleton<EquipmentApiService>();
+builder.Services.AddSingleton<ProductionApiServiceNew>();
+builder.Services.AddSingleton<QuestApiService>();
+builder.Services.AddSingleton<AuthApiService>();
+builder.Services.AddSingleton<OfflineSettlementApiService>();
+builder.Services.AddSingleton<MonitoringApiService>();
 
-// 注册统一的API客户端
-builder.Services.AddSingleton<GameApiClient>();
+// 注册统一的API客户端（暂时使用构造器直接注入实现类）
+builder.Services.AddSingleton<GameApiClient>(sp => new GameApiClient(
+    sp.GetRequiredService<BattleApiService>(),
+    sp.GetRequiredService<CharacterApiService>(),
+    sp.GetRequiredService<PartyApiService>(),
+    sp.GetRequiredService<InventoryApiService>(),
+    sp.GetRequiredService<EquipmentApiService>(),
+    sp.GetRequiredService<ProductionApiServiceNew>(),
+    sp.GetRequiredService<QuestApiService>(),
+    sp.GetRequiredService<AuthApiService>(),
+    sp.GetRequiredService<OfflineSettlementApiService>(),
+    sp.GetRequiredService<MonitoringApiService>()
+));
 
 // 保持向后兼容的GameApiService
 builder.Services.AddSingleton<GameApiService>();
@@ -51,7 +62,7 @@ builder.Services.AddSingleton<GameApiService>();
 // 其他现有服务
 builder.Services.AddSingleton<ClientGameStateService>();
 builder.Services.AddSingleton<ClientPartyService>();
-builder.Services.AddSingleton<ProductionApiService>(); // 这个会被上面的IProductionApi注册覆盖，保持兼容性
+builder.Services.AddSingleton<ProductionApiService>(); // 保留原有的生产API服务，向后兼容
 builder.Services.AddSingleton<HybridProductionService>();
 builder.Services.AddSingleton<OfflineService>();
 

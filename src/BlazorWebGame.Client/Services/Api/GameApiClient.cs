@@ -1,5 +1,3 @@
-using BlazorWebGame.Shared.Interfaces;
-
 namespace BlazorWebGame.Client.Services.Api;
 
 /// <summary>
@@ -7,28 +5,28 @@ namespace BlazorWebGame.Client.Services.Api;
 /// </summary>
 public class GameApiClient
 {
-    public IBattleApi Battle { get; }
-    public ICharacterApi Character { get; }
-    public IPartyApi Party { get; }
-    public IInventoryApi Inventory { get; }
-    public IEquipmentApi Equipment { get; }
-    public IProductionApi Production { get; }
-    public IQuestApi Quest { get; }
-    public IAuthApi Auth { get; }
-    public IOfflineSettlementApi OfflineSettlement { get; }
-    public IMonitoringApi Monitoring { get; }
+    public BattleApiService Battle { get; }
+    public CharacterApiService Character { get; }
+    public PartyApiService Party { get; }
+    public InventoryApiService Inventory { get; }
+    public EquipmentApiService Equipment { get; }
+    public ProductionApiServiceNew Production { get; }
+    public QuestApiService Quest { get; }
+    public AuthApiService Auth { get; }
+    public OfflineSettlementApiService OfflineSettlement { get; }
+    public MonitoringApiService Monitoring { get; }
 
     public GameApiClient(
-        IBattleApi battle,
-        ICharacterApi character,
-        IPartyApi party,
-        IInventoryApi inventory,
-        IEquipmentApi equipment,
-        IProductionApi production,
-        IQuestApi quest,
-        IAuthApi auth,
-        IOfflineSettlementApi offlineSettlement,
-        IMonitoringApi monitoring)
+        BattleApiService battle,
+        CharacterApiService character,
+        PartyApiService party,
+        InventoryApiService inventory,
+        EquipmentApiService equipment,
+        ProductionApiServiceNew production,
+        QuestApiService quest,
+        AuthApiService auth,
+        OfflineSettlementApiService offlineSettlement,
+        MonitoringApiService monitoring)
     {
         Battle = battle;
         Character = character;
