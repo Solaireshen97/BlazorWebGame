@@ -39,6 +39,7 @@ builder.Services.AddSingleton<HybridQuestService>();
 builder.Services.AddSingleton<ServerCharacterApiService>();
 builder.Services.AddSingleton<HybridCharacterService>();
 builder.Services.AddSingleton<HybridEventService>();
+builder.Services.AddSingleton<ServerPlayerApiService>();
 
 // 保留共享的玩家列表
 var sharedPlayerList = new List<Player>();

@@ -34,6 +34,11 @@ builder.Services.AddSingleton<BlazorWebGame.Shared.Events.GameEventManager>();
 // 注册服务定位器（单例模式）
 builder.Services.AddSingleton<ServerServiceLocator>();
 
+// 注册新的玩家服务系统
+builder.Services.AddSingleton<ServerPlayerAttributeService>();
+builder.Services.AddSingleton<ServerPlayerProfessionService>();
+builder.Services.AddSingleton<ServerPlayerUtilityService>();
+
 // 注册游戏服务
 builder.Services.AddSingleton<ServerSkillSystem>();
 builder.Services.AddSingleton<ServerLootService>();
