@@ -111,7 +111,7 @@ public class EnhancedGameLoopService : BackgroundService
         await _battleEngine.ProcessBattleFrameAsync(deltaTime);
 
         // 2. 生成系统tick事件，让事件队列处理其他逻辑
-        _eventService.EnqueueEvent(GameEventTypes.SYSTEM_TICK, EventPriority.Gameplay);
+        _eventService.EnqueueEvent(GameEventTypes.SYSTEM_TICK, EventPriority.Gameplay, 0, 0);
 
         // 3. 让事件队列的分发器处理累积的事件
         // EventDispatcher 会自动处理帧同步，这里不需要额外操作

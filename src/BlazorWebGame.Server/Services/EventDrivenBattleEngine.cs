@@ -59,7 +59,7 @@ public class EventDrivenBattleEngine : IDisposable
         var battle = new EventDrivenBattleContext
         {
             BattleId = battleId,
-            BattleType = request.BattleType,
+            BattleType = (BattleType)Enum.Parse(typeof(BattleType), request.BattleType.ToString()),
             PartyId = request.PartyId,
             DungeonId = request.DungeonId,
             State = BattleState.Active,
@@ -72,12 +72,6 @@ public class EventDrivenBattleEngine : IDisposable
         _activeBattles[battleId] = battle;
 
         // 发送战斗开始事件
-        var startEvent = new UnifiedEvent(GameEventTypes.BATTLE_STARTED, EventPriority.Gameplay)
-        {
-            ActorId = (ulong)battleId.GetHashCode(),
-            TargetId = 0
-        };
-
         _eventService.EnqueueEvent(GameEventTypes.BATTLE_STARTED, EventPriority.Gameplay, (ulong)battleId.GetHashCode());
 
         _logger.LogInformation("Started event-driven battle {BattleId} with {PlayerCount} players", 
@@ -475,7 +469,11 @@ public class BattleAttackHandler : IUnifiedEventHandler
     public async Task HandleAsync(UnifiedEvent evt)
     {
         var attackData = evt.GetData<BattleAttackEventData>();
-        var battleId = new Guid((int)evt.ActorId); // 简化的ID转换
+        // 简化的ID生成方法，生成16字节的GUID
+        var bytes = new byte[16];
+        var hash = (uint)evt.ActorId;
+        Array.Copy(BitConverter.GetBytes(hash), 0, bytes, 0, 4);
+        var battleId = new Guid(bytes);
         
         var battle = _battleEngine.GetBattle(battleId);
         if (battle == null) return;
@@ -571,7 +569,11 @@ public class BattleTickHandler : IUnifiedEventHandler
     public async Task HandleAsync(UnifiedEvent evt)
     {
         var tickData = evt.GetData<BattleTickEventData>();
-        var battleId = new Guid((int)tickData.BattleId);
+        // 简化的ID生成方法，生成16字节的GUID
+        var bytes = new byte[16];
+        var hash = (uint)tickData.BattleId;
+        Array.Copy(BitConverter.GetBytes(hash), 0, bytes, 0, 4);
+        var battleId = new Guid(bytes);
         
         var battle = _battleEngine.GetBattle(battleId);
         if (battle == null) return;

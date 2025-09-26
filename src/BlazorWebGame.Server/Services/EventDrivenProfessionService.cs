@@ -214,7 +214,7 @@ public class EventDrivenProfessionService : IDisposable
                 ? GameEventTypes.GATHERING_CANCELLED 
                 : GameEventTypes.CRAFTING_CANCELLED;
 
-            _eventService.EnqueueEvent(GameEventTypes.GATHERING_CANCELLED, EventPriority.Gameplay);
+            _eventService.EnqueueEvent(eventType, EventPriority.Gameplay, 0, 0);
 
             _logger.LogInformation("Character {CharacterId} stopped {ActivityType} activity", 
                 characterId, activity.ActivityType);
