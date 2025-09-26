@@ -1,7 +1,9 @@
 @page "/server-api-test"
 @using BlazorWebGame.Client.Services
+@using BlazorWebGame.Client.Services.Api
 @using BlazorWebGame.Shared.DTOs
 @inject ServerApiTestService ApiTestService
+@inject GameApiService GameApiService
 @inject ServerConfigurationService ServerConfig
 @inject IJSRuntime JSRuntime
 @implements IAsyncDisposable
@@ -191,13 +193,19 @@
                     </div>
                     <div class="d-grid gap-2 mb-2">
                         <button class="btn btn-outline-danger" @onclick="TestStartBattle" disabled="@isLoading">
-                            开始战斗
+                            开始战斗 (旧版测试)
+                        </button>
+                        <button class="btn btn-danger" @onclick="TestStartBattleWithAuth" disabled="@isLoading">
+                            开始战斗 (带认证)
                         </button>
                     </div>
                     <div class="input-group">
                         <input type="text" class="form-control" @bind="testBattleId" placeholder="战斗ID" />
                         <button class="btn btn-outline-danger" @onclick="TestGetBattleState" disabled="@isLoading">
-                            查询战斗状态
+                            查询状态 (旧版)
+                        </button>
+                        <button class="btn btn-danger" @onclick="TestGetBattleStateWithAuth" disabled="@isLoading">
+                            查询状态 (带认证)
                         </button>
                     </div>
                 </div>
@@ -516,6 +524,102 @@
     {
         if (string.IsNullOrWhiteSpace(inventoryCharacterId)) return;
         await TestSingleFunction(() => ApiTestService.TestGetInventoryAsync(inventoryCharacterId));
+    }
+
+    private async Task TestStartBattleWithAuth()
+    {
+        if (string.IsNullOrWhiteSpace(testCharacterId) || string.IsNullOrWhiteSpace(testEnemyId)) 
+        {
+            AddResult("❌ 请先填写角色ID和敌人ID");
+            return;
+        }
+        
+        if (isLoading) return;
+        
+        isLoading = true;
+        try
+        {
+            // 首先设置认证
+            AddResult("🔐 正在设置认证...");
+            var authResult = await GameApiService.SetupAuthenticationAsync();
+            AddResult(authResult);
+            
+            if (!authResult.StartsWith("✅"))
+            {
+                AddResult("⚠️ 认证失败，无法进行战斗测试");
+                return;
+            }
+            
+            // 然后开始战斗
+            AddResult("⚔️ 正在开始战斗...");
+            var request = new StartBattleRequest 
+            { 
+                CharacterId = testCharacterId, 
+                EnemyId = testEnemyId 
+            };
+            
+            var result = await GameApiService.StartBattleAsync(request);
+            if (result.Success)
+            {
+                AddResult($"✅ 战斗开始成功: 战斗ID {result.Data?.BattleId}");
+                if (!string.IsNullOrEmpty(result.Data?.BattleId.ToString()))
+                {
+                    testBattleId = result.Data.BattleId.ToString();
+                }
+            }
+            else
+            {
+                AddResult($"❌ 战斗开始失败: {result.Message}");
+            }
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task TestGetBattleStateWithAuth()
+    {
+        if (string.IsNullOrWhiteSpace(testBattleId)) 
+        {
+            AddResult("❌ 请先填写战斗ID");
+            return;
+        }
+        
+        if (!Guid.TryParse(testBattleId, out var battleGuid))
+        {
+            AddResult("❌ 战斗ID格式无效");
+            return;
+        }
+        
+        if (isLoading) return;
+        
+        isLoading = true;
+        try
+        {
+            // 确保认证有效
+            var authResult = await GameApiService.SetupAuthenticationAsync();
+            if (!authResult.StartsWith("✅"))
+            {
+                AddResult("⚠️ 认证失败，重新设置认证");
+            }
+            
+            AddResult("📊 正在查询战斗状态...");
+            var result = await GameApiService.GetBattleStateAsync(battleGuid);
+            if (result.Success)
+            {
+                var battle = result.Data;
+                AddResult($"✅ 战斗状态获取成功: {(battle?.IsActive == true ? "进行中" : "已结束")} - 玩家血量: {battle?.PlayerHealth}/{battle?.PlayerMaxHealth}");
+            }
+            else
+            {
+                AddResult($"❌ 战斗状态获取失败: {result.Message}");
+            }
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     private async Task TestGetQuests()

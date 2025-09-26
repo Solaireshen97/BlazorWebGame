@@ -1,5 +1,6 @@
 using BlazorWebGame.Shared.DTOs;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace BlazorWebGame.Client.Services.Api;
 
@@ -21,6 +22,38 @@ public class GameApiService
     /// 获取当前配置的 HttpClient
     /// </summary>
     private HttpClient GetHttpClient() => _httpClientFactory.GetHttpClient();
+
+    /// <summary>
+    /// 设置认证令牌 - 为需要认证的API调用做准备
+    /// </summary>
+    public async Task<string> SetupAuthenticationAsync()
+    {
+        try
+        {
+            var httpClient = GetHttpClient();
+            var response = await httpClient.PostAsync("/api/auth/demo-login", null);
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                var tokenResponse = JsonSerializer.Deserialize<JsonElement>(content);
+                if (tokenResponse.TryGetProperty("token", out var tokenElement))
+                {
+                    var token = tokenElement.GetString();
+                    // 设置认证头到HttpClientFactory的所有实例
+                    _httpClientFactory.SetAuthorizationHeader($"Bearer {token}");
+                    _logger.LogInformation("认证设置成功: 已为所有API调用设置JWT令牌");
+                    return "✅ 认证设置成功: 已为所有API调用设置JWT令牌";
+                }
+                return "❌ 认证设置失败: 未获得令牌";
+            }
+            return $"❌ 认证设置失败: 登录请求返回 {response.StatusCode}";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "认证设置异常");
+            return $"❌ 认证设置异常: {ex.Message}";
+        }
+    }
 
     /// <summary>
     /// 开始战斗
