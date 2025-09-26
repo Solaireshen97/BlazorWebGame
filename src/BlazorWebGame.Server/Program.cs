@@ -187,6 +187,7 @@ builder.Services.AddSingleton<ServerProductionService>();
 builder.Services.AddSingleton<ServerInventoryService>();
 builder.Services.AddSingleton<ServerQuestService>();
 builder.Services.AddSingleton<ServerShopService>();  // 添加商店服务
+builder.Services.AddSingleton<ServerReputationService>();  // 添加声望服务
 builder.Services.AddSingleton<ServerEquipmentService>();  // 添加装备服务
 builder.Services.AddSingleton<ServerEquipmentGenerator>(); // 新增装备生成器
 builder.Services.AddSingleton<GameEngineService>();

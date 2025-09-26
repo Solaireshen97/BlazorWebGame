@@ -40,6 +40,7 @@ builder.Services.AddSingleton<EquipmentApiService>();
 builder.Services.AddSingleton<ProductionApiServiceNew>();
 builder.Services.AddSingleton<QuestApiService>();
 builder.Services.AddSingleton<ShopApiService>();  // 添加商店API服务
+builder.Services.AddSingleton<ReputationApiService>();  // 添加声望API服务
 builder.Services.AddSingleton<AuthApiService>();
 builder.Services.AddSingleton<OfflineSettlementApiService>();
 builder.Services.AddSingleton<MonitoringApiService>();
