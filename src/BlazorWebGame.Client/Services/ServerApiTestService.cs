@@ -37,6 +37,15 @@ public class ServerApiTestService
     }
 
     /// <summary>
+    /// 兼容性方法 - 同步设置服务器地址
+    /// </summary>
+    public void SetBaseUrl(string baseUrl)
+    {
+        // 这里不能使用 async，所以只更新配置，不等待
+        _ = _serverConfig.SetServerUrlAsync(baseUrl);
+    }
+
+    /// <summary>
     /// 获取当前服务器地址
     /// </summary>
     public string GetCurrentBaseUrl() => _serverConfig.CurrentServerUrl;
@@ -66,7 +75,7 @@ public class ServerApiTestService
     {
         try
         {
-            var httpClient = GetHttpClient();
+            var response = var httpClient = GetHttpClient();
             var response = await httpClient.GetAsync("/api/info");
             if (response.IsSuccessStatusCode)
             {
@@ -87,7 +96,7 @@ public class ServerApiTestService
     {
         try
         {
-            var httpClient = GetHttpClient();
+            var response = var httpClient = GetHttpClient();
             var response = await httpClient.GetAsync("/api/monitoring/system-metrics");
             if (response.IsSuccessStatusCode)
             {
@@ -112,7 +121,8 @@ public class ServerApiTestService
     {
         try
         {
-            var response = await _httpClient.GetAsync("/api/monitoring/operation-metrics");
+            var response = var httpClient = GetHttpClient();
+            var response = await httpClient.GetAsync("/api/monitoring/operation-metrics");
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
@@ -132,7 +142,8 @@ public class ServerApiTestService
     {
         try
         {
-            var response = await _httpClient.GetAsync("/api/character");
+            var response = var httpClient = GetHttpClient();
+            var response = await httpClient.GetAsync("/api/character");
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
@@ -156,7 +167,8 @@ public class ServerApiTestService
         try
         {
             var request = new CreateCharacterRequest { Name = name };
-            var response = await _httpClient.PostAsJsonAsync("/api/character", request);
+            var response = var httpClient = GetHttpClient();
+            var response = await httpClient.PostAsJsonAsync("/api/character", request);
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
@@ -186,7 +198,8 @@ public class ServerApiTestService
                 CharacterId = characterId, 
                 EnemyId = enemyId 
             };
-            var response = await _httpClient.PostAsJsonAsync("/api/battle/start", request);
+            var response = var httpClient = GetHttpClient();
+            var response = await httpClient.PostAsJsonAsync("/api/battle/start", request);
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
@@ -209,7 +222,8 @@ public class ServerApiTestService
     {
         try
         {
-            var response = await _httpClient.GetAsync($"/api/battle/state/{battleId}");
+            var response = var httpClient = GetHttpClient();
+            var response = await httpClient.GetAsync($"/api/battle/state/{battleId}");
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
@@ -236,7 +250,8 @@ public class ServerApiTestService
         try
         {
             var request = new CreatePartyRequest { CharacterId = characterId };
-            var response = await _httpClient.PostAsJsonAsync("/api/party", request);
+            var response = var httpClient = GetHttpClient();
+            var response = await httpClient.PostAsJsonAsync("/api/party", request);
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
@@ -269,7 +284,8 @@ public class ServerApiTestService
                 Quality = EquipmentQuality.Common,
                 WeaponType = "Sword"
             };
-            var response = await _httpClient.PostAsJsonAsync("/api/equipment/generate", request);
+            var response = var httpClient = GetHttpClient();
+            var response = await httpClient.PostAsJsonAsync("/api/equipment/generate", request);
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
@@ -294,7 +310,8 @@ public class ServerApiTestService
     {
         try
         {
-            var response = await _httpClient.GetAsync($"/api/inventory/{characterId}");
+            var response = var httpClient = GetHttpClient();
+            var response = await httpClient.GetAsync($"/api/inventory/{characterId}");
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
@@ -321,7 +338,8 @@ public class ServerApiTestService
     {
         try
         {
-            var response = await _httpClient.GetAsync("/api/production/gathering-nodes");
+            var response = var httpClient = GetHttpClient();
+            var response = await httpClient.GetAsync("/api/production/gathering-nodes");
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
@@ -346,7 +364,8 @@ public class ServerApiTestService
     {
         try
         {
-            var response = await _httpClient.GetAsync($"/api/quest/{characterId}");
+            var response = var httpClient = GetHttpClient();
+            var response = await httpClient.GetAsync($"/api/quest/{characterId}");
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
@@ -372,7 +391,8 @@ public class ServerApiTestService
     {
         try
         {
-            var response = await _httpClient.GetAsync("/api/apidocumentation/overview");
+            var response = var httpClient = GetHttpClient();
+            var response = await httpClient.GetAsync("/api/apidocumentation/overview");
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
@@ -398,7 +418,8 @@ public class ServerApiTestService
     {
         try
         {
-            var response = await _httpClient.GetAsync("/api/apidocumentation/server-info");
+            var response = var httpClient = GetHttpClient();
+            var response = await httpClient.GetAsync("/api/apidocumentation/server-info");
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
@@ -426,7 +447,8 @@ public class ServerApiTestService
     {
         try
         {
-            var response = await _httpClient.GetAsync("/api/datastorage/stats");
+            var response = var httpClient = GetHttpClient();
+            var response = await httpClient.GetAsync("/api/datastorage/stats");
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
@@ -446,7 +468,8 @@ public class ServerApiTestService
     {
         try
         {
-            var response = await _httpClient.PostAsync("/api/auth/demo-login", null);
+            var response = var httpClient = GetHttpClient();
+            var response = await httpClient.PostAsync("/api/auth/demo-login", null);
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
@@ -455,7 +478,7 @@ public class ServerApiTestService
                 {
                     var token = tokenElement.GetString();
                     // 设置认证头
-                    _httpClient.DefaultRequestHeaders.Authorization = 
+                    httpClient.DefaultRequestHeaders.Authorization = 
                         new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
                     return $"✅ 演示登录成功: 获得JWT令牌";
                 }
