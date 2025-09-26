@@ -1,0 +1,379 @@
+@page "/character-states"
+@using BlazorWebGame.Client.Services.Api
+@using BlazorWebGame.Shared.DTOs
+@inject CharacterStateApiService CharacterStateApi
+@inject ClientGameStateService GameStateService
+@inject ILogger<CharacterStates> Logger
+
+<PageTitle>角色状态监控</PageTitle>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users"></i> 角色状态监控
+                    </h5>
+                    <div>
+                        <button class="btn btn-sm btn-primary me-2" @onclick="RefreshStates">
+                            <i class="fas fa-sync-alt"></i> 刷新
+                        </button>
+                        <div class="form-check form-switch d-inline-block">
+                            <input class="form-check-input" type="checkbox" id="autoRefresh" 
+                                   @bind="@autoRefreshEnabled" @bind:after="ToggleAutoRefresh">
+                            <label class="form-check-label" for="autoRefresh">
+                                自动刷新 (@(GameStateService.CharacterStatePollingEnabled ? "开" : "关"))
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    @if (isLoading)
+                    {
+                        <div class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">加载中...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            <i class="fas fa-exclamation-triangle"></i> @errorMessage
+                        </div>
+                    }
+                    else if (characterStates.Any())
+                    {
+                        <div class="row">
+                            @foreach (var character in characterStates)
+                            {
+                                <div class="col-md-6 col-lg-4 mb-3">
+                                    <div class="card @GetCharacterCardClass(character)">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <strong>@character.CharacterName</strong>
+                                            <span class="badge @GetStatusBadgeClass(character.IsOnline)">
+                                                @(character.IsOnline ? "在线" : "离线")
+                                            </span>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row mb-2">
+                                                <div class="col-6">
+                                                    <small class="text-muted">等级</small>
+                                                    <div>@character.Level</div>
+                                                </div>
+                                                <div class="col-6">
+                                                    <small class="text-muted">生命值</small>
+                                                    <div>
+                                                        @character.Health / @character.MaxHealth
+                                                        <div class="progress mt-1" style="height: 4px;">
+                                                            <div class="progress-bar bg-danger" 
+                                                                 style="width: @GetHealthPercentage(character)%"></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mb-2">
+                                                <small class="text-muted">当前动作</small>
+                                                <div class="d-flex align-items-center">
+                                                    <span class="badge @GetActionBadgeClass(character.CurrentAction.ActionType) me-2">
+                                                        @GetActionDisplayName(character.CurrentAction.ActionType)
+                                                    </span>
+                                                    @if (!string.IsNullOrEmpty(character.CurrentAction.ActionTarget))
+                                                    {
+                                                        <small class="text-muted">→ @character.CurrentAction.ActionTarget</small>
+                                                    }
+                                                </div>
+                                            </div>
+
+                                            @if (character.CurrentAction.Progress > 0)
+                                            {
+                                                <div class="mb-2">
+                                                    <small class="text-muted">进度</small>
+                                                    <div class="progress mt-1">
+                                                        <div class="progress-bar @GetActionProgressBarClass(character.CurrentAction.ActionType)" 
+                                                             style="width: @(character.CurrentAction.Progress * 100)%">
+                                                            @((character.CurrentAction.Progress * 100).ToString("F1"))%
+                                                        </div>
+                                                    </div>
+                                                    @if (character.CurrentAction.TimeRemaining > 0)
+                                                    {
+                                                        <small class="text-muted">剩余时间: @TimeSpan.FromSeconds(character.CurrentAction.TimeRemaining).ToString(@"mm\:ss")</small>
+                                                    }
+                                                </div>
+                                            }
+
+                                            @if (character.CurrentLocation != null)
+                                            {
+                                                <div class="mb-2">
+                                                    <small class="text-muted">位置</small>
+                                                    <div>@character.CurrentLocation.Zone @character.CurrentLocation.SubZone</div>
+                                                </div>
+                                            }
+
+                                            <div>
+                                                <small class="text-muted">最后更新</small>
+                                                <div>@character.LastUpdated.ToString("HH:mm:ss")</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted">
+                            <i class="fas fa-user-slash fa-3x mb-3"></i>
+                            <p>暂无角色数据</p>
+                        </div>
+                    }
+                </div>
+                <div class="card-footer">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <small class="text-muted">
+                                连接状态: 
+                                <span class="badge @(GameStateService.IsConnected ? "bg-success" : "bg-danger")">
+                                    @(GameStateService.IsConnected ? "已连接" : "未连接")
+                                </span>
+                            </small>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <small class="text-muted">
+                                最后刷新: @lastRefreshTime.ToString("HH:mm:ss")
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* 服务统计信息 *@
+    @if (serviceStats != null)
+    {
+        <div class="row mt-3">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">服务统计</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-3">
+                                <div class="text-center">
+                                    <div class="h4 mb-0">@serviceStats.TotalStateQueries</div>
+                                    <small class="text-muted">总查询次数</small>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="text-center">
+                                    <div class="h4 mb-0">@serviceStats.TotalStateUpdates</div>
+                                    <small class="text-muted">总更新次数</small>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="text-center">
+                                    <div class="h4 mb-0">@serviceStats.CachedCharacterCount</div>
+                                    <small class="text-muted">缓存角色数</small>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="text-center">
+                                    <div class="h4 mb-0">@serviceStats.QueuedUpdateCount</div>
+                                    <small class="text-muted">队列更新数</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<CharacterStateDto> characterStates = new();
+    private CharacterStateServiceStats? serviceStats;
+    private bool isLoading = false;
+    private bool autoRefreshEnabled = true;
+    private string? errorMessage;
+    private DateTime lastRefreshTime = DateTime.Now;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // 订阅角色状态更新事件
+        GameStateService.OnCharacterStatesUpdated += OnCharacterStatesUpdated;
+        GameStateService.OnCharacterStateChanged += OnCharacterStateChanged;
+        GameStateService.OnConnectionStatusChanged += OnConnectionStatusChanged;
+
+        // 初始加载
+        await LoadCharacterStatesAsync();
+        await LoadServiceStatsAsync();
+    }
+
+    private async Task LoadCharacterStatesAsync()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+
+            var response = await CharacterStateApi.GetAllActiveCharacterStatesAsync();
+            if (response.Success && response.Data != null)
+            {
+                characterStates = response.Data;
+                lastRefreshTime = DateTime.Now;
+            }
+            else
+            {
+                errorMessage = response.Message ?? "获取角色状态失败";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"加载角色状态时发生错误: {ex.Message}";
+            Logger.LogError(ex, "Error loading character states");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadServiceStatsAsync()
+    {
+        try
+        {
+            var response = await CharacterStateApi.GetCharacterStateStatsAsync();
+            if (response.Success && response.Data != null)
+            {
+                serviceStats = response.Data;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading service stats");
+        }
+    }
+
+    private async Task RefreshStates()
+    {
+        await LoadCharacterStatesAsync();
+        await LoadServiceStatsAsync();
+    }
+
+    private void ToggleAutoRefresh()
+    {
+        GameStateService.CharacterStatePollingEnabled = autoRefreshEnabled;
+    }
+
+    private void OnCharacterStatesUpdated(List<CharacterStateDto> updatedStates)
+    {
+        characterStates = updatedStates;
+        lastRefreshTime = DateTime.Now;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnCharacterStateChanged(CharacterStateDto characterState)
+    {
+        var existingIndex = characterStates.FindIndex(c => c.CharacterId == characterState.CharacterId);
+        if (existingIndex >= 0)
+        {
+            characterStates[existingIndex] = characterState;
+        }
+        else
+        {
+            characterStates.Add(characterState);
+        }
+        
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnConnectionStatusChanged(bool isConnected)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    // UI辅助方法
+    private string GetCharacterCardClass(CharacterStateDto character)
+    {
+        return character.IsOnline ? "border-success" : "border-secondary";
+    }
+
+    private string GetStatusBadgeClass(bool isOnline)
+    {
+        return isOnline ? "bg-success" : "bg-secondary";
+    }
+
+    private double GetHealthPercentage(CharacterStateDto character)
+    {
+        if (character.MaxHealth <= 0) return 0;
+        return ((double)character.Health / character.MaxHealth) * 100;
+    }
+
+    private string GetActionBadgeClass(string actionType)
+    {
+        return actionType.ToLower() switch
+        {
+            "combat" => "bg-danger",
+            "gathering" => "bg-success",
+            "crafting" => "bg-warning",
+            "idle" => "bg-secondary",
+            _ => "bg-primary"
+        };
+    }
+
+    private string GetActionProgressBarClass(string actionType)
+    {
+        return actionType.ToLower() switch
+        {
+            "combat" => "bg-danger",
+            "gathering" => "bg-success",
+            "crafting" => "bg-warning",
+            _ => "bg-primary"
+        };
+    }
+
+    private string GetActionDisplayName(string actionType)
+    {
+        return actionType.ToLower() switch
+        {
+            "combat" => "战斗",
+            "gathering" => "采集",
+            "crafting" => "制作",
+            "idle" => "空闲",
+            _ => actionType
+        };
+    }
+
+    public void Dispose()
+    {
+        // 取消订阅事件
+        GameStateService.OnCharacterStatesUpdated -= OnCharacterStatesUpdated;
+        GameStateService.OnCharacterStateChanged -= OnCharacterStateChanged;
+        GameStateService.OnConnectionStatusChanged -= OnConnectionStatusChanged;
+    }
+}
+
+<style>
+    .card {
+        transition: all 0.3s ease;
+    }
+    
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .progress {
+        transition: width 0.5s ease;
+    }
+    
+    .badge {
+        font-size: 0.75em;
+    }
+</style>
