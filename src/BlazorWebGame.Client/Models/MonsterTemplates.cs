@@ -1,37 +1,40 @@
 using System.Collections.Generic;
 using System.Linq;
+using BlazorWebGame.Shared.Enums;
 
 namespace BlazorWebGame.Models.Monsters
 {
+    // Re-export shared ElementType for backward compatibility
+    using ElementType = BlazorWebGame.Shared.Enums.ElementType;
     /// <summary>
-    /// ¹ÖÎïÀàÐÍÃ¶¾Ù
+    /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ã¶ï¿½ï¿½
     /// </summary>
     public enum MonsterType
     {
-        Normal,     // ÆÕÍ¨¹ÖÎï
-        Elite,      // ¾«Ó¢¹ÖÎï
-        Boss        // Ê×Áì¹ÖÎï
+        Normal,     // ï¿½ï¿½Í¨ï¿½ï¿½ï¿½ï¿½
+        Elite,      // ï¿½ï¿½Ó¢ï¿½ï¿½ï¿½ï¿½
+        Boss        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     }
 
     /// <summary>
-    /// ¹ÖÎïËùÊôÖÖ×å
+    /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     /// </summary>
     public enum MonsterRace
     {
-        Humanoid,   // ÈËÐÍÉúÎï (Èç¸ç²¼ÁÖ)
-        Beast,      // Ò°ÊÞ
-        Elemental,  // ÔªËØÉúÎï
-        Undead,     // ÍöÁé
-        Demon       // ¶ñÄ§
+        Humanoid,   // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ (ï¿½ï¿½ç²¼ï¿½ï¿½)
+        Beast,      // Ò°ï¿½ï¿½
+        Elemental,  // Ôªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+        Undead,     // ï¿½ï¿½ï¿½ï¿½
+        Demon       // ï¿½ï¿½Ä§
     }
 
     /// <summary>
-    /// Ìá¹©¶ÔËùÓÐ¹ÖÎïÄ£°åµÄ·ÃÎÊ
+    /// ï¿½á¹©ï¿½ï¿½ï¿½ï¿½ï¿½Ð¹ï¿½ï¿½ï¿½Ä£ï¿½ï¿½Ä·ï¿½ï¿½ï¿½
     /// </summary>
     public static class MonsterTemplates
     {
         /// <summary>
-        /// »ñÈ¡ËùÓÐ¹ÖÎïÄ£°å
+        /// ï¿½ï¿½È¡ï¿½ï¿½ï¿½Ð¹ï¿½ï¿½ï¿½Ä£ï¿½ï¿½
         /// </summary>
         public static List<Enemy> All =>
             NormalMonsters.Monsters
@@ -40,13 +43,13 @@ namespace BlazorWebGame.Models.Monsters
             .ToList();
 
         /// <summary>
-        /// ¸ù¾ÝÃû³Æ²éÕÒ¹ÖÎïÄ£°å
+        /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ²ï¿½ï¿½Ò¹ï¿½ï¿½ï¿½Ä£ï¿½ï¿½
         /// </summary>
         public static Enemy? GetByName(string name) =>
             All.FirstOrDefault(m => m.Name == name);
 
         /// <summary>
-        /// »ñÈ¡ÌØ¶¨ÀàÐÍµÄËùÓÐ¹ÖÎï
+        /// ï¿½ï¿½È¡ï¿½Ø¶ï¿½ï¿½ï¿½ï¿½Íµï¿½ï¿½ï¿½ï¿½Ð¹ï¿½ï¿½ï¿½
         /// </summary>
         public static List<Enemy> GetByType(MonsterType type)
         {
@@ -60,7 +63,7 @@ namespace BlazorWebGame.Models.Monsters
         }
 
         /// <summary>
-        /// »ñÈ¡ÌØ¶¨µÈ¼¶·¶Î§µÄ¹ÖÎï
+        /// ï¿½ï¿½È¡ï¿½Ø¶ï¿½ï¿½È¼ï¿½ï¿½ï¿½Î§ï¿½Ä¹ï¿½ï¿½ï¿½
         /// </summary>
         public static List<Enemy> GetByLevelRange(int minLevel, int maxLevel)
         {
@@ -68,116 +71,116 @@ namespace BlazorWebGame.Models.Monsters
         }
 
         /// <summary>
-        /// ¸ù¾Ý¹ÖÎïÀàÐÍºÍµÈ¼¶Ó¦ÓÃÉÁ±ÜÊôÐÔ
+        /// ï¿½ï¿½ï¿½Ý¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÍºÍµÈ¼ï¿½Ó¦ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         /// </summary>
-        /// <param name="enemy">ÒªÓ¦ÓÃÊôÐÔµÄ¹ÖÎï</param>
+        /// <param name="enemy">ÒªÓ¦ï¿½ï¿½ï¿½ï¿½ï¿½ÔµÄ¹ï¿½ï¿½ï¿½</param>
         public static void ApplyAvoidanceRating(Enemy enemy)
         {
-            // »ùÓÚÀàÐÍºÍµÈ¼¶ÉèÖÃÉÁ±ÜÖµ
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÍºÍµÈ¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµ
             switch (enemy.Type)
             {
                 case MonsterType.Normal:
                     enemy.AvoidanceRating = enemy.Level * 5;
-                    enemy.DodgeChance = 0.02; // 2%µÄÉÁ±ÜÂÊ
+                    enemy.DodgeChance = 0.02; // 2%ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                     break;
                     
                 case MonsterType.Elite:
                     enemy.AvoidanceRating = enemy.Level * 8;
-                    enemy.DodgeChance = 0.05; // 5%µÄÉÁ±ÜÂÊ
+                    enemy.DodgeChance = 0.05; // 5%ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                     break;
                     
                 case MonsterType.Boss:
                     enemy.AvoidanceRating = enemy.Level * 10;
-                    enemy.DodgeChance = 0.08; // 8%µÄÉÁ±ÜÂÊ
+                    enemy.DodgeChance = 0.08; // 8%ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                     break;
             }
             
-            // »ùÓÚÖÖ×åµ÷ÕûÉÁ±ÜÊôÐÔ
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
             switch (enemy.Race)
             {
                 case MonsterRace.Beast:
-                    // Ò°ÊÞ¸üÃô½Ý£¬Ôö¼ÓÉÁ±Ü
+                    // Ò°ï¿½Þ¸ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                     enemy.DodgeChance += 0.03;
                     enemy.AvoidanceRating += enemy.Level * 2;
                     break;
                     
                 case MonsterRace.Elemental:
-                    // ÔªËØÉúÎï²»ÎÈ¶¨£¬ÓÐÊ±¸üÄÑÃüÖÐ
+                    // Ôªï¿½ï¿½ï¿½ï¿½ï¿½ï²»ï¿½È¶ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                     enemy.DodgeChance += 0.02;
                     break;
                     
                 case MonsterRace.Humanoid:
-                    // ÈËÐÍÉúÎïÊÜ¹ýÑµÁ·£¬ÓÐ¸üºÃµÄÉÁ±Ü¼¼ÇÉ
+                    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü¹ï¿½Ñµï¿½ï¿½ï¿½ï¿½ï¿½Ð¸ï¿½ï¿½Ãµï¿½ï¿½ï¿½ï¿½Ü¼ï¿½ï¿½ï¿½
                     enemy.AvoidanceRating += enemy.Level * 1;
                     break;
             }
         }
         
         /// <summary>
-        /// ³õÊ¼»¯¹ÖÎïµÄËùÓÐÕ½¶·ÊôÐÔ
+        /// ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         /// </summary>
-        /// <param name="enemy">Òª³õÊ¼»¯µÄ¹ÖÎï</param>
+        /// <param name="enemy">Òªï¿½ï¿½Ê¼ï¿½ï¿½ï¿½Ä¹ï¿½ï¿½ï¿½</param>
         public static void InitializeCombatAttributes(Enemy enemy)
         {
-            // Ó¦ÓÃÉÁ±ÜÊôÐÔ
+            // Ó¦ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
             ApplyAvoidanceRating(enemy);
             
-            // Ó¦ÓÃ¿¹ÐÔÊôÐÔ
+            // Ó¦ï¿½Ã¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
             ApplyResistances(enemy);
             
-            // Ó¦ÓÃÆäËûÕ½¶·ÊôÐÔ
+            // Ó¦ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
             ApplyAdditionalCombatStats(enemy);
         }
         
         /// <summary>
-        /// Ó¦ÓÃ¹ÖÎïµÄÔªËØ¿¹ÐÔ
+        /// Ó¦ï¿½Ã¹ï¿½ï¿½ï¿½ï¿½Ôªï¿½Ø¿ï¿½ï¿½ï¿½
         /// </summary>
         private static void ApplyResistances(Enemy enemy)
         {
-            // ³õÊ¼»¯ÔªËØ¿¹ÐÔ×Öµä
+            // ï¿½ï¿½Ê¼ï¿½ï¿½Ôªï¿½Ø¿ï¿½ï¿½ï¿½ï¿½Öµï¿½
             enemy.ElementalResistances = new Dictionary<ElementType, double>();
             
-            // ¸ù¾ÝÖÖ×åÉèÖÃ»ù´¡¿¹ÐÔ
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ã»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
             switch (enemy.Race)
             {
                 case MonsterRace.Elemental:
-                    // ÔªËØÉúÎï¶Ô×ÔÉíÔªËØÓÐ¸ß¿¹ÐÔ
+                    // Ôªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ôªï¿½ï¿½ï¿½Ð¸ß¿ï¿½ï¿½ï¿½
                     if (enemy.ElementType != ElementType.None)
                     {
-                        enemy.ElementalResistances[enemy.ElementType] = 0.75; // 75%¿¹ÐÔ
+                        enemy.ElementalResistances[enemy.ElementType] = 0.75; // 75%ï¿½ï¿½ï¿½ï¿½
                     }
                     break;
                     
                 case MonsterRace.Undead:
-                    // ÍöÁé¿¹ÐÔ»ðÑæÈõ£¬¿¹°µÓ°
-                    enemy.ElementalResistances[ElementType.Fire] = -0.25; // -25%¿¹ÐÔ£¨Èõµã£©
-                    enemy.ElementalResistances[ElementType.Shadow] = 0.5; // 50%¿¹ÐÔ
+                    // ï¿½ï¿½ï¿½é¿¹ï¿½Ô»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó°
+                    enemy.ElementalResistances[ElementType.Fire] = -0.25; // -25%ï¿½ï¿½ï¿½Ô£ï¿½ï¿½ï¿½ï¿½ã£©
+                    enemy.ElementalResistances[ElementType.Shadow] = 0.5; // 50%ï¿½ï¿½ï¿½ï¿½
                     break;
                     
                 case MonsterRace.Demon:
-                    // ¶ñÄ§¿¹»ð£¬ÈõÉñÊ¥
-                    enemy.ElementalResistances[ElementType.Fire] = 0.5; // 50%¿¹ÐÔ
-                    enemy.ElementalResistances[ElementType.Holy] = -0.25; // -25%¿¹ÐÔ£¨Èõµã£©
+                    // ï¿½ï¿½Ä§ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¥
+                    enemy.ElementalResistances[ElementType.Fire] = 0.5; // 50%ï¿½ï¿½ï¿½ï¿½
+                    enemy.ElementalResistances[ElementType.Holy] = -0.25; // -25%ï¿½ï¿½ï¿½Ô£ï¿½ï¿½ï¿½ï¿½ã£©
                     break;
             }
             
-            // ¸ù¾ÝµÈ¼¶ºÍÀàÐÍÔö¼Ó¶îÍâ¿¹ÐÔ
+            // ï¿½ï¿½ï¿½ÝµÈ¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¶ï¿½ï¿½â¿¹ï¿½ï¿½
             if (enemy.Type == MonsterType.Elite || enemy.Type == MonsterType.Boss)
             {
-                // ¾«Ó¢ºÍBoss¹ÖÓÐ¶îÍâµÄËæ»ú¿¹ÐÔ
+                // ï¿½ï¿½Ó¢ï¿½ï¿½Bossï¿½ï¿½ï¿½Ð¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                 AddRandomResistance(enemy);
             }
         }
         
         /// <summary>
-        /// Îª¹ÖÎïÌí¼ÓÒ»¸öËæ»úµÄÔªËØ¿¹ÐÔ
+        /// Îªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ôªï¿½Ø¿ï¿½ï¿½ï¿½
         /// </summary>
         private static void AddRandomResistance(Enemy enemy)
         {
             var random = new System.Random();
             var elementTypes = System.Enum.GetValues<ElementType>();
             
-            // ÅÅ³ýNoneÀàÐÍºÍÒÑÓÐ¿¹ÐÔµÄÔªËØÀàÐÍ
+            // ï¿½Å³ï¿½Noneï¿½ï¿½ï¿½Íºï¿½ï¿½ï¿½ï¿½Ð¿ï¿½ï¿½Ôµï¿½Ôªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
             var availableTypes = elementTypes
                 .Where(e => e != ElementType.None && !enemy.ElementalResistances.ContainsKey(e))
                 .ToList();
@@ -185,20 +188,20 @@ namespace BlazorWebGame.Models.Monsters
             if (availableTypes.Any())
             {
                 var selectedType = availableTypes[random.Next(availableTypes.Count)];
-                double resistanceValue = 0.3 + (random.NextDouble() * 0.2); // 30%-50%µÄ¿¹ÐÔ
+                double resistanceValue = 0.3 + (random.NextDouble() * 0.2); // 30%-50%ï¿½Ä¿ï¿½ï¿½ï¿½
                 
                 enemy.ElementalResistances[selectedType] = resistanceValue;
             }
         }
         
         /// <summary>
-        /// Ó¦ÓÃ¶îÍâµÄÕ½¶·ÊôÐÔ
+        /// Ó¦ï¿½Ã¶ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         /// </summary>
         private static void ApplyAdditionalCombatStats(Enemy enemy)
         {
             var random = new System.Random();
             
-            // ÉèÖÃÃüÖÐÂÊ - »ùÓÚµÈ¼¶ºÍÀàÐÍ
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ - ï¿½ï¿½ï¿½ÚµÈ¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
             enemy.AccuracyRating = enemy.Level * 5;
             
             if (enemy.Type == MonsterType.Elite)
@@ -206,9 +209,9 @@ namespace BlazorWebGame.Models.Monsters
             else if (enemy.Type == MonsterType.Boss)
                 enemy.AccuracyRating += 20;
                 
-            // ÉèÖÃ±©»÷ÂÊºÍ±©»÷ÉËº¦
-            enemy.CriticalChance = 0.05; // »ù´¡5%±©»÷
-            enemy.CriticalMultiplier = 1.5; // »ù´¡150%±©»÷ÉËº¦
+            // ï¿½ï¿½ï¿½Ã±ï¿½ï¿½ï¿½ï¿½ÊºÍ±ï¿½ï¿½ï¿½ï¿½Ëºï¿½
+            enemy.CriticalChance = 0.05; // ï¿½ï¿½ï¿½ï¿½5%ï¿½ï¿½ï¿½ï¿½
+            enemy.CriticalMultiplier = 1.5; // ï¿½ï¿½ï¿½ï¿½150%ï¿½ï¿½ï¿½ï¿½ï¿½Ëºï¿½
             
             if (enemy.Type == MonsterType.Elite)
             {
@@ -221,19 +224,5 @@ namespace BlazorWebGame.Models.Monsters
                 enemy.CriticalMultiplier += 0.5;
             }
         }
-    }
-    
-    /// <summary>
-    /// ÔªËØÀàÐÍÃ¶¾Ù
-    /// </summary>
-    public enum ElementType
-    {
-        None,
-        Fire,
-        Ice,
-        Lightning,
-        Nature,
-        Shadow,
-        Holy
     }
 }

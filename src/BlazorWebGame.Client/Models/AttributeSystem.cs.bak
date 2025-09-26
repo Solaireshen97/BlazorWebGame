@@ -1,20 +1,63 @@
-// This file now imports shared AttributeSet and re-exports for backward compatibility
-using BlazorWebGame.Shared.Enums;
-using BlazorWebGame.Shared.Models.Base;
+using System.Collections.Generic;
 using BlazorWebGame.GameConfig;
 
 namespace BlazorWebGame.Models
 {
-    // Re-export shared types for backward compatibility
-    using AttributeType = BlazorWebGame.Shared.Enums.AttributeType;
-    using AttributeSet = BlazorWebGame.Shared.Models.Base.AttributeSet;
+    /// <summary>
+    /// ½ÇÉ«»ù´¡ÊôĞÔÀàĞÍ
+    /// </summary>
+    public enum AttributeType
+    {
+        Strength,    // Á¦Á¿
+        Agility,     // Ãô½İ
+        Intellect,   // ÖÇÁ¦
+        Spirit,      // ¾«Éñ
+        Stamina      // ÄÍÁ¦£ºÓ°ÏìÉúÃüÖµ
+    }
     
     /// <summary>
-    /// èŒä¸šå±æ€§é…ç½®ï¼Œå®šä¹‰ä¸åŒèŒä¸šçš„å±æ€§å€¾å‘å’Œåˆå§‹å±æ€§åˆ†é…
+    /// ½ÇÉ«ÊôĞÔ¼¯£¬°üº¬ËùÓĞ»ù´¡ÊôĞÔ
+    /// </summary>
+    public class AttributeSet
+    {
+        public int Strength { get; set; } = 5;     // »ù´¡Á¦Á¿
+        public int Agility { get; set; } = 5;      // »ù´¡Ãô½İ  
+        public int Intellect { get; set; } = 5;    // »ù´¡ÖÇÁ¦
+        public int Spirit { get; set; } = 5;       // »ù´¡¾«Éñ
+        public int Stamina { get; set; } = 5;      // »ù´¡ÄÍÁ¦
+        
+        // ¿ËÂ¡·½·¨£¬ÓÃÓÚ´¦ÀíÊôĞÔ¼¯µÄ¸´ÖÆ
+        public AttributeSet Clone()
+        {
+            return new AttributeSet
+            {
+                Strength = this.Strength,
+                Agility = this.Agility,
+                Intellect = this.Intellect,
+                Spirit = this.Spirit,
+                Stamina = this.Stamina
+            };
+        }
+        
+        // ½«ÁíÒ»¸öÊôĞÔ¼¯µÄÖµ¼Óµ½µ±Ç°ÊôĞÔ¼¯ÉÏ
+        public void Add(AttributeSet other)
+        {
+            if (other == null) return;
+            
+            Strength += other.Strength;
+            Agility += other.Agility;
+            Intellect += other.Intellect;
+            Spirit += other.Spirit;
+            Stamina += other.Stamina;
+        }
+    }
+    
+    /// <summary>
+    /// Ö°ÒµÊôĞÔÅäÖÃ£¬¶¨Òå²»Í¬Ö°ÒµµÄÖ÷ÊôĞÔºÍ³õÊ¼ÊôĞÔ·ÖÅä
     /// </summary>
     public static class ProfessionAttributes
     {
-        // è·å–èŒä¸šçš„ä¸»å±æ€§ç±»å‹
+        // »ñÈ¡Ö°ÒµµÄÖ÷ÊôĞÔ
         public static AttributeType GetPrimaryAttribute(BattleProfession profession)
         {
             return profession switch
@@ -25,10 +68,10 @@ namespace BlazorWebGame.Models
             };
         }
         
-        // è·å–èŒä¸šçš„åˆå§‹å±æ€§åˆ†é…
+        // »ñÈ¡Ö°ÒµµÄ³õÊ¼ÊôĞÔ·ÖÅä
         public static AttributeSet GetInitialAttributes(BattleProfession profession)
         {
-            // ä½¿ç”¨é…ç½®æ–‡ä»¶ä¸­çš„åŸºç¡€å±æ€§å’Œè¡€é‡æ•°å€¼
+            // Ê¹ÓÃÅäÖÃÖĞµÄ»ù´¡Ö÷ÊôĞÔºÍÄÍÁ¦Öµ
             int baseMainAttr = AttributeSystemConfig.BaseMainAttribute;
             int baseStamina = AttributeSystemConfig.BaseStamina;
             
@@ -36,52 +79,52 @@ namespace BlazorWebGame.Models
             {
                 BattleProfession.Warrior => new AttributeSet
                 {
-                    Strength = baseMainAttr,  // æˆ˜å£«ä¸»å±æ€§
+                    Strength = baseMainAttr,  // Õ½Ê¿Á¦Á¿¸ß
                     Agility = baseMainAttr - 4,
-                    Intellect = baseMainAttr - 7, // æ³•ç³»å¼±é¡¹
+                    Intellect = baseMainAttr - 7, // µÍÖÇÁ¦
                     Spirit = baseMainAttr - 6,
-                    Stamina = baseStamina    // é«˜è€åŠ›è¡€é‡
+                    Stamina = baseStamina    // »ù´¡ÄÍÁ¦
                 },
                 BattleProfession.Mage => new AttributeSet
                 {
-                    Strength = baseMainAttr - 7,  // åŠ›é‡å¼±é¡¹
+                    Strength = baseMainAttr - 7,  // µÍÁ¦Á¿
                     Agility = baseMainAttr - 6,
-                    Intellect = baseMainAttr, // æ³•å¸ˆä¸»å±æ€§
-                    Spirit = baseMainAttr - 3,    // è¾ƒé«˜ç²¾ç¥
-                    Stamina = baseStamina - 2 // æ³•å¸ˆè¡€é‡ç•¥ä½
+                    Intellect = baseMainAttr, // ·¨Ê¦ÖÇÁ¦¸ß
+                    Spirit = baseMainAttr - 3,    // ¾«Éñ¸ß
+                    Stamina = baseStamina - 2 // ·¨Ê¦ÄÍÁ¦ÂÔµÍ
                 },
                 _ => new AttributeSet()
             };
         }
         
-        // è·å–å±æ€§å‡çº§åŠ æˆå€¼
+        // »ñÈ¡ÊôĞÔËæµÈ¼¶Ôö³¤Öµ
         public static AttributeSet GetLevelUpAttributes(BattleProfession profession)
         {
-            // è·å–å±æ€§æˆé•¿ç³»æ•°
+            // »ñÈ¡ÊôĞÔ³É³¤ÏµÊı
             int lowLevelMainAttr = AttributeSystemConfig.LowLevelMainAttributeGrowth;
             int lowLevelStamina = AttributeSystemConfig.LowLevelStaminaGrowth;
             int highLevelMainAttr = AttributeSystemConfig.HighLevelMainAttributeGrowth;
             int highLevelStamina = AttributeSystemConfig.HighLevelStaminaGrowth;
             
-            // å–å¾—å½“å‰ç­‰çº§çš„æˆé•¿å€¼
-            int mainAttrGrowth = lowLevelMainAttr; // é»˜è®¤ä½¿ç”¨ä½ç­‰çº§æˆé•¿
+            // È¡µÃµ±Ç°²ã¼¶µÄ³É³¤Öµ
+            int mainAttrGrowth = lowLevelMainAttr; // Ä¬ÈÏÊ¹ÓÃµÍµÈ¼¶³É³¤
             int staminaGrowth = lowLevelStamina;
             
             return profession switch
             {
                 BattleProfession.Warrior => new AttributeSet
                 {
-                    Strength = mainAttrGrowth,  // ä¸»å±æ€§æˆé•¿
+                    Strength = mainAttrGrowth,  // Ö÷ÊôĞÔ³É³¤
                     Agility = mainAttrGrowth / 2,
                     Intellect = 0,
                     Spirit = 0,
-                    Stamina = staminaGrowth    // è€åŠ›æˆé•¿
+                    Stamina = staminaGrowth    // ÄÍÁ¦³É³¤
                 },
                 BattleProfession.Mage => new AttributeSet
                 {
                     Strength = 0,
                     Agility = 0,
-                    Intellect = mainAttrGrowth, // ä¸»å±æ€§æˆé•¿
+                    Intellect = mainAttrGrowth, // Ö÷ÊôĞÔ³É³¤
                     Spirit = mainAttrGrowth / 2,
                     Stamina = staminaGrowth
                 },
@@ -90,19 +133,19 @@ namespace BlazorWebGame.Models
         }
         
         /// <summary>
-        /// è·å–ç‰¹å®šç­‰çº§å±æ€§çš„æˆé•¿å€¼
+        /// »ñÈ¡ÌØ¶¨µÈ¼¶ÏÂÊôĞÔµÄ³É³¤Öµ
         /// </summary>
         public static AttributeSet GetLevelUpAttributesForLevel(BattleProfession profession, int level)
         {
             var baseAttrs = GetLevelUpAttributes(profession);
             
-            // æ ¹æ®ç­‰çº§åº”ç”¨ä¸åŒæˆé•¿ç‡
+            // ¸ù¾İµÈ¼¶Ó¦ÓÃ²»Í¬³É³¤ÂÊ
             if (level > AttributeSystemConfig.LevelThreshold)
             {
-                // é«˜ç­‰çº§æ—¶å±æ€§æˆé•¿å‡å°‘
+                // ¸ßµÈ¼¶Ê±ÊôĞÔ³É³¤¸ü¿ì
                 float growthMultiplier = AttributeSystemConfig.HighLevelMainAttributeGrowth / (float)AttributeSystemConfig.LowLevelMainAttributeGrowth;
                 
-                // åº”ç”¨é«˜ç­‰çº§æˆé•¿ç‡
+                // Ó¦ÓÃ¸ßµÈ¼¶³É³¤ÂÊ
                 baseAttrs.Strength = (int)(baseAttrs.Strength * growthMultiplier);
                 baseAttrs.Agility = (int)(baseAttrs.Agility * growthMultiplier);
                 baseAttrs.Intellect = (int)(baseAttrs.Intellect * growthMultiplier);

@@ -1,23 +1,11 @@
-﻿using BlazorWebGame.Models;
+// This file is now moved to BlazorWebGame.Shared.Models.Combat.Buff
+// Import the shared version for backward compatibility
+using BlazorWebGame.Shared.Enums;
+using BlazorWebGame.Shared.Models.Combat;
 
+// Re-export the shared types in the original namespace for compatibility
 namespace BlazorWebGame.Models
 {
-    // 定义增益效果的具体类型
-    public enum StatBuffType
-    {
-        AttackPower,      // 攻击力
-        MaxHealth,        // 最大生命值
-        GatheringSpeed,   // 采集速度
-        ExtraLootChance,   // 额外掉落几率
-        CraftingSpeed
-    }
-
-    public class Buff
-    {
-        public required string SourceItemId { get; set; }
-        public StatBuffType BuffType { get; set; }
-        public double BuffValue { get; set; }
-        public double TimeRemainingSeconds { get; set; }
-        public FoodType FoodType { get; set; } = FoodType.None; // 区分食物类型以避免同类叠加
-    }
+    using StatBuffType = BlazorWebGame.Shared.Enums.StatBuffType;
+    using Buff = BlazorWebGame.Shared.Models.Combat.Buff;
 }

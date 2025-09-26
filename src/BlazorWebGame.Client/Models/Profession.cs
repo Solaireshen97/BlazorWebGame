@@ -1,29 +1,11 @@
-﻿namespace BlazorWebGame.Models
+// This file is now moved to BlazorWebGame.Shared.Enums.ProfessionEnums
+// Import the shared version for backward compatibility
+using BlazorWebGame.Shared.Enums;
+
+// Re-export the shared types in the original namespace for compatibility
+namespace BlazorWebGame.Models
 {
-    // 战斗职业
-    public enum BattleProfession
-    {
-        Warrior, // 战士
-        Mage     // 法师
-    }
-
-    // 采集职业
-    public enum GatheringProfession
-    {
-        Miner,     // 采矿
-        Herbalist, // 草药学
-        Fishing    // 钓鱼
-    }
-
-    // 生产职业
-    public enum ProductionProfession
-    {
-        Cooking,      // 烹饪
-        Alchemy,      // 炼金
-        Blacksmithing, // 锻造
-        Jewelcrafting, // 珠宝加工
-        Leatherworking, // 制皮
-        Tailoring,     // 裁缝
-        Engineering    // <-- 添加这一行
-    }
+    using BattleProfession = BlazorWebGame.Shared.Enums.BattleProfession;
+    using GatheringProfession = BlazorWebGame.Shared.Enums.GatheringProfession;
+    using ProductionProfession = BlazorWebGame.Shared.Enums.ProductionProfession;
 }
