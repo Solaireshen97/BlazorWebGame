@@ -75,7 +75,7 @@ public class ServerApiTestService
     {
         try
         {
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.GetAsync("/api/info");
             if (response.IsSuccessStatusCode)
             {
@@ -96,7 +96,7 @@ public class ServerApiTestService
     {
         try
         {
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.GetAsync("/api/monitoring/system-metrics");
             if (response.IsSuccessStatusCode)
             {
@@ -121,7 +121,7 @@ public class ServerApiTestService
     {
         try
         {
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.GetAsync("/api/monitoring/operation-metrics");
             if (response.IsSuccessStatusCode)
             {
@@ -142,7 +142,7 @@ public class ServerApiTestService
     {
         try
         {
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.GetAsync("/api/character");
             if (response.IsSuccessStatusCode)
             {
@@ -167,7 +167,7 @@ public class ServerApiTestService
         try
         {
             var request = new CreateCharacterRequest { Name = name };
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.PostAsJsonAsync("/api/character", request);
             if (response.IsSuccessStatusCode)
             {
@@ -198,7 +198,7 @@ public class ServerApiTestService
                 CharacterId = characterId, 
                 EnemyId = enemyId 
             };
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.PostAsJsonAsync("/api/battle/start", request);
             if (response.IsSuccessStatusCode)
             {
@@ -222,7 +222,7 @@ public class ServerApiTestService
     {
         try
         {
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.GetAsync($"/api/battle/state/{battleId}");
             if (response.IsSuccessStatusCode)
             {
@@ -250,7 +250,7 @@ public class ServerApiTestService
         try
         {
             var request = new CreatePartyRequest { CharacterId = characterId };
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.PostAsJsonAsync("/api/party", request);
             if (response.IsSuccessStatusCode)
             {
@@ -284,7 +284,7 @@ public class ServerApiTestService
                 Quality = EquipmentQuality.Common,
                 WeaponType = "Sword"
             };
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.PostAsJsonAsync("/api/equipment/generate", request);
             if (response.IsSuccessStatusCode)
             {
@@ -310,7 +310,7 @@ public class ServerApiTestService
     {
         try
         {
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.GetAsync($"/api/inventory/{characterId}");
             if (response.IsSuccessStatusCode)
             {
@@ -338,7 +338,7 @@ public class ServerApiTestService
     {
         try
         {
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.GetAsync("/api/production/gathering-nodes");
             if (response.IsSuccessStatusCode)
             {
@@ -364,7 +364,7 @@ public class ServerApiTestService
     {
         try
         {
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.GetAsync($"/api/quest/{characterId}");
             if (response.IsSuccessStatusCode)
             {
@@ -391,7 +391,7 @@ public class ServerApiTestService
     {
         try
         {
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.GetAsync("/api/apidocumentation/overview");
             if (response.IsSuccessStatusCode)
             {
@@ -418,7 +418,7 @@ public class ServerApiTestService
     {
         try
         {
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.GetAsync("/api/apidocumentation/server-info");
             if (response.IsSuccessStatusCode)
             {
@@ -447,7 +447,7 @@ public class ServerApiTestService
     {
         try
         {
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.GetAsync("/api/datastorage/stats");
             if (response.IsSuccessStatusCode)
             {
@@ -468,7 +468,7 @@ public class ServerApiTestService
     {
         try
         {
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.PostAsync("/api/auth/demo-login", null);
             if (response.IsSuccessStatusCode)
             {
@@ -478,7 +478,8 @@ public class ServerApiTestService
                 {
                     var token = tokenElement.GetString();
                     // 设置认证头
-                    httpClient.DefaultRequestHeaders.Authorization = 
+                    var httpClientForAuth = GetHttpClient();
+                    httpClientForAuth.DefaultRequestHeaders.Authorization = 
                         new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
                     return $"✅ 演示登录成功: 获得JWT令牌";
                 }
