@@ -22,7 +22,7 @@ public class EventReplayService
     /// <summary>
     /// 重放指定帧的事件
     /// </summary>
-    public async Task ReplayFrameAsync(ulong frame)
+    public async Task<int> ReplayFrameAsync(ulong frame)
     {
         try
         {
@@ -35,10 +35,12 @@ public class EventReplayService
             }
 
             _logger.LogInformation("Replayed {Count} events from frame {Frame}", events.Length, frame);
+            return events.Length;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error replaying frame {Frame}", frame);
+            return 0;
         }
     }
 
@@ -50,6 +52,53 @@ public class EventReplayService
         for (ulong frame = startFrame; frame <= endFrame; frame++)
         {
             await ReplayFrameAsync(frame);
+        }
+    }
+
+    /// <summary>
+    /// 验证帧完整性
+    /// </summary>
+    public async Task<FrameIntegrityReport> ValidateFrameIntegrityAsync(ulong frameNumber, ulong expectedEventCount)
+    {
+        try
+        {
+            var events = await _persistence.LoadFrameAsync(frameNumber);
+            var actualCount = (ulong)events.Length;
+            
+            var report = new FrameIntegrityReport
+            {
+                StartFrame = frameNumber,
+                EndFrame = frameNumber,
+                ValidFrames = actualCount == expectedEventCount ? 1 : 0,
+                EmptyFrames = actualCount == 0 ? 1 : 0
+            };
+
+            if (actualCount != expectedEventCount)
+            {
+                if (actualCount == 0)
+                {
+                    report.MissingFrames.Add(frameNumber);
+                }
+                else
+                {
+                    report.CorruptFrames.Add(frameNumber);
+                }
+            }
+            
+            return report;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error validating frame integrity for frame {Frame}", frameNumber);
+            var report = new FrameIntegrityReport
+            {
+                StartFrame = frameNumber,
+                EndFrame = frameNumber,
+                ValidFrames = 0,
+                EmptyFrames = 0
+            };
+            report.CorruptFrames.Add(frameNumber);
+            return report;
         }
     }
 }

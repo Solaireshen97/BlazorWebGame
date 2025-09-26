@@ -14,6 +14,7 @@ namespace BlazorWebGame.Shared.Events
     {
         Task PersistFrameAsync(ulong frameNumber, UnifiedEvent[] events, int count);
         Task<UnifiedEvent[]> ReplayFrameAsync(ulong frameNumber);
+        Task<UnifiedEvent[]> LoadFrameAsync(ulong frameNumber);
         Task<UnifiedEvent[]> LoadFrameRangeAsync(ulong startFrame, ulong endFrame, int maxEvents = 10000);
         Task<bool> FrameExistsAsync(ulong frameNumber);
         Task<ulong> GetLatestFrameAsync();
@@ -72,6 +73,12 @@ namespace BlazorWebGame.Shared.Events
             // 模拟异步I/O
             await Task.Delay(1);
             return Array.Empty<UnifiedEvent>();
+        }
+
+        public async Task<UnifiedEvent[]> LoadFrameAsync(ulong frameNumber)
+        {
+            // This is just an alias for ReplayFrameAsync for compatibility
+            return await ReplayFrameAsync(frameNumber);
         }
 
         public async Task<UnifiedEvent[]> LoadFrameRangeAsync(ulong startFrame, ulong endFrame, int maxEvents = 10000)
@@ -197,6 +204,12 @@ namespace BlazorWebGame.Shared.Events
             // 使用Redis XRANGE命令按帧号查询事件
             
             throw new NotImplementedException("Redis integration not implemented yet");
+        }
+
+        public async Task<UnifiedEvent[]> LoadFrameAsync(ulong frameNumber)
+        {
+            // Alias for ReplayFrameAsync for compatibility
+            return await ReplayFrameAsync(frameNumber);
         }
 
         public async Task<UnifiedEvent[]> LoadFrameRangeAsync(ulong startFrame, ulong endFrame, int maxEvents = 10000)
