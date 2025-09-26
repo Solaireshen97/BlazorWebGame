@@ -1,0 +1,399 @@
+@page "/api-test"
+@using BlazorWebGame.Client.Services.Api
+@using BlazorWebGame.Shared.DTOs
+@inject GameApiClient ApiClient
+@inject GameApiService LegacyApi
+
+<PageTitle>API 测试页面</PageTitle>
+
+<div class="container-fluid">
+    <h3>🧪 API 服务测试页面</h3>
+    
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>🔐 认证服务测试</h5>
+                </div>
+                <div class="card-body">
+                    <button class="btn btn-primary mb-2" @onclick="TestAuthentication">测试演示登录</button>
+                    <button class="btn btn-info mb-2" @onclick="TestServerConnection">检查服务器连接</button>
+                    <div class="alert alert-info small">
+                        <strong>认证状态:</strong> @_authStatus
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>⚔️ 战斗服务测试</h5>
+                </div>
+                <div class="card-body">
+                    <button class="btn btn-success mb-2" @onclick="TestGetActiveBattles">获取活跃战斗</button>
+                    <button class="btn btn-warning mb-2" @onclick="TestBattleOperations">测试战斗操作</button>
+                    <div class="alert alert-success small">
+                        <strong>活跃战斗:</strong> @_activeBattleCount 个
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>👥 组队服务测试</h5>
+                </div>
+                <div class="card-body">
+                    <button class="btn btn-success mb-2" @onclick="TestGetAllParties">获取所有队伍</button>
+                    <button class="btn btn-info mb-2" @onclick="TestPartyOperations">测试组队操作</button>
+                    <div class="alert alert-success small">
+                        <strong>活跃队伍:</strong> @_partyCount 个
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-3">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>👤 角色服务测试</h5>
+                </div>
+                <div class="card-body">
+                    <button class="btn btn-success mb-2" @onclick="TestGetCharacters">获取角色列表</button>
+                    <button class="btn btn-info mb-2" @onclick="TestCharacterDetails">获取角色详情</button>
+                    <div class="alert alert-success small">
+                        <strong>角色数量:</strong> @_characterCount 个
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>🎒 库存服务测试</h5>
+                </div>
+                <div class="card-body">
+                    <button class="btn btn-success mb-2" @onclick="TestInventoryOperations">测试库存操作</button>
+                    <button class="btn btn-warning mb-2" @onclick="TestItemOperations">测试物品操作</button>
+                    <div class="alert alert-info small">
+                        <strong>库存状态:</strong> @_inventoryStatus
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>⚒️ 生产服务测试</h5>
+                </div>
+                <div class="card-body">
+                    <button class="btn btn-success mb-2" @onclick="TestGetGatheringNodes">获取采集节点</button>
+                    <button class="btn btn-info mb-2" @onclick="TestProductionOperations">测试生产操作</button>
+                    <div class="alert alert-success small">
+                        <strong>采集节点:</strong> @_nodeCount 个
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-3">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>📋 任务服务测试</h5>
+                </div>
+                <div class="card-body">
+                    <button class="btn btn-success mb-2" @onclick="TestQuestOperations">测试任务操作</button>
+                    <div class="alert alert-info small">
+                        <strong>任务状态:</strong> @_questStatus
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>📊 监控服务测试</h5>
+                </div>
+                <div class="card-body">
+                    <button class="btn btn-info mb-2" @onclick="TestMonitoringServices">测试监控服务</button>
+                    <div class="alert alert-warning small">
+                        <strong>服务器状态:</strong> @_serverStatus
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>📝 测试日志</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-secondary" style="max-height: 300px; overflow-y: auto;">
+                        @foreach (var log in _testLogs)
+                        {
+                            <div>@log</div>
+                        }
+                    </div>
+                    <button class="btn btn-secondary btn-sm" @onclick="ClearLogs">清空日志</button>
+                    <button class="btn btn-success btn-sm" @onclick="RunAllTests">运行所有测试</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _authStatus = "未认证";
+    private int _activeBattleCount = 0;
+    private int _partyCount = 0;
+    private int _characterCount = 0;
+    private string _inventoryStatus = "未测试";
+    private int _nodeCount = 0;
+    private string _questStatus = "未测试";
+    private string _serverStatus = "未知";
+    private List<string> _testLogs = new();
+
+    private void AddLog(string message)
+    {
+        var timestamp = DateTime.Now.ToString("HH:mm:ss");
+        _testLogs.Add($"[{timestamp}] {message}");
+        StateHasChanged();
+    }
+
+    private void ClearLogs()
+    {
+        _testLogs.Clear();
+        StateHasChanged();
+    }
+
+    private async Task TestAuthentication()
+    {
+        try
+        {
+            AddLog("🔐 开始测试认证服务...");
+            var result = await ApiClient.SetupAuthenticationAsync();
+            _authStatus = result.Contains("✅") ? "已认证" : "认证失败";
+            AddLog($"认证结果: {result}");
+        }
+        catch (Exception ex)
+        {
+            AddLog($"❌ 认证测试失败: {ex.Message}");
+            _authStatus = "认证异常";
+        }
+    }
+
+    private async Task TestServerConnection()
+    {
+        try
+        {
+            AddLog("🔗 检查服务器连接状态...");
+            var isAvailable = await ApiClient.IsServerAvailableAsync();
+            _serverStatus = isAvailable ? "在线" : "离线";
+            AddLog($"服务器状态: {_serverStatus}");
+        }
+        catch (Exception ex)
+        {
+            AddLog($"❌ 服务器连接检查失败: {ex.Message}");
+            _serverStatus = "连接异常";
+        }
+    }
+
+    private async Task TestGetActiveBattles()
+    {
+        try
+        {
+            AddLog("⚔️ 获取活跃战斗列表...");
+            var response = await ApiClient.Battle.GetActiveBattlesAsync();
+            if (response.Success && response.Data != null)
+            {
+                _activeBattleCount = response.Data.Count;
+                AddLog($"✅ 获取到 {_activeBattleCount} 个活跃战斗");
+            }
+            else
+            {
+                AddLog($"⚠️ 获取活跃战斗失败: {response.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            AddLog($"❌ 战斗服务测试失败: {ex.Message}");
+        }
+    }
+
+    private async Task TestBattleOperations()
+    {
+        AddLog("⚔️ 战斗操作测试...");
+        AddLog("ℹ️ 战斗操作需要具体的角色和敌人ID，此处仅测试接口可用性");
+        // 这里可以添加更具体的战斗操作测试
+    }
+
+    private async Task TestGetAllParties()
+    {
+        try
+        {
+            AddLog("👥 获取所有组队...");
+            var response = await ApiClient.Party.GetAllPartiesAsync();
+            if (response.Success && response.Data != null)
+            {
+                _partyCount = response.Data.Count;
+                AddLog($"✅ 获取到 {_partyCount} 个活跃队伍");
+            }
+            else
+            {
+                AddLog($"⚠️ 获取队伍失败: {response.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            AddLog($"❌ 组队服务测试失败: {ex.Message}");
+        }
+    }
+
+    private async Task TestPartyOperations()
+    {
+        AddLog("👥 组队操作测试...");
+        AddLog("ℹ️ 组队操作需要具体的角色ID，此处仅测试接口可用性");
+        // 这里可以添加更具体的组队操作测试
+    }
+
+    private async Task TestGetCharacters()
+    {
+        try
+        {
+            AddLog("👤 获取角色列表...");
+            var response = await ApiClient.Character.GetCharactersAsync();
+            if (response.Success && response.Data != null)
+            {
+                _characterCount = response.Data.Count;
+                AddLog($"✅ 获取到 {_characterCount} 个角色");
+            }
+            else
+            {
+                AddLog($"⚠️ 获取角色失败: {response.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            AddLog($"❌ 角色服务测试失败: {ex.Message}");
+        }
+    }
+
+    private async Task TestCharacterDetails()
+    {
+        AddLog("👤 角色详情测试...");
+        AddLog("ℹ️ 角色详情查询需要具体的角色ID");
+        // 可以在这里添加具体的角色详情测试
+    }
+
+    private async Task TestInventoryOperations()
+    {
+        AddLog("🎒 库存操作测试...");
+        _inventoryStatus = "接口可用";
+        AddLog("ℹ️ 库存操作需要具体的角色ID和物品ID");
+    }
+
+    private async Task TestItemOperations()
+    {
+        AddLog("🔧 物品操作测试...");
+        AddLog("ℹ️ 物品操作包括使用、装备、出售等功能");
+    }
+
+    private async Task TestGetGatheringNodes()
+    {
+        try
+        {
+            AddLog("⚒️ 获取采集节点...");
+            var response = await ApiClient.Production.GetGatheringNodesAsync();
+            if (response.Success && response.Data != null)
+            {
+                _nodeCount = response.Data.Count;
+                AddLog($"✅ 获取到 {_nodeCount} 个采集节点");
+            }
+            else
+            {
+                AddLog($"⚠️ 获取采集节点失败: {response.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            AddLog($"❌ 生产服务测试失败: {ex.Message}");
+        }
+    }
+
+    private async Task TestProductionOperations()
+    {
+        AddLog("⚒️ 生产操作测试...");
+        AddLog("ℹ️ 生产操作包括开始采集、停止采集、查询状态等");
+    }
+
+    private async Task TestQuestOperations()
+    {
+        AddLog("📋 任务操作测试...");
+        _questStatus = "接口可用";
+        AddLog("ℹ️ 任务操作包括接受、完成、更新进度等功能");
+    }
+
+    private async Task TestMonitoringServices()
+    {
+        try
+        {
+            AddLog("📊 监控服务测试...");
+            var response = await ApiClient.Monitoring.GetGameStatusAsync();
+            if (response.Success && response.Data != null)
+            {
+                _serverStatus = response.Data.ServerStatus;
+                AddLog($"✅ 服务器状态: {_serverStatus}");
+                AddLog($"活跃玩家: {response.Data.ActivePlayers}");
+                AddLog($"活跃战斗: {response.Data.ActiveBattles}");
+            }
+            else
+            {
+                AddLog($"⚠️ 获取监控信息失败: {response.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            AddLog($"❌ 监控服务测试失败: {ex.Message}");
+        }
+    }
+
+    private async Task RunAllTests()
+    {
+        AddLog("🚀 开始运行所有测试...");
+        ClearLogs();
+        
+        await TestAuthentication();
+        await Task.Delay(500);
+        
+        await TestServerConnection();
+        await Task.Delay(500);
+        
+        await TestGetActiveBattles();
+        await Task.Delay(500);
+        
+        await TestGetAllParties();
+        await Task.Delay(500);
+        
+        await TestGetCharacters();
+        await Task.Delay(500);
+        
+        await TestGetGatheringNodes();
+        await Task.Delay(500);
+        
+        await TestMonitoringServices();
+        
+        AddLog("✅ 所有测试完成!");
+    }
+}

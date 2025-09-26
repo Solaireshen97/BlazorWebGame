@@ -1,43 +1,60 @@
 using BlazorWebGame.Shared.DTOs;
-using System.Net.Http.Json;
-using System.Text.Json;
 
 namespace BlazorWebGame.Client.Services.Api;
 
 /// <summary>
-/// 客户端生产系统 API 服务 - 连接到服务端生产 API
+/// 生产系统API服务实现
 /// </summary>
-public class ProductionApiService
+public class ProductionApiService : BaseApiService
 {
-    private readonly HttpClient _httpClient;
-    private readonly ILogger<ProductionApiService> _logger;
-
-    public ProductionApiService(HttpClient httpClient, ILogger<ProductionApiService> logger)
+    public ProductionApiService(ConfigurableHttpClientFactory httpClientFactory, ILogger<ProductionApiService> logger)
+        : base(httpClientFactory, logger)
     {
-        _httpClient = httpClient;
-        _logger = logger;
     }
 
+    public async Task<ApiResponse<List<GatheringNodeDto>>> GetGatheringNodesAsync()
+    {
+        return await GetAsync<List<GatheringNodeDto>>("api/production/nodes");
+    }
+
+    public async Task<ApiResponse<GatheringNodeDto>> GetGatheringNodeAsync(string nodeId)
+    {
+        return await GetAsync<GatheringNodeDto>($"api/production/nodes/{nodeId}");
+    }
+
+    public async Task<ApiResponse<bool>> StartGatheringAsync(StartGatheringRequest request)
+    {
+        return await PostAsync<bool>("api/production/gathering/start", request);
+    }
+
+    public async Task<ApiResponse<GatheringResultDto>> StopGatheringAsync(StopGatheringRequest request)
+    {
+        return await PostAsync<GatheringResultDto>("api/production/gathering/stop", request);
+    }
+
+    public async Task<ApiResponse<GatheringStateDto>> GetGatheringStateAsync(string characterId)
+    {
+        return await GetAsync<GatheringStateDto>($"api/production/gathering/state/{characterId}");
+    }
+
+    // 保留原有的方法以保持向后兼容
     /// <summary>
-    /// 获取所有可用的采集节点
+    /// 获取所有可用的采集节点 (向后兼容方法)
     /// </summary>
     public async Task<List<GatheringNodeDto>> GetAvailableNodesAsync(string profession = "")
     {
         try
         {
-            var query = string.IsNullOrEmpty(profession) ? "" : $"?profession={profession}";
-            var response = await _httpClient.GetAsync($"api/production/nodes{query}");
-            
-            if (response.IsSuccessStatusCode)
+            var response = await GetGatheringNodesAsync();
+            if (response.Success && response.Data != null)
             {
-                var result = await response.Content.ReadFromJsonAsync<ApiResponse<List<GatheringNodeDto>>>();
-                return result?.Data ?? new List<GatheringNodeDto>();
+                if (string.IsNullOrEmpty(profession))
+                {
+                    return response.Data;
+                }
+                return response.Data.Where(n => n.RequiredProfession.Equals(profession, StringComparison.OrdinalIgnoreCase)).ToList();
             }
-            else
-            {
-                _logger.LogWarning("Failed to get available nodes: {StatusCode}", response.StatusCode);
-                return new List<GatheringNodeDto>();
-            }
+            return new List<GatheringNodeDto>();
         }
         catch (Exception ex)
         {
@@ -47,24 +64,14 @@ public class ProductionApiService
     }
 
     /// <summary>
-    /// 根据ID获取特定采集节点
+    /// 根据ID获取特定采集节点 (向后兼容方法)
     /// </summary>
     public async Task<GatheringNodeDto?> GetNodeByIdAsync(string nodeId)
     {
         try
         {
-            var response = await _httpClient.GetAsync($"api/production/nodes/{nodeId}");
-            
-            if (response.IsSuccessStatusCode)
-            {
-                var result = await response.Content.ReadFromJsonAsync<ApiResponse<GatheringNodeDto>>();
-                return result?.Data;
-            }
-            else
-            {
-                _logger.LogWarning("Failed to get node {NodeId}: {StatusCode}", nodeId, response.StatusCode);
-                return null;
-            }
+            var response = await GetGatheringNodeAsync(nodeId);
+            return response.Success ? response.Data : null;
         }
         catch (Exception ex)
         {
@@ -74,7 +81,7 @@ public class ProductionApiService
     }
 
     /// <summary>
-    /// 开始采集
+    /// 开始采集 (向后兼容方法)
     /// </summary>
     public async Task<(bool Success, string Message, GatheringStateDto? State)> StartGatheringAsync(string characterId, string nodeId)
     {
@@ -86,17 +93,17 @@ public class ProductionApiService
                 NodeId = nodeId
             };
 
-            var response = await _httpClient.PostAsJsonAsync("api/production/gathering/start", request);
-            var result = await response.Content.ReadFromJsonAsync<ApiResponse<GatheringStateDto>>();
+            var response = await StartGatheringAsync(request);
+            
+            // 如果成功，获取最新状态
+            GatheringStateDto? state = null;
+            if (response.Success)
+            {
+                var stateResponse = await GetGatheringStateAsync(characterId);
+                state = stateResponse.Success ? stateResponse.Data : null;
+            }
 
-            if (result != null)
-            {
-                return (result.Success, result.Message, result.Data);
-            }
-            else
-            {
-                return (false, "请求失败", null);
-            }
+            return (response.Success, response.Message, state);
         }
         catch (Exception ex)
         {
@@ -106,7 +113,7 @@ public class ProductionApiService
     }
 
     /// <summary>
-    /// 停止采集
+    /// 停止采集 (向后兼容方法)
     /// </summary>
     public async Task<(bool Success, string Message)> StopGatheringAsync(string characterId)
     {
@@ -117,17 +124,8 @@ public class ProductionApiService
                 CharacterId = characterId
             };
 
-            var response = await _httpClient.PostAsJsonAsync("api/production/gathering/stop", request);
-            var result = await response.Content.ReadFromJsonAsync<ApiResponse<string>>();
-
-            if (result != null)
-            {
-                return (result.Success, result.Message);
-            }
-            else
-            {
-                return (false, "请求失败");
-            }
+            var response = await StopGatheringAsync(request);
+            return (response.Success, response.Message);
         }
         catch (Exception ex)
         {
@@ -137,24 +135,14 @@ public class ProductionApiService
     }
 
     /// <summary>
-    /// 获取玩家当前的采集状态
+    /// 获取玩家当前的采集状态 (向后兼容方法)
     /// </summary>
-    public async Task<GatheringStateDto?> GetGatheringStateAsync(string characterId)
+    public async Task<GatheringStateDto?> GetGatheringStateAsync_Legacy(string characterId)
     {
         try
         {
-            var response = await _httpClient.GetAsync($"api/production/gathering/state/{characterId}");
-            
-            if (response.IsSuccessStatusCode)
-            {
-                var result = await response.Content.ReadFromJsonAsync<ApiResponse<GatheringStateDto>>();
-                return result?.Data;
-            }
-            else
-            {
-                _logger.LogWarning("Failed to get gathering state for {CharacterId}: {StatusCode}", characterId, response.StatusCode);
-                return null;
-            }
+            var response = await GetGatheringStateAsync(characterId);
+            return response.Success ? response.Data : null;
         }
         catch (Exception ex)
         {
@@ -170,18 +158,8 @@ public class ProductionApiService
     {
         try
         {
-            var response = await _httpClient.GetAsync("api/production/gathering/active");
-            
-            if (response.IsSuccessStatusCode)
-            {
-                var result = await response.Content.ReadFromJsonAsync<ApiResponse<List<GatheringStateDto>>>();
-                return result?.Data ?? new List<GatheringStateDto>();
-            }
-            else
-            {
-                _logger.LogWarning("Failed to get active gathering states: {StatusCode}", response.StatusCode);
-                return new List<GatheringStateDto>();
-            }
+            var response = await GetAsync<List<GatheringStateDto>>("api/production/gathering/active");
+            return response.Success && response.Data != null ? response.Data : new List<GatheringStateDto>();
         }
         catch (Exception ex)
         {

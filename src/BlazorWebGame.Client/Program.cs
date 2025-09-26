@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
+using BlazorWebGame.Shared.Interfaces;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -28,11 +29,40 @@ builder.Services.AddSingleton<HttpClient>(sp =>
     return factory.GetHttpClient();
 });
 
-// 添加新的API服务
+// 添加新的组织化API服务 - 暂时不使用接口，避免类型冲突
+// 直接注册实现类，保持功能完整性
+builder.Services.AddSingleton<BattleApiService>();
+builder.Services.AddSingleton<CharacterApiService>();
+builder.Services.AddSingleton<PartyApiService>();
+builder.Services.AddSingleton<InventoryApiService>();
+builder.Services.AddSingleton<EquipmentApiService>();
+builder.Services.AddSingleton<ProductionApiServiceNew>();
+builder.Services.AddSingleton<QuestApiService>();
+builder.Services.AddSingleton<AuthApiService>();
+builder.Services.AddSingleton<OfflineSettlementApiService>();
+builder.Services.AddSingleton<MonitoringApiService>();
+
+// 注册统一的API客户端（暂时使用构造器直接注入实现类）
+builder.Services.AddSingleton<GameApiClient>(sp => new GameApiClient(
+    sp.GetRequiredService<BattleApiService>(),
+    sp.GetRequiredService<CharacterApiService>(),
+    sp.GetRequiredService<PartyApiService>(),
+    sp.GetRequiredService<InventoryApiService>(),
+    sp.GetRequiredService<EquipmentApiService>(),
+    sp.GetRequiredService<ProductionApiServiceNew>(),
+    sp.GetRequiredService<QuestApiService>(),
+    sp.GetRequiredService<AuthApiService>(),
+    sp.GetRequiredService<OfflineSettlementApiService>(),
+    sp.GetRequiredService<MonitoringApiService>()
+));
+
+// 保持向后兼容的GameApiService
 builder.Services.AddSingleton<GameApiService>();
+
+// 其他现有服务
 builder.Services.AddSingleton<ClientGameStateService>();
 builder.Services.AddSingleton<ClientPartyService>();
-builder.Services.AddSingleton<ProductionApiService>();
+builder.Services.AddSingleton<ProductionApiService>(); // 保留原有的生产API服务，向后兼容
 builder.Services.AddSingleton<HybridProductionService>();
 builder.Services.AddSingleton<OfflineService>();
 
