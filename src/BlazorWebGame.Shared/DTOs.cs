@@ -138,7 +138,8 @@ public enum BattleActionType
     UseSkill,
     Defend,
     Move,
-    UseItem
+    UseItem,
+    SwitchTarget
 }
 
 /// <summary>

@@ -32,12 +32,24 @@
             {
                 <span class="badge bg-warning ms-2">离线模式</span>
             }
+            @if (_useNewBattleSystem && _serverBattleState != null && _serverBattleState.IsActive)
+            {
+                <span class="badge bg-success ms-2">
+                    <i class="bi bi-play-circle"></i> 在线战斗中 - ID: @(_serverBattleState.BattleId.ToString()[..8])
+                </span>
+            }
         </div>
         <div class="d-flex align-items-center gap-2">
             @if (_useNewBattleSystem)
             {
                 <small class="text-muted">
+                    <i class="bi @(_isConnected ? "bi-wifi" : "bi-wifi-off")"></i>
                     连接状态: @(_isConnected ? "已连接" : "连接断开")
+                    @if (_serverBattleState != null)
+                    {
+                        <br />
+                        <span class="text-info">最后更新: @_serverBattleState.LastUpdated.ToString("HH:mm:ss")</span>
+                    }
                 </small>
             }
             <div class="btn-group" role="group">
@@ -310,7 +322,7 @@
                         bool canEnter = CanEnterDungeon(character, party, dungeon);
 
                         <div class="dungeon-select-item @(!canEnter ? "disabled" : "")"
-                             @onclick="() => { if (canEnter) StartDungeon(dungeon.Id); }">
+                             @onclick="async () => { if (canEnter) await StartDungeon(dungeon.Id); }">
                             <div class="dungeon-info">
                                 <div class="dungeon-name">@dungeon.Name</div>
                                 <div class="dungeon-level">�Ƽ��ȼ�: @dungeon.RecommendedLevel</div>
@@ -349,8 +361,22 @@
             </h5>
             <div class="battle-status-text d-flex justify-content-between align-items-center">
                 <div>
-                    <i class="bi bi-play-circle"></i> �Զ�ս���� - ����: @battleContext.Enemies.Count ��ʣ��
+                    <i class="bi bi-play-circle"></i> 
+                    @if (_useNewBattleSystem && _serverBattleState != null)
+                    {
+                        <span>在线战斗进行中 - 敌人血量: @_serverBattleState.EnemyHealth/@_serverBattleState.EnemyMaxHealth</span>
+                    }
+                    else if (battleContext != null)
+                    {
+                        <span>自动战斗中 - 敌人: @battleContext.Enemies.Count 个剩余</span>
+                    }
                 </div>
+                @if (_useNewBattleSystem && !_isConnected)
+                {
+                    <div class="text-warning">
+                        <i class="bi bi-wifi-off"></i> 连接断开，正在重连...
+                    </div>
+                }
             </div>
         </div>
                 }
@@ -472,9 +498,14 @@
                                         var skill = SkillData.GetSkillById(skillId);
                                         if (skill != null)
                                         {
-                                            <div class="skill-icon-container" title="@skill.Name: @skill.Description">
+                                            var isOnCooldown = character.SkillCooldowns.GetValueOrDefault(skillId, 0) > 0;
+                                            var skillIdCopy = skillId; // 避免闭包问题
+                                            
+                                            <div class="skill-icon-container @(!isOnCooldown ? "clickable" : "")" 
+                                                 title="@skill.Name: @skill.Description @(_useNewBattleSystem ? " (点击使用 - 在线模式)" : "")"
+                                                 @onclick="async () => await UseSkillIfAvailable(skillIdCopy, isOnCooldown)">
                                                 <div class="skill-icon">@skill.Name.Substring(0, 1)</div>
-                                                @if (character.SkillCooldowns.GetValueOrDefault(skillId, 0) > 0)
+                                                @if (isOnCooldown)
                                                 {
                                                     <div class="cooldown-overlay"><span>@character.SkillCooldowns[skillId]</span></div>
                                                 }
@@ -536,9 +567,9 @@
                                 @foreach (var enemy in battleContext.Enemies.Where(e => e != currentEnemy))
                                 {
                                     <div class="enemy-mini-card @(IsPlayerTarget(character.Id, enemy, battleContext) ? "border-primary" : "")"
-                                         @onclick="() => SetPlayerTarget(character.Id, enemy, battleContext)">
+                                         @onclick="async () => await SetPlayerTargetUnified(character.Id, enemy, battleContext)">
                                         <div class="d-flex justify-content-between">
-                                            <span>@enemy.Name</span>
+                                            <span>@enemy.Name @(_useNewBattleSystem ? "🌐" : "")</span>
                                             <span>Lv.@enemy.Level</span>
                                         </div>
                                         <div class="mini-health-bar">
@@ -622,7 +653,7 @@
                                         <h6>@dungeon.Name (�Ƽ��ȼ�: @dungeon.RecommendedLevel)</h6>
                                         <p>@dungeon.Description</p>
                                         <p><small>��������: @dungeon.MinPlayers-@dungeon.MaxPlayers ��</small></p>
-                                        <button class="btn btn-primary btn-sm" @onclick="() => StartDungeon(dungeon.Id)">
+                                        <button class="btn btn-primary btn-sm" @onclick="async () => await StartDungeon(dungeon.Id)">
                                             ��ʼ����
                                         </button>
                                     </div>
@@ -1196,6 +1227,112 @@ else
     }
     
     /// <summary>
+    /// 执行在线战斗动作（如使用技能、普通攻击等）
+    /// </summary>
+    private async Task ExecuteOnlineBattleAction(BattleActionType actionType, string? targetId = null, string? skillId = null)
+    {
+        if (!_useNewBattleSystem || _serverBattleState == null || !_serverBattleState.IsActive)
+        {
+            Logger.LogWarning("无法执行在线战斗动作：系统未使用新模式或没有活跃战斗");
+            return;
+        }
+        
+        var character = GameState.ActiveCharacter;
+        if (character == null) return;
+        
+        try
+        {
+            if (OfflineService.IsOfflineMode)
+            {
+                Logger.LogInformation("离线模式：记录战斗动作");
+                // 在离线模式下记录动作
+                // TODO: 可以在这里添加离线动作记录逻辑
+                return;
+            }
+            
+            // 确保认证有效
+            var authResult = await GameApi.SetupAuthenticationAsync();
+            if (!authResult.StartsWith("✅"))
+            {
+                Logger.LogWarning("⚠️ 认证失败，无法执行战斗动作");
+                await OfflineService.EnterOfflineMode();
+                return;
+            }
+            
+            Logger.LogInformation($"🎯 正在执行战斗动作: {actionType}");
+            var success = await NewGameState.ExecuteBattleActionAsync(
+                _serverBattleState.BattleId, 
+                character.Id, 
+                actionType, 
+                targetId, 
+                skillId);
+                
+            if (success)
+            {
+                Logger.LogInformation($"✅ 战斗动作执行成功: {actionType}");
+            }
+            else
+            {
+                Logger.LogWarning($"❌ 战斗动作执行失败: {actionType}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, $"执行战斗动作时出错: {actionType}");
+        }
+    }
+    
+    /// <summary>
+    /// 使用技能（如果可用）
+    /// </summary>
+    private async Task UseSkillIfAvailable(string skillId, bool isOnCooldown)
+    {
+        if (isOnCooldown)
+        {
+            Logger.LogInformation($"技能 {skillId} 还在冷却中");
+            return;
+        }
+        
+        var currentEnemy = GetCurrentEnemy(GameState.ActiveCharacter, GetUnifiedBattleContext(GameState.ActiveCharacter?.Id));
+        var targetId = currentEnemy?.Name; // 使用当前敌人作为目标
+        
+        await UseSkill(skillId, targetId);
+    }
+    
+    /// <summary>
+    /// 使用技能 - 统一方法支持在线和离线模式
+    /// </summary>
+    private async Task UseSkill(string skillId, string? targetId = null)
+    {
+        if (_useNewBattleSystem)
+        {
+            await ExecuteOnlineBattleAction(BattleActionType.UseSkill, targetId, skillId);
+        }
+        else
+        {
+            // 旧系统：直接使用本地技能系统
+            // 这里需要调用原有的技能使用逻辑
+            var character = GameState.ActiveCharacter;
+            if (character != null)
+            {
+                // TODO: 调用原有的技能系统逻辑
+                Logger.LogInformation($"本地模式：使用技能 {skillId}");
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 切换攻击目标 - 在线模式支持
+    /// </summary>
+    private async Task SetOnlineBattleTarget(string targetId)
+    {
+        if (_useNewBattleSystem && _serverBattleState != null)
+        {
+            await ExecuteOnlineBattleAction(BattleActionType.SwitchTarget, targetId);
+        }
+    }
+
+    /// <summary>
     /// 统一的停止战斗方法
     /// </summary>
     private async Task StopUnifiedBattle()
@@ -1373,11 +1510,40 @@ else
             }
             else
             {
-                // 在线模式：调用服务器API
-                var success = await NewGameState.StartBattleAsync(enemyTemplate.Name, GetCurrentPartyId());
-                if (!success)
+                // 在线模式：首先设置认证
+                Logger.LogInformation("🔐 正在设置认证...");
+                var authResult = await GameApi.SetupAuthenticationAsync();
+                Logger.LogInformation($"认证结果: {authResult}");
+                
+                if (!authResult.StartsWith("✅"))
                 {
-                    Logger.LogWarning("服务器战斗启动失败，使用离线模式");
+                    Logger.LogWarning("⚠️ 认证失败，无法进行在线战斗");
+                    await OfflineService.EnterOfflineMode();
+                    _serverBattleState = OfflineService.SimulateLocalBattle(character.Id, enemyTemplate.Name, GetCurrentPartyId());
+                    return;
+                }
+                
+                // 认证成功，开始在线战斗
+                Logger.LogInformation("⚔️ 正在开始在线战斗...");
+                var request = new StartBattleRequest
+                {
+                    CharacterId = character.Id,
+                    EnemyId = enemyTemplate.Name,
+                    PartyId = GetCurrentPartyId()
+                };
+                
+                var result = await GameApi.StartBattleAsync(request);
+                if (result.Success && result.Data != null)
+                {
+                    Logger.LogInformation($"✅ 在线战斗开始成功: 战斗ID {result.Data.BattleId}");
+                    _serverBattleState = result.Data;
+                    
+                    // 确保加入SignalR组以接收实时更新
+                    await NewGameState.StartBattleAsync(enemyTemplate.Name, GetCurrentPartyId());
+                }
+                else
+                {
+                    Logger.LogWarning($"❌ 在线战斗开始失败: {result.Message}");
                     await OfflineService.EnterOfflineMode();
                     _serverBattleState = OfflineService.SimulateLocalBattle(character.Id, enemyTemplate.Name, GetCurrentPartyId());
                 }
@@ -1390,6 +1556,7 @@ else
             Logger.LogError(ex, "新系统战斗启动失败");
             // 回退到离线模式
             await OfflineService.EnterOfflineMode();
+            _serverBattleState = OfflineService.SimulateLocalBattle(character.Id, enemyTemplate.Name, GetCurrentPartyId());
         }
     }
     
@@ -1543,6 +1710,23 @@ else
     }
 
     /// <summary>
+    /// 设置玩家的目标敌人 - 统一方法支持在线和离线模式
+    /// </summary>
+    private async Task SetPlayerTargetUnified(string playerId, Enemy enemy, BattleContext battleContext)
+    {
+        if (_useNewBattleSystem)
+        {
+            // 在线模式：发送目标切换到服务器
+            await SetOnlineBattleTarget(enemy.Name);
+        }
+        else
+        {
+            // 离线模式：直接设置本地目标
+            SetPlayerTarget(playerId, enemy, battleContext);
+        }
+    }
+
+    /// <summary>
     /// ������ҵ�Ŀ�����
     /// </summary>
     private void SetPlayerTarget(string playerId, Enemy enemy, BattleContext battleContext)
@@ -1559,12 +1743,106 @@ else
     }
 
     /// <summary>
-    /// ��������ս��
+    /// ��������ս�� - ֧�������ߺ����ģʽ
     /// </summary>
-    private void StartDungeon(string dungeonId)
+    private async Task StartDungeon(string dungeonId)
     {
         var party = GameState.GetPartyForCharacter(GameState.ActiveCharacter?.Id);
-        if (party != null && _combatService != null)
+        if (party == null)
+        {
+            Logger.LogWarning("无法开始副本：没有队伍");
+            return;
+        }
+            
+        if (_useNewBattleSystem)
+        {
+            await StartDungeonOnline(dungeonId, party);
+        }
+        else
+        {
+            StartDungeonOffline(dungeonId, party);
+        }
+    }
+    
+    /// <summary>
+    /// 在线副本战斗启动
+    /// </summary>
+    private async Task StartDungeonOnline(string dungeonId, Party party)
+    {
+        try
+        {
+            if (OfflineService.IsOfflineMode)
+            {
+                Logger.LogInformation("离线模式：记录副本开始操作");
+                // 在离线模式下记录副本操作
+                OfflineService.RecordOfflineAction(OfflineActionType.StartBattle, new StartBattleRequest
+                {
+                    CharacterId = GameState.ActiveCharacter?.Id ?? "",
+                    EnemyId = $"dungeon:{dungeonId}",
+                    PartyId = party.Id.ToString()
+                });
+                
+                // 本地模拟副本战斗
+                _serverBattleState = OfflineService.SimulateLocalBattle(
+                    GameState.ActiveCharacter?.Id ?? "", 
+                    $"dungeon:{dungeonId}", 
+                    party.Id.ToString());
+            }
+            else
+            {
+                // 在线模式：首先设置认证
+                Logger.LogInformation("🔐 正在设置认证...");
+                var authResult = await GameApi.SetupAuthenticationAsync();
+                Logger.LogInformation($"认证结果: {authResult}");
+                
+                if (!authResult.StartsWith("✅"))
+                {
+                    Logger.LogWarning("⚠️ 认证失败，无法进行在线副本战斗");
+                    await OfflineService.EnterOfflineMode();
+                    return;
+                }
+                
+                // 认证成功，开始在线副本战斗
+                Logger.LogInformation("🏰 正在开始在线副本战斗...");
+                var request = new StartBattleRequest
+                {
+                    CharacterId = GameState.ActiveCharacter?.Id ?? "",
+                    EnemyId = $"dungeon:{dungeonId}",
+                    PartyId = party.Id.ToString()
+                };
+                
+                var result = await GameApi.StartBattleAsync(request);
+                if (result.Success && result.Data != null)
+                {
+                    Logger.LogInformation($"✅ 在线副本战斗开始成功: 战斗ID {result.Data.BattleId}");
+                    _serverBattleState = result.Data;
+                    
+                    // 确保加入SignalR组以接收实时更新
+                    await NewGameState.StartBattleAsync($"dungeon:{dungeonId}", party.Id.ToString());
+                }
+                else
+                {
+                    Logger.LogWarning($"❌ 在线副本战斗开始失败: {result.Message}");
+                    await OfflineService.EnterOfflineMode();
+                }
+            }
+            
+            CloseSelectors();
+            _currentView = BattleView.Battle;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "在线副本战斗启动失败");
+            await OfflineService.EnterOfflineMode();
+        }
+    }
+    
+    /// <summary>
+    /// 离线副本战斗启动（原有逻辑）
+    /// </summary>
+    private void StartDungeonOffline(string dungeonId, Party party)
+    {
+        if (_combatService != null)
         {
             bool dungeonStarted = _combatService.StartDungeon(party, dungeonId);
 

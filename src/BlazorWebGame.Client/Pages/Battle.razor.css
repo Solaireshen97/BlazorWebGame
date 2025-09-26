@@ -1,11 +1,11 @@
-/* Õ½¶·Ò³ÃæÕûÌå²¼¾Ö */
+/* Õ½ï¿½ï¿½Ò³ï¿½ï¿½ï¿½ï¿½ï¿½å²¼ï¿½ï¿½ */
 .battle-page-layout {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
 }
 
-/* Ãæ°üÐ¼µ¼º½ÑùÊ½ */
+/* ï¿½ï¿½ï¿½Ð¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê½ */
 .breadcrumb-navigation {
     display: flex;
     align-items: center;
@@ -40,7 +40,7 @@
     color: #6c757d;
 }
 
-/* ¹ÖÎïÑ¡Ôñ */
+/* ï¿½ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½ */
 .monster-selection-area {
     display: flex;
     gap: 1rem;
@@ -69,7 +69,7 @@
         border-color: #007bff;
     }
 
-/* Õ½¶·ºËÐÄ */
+/* Õ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
 .battle-core-area {
     display: flex;
     justify-content: center;
@@ -81,7 +81,7 @@
     margin: 0 auto;
 }
 
-/* ×ó²àÇøÓòÑùÊ½ - Ë®Æ½²¼¾Ö */
+/* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê½ - Ë®Æ½ï¿½ï¿½ï¿½ï¿½ */
 .battle-left-side {
     display: flex;
     flex-direction: row;
@@ -91,7 +91,7 @@
     justify-content: flex-end;
 }
 
-/* ÓÒ²àÇøÓòÑùÊ½ - Ë®Æ½²¼¾Ö */
+/* ï¿½Ò²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê½ - Ë®Æ½ï¿½ï¿½ï¿½ï¿½ */
 .battle-right-side {
     display: flex;
     flex-direction: row;
@@ -113,7 +113,7 @@
 }
 
 .battle-container {
-    display: none; /* Òþ²ØÔ­ÓÐÈÝÆ÷£¬Ê¹ÓÃÐÂµÄ×óÓÒ²¼¾Ö´úÌæ */
+    display: none; /* ï¿½ï¿½ï¿½ï¿½Ô­ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¹ï¿½ï¿½ï¿½Âµï¿½ï¿½ï¿½ï¿½Ò²ï¿½ï¿½Ö´ï¿½ï¿½ï¿½ */
 }
 
 .character-card {
@@ -156,11 +156,11 @@
 }
 
 .player-health {
-    background-color: #28a745; /* ÂÌÉ« */
+    background-color: #28a745; /* ï¿½ï¿½É« */
 }
 
 .enemy-health {
-    background-color: #dc3545; /* ºìÉ« */
+    background-color: #dc3545; /* ï¿½ï¿½É« */
 }
 
 .attack-progress-container {
@@ -173,15 +173,15 @@
 }
 
 .attack-progress-bar {
-    background-color: #ffc107; /* »ÆÉ« */ 
+    background-color: #ffc107; /* ï¿½ï¿½É« */ 
     height: 100%;
     transition: width 0.1s linear;
 }
 
-/* ×°±¸¼°Ï¸½ÚÐÅÏ¢ - ¸ÄÎªË®Æ½²¼¾Ö */
+/* ×°ï¿½ï¿½ï¿½ï¿½Ï¸ï¿½ï¿½ï¿½ï¿½Ï¢ - ï¿½ï¿½ÎªË®Æ½ï¿½ï¿½ï¿½ï¿½ */
 .details-area {
     display: flex;
-    flex-direction: row; /* ¸ÄÎªË®Æ½²¼¾Ö */
+    flex-direction: row; /* ï¿½ï¿½ÎªË®Æ½ï¿½ï¿½ï¿½ï¿½ */
     gap: 1rem;
     padding-top: 1rem;
     border-top: 1px solid #dee2e6;
@@ -193,11 +193,11 @@
     border: 1px solid #e9ecef;
     border-radius: 8px;
     padding: 1rem;
-    flex: 1; /* ÈÃÁ½¸ö¿¨Æ¬Æ½¾ù·ÖÅä¿Õ¼ä */
-    min-width: 0; /* ·ÀÖ¹flex×ÓÏîÒç³ö */
+    flex: 1; /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ¬Æ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õ¼ï¿½ */
+    min-width: 0; /* ï¿½ï¿½Ö¹flexï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
 }
 
-/* Íæ¼ÒÖ°ÒµºÍ¼¼ÄÜÏÔÊ¾ÑùÊ½ */
+/* ï¿½ï¿½ï¿½Ö°Òµï¿½Í¼ï¿½ï¿½ï¿½ï¿½ï¿½Ê¾ï¿½ï¿½Ê½ */
 .profession-display {
     background-color: #f0f0f0;
     border-radius: 15px;
@@ -214,7 +214,10 @@
 
 .skill-icon-container {
     position: relative;
-    cursor: help;
+}
+
+.skill-icon-container.clickable {
+    cursor: pointer;
 }
 
 .skill-icon {
@@ -228,7 +231,21 @@
     justify-content: center;
     font-weight: bold;
     font-size: 1rem;
-    cursor: help;
+    transition: all 0.2s ease;
+}
+
+.skill-icon-container.clickable .skill-icon {
+    cursor: pointer;
+}
+
+.skill-icon-container.clickable:hover .skill-icon {
+    background-color: #5a6268;
+    transform: scale(1.05);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.skill-icon-container.clickable:active .skill-icon {
+    transform: scale(0.95);
 }
 
 .cooldown-overlay {
@@ -247,12 +264,12 @@
     border-radius: 5px;
 }
 
-/* --- ÐÞÕýºóµÄÑùÊ½ --- */
+/* --- ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê½ --- */
 .action-bar {
-    display: flex; /* ÈÃÄÚÈÝ´¹Ö±ÅÅÁÐ */
-    flex-direction: column; /* ÈÃÄÚÈÝ´¹Ö±ÅÅÁÐ */
-    align-items: center; /* ¾ÓÖÐ¶ÔÆë */
-    gap: 0.75rem; /* ¼¼ÄÜºÍÏûºÄÆ·Ö®¼äµÄ¼ä¾à */
+    display: flex; /* ï¿½ï¿½ï¿½ï¿½ï¿½Ý´ï¿½Ö±ï¿½ï¿½ï¿½ï¿½ */
+    flex-direction: column; /* ï¿½ï¿½ï¿½ï¿½ï¿½Ý´ï¿½Ö±ï¿½ï¿½ï¿½ï¿½ */
+    align-items: center; /* ï¿½ï¿½ï¿½Ð¶ï¿½ï¿½ï¿½ */
+    gap: 0.75rem; /* ï¿½ï¿½ï¿½Üºï¿½ï¿½ï¿½ï¿½ï¿½Æ·Ö®ï¿½ï¿½Ä¼ï¿½ï¿½ */
     margin-top: 1rem;
     padding-top: 1rem;
     border-top: 1px solid #eee;
@@ -263,10 +280,10 @@
     display: flex;
     justify-content: center;
     gap: 0.5rem;
-    width: 100%; /* È·±£ËüÃÇÕ¼ÂúÈÝÆ÷¿í¶ÈÒÔ±ã¾ÓÖÐ */
+    width: 100%; /* È·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õ¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô±ï¿½ï¿½ï¿½ï¿½ */
 }
 
-/* --- ¿ì½ÝÀ¸Í¨ÓÃÑùÊ½ --- */
+/* --- ï¿½ï¿½ï¿½ï¿½ï¿½Í¨ï¿½ï¿½ï¿½ï¿½Ê½ --- */
 .quick-slot {
     width: 40px;
     height: 40px;
@@ -313,7 +330,7 @@
         color: #dee2e6;
     }
 
-/* ÎïÆ·Ñ¡Ôñµ¯´°ÑùÊ½ */
+/* ï¿½ï¿½Æ·Ñ¡ï¿½ñµ¯´ï¿½ï¿½ï¿½Ê½ */
 .modal-backdrop {
     position: fixed;
     top: 0;
@@ -370,7 +387,7 @@
 .picker-item-count {
     color: #6c757d;
     font-size: 0.9em;
-    /* ÐÂÔöCSSÑùÊ½ÒÔÖ§³Ö¶à¶Ô¶àÕ½¶·½çÃæ */
+    /* ï¿½ï¿½ï¿½ï¿½CSSï¿½ï¿½Ê½ï¿½ï¿½Ö§ï¿½Ö¶ï¿½Ô¶ï¿½Õ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
 }
 
 .battle-context-info {
@@ -460,7 +477,7 @@
     .dungeon-card:hover {
         background-color: rgba(0, 0, 0, 0.1);
     }
-/* ÕûºÏºóµÄÕ½¶·ÐÅÏ¢Ãæ°å */
+/* ï¿½ï¿½ï¿½Ïºï¿½ï¿½Õ½ï¿½ï¿½ï¿½ï¿½Ï¢ï¿½ï¿½ï¿½ */
 .battle-info-panel {
     background-color: rgba(0, 0, 0, 0.05);
     border-radius: 8px;
@@ -498,7 +515,7 @@
     margin-right: 5px;
 }
 
-/* Íæ¼ÒÏêÇé¿¨Æ¬ÔöÇ¿ÑùÊ½ */
+/* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½é¿¨Æ¬ï¿½ï¿½Ç¿ï¿½ï¿½Ê½ */
 .player-details-card {
     min-height: 220px;
 }
@@ -521,7 +538,7 @@
     flex-wrap: wrap;
 }
 
-/* ¹ÖÎïÏêÇé¿¨Æ¬ÔöÇ¿ÑùÊ½ */
+/* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½é¿¨Æ¬ï¿½ï¿½Ç¿ï¿½ï¿½Ê½ */
 .enemy-details-card {
     min-height: 220px;
 }
@@ -537,19 +554,19 @@
     background-color: rgba(0,0,0,0.01);
 }
 
-/* È·±£¿ì½ÝÀ¸ÔÚÐÂÎ»ÖÃµÄÑùÊ½Ò»ÖÂ */
+/* È·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î»ï¿½Ãµï¿½ï¿½ï¿½Ê½Ò»ï¿½ï¿½ */
 .player-quick-access .quick-slot {
     width: 40px;
     height: 40px;
 }
 
-/* Ö°ÒµÐÅÏ¢ÔÚÊôÐÔ¿¨ÖÐµÄÑùÊ½ */
+/* Ö°Òµï¿½ï¿½Ï¢ï¿½ï¿½ï¿½ï¿½ï¿½Ô¿ï¿½ï¿½Ðµï¿½ï¿½ï¿½Ê½ */
 .character-profession-info {
     margin-bottom: 1rem;
     display: none;
 }
 
-/* Ö°ÒµµÈ¼¶Ãû×ÖË®Æ½²¼¾ÖÑùÊ½ */
+/* Ö°Òµï¿½È¼ï¿½ï¿½ï¿½ï¿½ï¿½Ë®Æ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê½ */
 .player-name-container {
     display: flex;
     align-items: center;
@@ -574,7 +591,7 @@
     font-size: 1.2rem;
 }
 
-/* ¶ÓÎéÕ½¶·²¼¾Ö */
+/* ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
 .party-battle-layout {
     display: flex;
     flex-direction: column;
@@ -661,7 +678,7 @@
     margin-bottom: 0.2rem;
 }
 
-/* È·±£mini-health-barÑùÊ½ÕýÈ·Ó¦ÓÃ */
+/* È·ï¿½ï¿½mini-health-barï¿½ï¿½Ê½ï¿½ï¿½È·Ó¦ï¿½ï¿½ */
 .party-member-card .mini-health-bar {
     height: 8px;
     background-color: #333;
@@ -690,7 +707,7 @@
     text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.8);
 }
 
-/* µ÷ÕûÕ½¶·ºËÐÄÇøÓòÎªË®Æ½²¼¾Ö */
+/* ï¿½ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÎªË®Æ½ï¿½ï¿½ï¿½ï¿½ */
 .battle-core-area {
     display: flex;
     justify-content: center;
@@ -702,7 +719,7 @@
     margin: 0 auto;
 }
 
-/* ×ó²àÇøÓòÑùÊ½ - Ë®Æ½²¼¾Ö */
+/* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê½ - Ë®Æ½ï¿½ï¿½ï¿½ï¿½ */
 .battle-left-side {
     display: flex;
     flex-direction: row;
@@ -712,7 +729,7 @@
     justify-content: flex-end;
 }
 
-/* ÓÒ²àÇøÓòÑùÊ½ - Ë®Æ½²¼¾Ö */
+/* ï¿½Ò²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê½ - Ë®Æ½ï¿½ï¿½ï¿½ï¿½ */
 .battle-right-side {
     display: flex;
     flex-direction: row;
@@ -722,13 +739,13 @@
     justify-content: flex-start;
 }
 
-/* Íæ¼Ò¿¨Æ¬ºÍµÐÈË¿¨Æ¬¹Ì¶¨¿í¶È */
+/* ï¿½ï¿½Ò¿ï¿½Æ¬ï¿½Íµï¿½ï¿½Ë¿ï¿½Æ¬ï¿½Ì¶ï¿½ï¿½ï¿½ï¿½ï¿½ */
 .character-card {
     width: 300px;
     flex-shrink: 0;
 }
 
-/* Ë®Æ½¶ÓÎé³ÉÔ±²¼¾Ö */
+/* Ë®Æ½ï¿½ï¿½ï¿½ï¿½ï¿½Ô±ï¿½ï¿½ï¿½ï¿½ */
 .party-members-container.horizontal {
     display: flex;
     flex-direction: column;
@@ -737,7 +754,7 @@
     flex-shrink: 0;
 }
 
-/* Ë®Æ½ÆäËûµÐÈËÁÐ±íÑùÊ½ */
+/* Ë®Æ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð±ï¿½ï¿½ï¿½Ê½ */
 .other-enemies-list.horizontal {
     width: 180px;
     flex-shrink: 0;
@@ -767,7 +784,7 @@
     border: 2px solid #007bff;
 }
 
-/* Õ½¶·¿ØÖÆÀ¸ÑùÊ½ */
+/* Õ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê½ */
 .battle-control-bar {
     display: flex;
     gap: 1rem;
@@ -778,7 +795,7 @@
     align-items: center;
 }
 
-/* ¹ÖÎïÑ¡ÔñÆ÷Ä£Ì¬¿ò */
+/* ï¿½ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½ï¿½ï¿½Ä£Ì¬ï¿½ï¿½ */
 .monster-selector-modal,
 .dungeon-selector-modal {
     position: fixed;
@@ -806,7 +823,7 @@
     font-weight: 600;
 }
 
-/* ÇøÓòµ¼º½ÑùÊ½ */
+/* ï¿½ï¿½ï¿½òµ¼ºï¿½ï¿½ï¿½Ê½ */
 .region-navigation {
     display: flex;
     flex-direction: column;
@@ -841,7 +858,7 @@
     border-color: #0069d9;
 }
 
-/* ¹ÖÎïÁÐ±íÑùÊ½ */
+/* ï¿½ï¿½ï¿½ï¿½ï¿½Ð±ï¿½ï¿½ï¿½Ê½ */
 .monsters-in-region {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -892,7 +909,7 @@
     width: 100%;
 }
 
-/* ¸±±¾ÁÐ±íÑùÊ½ */
+/* ï¿½ï¿½ï¿½ï¿½ï¿½Ð±ï¿½ï¿½ï¿½Ê½ */
 .dungeons-list {
     display: flex;
     flex-direction: column;
@@ -991,7 +1008,7 @@
 }
 
 .region-item.disabled:hover::after {
-    content: "µÈ¼¶²»×ã";
+    content: "ï¿½È¼ï¿½ï¿½ï¿½ï¿½ï¿½";
     position: absolute;
     background-color: rgba(0, 0, 0, 0.8);
     color: white;
@@ -1009,7 +1026,7 @@
     color: #dc3545;
 }
 
-/* ¹ÖÎïÑ¡ÔñÆ÷Á½À¸²¼¾Ö */
+/* ï¿½ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
 .region-navigation-container,
 .dungeon-navigation-container {
     display: flex;
@@ -1036,7 +1053,7 @@
     flex-direction: column;
 }
 
-/* ¹ÖÎïÏêÇéÑùÊ½ */
+/* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê½ */
 .monster-header,
 .dungeon-header {
     display: flex;
@@ -1195,20 +1212,20 @@
     margin-bottom: 1rem;
 }
 
-/* Ñ¡ÖÐ×´Ì¬ */
+/* Ñ¡ï¿½ï¿½×´Ì¬ */
 .monster-select-item.selected,
 .dungeon-select-item.selected {
     border-color: #0d6efd;
     background-color: rgba(13, 110, 253, 0.1);
 }
 
-/* ¹ÖÎïºÍ¸±±¾Ñ¡ÔñÏîÐüÍ£Ð§¹û */
+/* ï¿½ï¿½ï¿½ï¿½Í¸ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í£Ð§ï¿½ï¿½ */
 .monster-select-item:hover,
 .dungeon-select-item:hover {
     transform: translateY(-2px);
 }
 
-/* ÐÞ¸ÄÏÖÓÐÑùÊ½ */
+/* ï¿½Þ¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê½ */
 .monster-selector-modal,
 .dungeon-selector-modal {
     width: 90%;
@@ -1261,7 +1278,7 @@
     color: red;
 }
 
-/* ½«ÕâÐ©ÑùÊ½Ìí¼Óµ½ÄúµÄCSSÎÄ¼þÖÐ */
+/* ï¿½ï¿½ï¿½ï¿½Ð©ï¿½ï¿½Ê½ï¿½ï¿½ï¿½Óµï¿½ï¿½ï¿½ï¿½ï¿½CSSï¿½Ä¼ï¿½ï¿½ï¿½ */
 .details-area {
     margin-top: 1rem;
     gap: 1rem;
@@ -1273,12 +1290,12 @@
     height: 100%;
 }
 
-/* È·±£Í³Ò»µÄ¿¨Æ¬¸ß¶È */
+/* È·ï¿½ï¿½Í³Ò»ï¿½Ä¿ï¿½Æ¬ï¿½ß¶ï¿½ */
 .stats-section {
     margin-bottom: 0.5rem;
 }
 
-/* ÔÚÐ¡ÆÁÄ»ÉÏ¸ÄÎª´¹Ö±²¼¾Ö */
+/* ï¿½ï¿½Ð¡ï¿½ï¿½Ä»ï¿½Ï¸ï¿½Îªï¿½ï¿½Ö±ï¿½ï¿½ï¿½ï¿½ */
 @media (max-width: 768px) {
     .details-area {
         flex-direction: column;
