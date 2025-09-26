@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
+using BlazorWebGame.Shared.Interfaces;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -28,11 +29,29 @@ builder.Services.AddSingleton<HttpClient>(sp =>
     return factory.GetHttpClient();
 });
 
-// 添加新的API服务
+// 添加新的组织化API服务 - 按功能模块分组
+// 注册单独的API服务实现
+builder.Services.AddSingleton<IBattleApi, BattleApiService>();
+builder.Services.AddSingleton<ICharacterApi, CharacterApiService>();
+builder.Services.AddSingleton<IPartyApi, PartyApiService>();
+builder.Services.AddSingleton<IInventoryApi, InventoryApiService>();
+builder.Services.AddSingleton<IEquipmentApi, EquipmentApiService>();
+builder.Services.AddSingleton<IProductionApi, ProductionApiService>();
+builder.Services.AddSingleton<IQuestApi, QuestApiService>();
+builder.Services.AddSingleton<IAuthApi, AuthApiService>();
+builder.Services.AddSingleton<IOfflineSettlementApi, OfflineSettlementApiService>();
+builder.Services.AddSingleton<IMonitoringApi, MonitoringApiService>();
+
+// 注册统一的API客户端
+builder.Services.AddSingleton<GameApiClient>();
+
+// 保持向后兼容的GameApiService
 builder.Services.AddSingleton<GameApiService>();
+
+// 其他现有服务
 builder.Services.AddSingleton<ClientGameStateService>();
 builder.Services.AddSingleton<ClientPartyService>();
-builder.Services.AddSingleton<ProductionApiService>();
+builder.Services.AddSingleton<ProductionApiService>(); // 这个会被上面的IProductionApi注册覆盖，保持兼容性
 builder.Services.AddSingleton<HybridProductionService>();
 builder.Services.AddSingleton<OfflineService>();
 

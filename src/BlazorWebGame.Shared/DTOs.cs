@@ -709,3 +709,49 @@ public class ServerEnemyInfo
     public int Count { get; set; } = 1;
     public int Level { get; set; } = 1;
 }
+
+// ====== Additional DTOs for API compatibility ======
+
+/// <summary>
+/// 玩家离线信息DTO
+/// </summary>
+public class PlayerOfflineInfoDto
+{
+    public string PlayerId { get; set; } = string.Empty;
+    public DateTime LastOnlineTime { get; set; }
+    public TimeSpan OfflineDuration { get; set; }
+    public List<string> PendingActions { get; set; } = new();
+    public bool HasPendingSettlement { get; set; }
+}
+
+/// <summary>
+/// 离线结算统计信息DTO
+/// </summary>
+public class OfflineSettlementStatisticsDto
+{
+    public int TotalSettlements { get; set; }
+    public int SuccessfulSettlements { get; set; }
+    public int FailedSettlements { get; set; }
+    public double AverageProcessingTime { get; set; }
+    public DateTime LastResetTime { get; set; }
+}
+
+// ====== Team Progress DTOs ======
+
+/// <summary>
+/// 角色更新请求
+/// </summary>
+public class CharacterUpdateRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public Dictionary<string, object> Updates { get; set; } = new();
+}
+
+/// <summary>
+/// 团队进度更新请求
+/// </summary>
+public class TeamProgressUpdateRequest
+{
+    public string PartyId { get; set; } = string.Empty;
+    public Dictionary<string, object> ProgressData { get; set; } = new();
+}

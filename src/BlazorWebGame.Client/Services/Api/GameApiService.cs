@@ -5,87 +5,35 @@ using System.Text.Json;
 namespace BlazorWebGame.Client.Services.Api;
 
 /// <summary>
-/// 客户端API服务，负责与服务器通信
+/// 客户端API服务，负责与服务器通信 (向后兼容的统一接口)
 /// </summary>
 public class GameApiService
 {
-    private readonly ConfigurableHttpClientFactory _httpClientFactory;
+    private readonly GameApiClient _apiClient;
     private readonly ILogger<GameApiService> _logger;
 
-    public GameApiService(ConfigurableHttpClientFactory httpClientFactory, ILogger<GameApiService> logger)
+    public GameApiService(GameApiClient apiClient, ILogger<GameApiService> logger)
     {
-        _httpClientFactory = httpClientFactory;
+        _apiClient = apiClient;
         _logger = logger;
     }
-
-    /// <summary>
-    /// 获取当前配置的 HttpClient
-    /// </summary>
-    private HttpClient GetHttpClient() => _httpClientFactory.GetHttpClient();
 
     /// <summary>
     /// 设置认证令牌 - 为需要认证的API调用做准备
     /// </summary>
     public async Task<string> SetupAuthenticationAsync()
     {
-        try
-        {
-            var httpClient = GetHttpClient();
-            var response = await httpClient.PostAsync("/api/auth/demo-login", null);
-            if (response.IsSuccessStatusCode)
-            {
-                var content = await response.Content.ReadAsStringAsync();
-                var tokenResponse = JsonSerializer.Deserialize<JsonElement>(content);
-                if (tokenResponse.TryGetProperty("token", out var tokenElement))
-                {
-                    var token = tokenElement.GetString();
-                    // 设置认证头到HttpClientFactory的所有实例
-                    _httpClientFactory.SetAuthorizationHeader($"Bearer {token}");
-                    _logger.LogInformation("认证设置成功: 已为所有API调用设置JWT令牌");
-                    return "✅ 认证设置成功: 已为所有API调用设置JWT令牌";
-                }
-                return "❌ 认证设置失败: 未获得令牌";
-            }
-            return $"❌ 认证设置失败: 登录请求返回 {response.StatusCode}";
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "认证设置异常");
-            return $"❌ 认证设置异常: {ex.Message}";
-        }
+        return await _apiClient.SetupAuthenticationAsync();
     }
+
+    #region Battle API Methods (向后兼容)
 
     /// <summary>
     /// 开始战斗
     /// </summary>
     public async Task<ApiResponse<BattleStateDto>> StartBattleAsync(StartBattleRequest request)
     {
-        try
-        {
-            var httpClient = GetHttpClient();
-            var response = await httpClient.PostAsJsonAsync("api/battle/start", request);
-            
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<ApiResponse<BattleStateDto>>() 
-                    ?? new ApiResponse<BattleStateDto> { Success = false };
-            }
-
-            return new ApiResponse<BattleStateDto>
-            {
-                Success = false,
-                Message = $"Server returned {response.StatusCode}"
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error starting battle");
-            return new ApiResponse<BattleStateDto>
-            {
-                Success = false,
-                Message = "Network error occurred"
-            };
-        }
+        return await _apiClient.Battle.StartBattleAsync(request);
     }
 
     /// <summary>
@@ -93,22 +41,7 @@ public class GameApiService
     /// </summary>
     public async Task<ApiResponse<BattleStateDto>> GetBattleStateAsync(Guid battleId)
     {
-        try
-        {
-            var httpClient = GetHttpClient();
-            return await httpClient.GetFromJsonAsync<ApiResponse<BattleStateDto>>(
-                $"api/battle/state/{battleId}") 
-                ?? new ApiResponse<BattleStateDto> { Success = false };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting battle state for {BattleId}", battleId);
-            return new ApiResponse<BattleStateDto>
-            {
-                Success = false,
-                Message = "Network error occurred"
-            };
-        }
+        return await _apiClient.Battle.GetBattleStateAsync(battleId);
     }
 
     /// <summary>
@@ -116,32 +49,7 @@ public class GameApiService
     /// </summary>
     public async Task<ApiResponse<bool>> ExecuteBattleActionAsync(BattleActionRequest request)
     {
-        try
-        {
-            var httpClient = GetHttpClient();
-            var response = await httpClient.PostAsJsonAsync("api/battle/action", request);
-            
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<ApiResponse<bool>>() 
-                    ?? new ApiResponse<bool> { Success = false };
-            }
-
-            return new ApiResponse<bool>
-            {
-                Success = false,
-                Message = $"Server returned {response.StatusCode}"
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error executing battle action");
-            return new ApiResponse<bool>
-            {
-                Success = false,
-                Message = "Network error occurred"
-            };
-        }
+        return await _apiClient.Battle.ExecuteBattleActionAsync(request);
     }
 
     /// <summary>
@@ -149,32 +57,7 @@ public class GameApiService
     /// </summary>
     public async Task<ApiResponse<bool>> StopBattleAsync(Guid battleId)
     {
-        try
-        {
-            var httpClient = GetHttpClient();
-            var response = await httpClient.PostAsync($"api/battle/stop/{battleId}", null);
-            
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<ApiResponse<bool>>() 
-                    ?? new ApiResponse<bool> { Success = false };
-            }
-
-            return new ApiResponse<bool>
-            {
-                Success = false,
-                Message = $"Server returned {response.StatusCode}"
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error stopping battle {BattleId}", battleId);
-            return new ApiResponse<bool>
-            {
-                Success = false,
-                Message = "Network error occurred"
-            };
-        }
+        return await _apiClient.Battle.StopBattleAsync(battleId);
     }
 
     /// <summary>
@@ -182,53 +65,19 @@ public class GameApiService
     /// </summary>
     public async Task<bool> IsServerAvailableAsync()
     {
-        try
-        {
-            var httpClient = GetHttpClient();
-            var response = await httpClient.GetAsync("api/battle/state/00000000-0000-0000-0000-000000000000");
-            // 我们不关心返回内容，只要能连通就行
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
+        return await _apiClient.IsServerAvailableAsync();
     }
 
-    #region Party API Methods
+    #endregion
+
+    #region Party API Methods (向后兼容)
 
     /// <summary>
     /// 创建组队
     /// </summary>
     public async Task<ApiResponse<PartyDto>> CreatePartyAsync(string characterId)
     {
-        try
-        {
-            var httpClient = GetHttpClient();
-            var request = new CreatePartyRequest { CharacterId = characterId };
-            var response = await httpClient.PostAsJsonAsync("api/party/create", request);
-            
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<ApiResponse<PartyDto>>() 
-                    ?? new ApiResponse<PartyDto> { Success = false };
-            }
-
-            return new ApiResponse<PartyDto>
-            {
-                Success = false,
-                Message = $"Server returned {response.StatusCode}"
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error creating party for character {CharacterId}", characterId);
-            return new ApiResponse<PartyDto>
-            {
-                Success = false,
-                Message = "Network error occurred"
-            };
-        }
+        return await _apiClient.Party.CreatePartyAsync(characterId);
     }
 
     /// <summary>
@@ -236,33 +85,7 @@ public class GameApiService
     /// </summary>
     public async Task<ApiResponse<bool>> JoinPartyAsync(string characterId, Guid partyId)
     {
-        try
-        {
-            var httpClient = GetHttpClient();
-            var request = new JoinPartyRequest { CharacterId = characterId, PartyId = partyId };
-            var response = await httpClient.PostAsJsonAsync("api/party/join", request);
-            
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<ApiResponse<bool>>() 
-                    ?? new ApiResponse<bool> { Success = false };
-            }
-
-            return new ApiResponse<bool>
-            {
-                Success = false,
-                Message = $"Server returned {response.StatusCode}"
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error joining party for character {CharacterId}", characterId);
-            return new ApiResponse<bool>
-            {
-                Success = false,
-                Message = "Network error occurred"
-            };
-        }
+        return await _apiClient.Party.JoinPartyAsync(characterId, partyId);
     }
 
     /// <summary>
@@ -270,33 +93,7 @@ public class GameApiService
     /// </summary>
     public async Task<ApiResponse<bool>> LeavePartyAsync(string characterId)
     {
-        try
-        {
-            var httpClient = GetHttpClient();
-            var request = new LeavePartyRequest { CharacterId = characterId };
-            var response = await httpClient.PostAsJsonAsync("api/party/leave", request);
-            
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<ApiResponse<bool>>() 
-                    ?? new ApiResponse<bool> { Success = false };
-            }
-
-            return new ApiResponse<bool>
-            {
-                Success = false,
-                Message = $"Server returned {response.StatusCode}"
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error leaving party for character {CharacterId}", characterId);
-            return new ApiResponse<bool>
-            {
-                Success = false,
-                Message = "Network error occurred"
-            };
-        }
+        return await _apiClient.Party.LeavePartyAsync(characterId);
     }
 
     /// <summary>
@@ -304,22 +101,7 @@ public class GameApiService
     /// </summary>
     public async Task<ApiResponse<PartyDto>> GetPartyForCharacterAsync(string characterId)
     {
-        try
-        {
-            var httpClient = GetHttpClient();
-            return await httpClient.GetFromJsonAsync<ApiResponse<PartyDto>>(
-                $"api/party/character/{characterId}") 
-                ?? new ApiResponse<PartyDto> { Success = false };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting party for character {CharacterId}", characterId);
-            return new ApiResponse<PartyDto>
-            {
-                Success = false,
-                Message = "Network error occurred"
-            };
-        }
+        return await _apiClient.Party.GetPartyForCharacterAsync(characterId);
     }
 
     /// <summary>
@@ -327,21 +109,7 @@ public class GameApiService
     /// </summary>
     public async Task<ApiResponse<List<PartyDto>>> GetAllPartiesAsync()
     {
-        try
-        {
-            var httpClient = GetHttpClient();
-            return await httpClient.GetFromJsonAsync<ApiResponse<List<PartyDto>>>("api/party/all") 
-                ?? new ApiResponse<List<PartyDto>> { Success = false };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting all parties");
-            return new ApiResponse<List<PartyDto>>
-            {
-                Success = false,
-                Message = "Network error occurred"
-            };
-        }
+        return await _apiClient.Party.GetAllPartiesAsync();
     }
 
     /// <summary>
@@ -349,47 +117,32 @@ public class GameApiService
     /// </summary>
     public async Task<ApiResponse<PartyDto>> GetPartyAsync(Guid partyId)
     {
-        try
-        {
-            var httpClient = GetHttpClient();
-            return await httpClient.GetFromJsonAsync<ApiResponse<PartyDto>>($"api/party/{partyId}") 
-                ?? new ApiResponse<PartyDto> { Success = false };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting party {PartyId}", partyId);
-            return new ApiResponse<PartyDto>
-            {
-                Success = false,
-                Message = "Network error occurred"
-            };
-        }
+        return await _apiClient.Party.GetPartyAsync(partyId);
     }
 
     #endregion
 
-    #region Offline Settlement and Synchronization API
+    #region Offline Settlement and Synchronization API (向后兼容)
 
     /// <summary>
     /// 更新角色数据
     /// </summary>
     public async Task<ApiResponse<object>> UpdateCharacterAsync(CharacterUpdateRequest request)
     {
+        // 这个方法在新的API结构中可能需要重新映射到Character API
         try
         {
-            var httpClient = GetHttpClient();
-            var response = await httpClient.PostAsJsonAsync("api/character/update", request);
-            
-            if (response.IsSuccessStatusCode)
+            var result = await _apiClient.Character.UpdateCharacterStatusAsync(request.CharacterId, new UpdateCharacterStatusRequest
             {
-                return await response.Content.ReadFromJsonAsync<ApiResponse<object>>() 
-                    ?? new ApiResponse<object> { Success = false };
-            }
-
+                CharacterId = request.CharacterId,
+                Data = request.Updates
+            });
+            
             return new ApiResponse<object>
             {
-                Success = false,
-                Message = $"HTTP {response.StatusCode}: {response.ReasonPhrase}"
+                Success = result.Success,
+                Message = result.Message,
+                Data = result.Data
             };
         }
         catch (Exception ex)
@@ -408,21 +161,15 @@ public class GameApiService
     /// </summary>
     public async Task<ApiResponse<object>> UpdateTeamProgressAsync(TeamProgressUpdateRequest request)
     {
+        // 将队伍进度更新映射到Party API或其他相关API
         try
         {
-            var httpClient = GetHttpClient();
-            var response = await httpClient.PostAsJsonAsync("api/team/progress", request);
-            
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<ApiResponse<object>>() 
-                    ?? new ApiResponse<object> { Success = false };
-            }
-
+            // 这里可能需要根据实际的服务端API实现来调整
+            _logger.LogWarning("UpdateTeamProgressAsync not yet implemented in new API structure");
             return new ApiResponse<object>
             {
                 Success = false,
-                Message = $"HTTP {response.StatusCode}: {response.ReasonPhrase}"
+                Message = "Not implemented in new API structure"
             };
         }
         catch (Exception ex)
@@ -441,32 +188,7 @@ public class GameApiService
     /// </summary>
     public async Task<ApiResponse<OfflineSettlementResultDto>> ProcessOfflineSettlementAsync(OfflineSettlementRequestDto request)
     {
-        try
-        {
-            var httpClient = GetHttpClient();
-            var response = await httpClient.PostAsJsonAsync("api/offline-settlement", request);
-            
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<ApiResponse<OfflineSettlementResultDto>>() 
-                    ?? new ApiResponse<OfflineSettlementResultDto> { Success = false };
-            }
-
-            return new ApiResponse<OfflineSettlementResultDto>
-            {
-                Success = false,
-                Message = $"HTTP {response.StatusCode}: {response.ReasonPhrase}"
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error processing offline settlement for player {PlayerId}", request.PlayerId);
-            return new ApiResponse<OfflineSettlementResultDto>
-            {
-                Success = false,
-                Message = "Network error occurred"
-            };
-        }
+        return await _apiClient.OfflineSettlement.ProcessPlayerOfflineSettlementAsync(request.PlayerId, request);
     }
 
     /// <summary>
@@ -474,33 +196,13 @@ public class GameApiService
     /// </summary>
     public async Task<ApiResponse<List<OfflineSettlementResultDto>>> ProcessBatchOfflineSettlementAsync(BatchOfflineSettlementRequestDto request)
     {
-        try
-        {
-            var httpClient = GetHttpClient();
-            var response = await httpClient.PostAsJsonAsync("api/offline-settlement/batch", request);
-            
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<ApiResponse<List<OfflineSettlementResultDto>>>() 
-                    ?? new ApiResponse<List<OfflineSettlementResultDto>> { Success = false };
-            }
-
-            return new ApiResponse<List<OfflineSettlementResultDto>>
-            {
-                Success = false,
-                Message = $"HTTP {response.StatusCode}: {response.ReasonPhrase}"
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error processing batch offline settlement");
-            return new ApiResponse<List<OfflineSettlementResultDto>>
-            {
-                Success = false,
-                Message = "Network error occurred"
-            };
-        }
+        return await _apiClient.OfflineSettlement.ProcessBatchOfflineSettlementAsync(request);
     }
 
     #endregion
+
+    /// <summary>
+    /// 获取新的API客户端实例，用于访问所有功能模块
+    /// </summary>
+    public GameApiClient GetApiClient() => _apiClient;
 }
