@@ -165,3 +165,26 @@ public class ServerDungeonWaveRefreshState
     public double RemainingCooldown { get; set; }
     public List<ServerBattlePlayer> Players { get; set; } = new();
 }
+
+/// <summary>
+/// 服务端敌人信息记录
+/// </summary>
+public class ServerEnemyInfo
+{
+    public string Name { get; set; } = string.Empty;
+    public int Count { get; set; }
+    public int Level { get; set; } = 1;
+    public string EnemyType { get; set; } = "Normal";
+}
+
+/// <summary>
+/// 服务端战斗状态枚举
+/// </summary>
+public enum ServerBattleState
+{
+    Preparing,
+    Active,
+    Paused,
+    Completed,
+    Cancelled
+}
