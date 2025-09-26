@@ -1,11 +1,29 @@
 using BlazorWebGame.Server.Hubs;
 using BlazorWebGame.Server.Services;
+using BlazorWebGame.Server.Security;
+using BlazorWebGame.Server.Middleware;
 using BlazorWebGame.Server;
 using BlazorWebGame.Shared.Models;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// 配置 Serilog 日志
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration)
+    .Enrich.FromLogContext()
+    .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}")
+    .WriteTo.File("logs/blazorwebgame-.log", 
+        rollingInterval: RollingInterval.Day,
+        outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} {Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}")
+    .CreateLogger();
+
+builder.Host.UseSerilog();
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -16,19 +34,79 @@ builder.Services.AddSwaggerGen();
 // 添加 SignalR
 builder.Services.AddSignalR();
 
-// 修改 CORS 支持
+// 配置JWT身份验证
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? 
+                    throw new InvalidOperationException("JWT Key not configured"))),
+            ClockSkew = TimeSpan.FromMinutes(1) // 允许1分钟的时钟偏差
+        };
+
+        // 配置SignalR的JWT验证
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/gamehub"))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
+        };
+    });
+
+builder.Services.AddAuthorization();
+
+// 配置CORS with security considerations
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins(
-                "https://localhost:7051",  // 客户端 HTTPS
-                "http://localhost:5190")   // 客户端 HTTP
+        var allowedOrigins = builder.Configuration.GetSection("Security:Cors:AllowedOrigins").Get<string[]>() 
+            ?? new[] { "https://localhost:7051", "http://localhost:5190" };
+            
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
     });
 });
+
+// 配置速率限制选项
+builder.Services.Configure<RateLimitOptions>(options =>
+{
+    var rateLimitConfig = builder.Configuration.GetSection("Security:RateLimit");
+    
+    options.IpRateLimit = new RateLimitRule
+    {
+        MaxRequests = rateLimitConfig.GetValue<int>("IpRateLimit:MaxRequests", 100),
+        TimeWindow = TimeSpan.FromMinutes(rateLimitConfig.GetValue<int>("IpRateLimit:TimeWindowMinutes", 1))
+    };
+    
+    options.UserRateLimit = new RateLimitRule
+    {
+        MaxRequests = rateLimitConfig.GetValue<int>("UserRateLimit:MaxRequests", 200),
+        TimeWindow = TimeSpan.FromMinutes(rateLimitConfig.GetValue<int>("UserRateLimit:TimeWindowMinutes", 1))
+    };
+});
+
+// 注册安全服务
+builder.Services.AddSingleton<GameAuthenticationService>();
+builder.Services.AddSingleton<DemoUserService>();
 
 // 注册共享事件管理器
 builder.Services.AddSingleton<BlazorWebGame.Shared.Events.GameEventManager>();
@@ -142,13 +220,48 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+// 启用CORS（必须在身份验证之前）
 app.UseCors();
 
+// 安全中间件管道（顺序很重要）
+app.UseMiddleware<RequestLoggingMiddleware>();
+app.UseMiddleware<RateLimitingMiddleware>();
+app.UseMiddleware<ErrorHandlingMiddleware>();
+
+// 身份验证和授权
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 
-// 配置 SignalR Hub
+// 配置 SignalR Hub（需要身份验证）
 app.MapHub<GameHub>("/gamehub");
 
-app.Run();
+// 添加健康检查端点
+app.MapGet("/health", () => new { 
+    Status = "Healthy", 
+    Timestamp = DateTime.UtcNow,
+    Environment = app.Environment.EnvironmentName 
+});
+
+// 添加API信息端点
+app.MapGet("/api/info", () => new {
+    Name = "BlazorWebGame Server API",
+    Version = "1.0.0",
+    Environment = app.Environment.EnvironmentName,
+    Timestamp = DateTime.UtcNow
+});
+
+try
+{
+    Log.Information("Starting BlazorWebGame Server");
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
