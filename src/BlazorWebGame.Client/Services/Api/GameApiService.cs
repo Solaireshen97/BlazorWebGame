@@ -336,4 +336,136 @@ public class GameApiService
     }
 
     #endregion
+
+    #region Offline Settlement and Synchronization API
+
+    /// <summary>
+    /// 更新角色数据
+    /// </summary>
+    public async Task<ApiResponse<object>> UpdateCharacterAsync(CharacterUpdateRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/character/update", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<ApiResponse<object>>() 
+                    ?? new ApiResponse<object> { Success = false };
+            }
+
+            return new ApiResponse<object>
+            {
+                Success = false,
+                Message = $"HTTP {response.StatusCode}: {response.ReasonPhrase}"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating character {CharacterId}", request.CharacterId);
+            return new ApiResponse<object>
+            {
+                Success = false,
+                Message = "Network error occurred"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 更新队伍进度
+    /// </summary>
+    public async Task<ApiResponse<object>> UpdateTeamProgressAsync(TeamProgressUpdateRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/team/progress", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<ApiResponse<object>>() 
+                    ?? new ApiResponse<object> { Success = false };
+            }
+
+            return new ApiResponse<object>
+            {
+                Success = false,
+                Message = $"HTTP {response.StatusCode}: {response.ReasonPhrase}"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating team progress {PartyId}", request.PartyId);
+            return new ApiResponse<object>
+            {
+                Success = false,
+                Message = "Network error occurred"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 处理离线结算
+    /// </summary>
+    public async Task<ApiResponse<OfflineSettlementResultDto>> ProcessOfflineSettlementAsync(OfflineSettlementRequestDto request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/offline-settlement", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<ApiResponse<OfflineSettlementResultDto>>() 
+                    ?? new ApiResponse<OfflineSettlementResultDto> { Success = false };
+            }
+
+            return new ApiResponse<OfflineSettlementResultDto>
+            {
+                Success = false,
+                Message = $"HTTP {response.StatusCode}: {response.ReasonPhrase}"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing offline settlement for player {PlayerId}", request.PlayerId);
+            return new ApiResponse<OfflineSettlementResultDto>
+            {
+                Success = false,
+                Message = "Network error occurred"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 批量处理离线结算
+    /// </summary>
+    public async Task<ApiResponse<List<OfflineSettlementResultDto>>> ProcessBatchOfflineSettlementAsync(BatchOfflineSettlementRequestDto request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/offline-settlement/batch", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<ApiResponse<List<OfflineSettlementResultDto>>>() 
+                    ?? new ApiResponse<List<OfflineSettlementResultDto>> { Success = false };
+            }
+
+            return new ApiResponse<List<OfflineSettlementResultDto>>
+            {
+                Success = false,
+                Message = $"HTTP {response.StatusCode}: {response.ReasonPhrase}"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing batch offline settlement");
+            return new ApiResponse<List<OfflineSettlementResultDto>>
+            {
+                Success = false,
+                Message = "Network error occurred"
+            };
+        }
+    }
+
+    #endregion
 }
