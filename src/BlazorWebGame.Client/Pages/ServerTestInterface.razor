@@ -1,0 +1,533 @@
+@page "/server-test"
+@using BlazorWebGame.Client.Services
+@using BlazorWebGame.Shared.DTOs
+@inject ServerApiTestService ApiTestService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>服务端功能测试界面</PageTitle>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">🔧 服务端功能测试界面</h1>
+            <p class="text-muted">通过此界面可以测试所有服务端API功能，用于开发和调试。</p>
+        </div>
+    </div>
+
+    <!-- 服务器连接设置 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">🌐 服务器连接设置</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text">服务器地址</span>
+                                <input type="text" class="form-control" @bind="serverUrl" placeholder="https://localhost:7000" />
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-primary" @onclick="UpdateServerUrl" disabled="@isLoading">
+                                <i class="bi bi-arrow-clockwise"></i> 更新地址
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-end">
+                                <small class="text-muted">当前: @ApiTestService</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 快速测试按钮 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">⚡ 快速测试</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <button class="btn btn-success btn-lg w-100 mb-2" @onclick="RunAllBasicTests" disabled="@isLoading">
+                                <i class="bi bi-play-circle"></i> 运行所有基础测试
+                            </button>
+                        </div>
+                        <div class="col-md-6">
+                            <button class="btn btn-warning btn-lg w-100 mb-2" @onclick="ClearResults" disabled="@isLoading">
+                                <i class="bi bi-trash"></i> 清空测试结果
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 详细API测试 -->
+    <div class="row">
+        <!-- 左侧测试面板 -->
+        <div class="col-lg-6">
+            <!-- 基础连接测试 -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="mb-0">🏥 基础连接测试</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-primary" @onclick="() => TestSingleFunction(TestHealthAsync)" disabled="@isLoading">
+                            健康检查
+                        </button>
+                        <button class="btn btn-outline-primary" @onclick="() => TestSingleFunction(TestApiInfoAsync)" disabled="@isLoading">
+                            API信息
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 监控API测试 -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="mb-0">📊 监控API测试</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-info" @onclick="() => TestSingleFunction(TestSystemMetricsAsync)" disabled="@isLoading">
+                            系统性能指标
+                        </button>
+                        <button class="btn btn-outline-info" @onclick="() => TestSingleFunction(TestOperationMetricsAsync)" disabled="@isLoading">
+                            操作性能统计
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- API文档测试 -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="mb-0">📖 API文档测试</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-info" @onclick="() => TestSingleFunction(TestApiOverviewAsync)" disabled="@isLoading">
+                            API概述
+                        </button>
+                        <button class="btn btn-outline-info" @onclick="() => TestSingleFunction(TestServerInfoAsync)" disabled="@isLoading">
+                            服务器详细信息
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 认证测试 -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="mb-0">🔐 认证测试</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-success" @onclick="() => TestSingleFunction(TestDemoLoginAsync)" disabled="@isLoading">
+                            演示登录
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 角色管理 -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="mb-0">👤 角色管理</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2 mb-2">
+                        <button class="btn btn-outline-secondary" @onclick="() => TestSingleFunction(TestGetCharactersAsync)" disabled="@isLoading">
+                            获取角色列表
+                        </button>
+                    </div>
+                    <div class="input-group">
+                        <input type="text" class="form-control" @bind="newCharacterName" placeholder="角色名称" />
+                        <button class="btn btn-outline-secondary" @onclick="TestCreateCharacter" disabled="@isLoading">
+                            创建角色
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 战斗系统 -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="mb-0">⚔️ 战斗系统</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-2">
+                        <div class="col-6">
+                            <input type="text" class="form-control form-control-sm" @bind="testCharacterId" placeholder="角色ID" />
+                        </div>
+                        <div class="col-6">
+                            <input type="text" class="form-control form-control-sm" @bind="testEnemyId" placeholder="敌人ID" />
+                        </div>
+                    </div>
+                    <div class="d-grid gap-2 mb-2">
+                        <button class="btn btn-outline-danger" @onclick="TestStartBattle" disabled="@isLoading">
+                            开始战斗
+                        </button>
+                    </div>
+                    <div class="input-group">
+                        <input type="text" class="form-control" @bind="testBattleId" placeholder="战斗ID" />
+                        <button class="btn btn-outline-danger" @onclick="TestGetBattleState" disabled="@isLoading">
+                            查询战斗状态
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧测试面板 -->
+        <div class="col-lg-6">
+            <!-- 组队系统 -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="mb-0">👥 组队系统</h6>
+                </div>
+                <div class="card-body">
+                    <div class="input-group">
+                        <input type="text" class="form-control" @bind="partyCharacterId" placeholder="角色ID" />
+                        <button class="btn btn-outline-warning" @onclick="TestCreateParty" disabled="@isLoading">
+                            创建队伍
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 装备系统 -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="mb-0">🛡️ 装备系统</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-primary" @onclick="() => TestSingleFunction(TestGenerateEquipmentAsync)" disabled="@isLoading">
+                            生成随机装备
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 库存系统 -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="mb-0">🎒 库存系统</h6>
+                </div>
+                <div class="card-body">
+                    <div class="input-group">
+                        <input type="text" class="form-control" @bind="inventoryCharacterId" placeholder="角色ID" />
+                        <button class="btn btn-outline-info" @onclick="TestGetInventory" disabled="@isLoading">
+                            获取库存
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 生产系统 -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="mb-0">⛏️ 生产系统</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-success" @onclick="() => TestSingleFunction(TestGetGatheringNodesAsync)" disabled="@isLoading">
+                            获取采集节点
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 任务系统 -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="mb-0">📋 任务系统</h6>
+                </div>
+                <div class="card-body">
+                    <div class="input-group">
+                        <input type="text" class="form-control" @bind="questCharacterId" placeholder="角色ID" />
+                        <button class="btn btn-outline-primary" @onclick="TestGetQuests" disabled="@isLoading">
+                            获取任务状态
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 数据存储 -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="mb-0">💾 数据存储</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-dark" @onclick="() => TestSingleFunction(TestDataStorageAsync)" disabled="@isLoading">
+                            数据存储统计
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 测试结果显示区域 -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">📋 测试结果</h5>
+                    <div>
+                        @if (isLoading)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            <span class="text-muted">测试进行中...</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">@testResults.Count 条结果</span>
+                        }
+                    </div>
+                </div>
+                <div class="card-body">
+                    @if (testResults.Any())
+                    {
+                        <div class="result-container" style="max-height: 500px; overflow-y: auto;">
+                            @foreach (var result in testResults.AsEnumerable().Reverse())
+                            {
+                                <div class="alert @GetAlertClass(result) mb-2" role="alert">
+                                    <small class="text-muted">@DateTime.Now.ToString("HH:mm:ss")</small>
+                                    <div class="mt-1">@result</div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted py-4">
+                            <i class="bi bi-clipboard" style="font-size: 2rem;"></i>
+                            <p class="mt-2">暂无测试结果，点击上方按钮开始测试</p>
+                        </div>
+                    }
+                </div>
+                @if (testResults.Any())
+                {
+                    <div class="card-footer">
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="ExportResults">
+                            <i class="bi bi-download"></i> 导出结果
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string serverUrl = "https://localhost:7000";
+    private bool isLoading = false;
+    private List<string> testResults = new();
+
+    // 测试参数
+    private string newCharacterName = "TestCharacter";
+    private string testCharacterId = "test-character-1";
+    private string testEnemyId = "goblin";
+    private string testBattleId = "";
+    private string partyCharacterId = "test-character-1";
+    private string inventoryCharacterId = "test-character-1";
+    private string questCharacterId = "test-character-1";
+
+    protected override void OnInitialized()
+    {
+        ApiTestService.SetBaseUrl(serverUrl);
+    }
+
+    private void UpdateServerUrl()
+    {
+        ApiTestService.SetBaseUrl(serverUrl);
+        AddResult($"✅ 服务器地址已更新为: {serverUrl}");
+    }
+
+    private async Task RunAllBasicTests()
+    {
+        if (isLoading) return;
+        
+        isLoading = true;
+        AddResult("🚀 开始运行所有基础测试...");
+        
+        try
+        {
+            var results = await ApiTestService.RunAllBasicTestsAsync();
+            foreach (var result in results)
+            {
+                AddResult(result);
+            }
+        }
+        catch (Exception ex)
+        {
+            AddResult($"❌ 批量测试异常: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task TestSingleFunction(Func<Task<string>> testFunction)
+    {
+        if (isLoading) return;
+        
+        isLoading = true;
+        try
+        {
+            var result = await testFunction();
+            AddResult(result);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task TestCreateCharacter()
+    {
+        if (string.IsNullOrWhiteSpace(newCharacterName)) return;
+        await TestSingleFunction(() => ApiTestService.TestCreateCharacterAsync(newCharacterName));
+    }
+
+    private async Task TestStartBattle()
+    {
+        if (string.IsNullOrWhiteSpace(testCharacterId) || string.IsNullOrWhiteSpace(testEnemyId)) return;
+        await TestSingleFunction(() => ApiTestService.TestStartBattleAsync(testCharacterId, testEnemyId));
+    }
+
+    private async Task TestGetBattleState()
+    {
+        if (string.IsNullOrWhiteSpace(testBattleId)) return;
+        await TestSingleFunction(() => ApiTestService.TestGetBattleStateAsync(testBattleId));
+    }
+
+    private async Task TestCreateParty()
+    {
+        if (string.IsNullOrWhiteSpace(partyCharacterId)) return;
+        await TestSingleFunction(() => ApiTestService.TestCreatePartyAsync(partyCharacterId));
+    }
+
+    private async Task TestGetInventory()
+    {
+        if (string.IsNullOrWhiteSpace(inventoryCharacterId)) return;
+        await TestSingleFunction(() => ApiTestService.TestGetInventoryAsync(inventoryCharacterId));
+    }
+
+    private async Task TestGetQuests()
+    {
+        if (string.IsNullOrWhiteSpace(questCharacterId)) return;
+        await TestSingleFunction(() => ApiTestService.TestGetQuestsAsync(questCharacterId));
+    }
+
+    // 包装异步方法为同步委托
+    private Task<string> TestHealthAsync() => ApiTestService.TestHealthAsync();
+    private Task<string> TestApiInfoAsync() => ApiTestService.TestApiInfoAsync();
+    private Task<string> TestApiOverviewAsync() => ApiTestService.TestApiOverviewAsync();
+    private Task<string> TestServerInfoAsync() => ApiTestService.TestServerInfoAsync();
+    private Task<string> TestSystemMetricsAsync() => ApiTestService.TestSystemMetricsAsync();
+    private Task<string> TestOperationMetricsAsync() => ApiTestService.TestOperationMetricsAsync();
+    private Task<string> TestDemoLoginAsync() => ApiTestService.TestDemoLoginAsync();
+    private Task<string> TestGetCharactersAsync() => ApiTestService.TestGetCharactersAsync();
+    private Task<string> TestGenerateEquipmentAsync() => ApiTestService.TestGenerateEquipmentAsync();
+    private Task<string> TestGetGatheringNodesAsync() => ApiTestService.TestGetGatheringNodesAsync();
+    private Task<string> TestDataStorageAsync() => ApiTestService.TestDataStorageAsync();
+
+    private void AddResult(string result)
+    {
+        testResults.Add(result);
+        InvokeAsync(StateHasChanged);
+        
+        // 自动滚动到底部
+        InvokeAsync(async () =>
+        {
+            await Task.Delay(100);
+            await JSRuntime.InvokeVoidAsync("scrollToBottom", ".result-container");
+        });
+    }
+
+    private void ClearResults()
+    {
+        testResults.Clear();
+        AddResult("🗑️ 测试结果已清空");
+    }
+
+    private string GetAlertClass(string result)
+    {
+        if (result.StartsWith("✅")) return "alert-success";
+        if (result.StartsWith("❌")) return "alert-danger";
+        if (result.StartsWith("⚠️")) return "alert-warning";
+        if (result.StartsWith("===") || result.StartsWith("🚀") || result.StartsWith("🗑️")) return "alert-info";
+        return "alert-light";
+    }
+
+    private async Task ExportResults()
+    {
+        var exportData = string.Join("\n", testResults);
+        var fileName = $"server-test-results-{DateTime.Now:yyyyMMdd-HHmmss}.txt";
+        
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, exportData);
+    }
+}
+
+<style>
+    .result-container {
+        font-family: 'Courier New', monospace;
+        font-size: 0.9rem;
+    }
+    
+    .alert {
+        padding: 0.5rem 0.75rem;
+        margin-bottom: 0.5rem;
+        border-radius: 0.375rem;
+    }
+    
+    .card-header h6 {
+        color: #495057;
+        font-weight: 600;
+    }
+    
+    .btn-outline-primary:hover,
+    .btn-outline-secondary:hover,
+    .btn-outline-success:hover,
+    .btn-outline-danger:hover,
+    .btn-outline-warning:hover,
+    .btn-outline-info:hover,
+    .btn-outline-dark:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: all 0.2s ease;
+    }
+</style>
+
+<script>
+    window.scrollToBottom = (selector) => {
+        const element = document.querySelector(selector);
+        if (element) {
+            element.scrollTop = element.scrollHeight;
+        }
+    };
+
+    window.downloadFile = (filename, text) => {
+        const element = document.createElement('a');
+        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+        element.setAttribute('download', filename);
+        element.style.display = 'none';
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+    };
+</script>

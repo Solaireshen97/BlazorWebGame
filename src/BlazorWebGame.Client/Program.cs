@@ -41,6 +41,9 @@ builder.Services.AddSingleton<HybridCharacterService>();
 builder.Services.AddSingleton<HybridEventService>();
 builder.Services.AddSingleton<ServerPlayerApiService>();
 
+// 添加服务端API测试服务
+builder.Services.AddSingleton<ServerApiTestService>();
+
 // 保留共享的玩家列表
 var sharedPlayerList = new List<Player>();
 
