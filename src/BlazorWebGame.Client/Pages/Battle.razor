@@ -22,7 +22,7 @@
 
 <PageTitle>自动战斗</PageTitle>
 
-@* 系统模式提示 *@
+@* 系统模式切换和提示 *@
 <div class="battle-system-indicator mb-2">
     <div class="alert @(_useNewBattleSystem ? "alert-info" : "alert-secondary") d-flex justify-content-between align-items-center">
         <div>
@@ -33,19 +33,31 @@
                 <span class="badge bg-warning ms-2">离线模式</span>
             }
         </div>
-        @if (_useNewBattleSystem)
-        {
-            <small class="text-muted">
-                连接状态: @(_isConnected ? "已连接" : "连接断开")
-            </small>
-        }
+        <div class="d-flex align-items-center gap-2">
+            @if (_useNewBattleSystem)
+            {
+                <small class="text-muted">
+                    连接状态: @(_isConnected ? "已连接" : "连接断开")
+                </small>
+            }
+            <div class="btn-group" role="group">
+                <button type="button" class="btn @(!_useNewBattleSystem ? "btn-primary" : "btn-outline-primary") btn-sm" 
+                        @onclick="() => ToggleBattleSystem(false)">
+                    <i class="bi bi-cpu"></i> 本地模式
+                </button>
+                <button type="button" class="btn @(_useNewBattleSystem ? "btn-primary" : "btn-outline-primary") btn-sm" 
+                        @onclick="() => ToggleBattleSystem(true)">
+                    <i class="bi bi-cloud"></i> 服务器模式
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
 @if (GameState.ActiveCharacter is Player character)
 {
     var party = GameState.GetPartyForCharacter(character.Id);
-    var battleContext = _combatService?.GetBattleContextForPlayer(character.Id);
+    var battleContext = GetUnifiedBattleContext(character.Id);
     var currentEnemy = GetCurrentEnemy(character, battleContext);
     var isPartyMemberAndNotCaptain = party != null && party.CaptainId != character.Id;
 
@@ -266,8 +278,8 @@
                             </div>
 
                             <div class="battle-actions">
-                                <button class="btn btn-primary" @onclick="() => StartBattle(_selectedMonster)">
-                                    <i class="bi bi-sword"></i> ��ʼս��
+                                <button class="btn btn-primary" @onclick="() => StartBattleUnified(_selectedMonster)">
+                                    <i class="bi bi-sword"></i> ��ʼս�� (@(_useNewBattleSystem ? "������" : "����"))
                                 </button>
                             </div>
                         }
@@ -326,16 +338,12 @@
         @if (_currentView == BattleView.Battle)
         {
             <div class="battle-info-panel mb-3">
-                @if (battleContext != null)
+                @if (battleContext != null || (_useNewBattleSystem && _serverBattleState?.IsActive == true))
                 {
                     <div class="battle-status active">
                         <h5 class="battle-title">
-                            @(battleContext.BattleType == BattleTypeLocal.Dungeon ?
-                                            $"����ս��: {GetDungeonName(battleContext.DungeonId)} (���� {battleContext.WaveNumber})" :
-                                            battleContext.BattleType == BattleTypeLocal.Party ?
-                                            $"�Ŷ�ս�� ({battleContext.Players.Count}v{battleContext.Enemies.Count})" :
-                                            $"����ս�� (1v{battleContext.Enemies.Count})")
-                <button class="btn btn-danger btn-sm" @onclick="GameState.StopCurrentAction">
+                            @(GetUnifiedBattleModeText(battleContext, _serverBattleState))
+                <button class="btn btn-danger btn-sm" @onclick="() => StopUnifiedBattle()">
                     <i class="bi bi-stop-circle"></i> ����ս��
                 </button>
             </h5>
@@ -1166,6 +1174,59 @@ else
         return _combatService?.GetPlayerBattleRefreshTime(playerId) ?? 0;
     }
 
+    /// <summary>
+    /// 获取统一的战斗模式文本
+    /// </summary>
+    private string GetUnifiedBattleModeText(BattleContext? battleContext, BattleStateDto? serverBattleState)
+    {
+        if (_useNewBattleSystem && serverBattleState != null)
+        {
+            return serverBattleState.BattleType switch
+            {
+                BattleTypeServer.Dungeon => $"服务器副本战斗 (Battle ID: {serverBattleState.BattleId.ToString()[..8]})",
+                _ => $"服务器普通战斗 (Battle ID: {serverBattleState.BattleId.ToString()[..8]})"
+            };
+        }
+        else if (battleContext != null)
+        {
+            return GetBattleModeText(battleContext);
+        }
+        
+        return "未知战斗状态";
+    }
+    
+    /// <summary>
+    /// 统一的停止战斗方法
+    /// </summary>
+    private async Task StopUnifiedBattle()
+    {
+        try
+        {
+            if (_useNewBattleSystem && _serverBattleState != null)
+            {
+                // 新系统：调用服务器API停止战斗
+                var success = await NewGameState.StopBattleAsync(_serverBattleState.BattleId);
+                if (success)
+                {
+                    _serverBattleState = null;
+                }
+                else
+                {
+                    Logger.LogWarning("服务器停止战斗失败");
+                }
+            }
+            else
+            {
+                // 旧系统：使用本地方法
+                GameState.StopCurrentAction();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "停止战斗时出错");
+        }
+    }
+
     // ��ȡս��ģʽ�ı�
     private string GetBattleModeText(BattleContext battleContext)
     {
@@ -1329,6 +1390,143 @@ else
             Logger.LogError(ex, "新系统战斗启动失败");
             // 回退到离线模式
             await OfflineService.EnterOfflineMode();
+        }
+    }
+    
+    /// <summary>
+    /// 获取统一的战斗上下文 - 根据模式返回相应的战斗状态
+    /// </summary>
+    private BattleContext? GetUnifiedBattleContext(string playerId)
+    {
+        if (_useNewBattleSystem)
+        {
+            // 新系统：从服务器战斗状态转换为本地战斗上下文（用于UI显示）
+            if (_serverBattleState != null && _serverBattleState.IsActive)
+            {
+                return ConvertServerBattleToContext(_serverBattleState, playerId);
+            }
+            return null;
+        }
+        else
+        {
+            // 旧系统：直接使用本地战斗上下文
+            return _combatService?.GetBattleContextForPlayer(playerId);
+        }
+    }
+    
+    /// <summary>
+    /// 将服务器战斗状态转换为本地战斗上下文（用于UI显示兼容）
+    /// </summary>
+    private BattleContext? ConvertServerBattleToContext(BattleStateDto serverState, string playerId)
+    {
+        try
+        {
+            // 创建模拟的本地战斗上下文用于UI显示
+            var context = new BattleContext
+            {
+                BattleType = serverState.BattleType switch
+                {
+                    BattleTypeServer.Dungeon => BattleTypeLocal.Dungeon,
+                    _ => BattleTypeLocal.Solo
+                },
+                DungeonId = serverState.PartyId, // 临时使用
+                WaveNumber = 1
+            };
+            
+            // 添加玩家（简化处理，只添加当前角色）
+            var player = GameState.ActiveCharacter;
+            if (player != null)
+            {
+                context.Players.Add(player);
+            }
+            
+            // 添加敌人（从服务器状态模拟）
+            if (!string.IsNullOrEmpty(serverState.EnemyId))
+            {
+                // 简化的敌人创建，因为MonsterTemplates.GetById不存在
+                var enemy = new Enemy
+                {
+                    Name = $"敌人-{serverState.EnemyId}",
+                    Health = serverState.EnemyHealth,
+                    MaxHealth = serverState.EnemyMaxHealth,
+                    Level = 1,
+                    AttacksPerSecond = 1.0,
+                    SkillIds = new List<string>(),
+                    EnemyAttackCooldown = 0,
+                    SkillCooldowns = new Dictionary<string, int>()
+                };
+                context.Enemies.Add(enemy);
+            }
+            
+            return context;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "转换服务器战斗状态时出错");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// 统一的战斗启动方法 - 根据模式调用不同的系统
+    /// </summary>
+    private async Task StartBattleUnified(Enemy enemyTemplate)
+    {
+        if (_useNewBattleSystem)
+        {
+            await StartBattleNewSystem(enemyTemplate);
+        }
+        else
+        {
+            StartBattle(enemyTemplate);
+        }
+    }
+    
+    /// <summary>
+    /// 切换战斗系统模式
+    /// </summary>
+    private async Task ToggleBattleSystem(bool useNewSystem)
+    {
+        if (_useNewBattleSystem == useNewSystem) return;
+        
+        try
+        {
+            // 停止当前战斗
+            if (GameState.ActiveCharacter?.CurrentAction == PlayerActionState.Combat)
+            {
+                GameState.StopCurrentAction();
+            }
+            
+            // 清理旧系统的事件订阅
+            if (_useNewBattleSystem)
+            {
+                NewGameState.OnBattleStateChanged -= HandleNewBattleUpdate;
+                NewGameState.OnConnectionStatusChanged -= HandleConnectionChanged;
+                OfflineService.OnOfflineModeChanged -= HandleOfflineModeChanged;
+            }
+            else
+            {
+                GameState.OnStateChanged -= HandleStateChanged;
+            }
+            
+            _useNewBattleSystem = useNewSystem;
+            
+            // 初始化新系统
+            if (_useNewBattleSystem)
+            {
+                await InitializeNewSystem();
+            }
+            else
+            {
+                InitializeOldSystem();
+            }
+            
+            Logger.LogInformation("战斗系统已切换到 {SystemType}", _useNewBattleSystem ? "服务器模式" : "本地模式");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "切换战斗系统时出错");
         }
     }
     
