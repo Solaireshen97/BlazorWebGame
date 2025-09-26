@@ -40,6 +40,9 @@ builder.Services.AddSingleton<ServerServiceLocator>();
 builder.Services.AddSingleton<BlazorWebGame.Shared.Interfaces.IDataStorageService, DataStorageService>();
 builder.Services.AddSingleton<DataStorageIntegrationService>();
 
+// 注册离线结算服务
+builder.Services.AddSingleton<OfflineSettlementService>();
+
 // 注册新的玩家服务系统
 builder.Services.AddSingleton<ServerPlayerAttributeService>();
 builder.Services.AddSingleton<ServerPlayerProfessionService>();
@@ -117,6 +120,16 @@ if (app.Environment.IsDevelopment())
     catch (Exception ex)
     {
         logger.LogError(ex, "DataStorageService test failed");
+    }
+    
+    // 运行离线结算服务测试
+    try
+    {
+        await BlazorWebGame.Server.Tests.OfflineSettlementServiceTests.RunBasicTests(logger);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "OfflineSettlementService test failed");
     }
 }
 
