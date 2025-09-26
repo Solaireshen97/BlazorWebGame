@@ -12,6 +12,7 @@ public class ClientGameStateService : IAsyncDisposable
 {
     private readonly GameApiService _gameApi;
     private readonly GameStateService _gameState; // 获取当前角色信息
+    private readonly ServerConfigurationService _serverConfig;
     private readonly ILogger<ClientGameStateService> _logger;
     private HubConnection? _hubConnection;
     private System.Threading.Timer? _pollingTimer;
@@ -29,10 +30,15 @@ public class ClientGameStateService : IAsyncDisposable
     public bool IsConnected => _isConnected;
     public IReadOnlyDictionary<Guid, BattleStateDto> ActiveBattles => _activeBattles;
 
-    public ClientGameStateService(GameApiService gameApi, GameStateService gameState, ILogger<ClientGameStateService> logger)
+    public ClientGameStateService(
+        GameApiService gameApi, 
+        GameStateService gameState, 
+        ServerConfigurationService serverConfig,
+        ILogger<ClientGameStateService> logger)
     {
         _gameApi = gameApi;
         _gameState = gameState;
+        _serverConfig = serverConfig;
         _logger = logger;
     }
 
@@ -67,7 +73,7 @@ public class ClientGameStateService : IAsyncDisposable
     private async Task InitializeSignalRConnection()
     {
         _hubConnection = new HubConnectionBuilder()
-            .WithUrl($"{_gameApi.BaseUrl}/gamehub")
+            .WithUrl($"{_serverConfig.CurrentServerUrl}/gamehub")
             .WithAutomaticReconnect()
             .Build();
 

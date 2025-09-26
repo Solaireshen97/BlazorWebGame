@@ -2,7 +2,9 @@
 @using BlazorWebGame.Client.Services
 @using BlazorWebGame.Shared.DTOs
 @inject ServerApiTestService ApiTestService
+@inject ServerConfigurationService ServerConfig
 @inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
 
 <PageTitle>服务端功能测试界面</PageTitle>
 
@@ -23,20 +25,34 @@
                 </div>
                 <div class="card-body">
                     <div class="row align-items-center">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="input-group">
                                 <span class="input-group-text">服务器地址</span>
                                 <input type="text" class="form-control" @bind="serverUrl" placeholder="https://localhost:7000" />
                             </div>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <button class="btn btn-primary" @onclick="UpdateServerUrl" disabled="@isLoading">
                                 <i class="bi bi-arrow-clockwise"></i> 更新地址
                             </button>
                         </div>
                         <div class="col-md-3">
+                            <select class="form-select" @onchange="OnPresetServerSelected">
+                                <option value="">选择预设服务器</option>
+                                @foreach (var preset in presetServers)
+                                {
+                                    <option value="@preset.Url">@preset.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-3">
                             <div class="text-end">
-                                <small class="text-muted">当前: @ApiTestService</small>
+                                <small class="text-muted">当前: @ServerConfig.CurrentServerUrl</small>
+                                <div class="mt-1">
+                                    <button class="btn btn-sm btn-outline-info" @onclick="TestConnection" disabled="@isLoading">
+                                        <i class="bi bi-wifi"></i> 测试连接
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -335,6 +351,7 @@
     private string serverUrl = "https://localhost:7000";
     private bool isLoading = false;
     private List<string> testResults = new();
+    private List<ServerOption> presetServers = new();
 
     // 测试参数
     private string newCharacterName = "TestCharacter";
@@ -345,15 +362,89 @@
     private string inventoryCharacterId = "test-character-1";
     private string questCharacterId = "test-character-1";
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        ApiTestService.SetBaseUrl(serverUrl);
+        // 初始化服务器配置服务
+        await ServerConfig.InitializeAsync();
+        
+        // 获取预设服务器选项
+        presetServers = ServerConfig.GetPresetServerOptions();
+        
+        // 同步当前URL
+        serverUrl = ServerConfig.CurrentServerUrl;
+
+        // 订阅服务器地址变更事件
+        ServerConfig.ServerUrlChanged += OnServerUrlChanged;
     }
 
-    private void UpdateServerUrl()
+    private void OnServerUrlChanged(string newUrl)
     {
-        ApiTestService.SetBaseUrl(serverUrl);
-        AddResult($"✅ 服务器地址已更新为: {serverUrl}");
+        serverUrl = newUrl;
+        InvokeAsync(StateHasChanged);
+        AddResult($"✅ 服务器地址已自动同步: {newUrl}");
+    }
+
+    private async Task UpdateServerUrl()
+    {
+        if (isLoading) return;
+        
+        try
+        {
+            isLoading = true;
+            await ServerConfig.SetServerUrlAsync(serverUrl);
+            AddResult($"✅ 服务器地址已更新为: {serverUrl}");
+        }
+        catch (Exception ex)
+        {
+            AddResult($"❌ 更新服务器地址失败: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OnPresetServerSelected(ChangeEventArgs e)
+    {
+        if (e.Value?.ToString() is string selectedUrl && !string.IsNullOrEmpty(selectedUrl))
+        {
+            serverUrl = selectedUrl;
+            await UpdateServerUrl();
+        }
+    }
+
+    private async Task TestConnection()
+    {
+        if (isLoading) return;
+        
+        try
+        {
+            isLoading = true;
+            AddResult("🔄 正在测试服务器连接...");
+            
+            var isConnected = await ServerConfig.TestServerConnectionAsync();
+            if (isConnected)
+            {
+                AddResult($"✅ 服务器连接测试成功: {ServerConfig.CurrentServerUrl}");
+            }
+            else
+            {
+                AddResult($"❌ 服务器连接测试失败: {ServerConfig.CurrentServerUrl}");
+            }
+        }
+        catch (Exception ex)
+        {
+            AddResult($"❌ 连接测试异常: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        ServerConfig.ServerUrlChanged -= OnServerUrlChanged;
     }
 
     private async Task RunAllBasicTests()

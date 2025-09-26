@@ -9,6 +9,7 @@ namespace BlazorWebGame.Client.Services.Api;
 public class ClientPartyService : IAsyncDisposable
 {
     private readonly GameApiService _gameApi;
+    private readonly ServerConfigurationService _serverConfig;
     private readonly ILogger<ClientPartyService> _logger;
     private HubConnection? _hubConnection;
     private PartyDto? _currentParty;
@@ -18,9 +19,13 @@ public class ClientPartyService : IAsyncDisposable
 
     public PartyDto? CurrentParty => _currentParty;
 
-    public ClientPartyService(GameApiService gameApi, ILogger<ClientPartyService> logger)
+    public ClientPartyService(
+        GameApiService gameApi, 
+        ServerConfigurationService serverConfig,
+        ILogger<ClientPartyService> logger)
     {
         _gameApi = gameApi;
+        _serverConfig = serverConfig;
         _logger = logger;
     }
 
@@ -48,7 +53,7 @@ public class ClientPartyService : IAsyncDisposable
         try
         {
             _hubConnection = new HubConnectionBuilder()
-                .WithUrl($"{_gameApi.BaseUrl}/gamehub")
+                .WithUrl($"{_serverConfig.CurrentServerUrl}/gamehub")
                 .WithAutomaticReconnect()
                 .Build();
 
