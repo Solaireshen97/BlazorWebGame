@@ -127,7 +127,7 @@ public class EventDrivenProfessionService : IDisposable
             };
 
             // 使用优化的批处理事件系统
-            EnqueueOptimizedEvent(GameEventTypes.GATHERING_STARTED, gatheringData, 
+            EnqueueOptimizedGatheringEvent(GameEventTypes.GATHERING_STARTED, gatheringData, 
                 EventPriority.Gameplay, (ulong)HashString(characterId), (ulong)HashString(nodeId));
 
             lock (_statsLock)
@@ -195,7 +195,7 @@ public class EventDrivenProfessionService : IDisposable
                 MaterialCost = recipe.MaterialCost
             };
 
-            EnqueueOptimizedEvent(GameEventTypes.CRAFTING_STARTED, craftingData,
+            EnqueueOptimizedCraftingEvent(GameEventTypes.CRAFTING_STARTED, craftingData,
                 EventPriority.Gameplay, (ulong)HashString(characterId), (ulong)HashString(recipeId));
 
             lock (_statsLock)
@@ -308,7 +308,7 @@ public class EventDrivenProfessionService : IDisposable
                 ProfessionType = (ushort)activity.ProfessionType
             };
 
-            EnqueueOptimizedEvent(GameEventTypes.GATHERING_PROGRESS, gatheringData,
+            EnqueueOptimizedGatheringEvent(GameEventTypes.GATHERING_PROGRESS, gatheringData,
                 EventPriority.Gameplay, (ulong)HashString(activity.CharacterId));
         }
         else if (activity.ActivityType == ProfessionActivityType.Crafting)
@@ -326,7 +326,7 @@ public class EventDrivenProfessionService : IDisposable
                 MaterialCost = recipe.MaterialCost
             };
 
-            EnqueueOptimizedEvent(GameEventTypes.CRAFTING_PROGRESS, craftingData,
+            EnqueueOptimizedCraftingEvent(GameEventTypes.CRAFTING_PROGRESS, craftingData,
                 EventPriority.Gameplay, (ulong)HashString(activity.CharacterId));
         }
     }
@@ -352,7 +352,7 @@ public class EventDrivenProfessionService : IDisposable
                     ProfessionType = (ushort)activity.ProfessionType
                 };
 
-                EnqueueOptimizedEvent(GameEventTypes.GATHERING_COMPLETED, gatheringData,
+                EnqueueOptimizedGatheringEvent(GameEventTypes.GATHERING_COMPLETED, gatheringData,
                     EventPriority.Gameplay, (ulong)HashString(activity.CharacterId));
             }
             else if (activity.ActivityType == ProfessionActivityType.Crafting)
@@ -370,7 +370,7 @@ public class EventDrivenProfessionService : IDisposable
                     MaterialCost = recipe.MaterialCost
                 };
 
-                EnqueueOptimizedEvent(GameEventTypes.CRAFTING_COMPLETED, craftingData,
+                EnqueueOptimizedCraftingEvent(GameEventTypes.CRAFTING_COMPLETED, craftingData,
                     EventPriority.Gameplay, (ulong)HashString(activity.CharacterId));
             }
 
@@ -385,7 +385,7 @@ public class EventDrivenProfessionService : IDisposable
                 TotalExperience = 0 // TODO: 获取总经验
             };
 
-            EnqueueOptimizedEvent(GameEventTypes.PROFESSION_XP_GAINED, expData,
+            EnqueueOptimizedExperienceEvent(GameEventTypes.PROFESSION_XP_GAINED, expData,
                 EventPriority.Gameplay, (ulong)HashString(activity.CharacterId));
 
             lock (_statsLock)
@@ -498,10 +498,10 @@ public class EventDrivenProfessionService : IDisposable
     }
 
     /// <summary>
-    /// 优化的事件入队方法 - 使用批处理提高性能
+    /// 优化的事件入队方法 - 针对采集事件
     /// </summary>
-    private void EnqueueOptimizedEvent<T>(ushort eventType, T data, EventPriority priority, 
-        ulong actorId, ulong targetId = 0) where T : struct
+    private void EnqueueOptimizedGatheringEvent(ushort eventType, GatheringEventData data, EventPriority priority, 
+        ulong actorId, ulong targetId = 0)
     {
         try
         {
@@ -525,7 +525,75 @@ public class EventDrivenProfessionService : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error enqueueing optimized event {EventType} for actor {ActorId}", eventType, actorId);
+            _logger.LogError(ex, "Error enqueueing optimized gathering event for actor {ActorId}", actorId);
+            // 作为备用方案，直接入队单个事件
+            _eventService.EnqueueEvent(eventType, data, priority, actorId, targetId);
+        }
+    }
+
+    /// <summary>
+    /// 优化的事件入队方法 - 针对制作事件
+    /// </summary>
+    private void EnqueueOptimizedCraftingEvent(ushort eventType, CraftingEventData data, EventPriority priority, 
+        ulong actorId, ulong targetId = 0)
+    {
+        try
+        {
+            var evt = new UnifiedEvent(eventType, priority)
+            {
+                ActorId = actorId,
+                TargetId = targetId
+            };
+            evt.SetData(data);
+
+            lock (_eventBatchLock)
+            {
+                _eventBatch.Add(evt);
+                
+                // 当批次达到一定大小时立即刷新
+                if (_eventBatch.Count >= 64)
+                {
+                    FlushEventBatchInternal();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error enqueueing optimized crafting event for actor {ActorId}", actorId);
+            // 作为备用方案，直接入队单个事件
+            _eventService.EnqueueEvent(eventType, data, priority, actorId, targetId);
+        }
+    }
+
+    /// <summary>
+    /// 优化的事件入队方法 - 针对经验事件
+    /// </summary>
+    private void EnqueueOptimizedExperienceEvent(ushort eventType, ExperienceEventData data, EventPriority priority, 
+        ulong actorId, ulong targetId = 0)
+    {
+        try
+        {
+            var evt = new UnifiedEvent(eventType, priority)
+            {
+                ActorId = actorId,
+                TargetId = targetId
+            };
+            evt.SetData(data);
+
+            lock (_eventBatchLock)
+            {
+                _eventBatch.Add(evt);
+                
+                // 当批次达到一定大小时立即刷新
+                if (_eventBatch.Count >= 64)
+                {
+                    FlushEventBatchInternal();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error enqueueing optimized experience event for actor {ActorId}", actorId);
             // 作为备用方案，直接入队单个事件
             _eventService.EnqueueEvent(eventType, data, priority, actorId, targetId);
         }
