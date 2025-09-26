@@ -8,6 +8,7 @@ public class ConfigurableHttpClientFactory
     private readonly ServerConfigurationService _serverConfig;
     private readonly ILogger<ConfigurableHttpClientFactory> _logger;
     private HttpClient? _currentHttpClient;
+    private string? _currentAuthHeader; // 存储当前的认证头部
 
     public ConfigurableHttpClientFactory(
         ServerConfigurationService serverConfig,
@@ -39,6 +40,9 @@ public class ConfigurableHttpClientFactory
     /// </summary>
     public void SetAuthorizationHeader(string authHeaderValue)
     {
+        // 保存认证头部值
+        _currentAuthHeader = authHeaderValue;
+        
         var httpClient = GetHttpClient();
         if (authHeaderValue.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
         {
@@ -69,6 +73,22 @@ public class ConfigurableHttpClientFactory
         
         // 设置默认超时
         _currentHttpClient.Timeout = TimeSpan.FromSeconds(30);
+        
+        // 恢复认证头部（如果有的话）- 直接设置而不调用SetAuthorizationHeader避免递归
+        if (!string.IsNullOrEmpty(_currentAuthHeader))
+        {
+            if (_currentAuthHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            {
+                var token = _currentAuthHeader.Substring("Bearer ".Length);
+                _currentHttpClient.DefaultRequestHeaders.Authorization = 
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            }
+            else
+            {
+                _currentHttpClient.DefaultRequestHeaders.Authorization = 
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _currentAuthHeader);
+            }
+        }
         
         _logger.LogInformation("创建新的 HttpClient，服务器地址: {BaseAddress}", _currentHttpClient.BaseAddress);
     }
