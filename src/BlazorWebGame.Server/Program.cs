@@ -36,6 +36,10 @@ builder.Services.AddSingleton<BlazorWebGame.Shared.Events.GameEventManager>();
 // 注册服务定位器（单例模式）
 builder.Services.AddSingleton<ServerServiceLocator>();
 
+// 注册数据存储服务
+builder.Services.AddSingleton<BlazorWebGame.Shared.Interfaces.IDataStorageService, DataStorageService>();
+builder.Services.AddSingleton<DataStorageIntegrationService>();
+
 // 注册新的玩家服务系统
 builder.Services.AddSingleton<ServerPlayerAttributeService>();
 builder.Services.AddSingleton<ServerPlayerProfessionService>();
@@ -103,6 +107,16 @@ if (app.Environment.IsDevelopment())
     catch (Exception ex)
     {
         logger.LogError(ex, "Party system test failed");
+    }
+    
+    // 运行数据存储服务测试
+    try
+    {
+        await BlazorWebGame.Server.Tests.DataStorageServiceTests.RunBasicTests(logger);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "DataStorageService test failed");
     }
 }
 
