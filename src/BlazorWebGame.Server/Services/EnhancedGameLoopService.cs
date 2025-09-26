@@ -162,8 +162,8 @@ public class EnhancedGameLoopService : BackgroundService
         try
         {
             // 获取系统统计信息
-            var eventStats = _eventService.GetStats();
-            var battleStats = _battleEngine.GetStats();
+            var eventStats = _eventService.GetStatistics();
+            var battleStats = _battleEngine.GetStatistics();
             var professionStats = _professionService.GetStats();
 
             // 创建系统状态快照
@@ -216,8 +216,8 @@ public class EnhancedGameLoopService : BackgroundService
     /// </summary>
     private async Task LogPerformanceStatistics()
     {
-        var eventStats = _eventService.GetStats();
-        var battleStats = _battleEngine.GetStats();
+        var eventStats = _eventService.GetStatistics();
+        var battleStats = _battleEngine.GetStatistics();
         var professionStats = _professionService.GetStats();
 
         _logger.LogInformation("Performance Statistics - " +
