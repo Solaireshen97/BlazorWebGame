@@ -144,7 +144,9 @@ public enum OfflineActionType
 {
     StartBattle,
     StopBattle,
-    UpdateCharacter
+    UpdateCharacter,
+    SyncTeamProgress,
+    SyncOfflineBattleProgress
 }
 
 /// <summary>
