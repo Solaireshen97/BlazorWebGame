@@ -1,6 +1,7 @@
 using BlazorWebGame.Shared.DTOs;
 using BlazorWebGame.Models;
 using BlazorWebGame.Models.Items;
+using BlazorWebGame.Shared.Interfaces;
 
 namespace BlazorWebGame.Server.Services;
 
@@ -12,13 +13,13 @@ public class ServerShopService
     private readonly ILogger<ServerShopService> _logger;
     private readonly ServerInventoryService _inventoryService;
     private readonly ServerCharacterService _characterService;
-    private readonly DataStorageService _dataStorage;
+    private readonly IDataStorageService _dataStorage;
 
     public ServerShopService(
         ILogger<ServerShopService> logger,
         ServerInventoryService inventoryService,
         ServerCharacterService characterService,
-        DataStorageService dataStorage)
+        IDataStorageService dataStorage)
     {
         _logger = logger;
         _inventoryService = inventoryService;
