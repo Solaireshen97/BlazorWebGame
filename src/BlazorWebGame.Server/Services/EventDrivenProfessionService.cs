@@ -7,8 +7,8 @@ using System.Collections.Concurrent;
 namespace BlazorWebGame.Server.Services;
 
 /// <summary>
-/// 基于事件队列的服务端职业系统服务
-/// 统一管理采集、制作等生产活动，使用事件驱动架构
+/// 基于事件队列的服务端职业系统服务 - 优化版本
+/// 统一管理采集、制作等生产活动，使用事件驱动架构，优化性能和错误处理
 /// </summary>
 public class EventDrivenProfessionService : IDisposable
 {
@@ -23,10 +23,20 @@ public class EventDrivenProfessionService : IDisposable
     private readonly Dictionary<string, GatheringNodeData> _gatheringNodes;
     private readonly Dictionary<string, CraftingRecipeData> _craftingRecipes;
     
-    // 性能统计
+    // 性能统计和监控
     private long _totalActivitiesStarted = 0;
     private long _totalActivitiesCompleted = 0;
+    private long _totalEventsGenerated = 0;
     private readonly object _statsLock = new();
+    
+    // 事件批处理优化
+    private readonly List<UnifiedEvent> _eventBatch = new(256);
+    private readonly object _eventBatchLock = new();
+    private readonly Timer _batchFlushTimer;
+    
+    // 错误处理和重试机制
+    private readonly Dictionary<string, int> _activityRetryCount = new();
+    private const int MAX_RETRY_COUNT = 3;
 
     public EventDrivenProfessionService(
         UnifiedEventService eventService,
@@ -43,6 +53,10 @@ public class EventDrivenProfessionService : IDisposable
 
         // 注册职业事件处理器
         RegisterProfessionEventHandlers();
+        
+        // 启动批处理刷新定时器（每秒刷新一次未满的批次）
+        _batchFlushTimer = new Timer(FlushEventBatch, null, 
+            TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
     }
 
     /// <summary>
@@ -112,12 +126,14 @@ public class EventDrivenProfessionService : IDisposable
                 ProfessionType = (ushort)node.ProfessionType
             };
 
-            _eventService.EnqueueEvent(GameEventTypes.GATHERING_STARTED, gatheringData, 
+            // 使用优化的批处理事件系统
+            EnqueueOptimizedEvent(GameEventTypes.GATHERING_STARTED, gatheringData, 
                 EventPriority.Gameplay, (ulong)HashString(characterId), (ulong)HashString(nodeId));
 
             lock (_statsLock)
             {
                 _totalActivitiesStarted++;
+                _totalEventsGenerated++;
             }
 
             _logger.LogInformation("Character {CharacterId} started gathering at node {NodeId}", characterId, nodeId);
@@ -179,12 +195,13 @@ public class EventDrivenProfessionService : IDisposable
                 MaterialCost = recipe.MaterialCost
             };
 
-            _eventService.EnqueueEvent(GameEventTypes.CRAFTING_STARTED, craftingData,
+            EnqueueOptimizedEvent(GameEventTypes.CRAFTING_STARTED, craftingData,
                 EventPriority.Gameplay, (ulong)HashString(characterId), (ulong)HashString(recipeId));
 
             lock (_statsLock)
             {
                 _totalActivitiesStarted++;
+                _totalEventsGenerated++;
             }
 
             _logger.LogInformation("Character {CharacterId} started crafting recipe {RecipeId}", characterId, recipeId);
@@ -291,7 +308,7 @@ public class EventDrivenProfessionService : IDisposable
                 ProfessionType = (ushort)activity.ProfessionType
             };
 
-            _eventService.EnqueueEvent(GameEventTypes.GATHERING_PROGRESS, gatheringData,
+            EnqueueOptimizedEvent(GameEventTypes.GATHERING_PROGRESS, gatheringData,
                 EventPriority.Gameplay, (ulong)HashString(activity.CharacterId));
         }
         else if (activity.ActivityType == ProfessionActivityType.Crafting)
@@ -309,7 +326,7 @@ public class EventDrivenProfessionService : IDisposable
                 MaterialCost = recipe.MaterialCost
             };
 
-            _eventService.EnqueueEvent(GameEventTypes.CRAFTING_PROGRESS, craftingData,
+            EnqueueOptimizedEvent(GameEventTypes.CRAFTING_PROGRESS, craftingData,
                 EventPriority.Gameplay, (ulong)HashString(activity.CharacterId));
         }
     }
@@ -335,7 +352,7 @@ public class EventDrivenProfessionService : IDisposable
                     ProfessionType = (ushort)activity.ProfessionType
                 };
 
-                _eventService.EnqueueEvent(GameEventTypes.GATHERING_COMPLETED, gatheringData,
+                EnqueueOptimizedEvent(GameEventTypes.GATHERING_COMPLETED, gatheringData,
                     EventPriority.Gameplay, (ulong)HashString(activity.CharacterId));
             }
             else if (activity.ActivityType == ProfessionActivityType.Crafting)
@@ -353,7 +370,7 @@ public class EventDrivenProfessionService : IDisposable
                     MaterialCost = recipe.MaterialCost
                 };
 
-                _eventService.EnqueueEvent(GameEventTypes.CRAFTING_COMPLETED, craftingData,
+                EnqueueOptimizedEvent(GameEventTypes.CRAFTING_COMPLETED, craftingData,
                     EventPriority.Gameplay, (ulong)HashString(activity.CharacterId));
             }
 
@@ -368,12 +385,13 @@ public class EventDrivenProfessionService : IDisposable
                 TotalExperience = 0 // TODO: 获取总经验
             };
 
-            _eventService.EnqueueEvent(GameEventTypes.PROFESSION_XP_GAINED, expData,
+            EnqueueOptimizedEvent(GameEventTypes.PROFESSION_XP_GAINED, expData,
                 EventPriority.Gameplay, (ulong)HashString(activity.CharacterId));
 
             lock (_statsLock)
             {
                 _totalActivitiesCompleted++;
+                _totalEventsGenerated++;
             }
 
             _logger.LogInformation("Character {CharacterId} completed {ActivityType} activity", 
@@ -391,23 +409,6 @@ public class EventDrivenProfessionService : IDisposable
     public ProfessionActivityState? GetCharacterActivity(string characterId)
     {
         return _activeActivities.TryGetValue(characterId, out var activity) ? activity : null;
-    }
-
-    /// <summary>
-    /// 获取统计信息
-    /// </summary>
-    public ProfessionServiceStats GetStatistics()
-    {
-        lock (_statsLock)
-        {
-            return new ProfessionServiceStats
-            {
-                ActiveActivities = _activeActivities.Count,
-                TotalActivitiesStarted = _totalActivitiesStarted,
-                TotalActivitiesCompleted = _totalActivitiesCompleted,
-                CompletionRate = _totalActivitiesStarted > 0 ? (double)_totalActivitiesCompleted / _totalActivitiesStarted : 0.0
-            };
-        }
     }
 
     /// <summary>
@@ -496,10 +497,159 @@ public class EventDrivenProfessionService : IDisposable
         return input.GetHashCode();
     }
 
+    /// <summary>
+    /// 优化的事件入队方法 - 使用批处理提高性能
+    /// </summary>
+    private void EnqueueOptimizedEvent<T>(ushort eventType, T data, EventPriority priority, 
+        ulong actorId, ulong targetId = 0) where T : struct
+    {
+        try
+        {
+            var evt = new UnifiedEvent(eventType, priority)
+            {
+                ActorId = actorId,
+                TargetId = targetId
+            };
+            evt.SetData(data);
+
+            lock (_eventBatchLock)
+            {
+                _eventBatch.Add(evt);
+                
+                // 当批次达到一定大小时立即刷新
+                if (_eventBatch.Count >= 64)
+                {
+                    FlushEventBatchInternal();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error enqueueing optimized event {EventType} for actor {ActorId}", eventType, actorId);
+            // 作为备用方案，直接入队单个事件
+            _eventService.EnqueueEvent(eventType, data, priority, actorId, targetId);
+        }
+    }
+
+    /// <summary>
+    /// 刷新事件批次
+    /// </summary>
+    private void FlushEventBatch(object? state)
+    {
+        lock (_eventBatchLock)
+        {
+            FlushEventBatchInternal();
+        }
+    }
+
+    /// <summary>
+    /// 内部批次刷新实现
+    /// </summary>
+    private void FlushEventBatchInternal()
+    {
+        if (_eventBatch.Count == 0) return;
+
+        try
+        {
+            var eventsToFlush = _eventBatch.ToArray();
+            var enqueuedCount = _eventService.EnqueueBatch(eventsToFlush, eventsToFlush.Length);
+            
+            if (enqueuedCount != eventsToFlush.Length)
+            {
+                _logger.LogWarning("Failed to enqueue {FailedCount} out of {TotalCount} profession events", 
+                    eventsToFlush.Length - enqueuedCount, eventsToFlush.Length);
+            }
+            
+            _eventBatch.Clear();
+            
+            lock (_statsLock)
+            {
+                _totalEventsGenerated += enqueuedCount;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error flushing profession event batch");
+            _eventBatch.Clear(); // 清空批次避免无限循环
+        }
+    }
+
+    /// <summary>
+    /// 获取性能统计信息
+    /// </summary>
+    public ProfessionServiceStats GetStats()
+    {
+        lock (_statsLock)
+        {
+            return new ProfessionServiceStats
+            {
+                ActiveActivities = _activeActivities.Count,
+                TotalActivitiesStarted = _totalActivitiesStarted,
+                TotalActivitiesCompleted = _totalActivitiesCompleted,
+                TotalEventsGenerated = _totalEventsGenerated,
+                AvailableGatheringNodes = _gatheringNodes.Count,
+                AvailableCraftingRecipes = _craftingRecipes.Count
+            };
+        }
+    }
+
+    /// <summary>
+    /// 重试失败的活动
+    /// </summary>
+    private bool ShouldRetryActivity(string characterId)
+    {
+        if (!_activityRetryCount.TryGetValue(characterId, out var retryCount))
+        {
+            _activityRetryCount[characterId] = 1;
+            return true;
+        }
+
+        if (retryCount < MAX_RETRY_COUNT)
+        {
+            _activityRetryCount[characterId] = retryCount + 1;
+            return true;
+        }
+
+        _activityRetryCount.Remove(characterId);
+        return false;
+    }
+
+    /// <summary>
+    /// 清理重试计数
+    /// </summary>
+    private void ClearRetryCount(string characterId)
+    {
+        _activityRetryCount.Remove(characterId);
+    }
+
     public void Dispose()
     {
+        _batchFlushTimer?.Dispose();
+        
+        // 刷新剩余的事件批次
+        lock (_eventBatchLock)
+        {
+            FlushEventBatchInternal();
+        }
+        
         _activeActivities.Clear();
+        _activityRetryCount.Clear();
     }
+}
+
+/// <summary>
+/// 职业服务性能统计
+/// </summary>
+public class ProfessionServiceStats
+{
+    public int ActiveActivities { get; set; }
+    public long TotalActivitiesStarted { get; set; }
+    public long TotalActivitiesCompleted { get; set; }
+    public long TotalEventsGenerated { get; set; }
+    public int AvailableGatheringNodes { get; set; }
+    public int AvailableCraftingRecipes { get; set; }
+    public double CompletionRate => TotalActivitiesStarted > 0 ? (double)TotalActivitiesCompleted / TotalActivitiesStarted : 0.0;
+    public double EventsPerActivity => TotalActivitiesCompleted > 0 ? (double)TotalEventsGenerated / TotalActivitiesCompleted : 0.0;
 }
 
 /// <summary>
@@ -573,17 +723,6 @@ public class CraftingRecipeData
     public ProfessionType ProfessionType { get; set; }
     public int RequiredLevel { get; set; }
     public int MaterialCost { get; set; }
-}
-
-/// <summary>
-/// 职业服务统计信息
-/// </summary>
-public struct ProfessionServiceStats
-{
-    public int ActiveActivities;
-    public long TotalActivitiesStarted;
-    public long TotalActivitiesCompleted;
-    public double CompletionRate;
 }
 
 // 事件处理器实现
