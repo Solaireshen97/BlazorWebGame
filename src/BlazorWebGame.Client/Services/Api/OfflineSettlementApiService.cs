@@ -36,4 +36,12 @@ public class OfflineSettlementApiService : BaseApiService
     {
         return await GetAsync<OfflineSettlementStatisticsDto>("api/offline-settlement/statistics");
     }
+
+    /// <summary>
+    /// 同步离线战斗进度
+    /// </summary>
+    public async Task<ApiResponse<object>> SyncOfflineBattleProgressAsync(string playerId, OfflineBattleProgressSyncRequest request)
+    {
+        return await PostAsync<object>($"api/offline-settlement/player/{playerId}/battle-progress", request);
+    }
 }

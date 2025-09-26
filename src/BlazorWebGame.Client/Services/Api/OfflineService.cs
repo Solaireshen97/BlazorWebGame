@@ -568,15 +568,23 @@ public class OfflineService
         var progressData = System.Text.Json.JsonSerializer.Deserialize<OfflineBattleProgressDto>(action.Data);
         if (progressData != null)
         {
-            // 发送离线战斗进度到服务器进行结算
-            var settlementRequest = new OfflineSettlementRequestDto
+            // 创建离线战斗进度同步请求
+            var syncRequest = new OfflineBattleProgressSyncRequest
             {
                 PlayerId = progressData.CharacterId,
-                LastActiveTime = DateTime.UtcNow.Subtract(progressData.OfflineTime),
-                ForceSettlement = true
+                OfflineTime = progressData.OfflineTime,
+                CharacterLevel = progressData.CharacterLevel,
+                EstimatedBattles = progressData.EstimatedBattles,
+                EstimatedExperience = progressData.EstimatedExperience,
+                EstimatedGold = progressData.EstimatedGold,
+                WinRate = progressData.WinRate,
+                MaxWaveReached = progressData.MaxWaveReached,
+                ProgressDetails = progressData.ProgressDetails,
+                SyncTime = DateTime.UtcNow
             };
             
-            await apiService.ProcessOfflineSettlementAsync(settlementRequest);
+            // 使用新的离线战斗进度同步API
+            await apiService.SyncOfflineBattleProgressAsync(progressData.CharacterId, syncRequest);
         }
     }
 }

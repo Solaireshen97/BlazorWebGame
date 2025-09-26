@@ -191,5 +191,52 @@ namespace BlazorWebGame.Server.Controllers
                 });
             }
         }
+
+        /// <summary>
+        /// 更新角色数据（离线同步专用）
+        /// </summary>
+        [HttpPut("{characterId}/update")]
+        public async Task<ActionResult<ApiResponse<object>>> UpdateCharacter(string characterId, CharacterUpdateRequest request)
+        {
+            try
+            {
+                request.CharacterId = characterId;
+                
+                // 使用现有的UpdateCharacterStatusAsync方法来处理更新
+                var statusRequest = new UpdateCharacterStatusRequest
+                {
+                    CharacterId = characterId,
+                    Action = "OfflineSync",
+                    Data = request.Updates
+                };
+                
+                var success = await _characterService.UpdateCharacterStatusAsync(statusRequest);
+                
+                if (!success)
+                {
+                    return NotFound(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = "角色不存在"
+                    });
+                }
+
+                return Ok(new ApiResponse<object>
+                {
+                    Success = true,
+                    Data = new { Updated = true },
+                    Message = "角色数据更新成功"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update character for offline sync {CharacterId}", characterId);
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "更新角色数据失败"
+                });
+            }
+        }
     }
 }
