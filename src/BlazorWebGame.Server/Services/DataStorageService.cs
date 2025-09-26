@@ -37,6 +37,19 @@ public class DataStorageService : IDataStorageService
         _logger.LogInformation("DataStorageService initialized with in-memory storage");
     }
 
+    /// <summary>
+    /// 安全地截取ID用于日志记录，防止日志注入攻击
+    /// </summary>
+    private static string SafeLogId(string id)
+    {
+        if (string.IsNullOrEmpty(id))
+            return "[empty]";
+        
+        // 只保留字母数字和连字符，并截取前8位
+        var sanitized = new string(id.Where(c => char.IsLetterOrDigit(c) || c == '-').ToArray());
+        return sanitized.Substring(0, Math.Min(8, sanitized.Length)) + (sanitized.Length > 8 ? "..." : "");
+    }
+
     #region 玩家数据管理
 
     public async Task<PlayerStorageDto?> GetPlayerAsync(string playerId)
@@ -57,7 +70,7 @@ public class DataStorageService : IDataStorageService
             
             _players.AddOrUpdate(player.Id, entity, (key, oldValue) => entity);
             
-            _logger.LogDebug("Player {PlayerId} saved successfully", player.Id);
+            _logger.LogDebug("Player saved successfully with ID: {SafePlayerId}", SafeLogId(player.Id));
             
             return new ApiResponse<PlayerStorageDto>
             {
@@ -68,7 +81,7 @@ public class DataStorageService : IDataStorageService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to save player {PlayerId}", player.Id);
+            _logger.LogError(ex, "Failed to save player with ID: {SafePlayerId}", SafeLogId(player.Id));
             return new ApiResponse<PlayerStorageDto>
             {
                 Success = false,
@@ -104,7 +117,7 @@ public class DataStorageService : IDataStorageService
                     _offlineData.TryRemove(item.Key, out _);
                 }
                 
-                _logger.LogInformation("Player {PlayerId} and related data deleted successfully", playerId);
+                _logger.LogInformation("Player and related data deleted successfully for ID: {SafePlayerId}", SafeLogId(playerId));
             }
             
             return new ApiResponse<bool>
@@ -116,7 +129,7 @@ public class DataStorageService : IDataStorageService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to delete player {PlayerId}", playerId);
+            _logger.LogError(ex, "Failed to delete player with ID: {SafePlayerId}", SafeLogId(playerId));
             return new ApiResponse<bool>
             {
                 Success = false,
@@ -232,7 +245,7 @@ public class DataStorageService : IDataStorageService
                 _playerToTeam.AddOrUpdate(memberId, team.Id, (key, oldValue) => team.Id);
             }
             
-            _logger.LogDebug("Team {TeamId} saved successfully", team.Id);
+            _logger.LogDebug("Team saved successfully with ID: {SafeTeamId}", SafeLogId(team.Id));
             
             return new ApiResponse<TeamStorageDto>
             {
@@ -243,7 +256,7 @@ public class DataStorageService : IDataStorageService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to save team {TeamId}", team.Id);
+            _logger.LogError(ex, "Failed to save team with ID: {SafeTeamId}", SafeLogId(team.Id));
             return new ApiResponse<TeamStorageDto>
             {
                 Success = false,
@@ -267,7 +280,7 @@ public class DataStorageService : IDataStorageService
                     _playerToTeam.TryRemove(memberId, out _);
                 }
                 
-                _logger.LogInformation("Team {TeamId} deleted successfully", teamId);
+                _logger.LogInformation("Team deleted successfully with ID: {SafeTeamId}", SafeLogId(teamId));
                 
                 return new ApiResponse<bool>
                 {
@@ -286,7 +299,7 @@ public class DataStorageService : IDataStorageService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to delete team {TeamId}", teamId);
+            _logger.LogError(ex, "Failed to delete team with ID: {SafeTeamId}", SafeLogId(teamId));
             return new ApiResponse<bool>
             {
                 Success = false,
@@ -357,7 +370,7 @@ public class DataStorageService : IDataStorageService
                     return oldList;
                 });
             
-            _logger.LogDebug("ActionTarget {ActionTargetId} saved for player {PlayerId}", actionTarget.Id, actionTarget.PlayerId);
+            _logger.LogDebug("ActionTarget saved for player with IDs: {SafeActionTargetId}, {SafePlayerId}", SafeLogId(actionTarget.Id), SafeLogId(actionTarget.PlayerId));
             
             return new ApiResponse<ActionTargetStorageDto>
             {
@@ -368,7 +381,7 @@ public class DataStorageService : IDataStorageService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to save action target {ActionTargetId}", actionTarget.Id);
+            _logger.LogError(ex, "Failed to save action target with ID: {SafeActionTargetId}", SafeLogId(actionTarget.Id));
             return new ApiResponse<ActionTargetStorageDto>
             {
                 Success = false,
@@ -404,7 +417,7 @@ public class DataStorageService : IDataStorageService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to complete action target {ActionTargetId}", actionTargetId);
+            _logger.LogError(ex, "Failed to complete action target with ID: {SafeActionTargetId}", SafeLogId(actionTargetId));
             return new ApiResponse<bool>
             {
                 Success = false,
@@ -443,7 +456,7 @@ public class DataStorageService : IDataStorageService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to cancel action target for player {PlayerId}", playerId);
+            _logger.LogError(ex, "Failed to cancel action target for player with ID: {SafePlayerId}", SafeLogId(playerId));
             return new ApiResponse<bool>
             {
                 Success = false,
@@ -472,7 +485,7 @@ public class DataStorageService : IDataStorageService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get action history for player {PlayerId}", playerId);
+            _logger.LogError(ex, "Failed to get action history for player with ID: {SafePlayerId}", SafeLogId(playerId));
             return new ApiResponse<List<ActionTargetStorageDto>>
             {
                 Success = false,
@@ -516,7 +529,7 @@ public class DataStorageService : IDataStorageService
                     });
             }
             
-            _logger.LogDebug("BattleRecord {BattleRecordId} saved successfully", battleRecord.Id);
+            _logger.LogDebug("BattleRecord saved successfully with ID: {SafeBattleRecordId}", SafeLogId(battleRecord.Id));
             
             return new ApiResponse<BattleRecordStorageDto>
             {
@@ -527,7 +540,7 @@ public class DataStorageService : IDataStorageService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to save battle record {BattleRecordId}", battleRecord.Id);
+            _logger.LogError(ex, "Failed to save battle record with ID: {SafeBattleRecordId}", SafeLogId(battleRecord.Id));
             return new ApiResponse<BattleRecordStorageDto>
             {
                 Success = false,
@@ -570,7 +583,7 @@ public class DataStorageService : IDataStorageService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to end battle record {BattleId}", battleId);
+            _logger.LogError(ex, "Failed to end battle record with ID: {SafeBattleId}", SafeLogId(battleId));
             return new ApiResponse<bool>
             {
                 Success = false,
@@ -625,7 +638,7 @@ public class DataStorageService : IDataStorageService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get battle history for player {PlayerId}", playerId);
+            _logger.LogError(ex, "Failed to get battle history for player with ID: {SafePlayerId}", SafeLogId(playerId));
             return new ApiResponse<List<BattleRecordStorageDto>>
             {
                 Success = false,
@@ -669,7 +682,7 @@ public class DataStorageService : IDataStorageService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get battle history for team {TeamId}", teamId);
+            _logger.LogError(ex, "Failed to get battle history for team with ID: {SafeTeamId}", SafeLogId(teamId));
             return new ApiResponse<List<BattleRecordStorageDto>>
             {
                 Success = false,
@@ -719,7 +732,7 @@ public class DataStorageService : IDataStorageService
             
             _offlineData.AddOrUpdate(offlineData.Id, entity, (key, oldValue) => entity);
             
-            _logger.LogDebug("OfflineData {OfflineDataId} saved for player {PlayerId}", offlineData.Id, offlineData.PlayerId);
+            _logger.LogDebug("OfflineData saved for player with IDs: {SafeOfflineDataId}, {SafePlayerId}", SafeLogId(offlineData.Id), SafeLogId(offlineData.PlayerId));
             
             return new ApiResponse<OfflineDataStorageDto>
             {
@@ -730,7 +743,7 @@ public class DataStorageService : IDataStorageService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to save offline data {OfflineDataId}", offlineData.Id);
+            _logger.LogError(ex, "Failed to save offline data with ID: {SafeOfflineDataId}", SafeLogId(offlineData.Id));
             return new ApiResponse<OfflineDataStorageDto>
             {
                 Success = false,
@@ -758,7 +771,7 @@ public class DataStorageService : IDataStorageService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get unsynced offline data for player {PlayerId}", playerId);
+            _logger.LogError(ex, "Failed to get unsynced offline data for player with ID: {SafePlayerId}", SafeLogId(playerId));
             return new ApiResponse<List<OfflineDataStorageDto>>
             {
                 Success = false,
@@ -820,7 +833,7 @@ public class DataStorageService : IDataStorageService
                 }
             }
             
-            _logger.LogInformation("Cleaned up {RemovedCount} synced offline data records older than {OlderThan}", removedCount, olderThan);
+            _logger.LogInformation("Cleaned up {RemovedCount} synced offline data records older than the specified date", removedCount);
             
             return new ApiResponse<int>
             {
@@ -865,7 +878,7 @@ public class DataStorageService : IDataStorageService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to search players with term {SearchTerm}", searchTerm);
+            _logger.LogError(ex, "Failed to search players");
             return new ApiResponse<List<PlayerStorageDto>>
             {
                 Success = false,
@@ -998,7 +1011,7 @@ public class DataStorageService : IDataStorageService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to export player data for {PlayerId}", playerId);
+            _logger.LogError(ex, "Failed to export player data for ID: {SafePlayerId}", SafeLogId(playerId));
             return new ApiResponse<Dictionary<string, object>>
             {
                 Success = false,
@@ -1013,7 +1026,7 @@ public class DataStorageService : IDataStorageService
         {
             // 这里可以实现数据导入逻辑
             // 由于是演示代码，此处简化处理
-            _logger.LogInformation("Player data import requested for {PlayerId}", playerId);
+            _logger.LogInformation("Player data import requested for ID: {SafePlayerId}", SafeLogId(playerId));
             
             return new ApiResponse<bool>
             {
@@ -1024,7 +1037,7 @@ public class DataStorageService : IDataStorageService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to import player data for {PlayerId}", playerId);
+            _logger.LogError(ex, "Failed to import player data for ID: {SafePlayerId}", SafeLogId(playerId));
             return new ApiResponse<bool>
             {
                 Success = false,
