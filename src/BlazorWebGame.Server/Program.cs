@@ -141,6 +141,12 @@ builder.Services.AddSingleton(rateLimitOptions);
 
 // 注册统一服务
 builder.Services.AddSingleton<ErrorHandlingService>();
+builder.Services.AddSingleton<PerformanceMonitoringService>();
+builder.Services.AddSingleton<ServerOptimizationService>();
+
+// 添加健康检查
+builder.Services.AddHealthChecks()
+    .AddCheck<GameHealthCheckService>("game-health");
 
 // 注册安全服务
 builder.Services.AddSingleton<GameAuthenticationService>();
@@ -197,6 +203,7 @@ builder.Services.AddSingleton<ServerBattleManager>(serviceProvider =>
 });
 
 builder.Services.AddHostedService<GameLoopService>();
+builder.Services.AddHostedService<ServerOptimizationService>();
 
 var app = builder.Build();
 
@@ -264,7 +271,29 @@ app.MapControllers();
 app.MapHub<GameHub>("/gamehub");
 
 // 添加健康检查端点
-app.MapGet("/health", () => new { 
+app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        var result = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            Status = report.Status.ToString(),
+            Checks = report.Entries.Select(entry => new
+            {
+                Name = entry.Key,
+                Status = entry.Value.Status.ToString(),
+                Description = entry.Value.Description,
+                Data = entry.Value.Data
+            }),
+            Duration = report.TotalDuration.TotalMilliseconds
+        });
+        await context.Response.WriteAsync(result);
+    }
+});
+
+// 添加简单健康检查端点
+app.MapGet("/health/simple", () => new { 
     Status = "Healthy", 
     Timestamp = DateTime.UtcNow,
     Environment = app.Environment.EnvironmentName 
