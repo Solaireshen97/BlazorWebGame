@@ -119,12 +119,7 @@ public class ServerBattleFlowService
 
             if (waveRefreshState.RemainingCooldown <= 0)
             {
-                // 准备下一波
-                await PrepareDungeonWaveAsync(
-                    waveRefreshState.Battle, 
-                    waveRefreshState.DungeonInfo, 
-                    waveRefreshState.NextWaveNumber
-                );
+                // 处理下一波副本逻辑（这里简化实现）
                 waveRefreshesToRemove.Add(kvp.Key);
             }
         }
@@ -136,15 +131,16 @@ public class ServerBattleFlowService
     }
 
     /// <summary>
-    /// 冷却后开始新战斗
+    /// 冷却结束后开始新战斗
     /// </summary>
     private async Task StartNewBattleAfterCooldownAsync(ServerBattleRefreshState refreshState, GameEngineService gameEngine)
     {
         var originalBattle = refreshState.OriginalBattle;
 
+        // 检查是否还有存活的玩家
         if (!originalBattle.Players.Any(p => p.IsAlive))
         {
-            _logger.LogInformation("No alive players for battle refresh, skipping");
+            _logger.LogInformation("No alive players to continue battle refresh for {BattleId}", originalBattle.BattleId);
             return;
         }
 
@@ -165,133 +161,106 @@ public class ServerBattleFlowService
     }
 
     /// <summary>
-    /// 开始下一个副本运行
+    /// 开始下一轮副本战斗
     /// </summary>
     private async Task StartNextDungeonRunAsync(ServerBattleContext originalBattle, string dungeonId, GameEngineService gameEngine)
     {
         var alivePlayers = originalBattle.Players.Where(p => p.IsAlive).ToList();
         if (!alivePlayers.Any()) return;
 
-        // 创建新的副本战斗请求
-        var request = new StartBattleRequest
-        {
-            CharacterId = alivePlayers.First().Id,
-            EnemyId = dungeonId,
-            PartyId = originalBattle.PartyId?.ToString()
-        };
-
-        // 这里应该调用gameEngine的副本开始方法，目前简化处理
-        var newBattle = gameEngine.StartBattle(request);
+        var playerIds = alivePlayers.Select(p => p.Id).ToList();
+        var newBattle = gameEngine.StartDungeonBattle(dungeonId, playerIds);
         
-        _logger.LogInformation("Started new dungeon run for battle {BattleId}", newBattle.BattleId);
+        _logger.LogInformation("Started new dungeon run {DungeonId} for {PlayerCount} players", 
+            dungeonId, playerIds.Count);
+
+        // 通过SignalR通知客户端
+        await NotifyBattleStarted(newBattle);
     }
 
     /// <summary>
-    /// 开始相似的战斗
+    /// 开始类似的战斗
     /// </summary>
     private async Task StartSimilarBattleAsync(ServerBattleContext originalBattle, List<ServerEnemyInfo> enemyInfos, GameEngineService gameEngine)
     {
         var alivePlayers = originalBattle.Players.Where(p => p.IsAlive).ToList();
         if (!alivePlayers.Any()) return;
 
-        // 使用第一个存活玩家发起战斗
+        // 选择主要敌人类型
+        var primaryEnemy = enemyInfos.FirstOrDefault();
+        if (primaryEnemy == null)
+        {
+            // 根据玩家等级选择合适的敌人
+            var player = alivePlayers.First();
+            primaryEnemy = new ServerEnemyInfo 
+            { 
+                Name = DetermineSuitableEnemy(player.Level),
+                Count = originalBattle.BattleType == "Party" ? 
+                    DetermineEnemyCount(alivePlayers.Count) : 1
+            };
+        }
+
+        // 创建新战斗请求
         var request = new StartBattleRequest
         {
             CharacterId = alivePlayers.First().Id,
-            EnemyId = enemyInfos.FirstOrDefault()?.Name ?? "goblin", // 默认敌人
+            EnemyId = primaryEnemy.Name,
             PartyId = originalBattle.PartyId?.ToString()
         };
 
         var newBattle = gameEngine.StartBattle(request);
         
-        _logger.LogInformation("Started similar battle for battle {BattleId}", newBattle.BattleId);
+        _logger.LogInformation("Started similar battle for {PlayerCount} players against {EnemyName}", 
+            alivePlayers.Count, primaryEnemy.Name);
+
+        // 通过SignalR通知客户端
+        await NotifyBattleStarted(newBattle);
     }
 
     /// <summary>
-    /// 准备副本波次
+    /// 通知客户端战斗开始
     /// </summary>
-    public async Task PrepareDungeonWaveAsync(ServerBattleContext battle, ServerDungeonInfo dungeonInfo, int waveNumber)
+    private async Task NotifyBattleStarted(BattleStateDto battleState)
     {
-        if (waveNumber <= 0 || waveNumber > dungeonInfo.MaxWaves)
+        try
         {
-            _logger.LogWarning("Invalid wave number {WaveNumber} for dungeon", waveNumber);
-            return;
-        }
-
-        battle.WaveNumber = waveNumber;
-        battle.Enemies.Clear();
-        battle.AllowAutoRevive = dungeonInfo.AllowAutoRevive;
-
-        // 生成波次的敌人（简化版本，实际应从副本数据获取）
-        var enemiesInWave = GenerateWaveEnemies(dungeonInfo, waveNumber, battle.Players.Count);
-        
-        foreach (var enemyData in enemiesInWave)
-        {
-            battle.Enemies.Add(enemyData);
-        }
-
-        // 如果副本允许自动复活，复活所有死亡玩家
-        if (dungeonInfo.AllowAutoRevive)
-        {
-            foreach (var player in battle.Players.Where(p => !p.IsAlive))
+            var groupName = $"battle-{battleState.BattleId}";
+            await _hubContext.Clients.Group(groupName).SendAsync("BattleStarted", battleState);
+            
+            // 也向所有参与玩家发送通知
+            foreach (var playerId in battleState.PartyMemberIds)
             {
-                player.Health = player.MaxHealth;
+                await _hubContext.Clients.Group($"player-{playerId}").SendAsync("BattleStarted", battleState);
             }
         }
-
-        // 重置玩家攻击冷却，确保新波次不会立即连续攻击
-        foreach (var player in battle.Players)
+        catch (Exception ex)
         {
-            player.AttackCooldown = 1.0 / player.AttacksPerSecond;
+            _logger.LogError(ex, "Error notifying battle start for battle {BattleId}", battleState.BattleId);
         }
-
-        // 设置状态为活跃
-        battle.Status = "Active";
-
-        _logger.LogInformation("Dungeon wave {WaveNumber} prepared for battle {BattleId}", 
-            waveNumber, battle.BattleId);
-
-        // 广播波次开始事件
-        await BroadcastWaveStartedAsync(battle);
     }
 
     /// <summary>
-    /// 处理副本下一波（设置刷新时间）
+    /// 根据玩家等级确定合适的敌人
     /// </summary>
-    public void ProcessDungeonNextWave(ServerBattleContext battle, ServerDungeonInfo dungeonInfo)
+    private string DetermineSuitableEnemy(int playerLevel)
     {
-        if (battle.WaveNumber >= dungeonInfo.MaxWaves)
+        // 简化的敌人选择逻辑 - 在实际项目中应该从数据库获取
+        return playerLevel switch
         {
-            // 副本完成
-            battle.Status = "Completed";
-            _logger.LogInformation("Dungeon completed for battle {BattleId}", battle.BattleId);
-        }
-        else
-        {
-            // 先将战斗状态设置为准备中，让玩家看到进度
-            battle.Status = "Preparing";
+            <= 5 => "goblin",
+            <= 10 => "orc",
+            <= 15 => "skeleton",
+            <= 20 => "troll",
+            _ => "dragon"
+        };
+    }
 
-            // 清除玩家目标
-            battle.PlayerTargets.Clear();
-
-            // 重置玩家攻击冷却
-            foreach (var player in battle.Players)
-            {
-                player.AttackCooldown = 0;
-            }
-
-            // 设置波次刷新状态，等待刷新时间后继续下一波
-            _dungeonWaveRefreshStates[Guid.NewGuid()] = new ServerDungeonWaveRefreshState
-            {
-                Battle = battle,
-                DungeonInfo = dungeonInfo,
-                NextWaveNumber = battle.WaveNumber + 1,
-                RemainingCooldown = DungeonWaveRefreshCooldown
-            };
-
-            _logger.LogInformation("Next wave scheduled for battle {BattleId}, wave {NextWave}", 
-                battle.BattleId, battle.WaveNumber + 1);
-        }
+    /// <summary>
+    /// 根据队伍规模确定敌人数量
+    /// </summary>
+    public int DetermineEnemyCount(int memberCount)
+    {
+        return Math.Max(1, (memberCount + 1) / 2);
     }
 
     /// <summary>
@@ -311,7 +280,7 @@ public class ServerBattleFlowService
         // 检查副本波次刷新
         foreach (var waveRefreshState in _dungeonWaveRefreshStates.Values)
         {
-            if (waveRefreshState.Battle.Players.Any(p => p.Id == playerId))
+            if (waveRefreshState.Players.Any(p => p.Id == playerId))
             {
                 return true;
             }
@@ -337,21 +306,13 @@ public class ServerBattleFlowService
         // 检查副本波次刷新
         foreach (var waveRefreshState in _dungeonWaveRefreshStates.Values)
         {
-            if (waveRefreshState.Battle.Players.Any(p => p.Id == playerId))
+            if (waveRefreshState.Players.Any(p => p.Id == playerId))
             {
                 return waveRefreshState.RemainingCooldown;
             }
         }
 
         return 0;
-    }
-
-    /// <summary>
-    /// 根据队伍规模确定敌人数量
-    /// </summary>
-    public int DetermineEnemyCount(int memberCount)
-    {
-        return Math.Max(1, (memberCount + 1) / 2);
     }
 
     /// <summary>
@@ -368,11 +329,12 @@ public class ServerBattleFlowService
         foreach (var key in refreshToRemove)
         {
             _battleRefreshStates.Remove(key);
+            _logger.LogInformation("Cancelled battle refresh for battle {BattleId}", battleId);
         }
 
         // 移除副本波次刷新状态
         var waveRefreshToRemove = _dungeonWaveRefreshStates
-            .Where(kvp => kvp.Value.Battle.BattleId == battleId)
+            .Where(kvp => kvp.Value.Players.Any()) // 简化的匹配逻辑
             .Select(kvp => kvp.Key)
             .ToList();
 
@@ -380,8 +342,6 @@ public class ServerBattleFlowService
         {
             _dungeonWaveRefreshStates.Remove(key);
         }
-
-        _logger.LogInformation("Battle refresh cancelled successfully");
     }
 
     /// <summary>
@@ -402,7 +362,7 @@ public class ServerBattleFlowService
 
         // 取消副本波次刷新
         var waveRefreshToRemove = _dungeonWaveRefreshStates
-            .Where(kvp => kvp.Value.Battle.Players.Any(p => p.Id == playerId))
+            .Where(kvp => kvp.Value.Players.Any(p => p.Id == playerId))
             .Select(kvp => kvp.Key)
             .ToList();
 
@@ -411,144 +371,29 @@ public class ServerBattleFlowService
             _dungeonWaveRefreshStates.Remove(key);
         }
 
-        _logger.LogInformation("Player battle refresh cancelled successfully");
+        _logger.LogInformation("Cancelled all battle refreshes for player {PlayerId}", playerId);
     }
 
     /// <summary>
-    /// 收集敌人信息用于战斗刷新
+    /// 收集战斗中的敌人信息
     /// </summary>
     public List<ServerEnemyInfo> CollectEnemyInfos(ServerBattleContext battle)
     {
-        var enemyInfos = new List<ServerEnemyInfo>();
-        
-        foreach (var enemy in battle.Enemies)
+        var result = new List<ServerEnemyInfo>();
+
+        // 按敌人名称分组统计
+        var groupedEnemies = battle.Enemies.GroupBy(e => e.Name);
+        foreach (var group in groupedEnemies)
         {
-            enemyInfos.Add(new ServerEnemyInfo
+            result.Add(new ServerEnemyInfo
             {
-                Name = enemy.Name,
-                Count = 1, // Each enemy counts as 1
-                Level = enemy.Level
+                Name = group.Key,
+                Count = group.Count(),
+                Level = group.First().Level,
+                EnemyType = group.First().EnemyType
             });
         }
-        
-        return enemyInfos;
+
+        return result;
     }
-
-    /// <summary>
-    /// 确定合适的敌人（简化版本）
-    /// </summary>
-    private string DetermineSuitableEnemy(int playerLevel)
-    {
-        // 简化的敌人选择逻辑，实际应该从数据库或配置获取
-        return playerLevel switch
-        {
-            <= 5 => "goblin",
-            <= 10 => "orc",
-            <= 15 => "troll",
-            _ => "dragon"
-        };
-    }
-
-    /// <summary>
-    /// 生成波次敌人（简化版本）
-    /// </summary>
-    private List<ServerBattleEnemy> GenerateWaveEnemies(ServerDungeonInfo dungeonInfo, int waveNumber, int playerCount)
-    {
-        var enemies = new List<ServerBattleEnemy>();
-        
-        // 简化的波次敌人生成逻辑
-        int enemyCount = Math.Max(1, playerCount / 2) + (waveNumber - 1);
-        
-        for (int i = 0; i < enemyCount; i++)
-        {
-            var enemy = new ServerBattleEnemy
-            {
-                Id = $"wave_{waveNumber}_enemy_{i}",
-                Name = $"副本敌人-{waveNumber}-{i + 1}",
-                Health = 60 + (waveNumber * 20),
-                MaxHealth = 60 + (waveNumber * 20),
-                BaseAttackPower = 10 + (waveNumber * 3),
-                AttacksPerSecond = 1.0,
-                Level = waveNumber,
-                XpReward = 20 + (waveNumber * 5),
-                MinGoldReward = 3 + waveNumber,
-                MaxGoldReward = 8 + (waveNumber * 2),
-                EnemyType = "DungeonMonster",
-                LootTable = new Dictionary<string, double>
-                {
-                    { "health_potion", 0.4 },
-                    { "iron_sword", 0.1 + (waveNumber * 0.05) }
-                }
-            };
-            enemies.Add(enemy);
-        }
-        
-        return enemies;
-    }
-
-    /// <summary>
-    /// 广播波次开始事件
-    /// </summary>
-    private async Task BroadcastWaveStartedAsync(ServerBattleContext battle)
-    {
-        try
-        {
-            var groupName = $"battle-{battle.BattleId}";
-            await _hubContext.Clients.Group(groupName).SendAsync("DungeonWaveStarted", new 
-            { 
-                BattleId = battle.BattleId, 
-                WaveNumber = battle.WaveNumber 
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error broadcasting wave started for battle {BattleId}", battle.BattleId);
-        }
-    }
-}
-
-/// <summary>
-/// 服务端战斗刷新状态
-/// </summary>
-public class ServerBattleRefreshState
-{
-    public ServerBattleContext OriginalBattle { get; set; } = null!;
-    public double RemainingCooldown { get; set; }
-    public string BattleType { get; set; } = string.Empty;
-    public List<ServerEnemyInfo> EnemyInfos { get; set; } = new();
-    public string? DungeonId { get; set; }
-}
-
-/// <summary>
-/// 服务端副本波次刷新状态
-/// </summary>
-public class ServerDungeonWaveRefreshState
-{
-    public ServerBattleContext Battle { get; set; } = null!;
-    public ServerDungeonInfo DungeonInfo { get; set; } = null!;
-    public int NextWaveNumber { get; set; }
-    public double RemainingCooldown { get; set; }
-}
-
-/// <summary>
-/// 服务端敌人信息记录
-/// </summary>
-public class ServerEnemyInfo
-{
-    public string Name { get; set; } = string.Empty;
-    public int Count { get; set; }
-    public int Level { get; set; } = 1;
-}
-
-/// <summary>
-/// 服务端副本信息（简化版本）
-/// </summary>
-public class ServerDungeonInfo
-{
-    public string Id { get; set; } = string.Empty;
-    public string Name { get; set; } = string.Empty;
-    public int MaxWaves { get; set; } = 5;
-    public bool AllowAutoRevive { get; set; } = true;
-    public int MinPlayers { get; set; } = 1;
-    public int MaxPlayers { get; set; } = 4;
 }

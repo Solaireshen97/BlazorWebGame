@@ -293,7 +293,7 @@ public class GameEngineService
     }
 
     /// <summary>
-    /// 处理单个战斗的更新
+    /// 处理单个战斗的更新 - 完整的自动战斗逻辑
     /// </summary>
     private void ProcessSingleBattle(ServerBattleContext context, double deltaTime)
     {
@@ -308,16 +308,36 @@ public class GameEngineService
 
         context.LastUpdate = DateTime.UtcNow;
 
-        // 处理玩家攻击
-        foreach (var player in context.Players.Where(p => p.IsAlive))
+        // 处理玩家复活计时（如果允许自动复活）
+        if (context.AllowAutoRevive)
         {
-            _combatEngine.ProcessPlayerAttack(context, player, deltaTime);
+            ProcessPlayerRevival(context, deltaTime);
         }
 
-        // 处理敌人攻击
-        foreach (var enemy in context.Enemies.Where(e => e.IsAlive))
+        // 获取活着的参与者
+        var alivePlayers = context.Players.Where(p => p.IsAlive).ToList();
+        var aliveEnemies = context.Enemies.Where(e => e.IsAlive).ToList();
+
+        if (alivePlayers.Any() && aliveEnemies.Any())
         {
-            _combatEngine.ProcessEnemyAttack(context, enemy, deltaTime);
+            // 有存活者时，处理战斗逻辑
+            foreach (var player in alivePlayers)
+            {
+                ProcessPlayerCombat(context, player, deltaTime);
+            }
+
+            foreach (var enemy in aliveEnemies)
+            {
+                ProcessEnemyCombat(context, enemy, deltaTime);
+            }
+        }
+        else if (!alivePlayers.Any())
+        {
+            // 所有玩家死亡，停止敌人攻击并等待复活
+            foreach (var enemy in context.Enemies)
+            {
+                enemy.AttackCooldown = 1.0 / enemy.AttacksPerSecond;
+            }
         }
 
         // 检查战斗是否结束
@@ -325,6 +345,210 @@ public class GameEngineService
         {
             CompleteBattle(context);
         }
+    }
+
+    /// <summary>
+    /// 处理玩家复活逻辑
+    /// </summary>
+    private void ProcessPlayerRevival(ServerBattleContext context, double deltaTime)
+    {
+        // 简化的复活系统：死亡5秒后自动复活
+        const double revivalTime = 5.0;
+
+        foreach (var player in context.Players.Where(p => !p.IsAlive))
+        {
+            if (!player.Attributes.ContainsKey("RevivalTimer"))
+            {
+                player.Attributes["RevivalTimer"] = 0;
+            }
+
+            var revivalTimer = player.Attributes["RevivalTimer"] + (int)(deltaTime * 1000);
+            player.Attributes["RevivalTimer"] = revivalTimer;
+
+            if (revivalTimer >= revivalTime * 1000)
+            {
+                // 复活玩家
+                player.Health = player.MaxHealth / 2; // 复活时回复50%血量
+                player.Attributes.Remove("RevivalTimer");
+
+                var action = new ServerBattleAction
+                {
+                    ActorId = player.Id,
+                    ActorName = player.Name,
+                    ActionType = "Revive",
+                    Timestamp = DateTime.UtcNow
+                };
+                context.ActionHistory.Add(action);
+                
+                _logger.LogInformation("Player {PlayerName} has been revived in battle {BattleId}", 
+                    player.Name, context.BattleId);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 处理玩家战斗逻辑（包含智能技能使用）
+    /// </summary>
+    private void ProcessPlayerCombat(ServerBattleContext context, ServerBattlePlayer player, double deltaTime)
+    {
+        // 更新技能冷却
+        UpdateSkillCooldowns(player, deltaTime);
+
+        // 尝试使用技能（有概率）
+        if (TryUsePlayerSkill(context, player))
+        {
+            return; // 使用了技能，跳过普通攻击
+        }
+
+        // 处理普通攻击
+        _combatEngine.ProcessPlayerAttack(context, player, deltaTime);
+    }
+
+    /// <summary>
+    /// 处理敌人战斗逻辑（包含AI技能使用）
+    /// </summary>
+    private void ProcessEnemyCombat(ServerBattleContext context, ServerBattleEnemy enemy, double deltaTime)
+    {
+        // 更新技能冷却
+        UpdateEnemySkillCooldowns(enemy, deltaTime);
+
+        // 尝试使用技能（有概率）
+        if (TryUseEnemySkill(context, enemy))
+        {
+            return; // 使用了技能，跳过普通攻击
+        }
+
+        // 处理普通攻击
+        _combatEngine.ProcessEnemyAttack(context, enemy, deltaTime);
+    }
+
+    /// <summary>
+    /// 更新玩家技能冷却时间
+    /// </summary>
+    private void UpdateSkillCooldowns(ServerBattlePlayer player, double deltaTime)
+    {
+        var cooldownsToUpdate = player.SkillCooldowns.Keys.ToList();
+        foreach (var skillId in cooldownsToUpdate)
+        {
+            player.SkillCooldowns[skillId] = Math.Max(0, player.SkillCooldowns[skillId] - deltaTime);
+        }
+    }
+
+    /// <summary>
+    /// 更新敌人技能冷却时间
+    /// </summary>
+    private void UpdateEnemySkillCooldowns(ServerBattleEnemy enemy, double deltaTime)
+    {
+        var cooldownsToUpdate = enemy.SkillCooldowns.Keys.ToList();
+        foreach (var skillId in cooldownsToUpdate)
+        {
+            enemy.SkillCooldowns[skillId] = Math.Max(0, enemy.SkillCooldowns[skillId] - deltaTime);
+        }
+    }
+
+    /// <summary>
+    /// 尝试让玩家使用技能
+    /// </summary>
+    private bool TryUsePlayerSkill(ServerBattleContext context, ServerBattlePlayer player)
+    {
+        // 30%概率尝试使用技能
+        if (Random.Shared.NextDouble() > 0.3)
+            return false;
+
+        // 查找可用的技能
+        var availableSkills = player.EquippedSkills.Where(skillId => 
+            !player.SkillCooldowns.ContainsKey(skillId) || player.SkillCooldowns[skillId] <= 0).ToList();
+
+        if (!availableSkills.Any())
+            return false;
+
+        // 随机选择一个技能
+        var selectedSkill = availableSkills[Random.Shared.Next(availableSkills.Count)];
+        
+        // 选择目标
+        var target = context.Enemies.FirstOrDefault(e => e.IsAlive);
+        if (target == null)
+            return false;
+
+        // 执行技能
+        return _combatEngine.ExecuteSkillAttack(context, player, selectedSkill, target.Id);
+    }
+
+    /// <summary>
+    /// 尝试让敌人使用技能
+    /// </summary>
+    private bool TryUseEnemySkill(ServerBattleContext context, ServerBattleEnemy enemy)
+    {
+        // 20%概率尝试使用技能
+        if (Random.Shared.NextDouble() > 0.2)
+            return false;
+
+        // 查找可用的技能
+        var availableSkills = enemy.EquippedSkills.Where(skillId => 
+            !enemy.SkillCooldowns.ContainsKey(skillId) || enemy.SkillCooldowns[skillId] <= 0).ToList();
+
+        if (!availableSkills.Any())
+            return false;
+
+        // 随机选择一个技能
+        var selectedSkill = availableSkills[Random.Shared.Next(availableSkills.Count)];
+        
+        // 选择目标
+        var target = context.Players.FirstOrDefault(p => p.IsAlive);
+        if (target == null)
+            return false;
+
+        // 使用 ServerSkillSystem 执行敌人技能
+        // 这里需要 ServerSkillSystem 支持敌人技能执行
+        return TryExecuteEnemySkill(context, enemy, selectedSkill, target.Id);
+    }
+
+    /// <summary>
+    /// 执行敌人技能的简化实现
+    /// </summary>
+    private bool TryExecuteEnemySkill(ServerBattleContext context, ServerBattleEnemy enemy, string skillId, string targetId)
+    {
+        // 简化的敌人技能实现
+        var target = context.Players.FirstOrDefault(p => p.Id == targetId && p.IsAlive);
+        if (target == null)
+            return false;
+
+        // 设置技能冷却（根据技能类型设定不同冷却时间）
+        var cooldown = skillId switch
+        {
+            "goblin_slash" => 3.0,
+            "orc_rage" => 8.0,
+            "skeleton_bone_throw" => 5.0,
+            _ => 4.0
+        };
+
+        enemy.SkillCooldowns[skillId] = cooldown;
+
+        // 技能伤害计算（比普通攻击高50%）
+        var skillDamage = (int)(enemy.BaseAttackPower * 1.5);
+        var originalHealth = target.Health;
+        target.Health = Math.Max(0, target.Health - skillDamage);
+        var actualDamage = originalHealth - target.Health;
+
+        // 记录技能使用
+        var action = new ServerBattleAction
+        {
+            ActorId = enemy.Id,
+            ActorName = enemy.Name,
+            TargetId = target.Id,
+            TargetName = target.Name,
+            ActionType = "UseSkill",
+            SkillId = skillId,
+            Damage = actualDamage,
+            Timestamp = DateTime.UtcNow
+        };
+
+        context.ActionHistory.Add(action);
+        
+        _logger.LogDebug("Enemy {EnemyName} uses skill {SkillId} on {PlayerName} for {Damage} damage", 
+            enemy.Name, skillId, target.Name, actualDamage);
+
+        return true;
     }
 
     /// <summary>

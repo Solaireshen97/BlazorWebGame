@@ -124,8 +124,9 @@ public enum BattleType
 public enum BattleStatus
 {
     Active,
+    Paused,
     Completed,
-    Paused
+    Cancelled
 }
 
 /// <summary>
@@ -136,7 +137,8 @@ public enum BattleActionType
     Attack,
     UseSkill,
     Defend,
-    Flee
+    Move,
+    UseItem
 }
 
 /// <summary>
@@ -678,17 +680,6 @@ public enum ArmorType
 }
 
 /// <summary>
-/// 服务端战斗状态枚举
-/// </summary>
-public enum ServerBattleState
-{
-    Preparing,
-    Active,
-    Completed,
-    Cancelled
-}
-
-/// <summary>
 /// 战斗开始请求
 /// </summary>
 public class BattleStartRequest
@@ -698,16 +689,6 @@ public class BattleStartRequest
     public string BattleType { get; set; } = "Normal";
     public string? DungeonId { get; set; }
     public List<string> EnemyIds { get; set; } = new();
-}
-
-/// <summary>
-/// 服务端敌人信息
-/// </summary>
-public class ServerEnemyInfo
-{
-    public string Name { get; set; } = string.Empty;
-    public int Count { get; set; } = 1;
-    public int Level { get; set; } = 1;
 }
 
 // ====== Additional DTOs for API compatibility ======
