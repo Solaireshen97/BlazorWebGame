@@ -325,8 +325,8 @@ public class AuthController : ControllerBase
     {
         try
         {
-            // 为演示创建一个临时用户
-            var demoUserId = $"demo-user-{Guid.NewGuid():N}";
+            // 使用固定的演示用户ID，与UserHasCharacter方法中的映射保持一致
+            var demoUserId = "demo-user-001";
             var demoUsername = "DemoUser";
             var roles = new List<string> { "Player", "Tester" };
 
@@ -334,7 +334,7 @@ public class AuthController : ControllerBase
             var accessToken = _authService.GenerateAccessToken(demoUserId, demoUsername, roles);
             var refreshToken = _authService.GenerateRefreshToken();
 
-            _logger.LogInformation("Demo login successful for temporary user {UserId} from IP: {ClientIp}", 
+            _logger.LogInformation("Demo login successful for user {UserId} from IP: {ClientIp}", 
                 demoUserId, GetClientIpAddress());
 
             return Ok(new
