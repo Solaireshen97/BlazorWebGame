@@ -138,7 +138,7 @@ public class DataStorageService : IDataStorageService
         }
     }
 
-    public async Task<ApiResponse<List<PlayerStorageDto>>> GetOnlinePlayersAsync()
+    public Task<ApiResponse<List<PlayerStorageDto>>> GetOnlinePlayersAsync()
     {
         try
         {
@@ -148,21 +148,21 @@ public class DataStorageService : IDataStorageService
                 .OrderByDescending(p => p.LastActiveAt)
                 .ToList();
             
-            return new ApiResponse<List<PlayerStorageDto>>
+            return Task.FromResult(new ApiResponse<List<PlayerStorageDto>>
             {
                 Success = true,
                 Data = onlinePlayers,
                 Message = $"获取到 {onlinePlayers.Count} 名在线玩家"
-            };
+            });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to get online players");
-            return new ApiResponse<List<PlayerStorageDto>>
+            return Task.FromResult(new ApiResponse<List<PlayerStorageDto>>
             {
                 Success = false,
                 Message = $"获取在线玩家失败: {ex.Message}"
-            };
+            });
         }
     }
 
