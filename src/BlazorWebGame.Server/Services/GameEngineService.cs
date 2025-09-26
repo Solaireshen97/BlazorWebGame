@@ -15,14 +15,16 @@ public class GameEngineService
     private readonly ILogger<GameEngineService> _logger;
     private readonly ServerCombatEngine _combatEngine;
     private readonly ServerPartyService _partyService;
+    private readonly ServerBattleFlowService _battleFlowService;
     private readonly IHubContext<GameHub> _hubContext;
 
     public GameEngineService(ILogger<GameEngineService> logger, ServerCombatEngine combatEngine, 
-        ServerPartyService partyService, IHubContext<GameHub> hubContext)
+        ServerPartyService partyService, ServerBattleFlowService battleFlowService, IHubContext<GameHub> hubContext)
     {
         _logger = logger;
         _combatEngine = combatEngine;
         _partyService = partyService;
+        _battleFlowService = battleFlowService;
         _hubContext = hubContext;
     }
 
@@ -261,6 +263,9 @@ public class GameEngineService
                 await BroadcastBattleUpdate(newState);
             }
         }
+
+        // 处理战斗流程管理（刷新、波次进度等）
+        await _battleFlowService.ProcessBattleRefreshAsync(deltaTime, this);
     }
 
     /// <summary>
@@ -337,8 +342,35 @@ public class GameEngineService
             dto.IsActive = false;
         }
         
+        // 收集敌人信息用于战斗流程管理
+        var enemyInfos = CollectEnemyInfos(context);
+        
+        // 通知战斗流程服务处理战斗完成
+        _battleFlowService.OnBattleCompleted(context, enemyInfos);
+        
         _logger.LogInformation("Battle completed: {BattleId}, Victory: {Victory}", 
             context.BattleId, victory);
+    }
+
+    /// <summary>
+    /// 收集战斗中的敌人信息
+    /// </summary>
+    private List<ServerEnemyInfo> CollectEnemyInfos(ServerBattleContext context)
+    {
+        var result = new List<ServerEnemyInfo>();
+
+        // 按敌人名称分组统计
+        var groupedEnemies = context.Enemies.GroupBy(e => e.Name);
+        foreach (var group in groupedEnemies)
+        {
+            result.Add(new ServerEnemyInfo
+            {
+                Name = group.Key,
+                Count = group.Count()
+            });
+        }
+
+        return result;
     }
 
     /// <summary>
@@ -371,6 +403,9 @@ public class GameEngineService
         
         if (success)
         {
+            // 取消相关的战斗刷新
+            _battleFlowService.CancelBattleRefresh(battleId);
+            
             _logger.LogInformation("Battle manually stopped: {BattleId}", battleId);
         }
         
@@ -472,5 +507,56 @@ public class GameEngineService
         
         context.ActionHistory.Add(action);
         return true;
+    }
+
+    /// <summary>
+    /// 检查玩家是否在战斗刷新状态（用于战斗流程服务）
+    /// </summary>
+    public bool IsPlayerInBattleRefresh(string playerId)
+    {
+        return _battleFlowService.IsPlayerInBattleRefresh(playerId);
+    }
+
+    /// <summary>
+    /// 获取玩家战斗刷新剩余时间（用于战斗流程服务）
+    /// </summary>
+    public double GetPlayerBattleRefreshTime(string playerId)
+    {
+        return _battleFlowService.GetPlayerBattleRefreshTime(playerId);
+    }
+
+    /// <summary>
+    /// 创建副本战斗（简化版本，用于战斗流程服务）
+    /// </summary>
+    public BattleStateDto StartDungeonBattle(string dungeonId, List<string> playerIds)
+    {
+        var primaryPlayerId = playerIds.FirstOrDefault() ?? "";
+        var request = new StartBattleRequest
+        {
+            CharacterId = primaryPlayerId,
+            EnemyId = dungeonId,
+            PartyId = playerIds.Count > 1 ? Guid.NewGuid().ToString() : null
+        };
+
+        // 设置副本特定的战斗类型
+        var battle = StartBattle(request);
+        
+        // 更新服务端上下文为副本类型
+        if (_serverBattleContexts.TryGetValue(battle.BattleId, out var context))
+        {
+            context.BattleType = "Dungeon";
+            context.DungeonId = dungeonId;
+            context.AllowAutoRevive = true;
+        }
+
+        return battle;
+    }
+
+    /// <summary>
+    /// 取消战斗刷新（用于战斗流程服务）
+    /// </summary>
+    public void CancelBattleRefresh(Guid battleId)
+    {
+        _battleFlowService.CancelBattleRefresh(battleId);
     }
 }

@@ -39,6 +39,7 @@ builder.Services.AddSingleton<ServerSkillSystem>();
 builder.Services.AddSingleton<ServerLootService>();
 builder.Services.AddSingleton<ServerCombatEngine>();
 builder.Services.AddSingleton<ServerPartyService>();
+builder.Services.AddSingleton<ServerBattleFlowService>();
 builder.Services.AddSingleton<ServerProductionService>();
 builder.Services.AddSingleton<ServerInventoryService>();
 builder.Services.AddSingleton<ServerQuestService>();
