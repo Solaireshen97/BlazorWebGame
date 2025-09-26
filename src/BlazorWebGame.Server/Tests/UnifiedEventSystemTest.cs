@@ -197,7 +197,7 @@ namespace BlazorWebGame.Server.Tests
 
             using var eventQueue = new UnifiedEventQueue(new UnifiedEventQueueConfig
             {
-                GameplayQueueSize = eventCount * 2,
+                GameplayQueueSize = 131072, // 128K - power of 2
                 FrameIntervalMs = 1 // 1ms for faster testing
             });
 
