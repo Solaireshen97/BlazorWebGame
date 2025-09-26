@@ -31,6 +31,7 @@ builder.Services.AddSingleton<OfflineService>();
 // 添加新的库存和任务API服务
 builder.Services.AddSingleton<ClientInventoryApiService>();
 builder.Services.AddSingleton<ClientQuestApiService>();
+builder.Services.AddSingleton<ClientEquipmentApiService>();
 builder.Services.AddSingleton<HybridInventoryService>();
 builder.Services.AddSingleton<HybridQuestService>();
 
