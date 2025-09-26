@@ -13,7 +13,7 @@ namespace BlazorWebGame.Shared.Events
     public interface IRedisEventPersistence : IDisposable
     {
         Task PersistFrameAsync(ulong frameNumber, UnifiedEvent[] events, int count);
-        Task<UnifiedEvent[]> LoadFrameAsync(ulong frameNumber);
+        Task<UnifiedEvent[]> ReplayFrameAsync(ulong frameNumber);
         Task<UnifiedEvent[]> LoadFrameRangeAsync(ulong startFrame, ulong endFrame, int maxEvents = 10000);
         Task<bool> FrameExistsAsync(ulong frameNumber);
         Task<ulong> GetLatestFrameAsync();
@@ -56,7 +56,7 @@ namespace BlazorWebGame.Shared.Events
             await Task.Delay(1);
         }
 
-        public async Task<UnifiedEvent[]> LoadFrameAsync(ulong frameNumber)
+        public async Task<UnifiedEvent[]> ReplayFrameAsync(ulong frameNumber)
         {
             if (_disposed)
                 return Array.Empty<UnifiedEvent>();
@@ -191,7 +191,7 @@ namespace BlazorWebGame.Shared.Events
             throw new NotImplementedException("Redis integration not implemented yet");
         }
 
-        public async Task<UnifiedEvent[]> LoadFrameAsync(ulong frameNumber)
+        public async Task<UnifiedEvent[]> ReplayFrameAsync(ulong frameNumber)
         {
             // TODO: 实现从Redis Streams加载
             // 使用Redis XRANGE命令按帧号查询事件
@@ -238,125 +238,6 @@ namespace BlazorWebGame.Shared.Events
         public ulong FrameNumber { get; set; }
         public DateTime Timestamp { get; set; }
         public UnifiedEvent[] Events { get; set; } = Array.Empty<UnifiedEvent>();
-    }
-
-    /// <summary>
-    /// 事件重放服务
-    /// </summary>
-    public class EventReplayService
-    {
-        private readonly IRedisEventPersistence _persistence;
-        private readonly UnifiedEventQueue _eventQueue;
-        private readonly ILogger? _logger;
-
-        public EventReplayService(IRedisEventPersistence persistence, UnifiedEventQueue eventQueue, 
-            ILogger? logger = null)
-        {
-            _persistence = persistence ?? throw new ArgumentNullException(nameof(persistence));
-            _eventQueue = eventQueue ?? throw new ArgumentNullException(nameof(eventQueue));
-            _logger = logger;
-        }
-
-        /// <summary>
-        /// 重放指定帧范围的事件
-        /// </summary>
-        public async Task<int> ReplayFrameRangeAsync(ulong startFrame, ulong endFrame, 
-            CancellationToken cancellationToken = default)
-        {
-            _logger?.LogInformation("Starting event replay from frame {StartFrame} to {EndFrame}", 
-                startFrame, endFrame);
-
-            var totalReplayed = 0;
-            
-            try
-            {
-                var events = await _persistence.LoadFrameRangeAsync(startFrame, endFrame);
-                
-                foreach (var evt in events)
-                {
-                    if (cancellationToken.IsCancellationRequested)
-                        break;
-
-                    var modifiedEvent = evt;
-                    // 可以在这里修改事件的时间戳或其他属性
-                    
-                    if (_eventQueue.Enqueue(ref modifiedEvent))
-                    {
-                        totalReplayed++;
-                    }
-                }
-
-                _logger?.LogInformation("Event replay completed. Replayed {Count} events", totalReplayed);
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Error during event replay from frame {StartFrame} to {EndFrame}", 
-                    startFrame, endFrame);
-                throw;
-            }
-
-            return totalReplayed;
-        }
-
-        /// <summary>
-        /// 重放单个帧的事件
-        /// </summary>
-        public async Task<int> ReplayFrameAsync(ulong frameNumber, CancellationToken cancellationToken = default)
-        {
-            return await ReplayFrameRangeAsync(frameNumber, frameNumber, cancellationToken);
-        }
-
-        /// <summary>
-        /// 验证帧序列的完整性
-        /// </summary>
-        public async Task<FrameIntegrityReport> ValidateFrameIntegrityAsync(ulong startFrame, ulong endFrame)
-        {
-            var report = new FrameIntegrityReport
-            {
-                StartFrame = startFrame,
-                EndFrame = endFrame,
-                MissingFrames = new List<ulong>(),
-                CorruptFrames = new List<ulong>()
-            };
-
-            for (var frame = startFrame; frame <= endFrame; frame++)
-            {
-                try
-                {
-                    if (!await _persistence.FrameExistsAsync(frame))
-                    {
-                        report.MissingFrames.Add(frame);
-                        continue;
-                    }
-
-                    var events = await _persistence.LoadFrameAsync(frame);
-                    if (events.Length == 0)
-                    {
-                        report.EmptyFrames++;
-                        continue;
-                    }
-
-                    // 验证事件完整性
-                    foreach (var evt in events)
-                    {
-                        if (evt.Frame != frame)
-                        {
-                            report.CorruptFrames.Add(frame);
-                            break;
-                        }
-                    }
-
-                    report.ValidFrames++;
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogWarning(ex, "Error validating frame {Frame}", frame);
-                    report.CorruptFrames.Add(frame);
-                }
-            }
-
-            return report;
-        }
     }
 
     /// <summary>

@@ -109,7 +109,33 @@ namespace BlazorWebGame.Server.Services
         }
 
         /// <summary>
-        /// 入队战斗事件
+        /// 便利方法：创建并入队事件
+        /// </summary>
+        public bool EnqueueEvent(ushort eventType, EventPriority priority = EventPriority.Gameplay, 
+            ulong actorId = 0, ulong targetId = 0)
+        {
+            var evt = new UnifiedEvent(eventType, priority)
+            {
+                ActorId = actorId,
+                TargetId = targetId
+            };
+            return _eventQueue.Enqueue(ref evt);
+        }
+
+        /// <summary>
+        /// 便利方法：创建并入队带数据的事件
+        /// </summary>
+        public bool EnqueueEvent<T>(ushort eventType, T data, EventPriority priority = EventPriority.Gameplay,
+            ulong actorId = 0, ulong targetId = 0) where T : unmanaged
+        {
+            var evt = new UnifiedEvent(eventType, priority)
+            {
+                ActorId = actorId,
+                TargetId = targetId
+            };
+            evt.SetData(data);
+            return _eventQueue.Enqueue(ref evt);
+        }
         /// </summary>
         public bool EnqueueBattleEvent(ushort eventType, ulong battleId, ulong actorId = 0, ulong targetId = 0, object? eventData = null)
         {
