@@ -155,6 +155,12 @@ builder.Services.AddSingleton<DemoUserService>();
 // 注册共享事件管理器
 builder.Services.AddSingleton<BlazorWebGame.Shared.Events.GameEventManager>();
 
+// 注册事件持久化服务（开发环境使用内存实现）
+builder.Services.AddSingleton<BlazorWebGame.Shared.Events.IRedisEventPersistence, BlazorWebGame.Shared.Events.InMemoryEventPersistence>();
+
+// 注册统一事件系统
+builder.Services.AddSingleton<UnifiedEventService>();
+
 // 注册服务定位器（单例模式）
 builder.Services.AddSingleton<ServerServiceLocator>();
 
@@ -236,6 +242,17 @@ if (app.Environment.IsDevelopment())
         catch (Exception ex)
         {
             logger.LogError(ex, "Party system test failed");
+        }
+        
+        // 运行统一事件系统测试
+        try
+        {
+            BlazorWebGame.Server.Tests.UnifiedEventSystemTest.RunEventSystemTest(app.Services, logger);
+            BlazorWebGame.Server.Tests.UnifiedEventSystemTest.RunPerformanceBenchmark(logger);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Unified event system test failed");
         }
     }
     else

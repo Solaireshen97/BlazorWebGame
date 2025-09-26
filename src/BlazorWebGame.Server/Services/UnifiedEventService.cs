@@ -15,10 +15,15 @@ namespace BlazorWebGame.Server.Services
         private readonly IHubContext<GameHub> _hubContext;
         private readonly ILogger<UnifiedEventService> _logger;
         private readonly ServerEventService _legacyEventService;
+        private readonly IRedisEventPersistence _eventPersistence;
         
         // 事件处理器映射
         private readonly Dictionary<ushort, List<IUnifiedEventHandler>> _handlers;
         private readonly object _handlersLock = new();
+
+        // 后台持久化任务
+        private readonly Timer _persistenceTimer;
+        private readonly List<UnifiedEvent> _framePersistenceBuffer = new();
 
         public UnifiedEventQueue EventQueue => _eventQueue;
         public EventDispatcher Dispatcher => _eventQueue.Dispatcher;
@@ -26,11 +31,13 @@ namespace BlazorWebGame.Server.Services
         public UnifiedEventService(
             IHubContext<GameHub> hubContext, 
             ILogger<UnifiedEventService> logger,
-            ServerEventService legacyEventService)
+            ServerEventService legacyEventService,
+            IRedisEventPersistence? eventPersistence = null)
         {
             _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _legacyEventService = legacyEventService ?? throw new ArgumentNullException(nameof(legacyEventService));
+            _eventPersistence = eventPersistence ?? new InMemoryEventPersistence();
             
             // 创建统一事件队列
             var config = new UnifiedEventQueueConfig
@@ -49,7 +56,11 @@ namespace BlazorWebGame.Server.Services
             // 注册核心事件处理器
             RegisterCoreHandlers();
             
-            _logger.LogInformation("UnifiedEventService initialized with 60fps processing");
+            // 启动后台持久化定时器 - 每秒持久化一次
+            _persistenceTimer = new Timer(PersistFrameEvents, null, 
+                TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+            
+            _logger.LogInformation("UnifiedEventService initialized with 60fps processing and event persistence");
         }
 
         /// <summary>
@@ -192,6 +203,47 @@ namespace BlazorWebGame.Server.Services
         }
 
         /// <summary>
+        /// 后台持久化事件帧
+        /// </summary>
+        private async void PersistFrameEvents(object? state)
+        {
+            try
+            {
+                var currentFrame = _eventQueue.CurrentFrame;
+                if (currentFrame <= 0)
+                    return;
+
+                // 收集当前帧的事件用于持久化
+                var events = new UnifiedEvent[256]; // 临时缓冲区
+                var count = _eventQueue.CollectFrameEvents(events, events.Length);
+                
+                if (count > 0)
+                {
+                    await _eventPersistence.PersistFrameAsync((ulong)currentFrame, events, count);
+                    _logger.LogDebug("Persisted {Count} events for frame {Frame}", count, currentFrame);
+                }
+
+                // 定期清理旧帧（保留24小时的数据）
+                if (currentFrame % 3600 == 0) // 每小时清理一次
+                {
+                    await _eventPersistence.CleanupOldFramesAsync(TimeSpan.FromHours(24));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during frame persistence");
+            }
+        }
+
+        /// <summary>
+        /// 创建事件重放服务
+        /// </summary>
+        public EventReplayService CreateReplayService()
+        {
+            return new EventReplayService(_eventPersistence, _eventQueue, _logger);
+        }
+
+        /// <summary>
         /// 字符串哈希函数 - 将字符串ID转换为ulong
         /// </summary>
         private static ulong HashString(string input)
@@ -214,7 +266,9 @@ namespace BlazorWebGame.Server.Services
 
         public void Dispose()
         {
+            _persistenceTimer?.Dispose();
             _eventQueue?.Dispose();
+            _eventPersistence?.Dispose();
         }
     }
 
