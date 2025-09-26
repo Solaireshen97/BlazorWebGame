@@ -115,3 +115,20 @@ public class OfflineSettlementConfigDto
         ["Default"] = 1.0
     };
 }
+
+/// <summary>
+/// 离线战斗进度同步请求传输对象
+/// </summary>
+public class OfflineBattleProgressSyncRequest
+{
+    public string PlayerId { get; set; } = string.Empty;
+    public TimeSpan OfflineTime { get; set; }
+    public int CharacterLevel { get; set; } = 1;
+    public int EstimatedBattles { get; set; }
+    public int EstimatedExperience { get; set; }
+    public int EstimatedGold { get; set; }
+    public double WinRate { get; set; } = 0.7;
+    public int MaxWaveReached { get; set; } = 1;
+    public Dictionary<string, object> ProgressDetails { get; set; } = new();
+    public DateTime SyncTime { get; set; } = DateTime.UtcNow;
+}

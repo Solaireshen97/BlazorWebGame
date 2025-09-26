@@ -44,4 +44,12 @@ public class PartyApiService : BaseApiService
     {
         return await GetAsync<PartyDto>($"api/party/{partyId}");
     }
+
+    /// <summary>
+    /// 更新队伍进度（离线同步专用）
+    /// </summary>
+    public async Task<ApiResponse<object>> UpdateTeamProgressAsync(string partyId, TeamProgressUpdateRequest request)
+    {
+        return await PutAsync<object>($"api/party/{partyId}/progress", request);
+    }
 }

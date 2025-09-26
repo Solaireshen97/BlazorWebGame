@@ -129,21 +129,10 @@ public class GameApiService
     /// </summary>
     public async Task<ApiResponse<object>> UpdateCharacterAsync(CharacterUpdateRequest request)
     {
-        // 这个方法在新的API结构中可能需要重新映射到Character API
         try
         {
-            var result = await _apiClient.Character.UpdateCharacterStatusAsync(request.CharacterId, new UpdateCharacterStatusRequest
-            {
-                CharacterId = request.CharacterId,
-                Data = request.Updates
-            });
-            
-            return new ApiResponse<object>
-            {
-                Success = result.Success,
-                Message = result.Message,
-                Data = result.Data
-            };
+            // 使用CharacterApiService的新更新方法
+            return await _apiClient.Character.UpdateCharacterAsync(request.CharacterId, request);
         }
         catch (Exception ex)
         {
@@ -161,20 +150,35 @@ public class GameApiService
     /// </summary>
     public async Task<ApiResponse<object>> UpdateTeamProgressAsync(TeamProgressUpdateRequest request)
     {
-        // 将队伍进度更新映射到Party API或其他相关API
         try
         {
-            // 这里可能需要根据实际的服务端API实现来调整
-            _logger.LogWarning("UpdateTeamProgressAsync not yet implemented in new API structure");
-            return new ApiResponse<object>
-            {
-                Success = false,
-                Message = "Not implemented in new API structure"
-            };
+            // 使用PartyApiService的新更新方法
+            return await _apiClient.Party.UpdateTeamProgressAsync(request.PartyId, request);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating team progress {PartyId}", request.PartyId);
+            return new ApiResponse<object>
+            {
+                Success = false,
+                Message = "Network error occurred"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 同步离线战斗进度
+    /// </summary>
+    public async Task<ApiResponse<object>> SyncOfflineBattleProgressAsync(string playerId, OfflineBattleProgressSyncRequest request)
+    {
+        try
+        {
+            // 使用OfflineSettlementApiService的新同步方法
+            return await _apiClient.OfflineSettlement.SyncOfflineBattleProgressAsync(playerId, request);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error syncing offline battle progress for player {PlayerId}", playerId);
             return new ApiResponse<object>
             {
                 Success = false,

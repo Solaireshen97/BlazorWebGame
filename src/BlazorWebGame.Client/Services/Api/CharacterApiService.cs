@@ -61,4 +61,12 @@ public class CharacterApiService : BaseApiService
     {
         return await GetAsync<double>($"api/player/{characterId}/profession/{professionType}/{profession}/progress");
     }
+
+    /// <summary>
+    /// 更新角色数据（离线同步专用）
+    /// </summary>
+    public async Task<ApiResponse<object>> UpdateCharacterAsync(string characterId, CharacterUpdateRequest request)
+    {
+        return await PutAsync<object>($"api/character/{characterId}/update", request);
+    }
 }
