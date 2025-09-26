@@ -157,7 +157,7 @@ public class GameEngineService
             PartyId = context.PartyId?.ToString(),
             IsActive = context.IsActive,
             LastUpdated = context.LastUpdate,
-            BattleType = context.BattleType == "Normal" ? BattleType.Normal : BattleType.Dungeon,
+            BattleType = context.BattleType == "Normal" ? BlazorWebGame.Shared.DTOs.BattleType.Normal : BlazorWebGame.Shared.DTOs.BattleType.Dungeon,
             Status = context.Status switch
             {
                 "Active" => BattleStatus.Active,
