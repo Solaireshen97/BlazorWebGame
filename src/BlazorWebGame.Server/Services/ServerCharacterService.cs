@@ -12,11 +12,22 @@ namespace BlazorWebGame.Server.Services
         private readonly ConcurrentDictionary<string, CharacterDetailsDto> _characters = new();
         private readonly GameEventManager _eventManager;
         private readonly ILogger<ServerCharacterService> _logger;
+        private readonly ServerPlayerAttributeService _playerAttributeService;
+        private readonly ServerPlayerProfessionService _playerProfessionService;
+        private readonly ServerPlayerUtilityService _playerUtilityService;
 
-        public ServerCharacterService(GameEventManager eventManager, ILogger<ServerCharacterService> logger)
+        public ServerCharacterService(
+            GameEventManager eventManager, 
+            ILogger<ServerCharacterService> logger,
+            ServerPlayerAttributeService playerAttributeService,
+            ServerPlayerProfessionService playerProfessionService,
+            ServerPlayerUtilityService playerUtilityService)
         {
             _eventManager = eventManager;
             _logger = logger;
+            _playerAttributeService = playerAttributeService;
+            _playerProfessionService = playerProfessionService;
+            _playerUtilityService = playerUtilityService;
             
             // 初始化一些测试角色
             InitializeTestCharacters();
@@ -76,6 +87,10 @@ namespace BlazorWebGame.Server.Services
 
             // 初始化专业经验值
             InitializeCharacterProfessions(character);
+            
+            // 使用新的玩家服务初始化角色
+            _playerUtilityService.InitializeCollections(character);
+            _playerAttributeService.InitializePlayerAttributes(character);
 
             _characters.TryAdd(characterId, character);
 
@@ -108,39 +123,30 @@ namespace BlazorWebGame.Server.Services
             if (!_characters.TryGetValue(request.CharacterId, out var character))
                 return false;
 
-            var oldLevel = GetLevel(character, request.ProfessionType, request.Profession);
-            
-            // 添加经验值
-            switch (request.ProfessionType.ToLower())
+            (bool leveledUp, int oldLevel, int newLevel) = request.ProfessionType.ToLower() switch
             {
-                case "battle":
-                    if (character.BattleProfessionXP.ContainsKey(request.Profession))
-                        character.BattleProfessionXP[request.Profession] += request.Amount;
-                    else
-                        character.BattleProfessionXP[request.Profession] = request.Amount;
-                    break;
-                case "gathering":
-                    if (character.GatheringProfessionXP.ContainsKey(request.Profession))
-                        character.GatheringProfessionXP[request.Profession] += request.Amount;
-                    else
-                        character.GatheringProfessionXP[request.Profession] = request.Amount;
-                    break;
-                case "production":
-                    if (character.ProductionProfessionXP.ContainsKey(request.Profession))
-                        character.ProductionProfessionXP[request.Profession] += request.Amount;
-                    else
-                        character.ProductionProfessionXP[request.Profession] = request.Amount;
-                    break;
-                default:
-                    return false;
-            }
+                "battle" => _playerProfessionService.AddBattleXP(character, 
+                    Enum.Parse<BlazorWebGame.Models.BattleProfession>(request.Profession), request.Amount),
+                "gathering" => _playerProfessionService.AddGatheringXP(character,
+                    Enum.Parse<BlazorWebGame.Models.GatheringProfession>(request.Profession), request.Amount),
+                "production" => _playerProfessionService.AddProductionXP(character,
+                    Enum.Parse<BlazorWebGame.Models.ProductionProfession>(request.Profession), request.Amount),
+                _ => (false, 0, 0)
+            };
 
-            var newLevel = GetLevel(character, request.ProfessionType, request.Profession);
             character.LastUpdated = DateTime.UtcNow;
 
             // 检查是否升级
-            if (newLevel > oldLevel)
+            if (leveledUp)
             {
+                // 如果是战斗专业升级，需要更新属性
+                if (request.ProfessionType.ToLower() == "battle" && request.Profession == character.SelectedBattleProfession)
+                {
+                    _playerAttributeService.UpdateBaseAttributes(character);
+                    character.MaxHealth = _playerAttributeService.GetTotalMaxHealth(character);
+                    character.Health = character.MaxHealth; // 升级时恢复满血
+                }
+
                 _eventManager.Raise(new GameEventArgs(GameEventType.LevelUp, request.CharacterId, 
                     new { ProfessionType = request.ProfessionType, Profession = request.Profession, OldLevel = oldLevel, NewLevel = newLevel }));
                 
@@ -191,6 +197,62 @@ namespace BlazorWebGame.Server.Services
 
             await Task.Delay(1); // 模拟异步操作
             return true;
+        }
+
+        /// <summary>
+        /// 获取角色的总属性值
+        /// </summary>
+        public AttributeSetDto? GetCharacterTotalAttributes(string characterId)
+        {
+            if (_characters.TryGetValue(characterId, out var character))
+            {
+                return _playerAttributeService.GetTotalAttributes(character);
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 获取角色的攻击力
+        /// </summary>
+        public int GetCharacterAttackPower(string characterId)
+        {
+            if (_characters.TryGetValue(characterId, out var character))
+            {
+                return _playerAttributeService.GetTotalAttackPower(character);
+            }
+            return 0;
+        }
+
+        /// <summary>
+        /// 获取角色专业等级
+        /// </summary>
+        public int GetCharacterProfessionLevel(string characterId, string professionType, string profession)
+        {
+            if (!_characters.TryGetValue(characterId, out var character))
+                return 1;
+
+            return professionType.ToLower() switch
+            {
+                "battle" => _playerProfessionService.GetLevel(character, 
+                    Enum.Parse<BlazorWebGame.Models.BattleProfession>(profession)),
+                "gathering" => _playerProfessionService.GetLevel(character,
+                    Enum.Parse<BlazorWebGame.Models.GatheringProfession>(profession)),
+                "production" => _playerProfessionService.GetLevel(character,
+                    Enum.Parse<BlazorWebGame.Models.ProductionProfession>(profession)),
+                _ => 1
+            };
+        }
+
+        /// <summary>
+        /// 检查角色是否满足等级要求
+        /// </summary>
+        public bool CheckLevelRequirement(string characterId, string profession, int requiredLevel)
+        {
+            if (!_characters.TryGetValue(characterId, out var character))
+                return false;
+
+            var battleProfession = Enum.Parse<BlazorWebGame.Models.BattleProfession>(profession);
+            return _playerUtilityService.MeetsLevelRequirement(character, battleProfession, requiredLevel);
         }
 
         /// <summary>
@@ -261,6 +323,8 @@ namespace BlazorWebGame.Server.Services
                 LastUpdated = DateTime.UtcNow
             };
             InitializeCharacterProfessions(testCharacter1);
+            _playerUtilityService.InitializeCollections(testCharacter1);
+            _playerAttributeService.InitializePlayerAttributes(testCharacter1);
             _characters.TryAdd(testCharacter1.Id, testCharacter1);
 
             var testCharacter2 = new CharacterDetailsDto
@@ -277,9 +341,11 @@ namespace BlazorWebGame.Server.Services
                 LastUpdated = DateTime.UtcNow
             };
             InitializeCharacterProfessions(testCharacter2);
+            _playerUtilityService.InitializeCollections(testCharacter2);
+            _playerAttributeService.InitializePlayerAttributes(testCharacter2);
             _characters.TryAdd(testCharacter2.Id, testCharacter2);
 
-            _logger.LogInformation("Initialized test characters");
+            _logger.LogInformation("Initialized test characters with player services");
         }
     }
 }

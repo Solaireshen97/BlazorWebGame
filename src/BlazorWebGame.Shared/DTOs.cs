@@ -284,6 +284,21 @@ public class CharacterDetailsDto : CharacterDto
     public Dictionary<string, int> Reputation { get; set; } = new();
     public List<string> CompletedQuestIds { get; set; } = new();
     public Dictionary<string, int> QuestProgress { get; set; } = new();
+    
+    // Additional properties needed for server-side player services
+    public List<InventorySlotDto> Inventory { get; set; } = new();
+    public Dictionary<string, string> EquippedItems { get; set; } = new();
+    public List<StatBuffDto> ActiveBuffs { get; set; } = new();
+    public Dictionary<string, DateTime> SkillCooldowns { get; set; } = new();
+    public HashSet<string> AutoSellItemIds { get; set; } = new();
+    public HashSet<string> DefeatedMonsterIds { get; set; } = new();
+    public Dictionary<string, DateTime> ConsumableCooldowns { get; set; } = new();
+    public HashSet<string> LearnedRecipeIds { get; set; } = new();
+    public Dictionary<int, string> PotionQuickSlots { get; set; } = new();
+    public Dictionary<int, string> CombatFoodQuickSlots { get; set; } = new();
+    public Dictionary<int, string> GatheringFoodQuickSlots { get; set; } = new();
+    public Dictionary<int, string> ProductionFoodQuickSlots { get; set; } = new();
+    public AttributeSetDto? BaseAttributes { get; set; }
 }
 
 /// <summary>
@@ -575,4 +590,52 @@ public class UpdateQuestProgressRequest
     public string QuestId { get; set; } = string.Empty;
     public string ObjectiveId { get; set; } = string.Empty;
     public int Progress { get; set; }
+}
+
+/// <summary>
+/// 属性集合DTO
+/// </summary>
+public class AttributeSetDto
+{
+    public int Strength { get; set; }
+    public int Agility { get; set; }
+    public int Intellect { get; set; }
+    public int Spirit { get; set; }
+    public int Stamina { get; set; }
+    
+    public AttributeSetDto Clone()
+    {
+        return new AttributeSetDto
+        {
+            Strength = this.Strength,
+            Agility = this.Agility,
+            Intellect = this.Intellect,
+            Spirit = this.Spirit,
+            Stamina = this.Stamina
+        };
+    }
+    
+    public void Add(AttributeSetDto other)
+    {
+        this.Strength += other.Strength;
+        this.Agility += other.Agility;
+        this.Intellect += other.Intellect;
+        this.Spirit += other.Spirit;
+        this.Stamina += other.Stamina;
+    }
+}
+
+/// <summary>
+/// 状态Buff DTO
+/// </summary>
+public class StatBuffDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string BuffType { get; set; } = string.Empty;
+    public double BuffValue { get; set; }
+    public DateTime StartTime { get; set; }
+    public TimeSpan Duration { get; set; }
+    public DateTime EndTime => StartTime.Add(Duration);
+    public bool IsExpired => DateTime.UtcNow > EndTime;
 }
