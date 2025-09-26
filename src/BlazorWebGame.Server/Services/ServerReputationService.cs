@@ -14,7 +14,7 @@ namespace BlazorWebGame.Server.Services;
 public class ServerReputationService
 {
     private readonly ILogger<ServerReputationService> _logger;
-    private readonly DataStorageService _dataStorage;
+    private readonly DataStorageIntegrationService _dataIntegration;
 
     // 声望等级定义（从客户端 Player.cs 迁移）
     private static readonly List<ReputationTierInfo> ReputationTiers = new()
@@ -33,10 +33,10 @@ public class ServerReputationService
         { Faction.ArgentDawn, "ArgentDawn" }
     };
 
-    public ServerReputationService(ILogger<ServerReputationService> logger, DataStorageService dataStorage)
+    public ServerReputationService(ILogger<ServerReputationService> logger, DataStorageIntegrationService dataIntegration)
     {
         _logger = logger;
-        _dataStorage = dataStorage;
+        _dataIntegration = dataIntegration;
     }
 
     /// <summary>
@@ -46,7 +46,7 @@ public class ServerReputationService
     {
         try
         {
-            var character = await _dataStorage.GetPlayerDataAsync(characterId);
+            var character = await _dataIntegration.LoadPlayerFromStorageAsync(characterId);
             if (character == null)
             {
                 throw new ArgumentException($"Character not found: {characterId}");
@@ -78,7 +78,7 @@ public class ServerReputationService
     {
         try
         {
-            var character = await _dataStorage.GetPlayerDataAsync(characterId);
+            var character = await _dataIntegration.LoadPlayerFromStorageAsync(characterId);
             if (character == null)
             {
                 throw new ArgumentException($"Character not found: {characterId}");
@@ -144,7 +144,7 @@ public class ServerReputationService
     {
         try
         {
-            var character = await _dataStorage.GetPlayerDataAsync(request.CharacterId);
+            var character = await _dataIntegration.LoadPlayerFromStorageAsync(request.CharacterId);
             if (character == null)
             {
                 throw new ArgumentException($"Character not found: {request.CharacterId}");
@@ -155,7 +155,7 @@ public class ServerReputationService
             var newValue = Math.Max(0, oldValue + request.Amount); // 声望不能为负数
 
             character.Reputation[faction] = newValue;
-            await _dataStorage.SavePlayerDataAsync(character);
+            await _dataIntegration.SyncPlayerToStorageAsync(character);
 
             // 记录声望变更历史
             await RecordReputationHistory(request.CharacterId, request.FactionName, request.Amount, newValue, request.Reason);
@@ -179,7 +179,7 @@ public class ServerReputationService
     {
         try
         {
-            var character = await _dataStorage.GetPlayerDataAsync(request.CharacterId);
+            var character = await _dataIntegration.LoadPlayerFromStorageAsync(request.CharacterId);
             if (character == null)
             {
                 throw new ArgumentException($"Character not found: {request.CharacterId}");
@@ -200,7 +200,7 @@ public class ServerReputationService
                     request.CharacterId, change.FactionName, oldValue, newValue, change.Amount);
             }
 
-            await _dataStorage.SavePlayerDataAsync(character);
+            await _dataIntegration.SyncPlayerToStorageAsync(character);
             return await GetReputationAsync(request.CharacterId);
         }
         catch (Exception ex)
@@ -258,7 +258,7 @@ public class ServerReputationService
     {
         try
         {
-            var character = await _dataStorage.GetPlayerDataAsync(characterId);
+            var character = await _dataIntegration.LoadPlayerFromStorageAsync(characterId);
             if (character == null)
             {
                 throw new ArgumentException($"Character not found: {characterId}");
@@ -303,7 +303,7 @@ public class ServerReputationService
     {
         try
         {
-            var character = await _dataStorage.GetPlayerDataAsync(characterId);
+            var character = await _dataIntegration.LoadPlayerFromStorageAsync(characterId);
             if (character == null)
             {
                 throw new ArgumentException($"Character not found: {characterId}");

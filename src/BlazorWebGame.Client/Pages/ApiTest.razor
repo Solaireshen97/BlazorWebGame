@@ -4,6 +4,7 @@
 @inject GameApiClient ApiClient
 @inject GameApiService LegacyApi
 @inject ShopApiService ShopApi
+@inject ReputationApiService ReputationApi
 
 <PageTitle>API 测试页面</PageTitle>
 
@@ -122,7 +123,24 @@
             </div>
         </div>
         
-        <div class="col-md-8">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>⭐ 声望服务测试</h5>
+                </div>
+                <div class="card-body">
+                    <button class="btn btn-success mb-2" @onclick="TestGetReputation">获取声望信息</button>
+                    <button class="btn btn-info mb-2" @onclick="TestGetReputationDetails">获取详细声望</button>
+                    <button class="btn btn-warning mb-2" @onclick="TestUpdateReputation">测试声望更新</button>
+                    <button class="btn btn-primary mb-2" @onclick="TestReputationRewards">获取声望奖励</button>
+                    <div class="alert alert-info small">
+                        <strong>声望状态:</strong> @_reputationStatus
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
             <div class="card">
                 <div class="card-header">
                     <h5>📊 商店测试结果</h5>
@@ -152,6 +170,37 @@
             </div>
         </div>
     </div>
+    
+    <div class="row mt-3">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5>⭐ 声望测试结果</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>声望测试统计</h6>
+                            <div class="alert alert-primary small">
+                                成功: @_reputationTestSuccessCount, 失败: @_reputationTestFailureCount
+                            </div>
+                            
+                            <h6>总声望值</h6>
+                            <div class="alert alert-success small">@_totalReputationValue 点</div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>最后操作结果</h6>
+                            <div class="alert alert-@(_lastReputationTestSuccess ? "success" : "danger") small">
+                                @_lastReputationTestMessage
+                            </div>
+                            
+                            <h6>声望详情数量</h6>
+                            <div class="alert alert-info small">@_reputationDetailCount 个阵营</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     
     <!-- New Enhanced Testing Section -->
     <div class="row mt-3">
@@ -283,6 +332,15 @@
     private string _lastShopTestMessage = "尚未进行测试";
     private int _shopTestSuccessCount = 0;
     private int _shopTestFailureCount = 0;
+    
+    // Reputation test status variables
+    private string _reputationStatus = "未测试";
+    private int _totalReputationValue = 0;
+    private int _reputationDetailCount = 0;
+    private bool _lastReputationTestSuccess = false;
+    private string _lastReputationTestMessage = "尚未进行测试";
+    private int _reputationTestSuccessCount = 0;
+    private int _reputationTestFailureCount = 0;
 
     private void AddLog(string message)
     {
@@ -512,6 +570,17 @@
         await Task.Delay(500);
         
         await TestMonitoringServices();
+        await Task.Delay(500);
+        
+        // 添加声望测试
+        await TestGetReputation();
+        await Task.Delay(500);
+        
+        await TestGetReputationDetails();
+        await Task.Delay(500);
+        
+        await TestReputationRewards();
+        await Task.Delay(500);
         
         AddLog("✅ 所有测试完成!");
     }
@@ -1323,6 +1392,207 @@
             _lastShopTestMessage = $"异常: {ex.Message}";
             _shopTestFailureCount++;
             AddLog($"❌ 出售测试异常: {ex.Message}");
+        }
+    }
+    
+    // ===== Reputation API Test Methods =====
+    
+    /// <summary>
+    /// 测试获取声望信息
+    /// </summary>
+    private async Task TestGetReputation()
+    {
+        try
+        {
+            AddLog("⭐ 获取声望信息...");
+            
+            // 使用测试角色ID（如果存在）
+            var testCharacterId = "test-character-id";
+            var response = await ReputationApi.GetReputationAsync(testCharacterId);
+            
+            if (response.Success && response.Data != null)
+            {
+                var reputation = response.Data;
+                _totalReputationValue = reputation.FactionReputation.Values.Sum();
+                _lastReputationTestSuccess = true;
+                _lastReputationTestMessage = $"成功获取声望信息，总声望: {_totalReputationValue}";
+                _reputationTestSuccessCount++;
+                
+                AddLog($"✅ 获取声望信息成功，总声望: {_totalReputationValue}");
+                
+                foreach (var faction in reputation.FactionReputation)
+                {
+                    AddLog($"   - {faction.Key}: {faction.Value} 点");
+                }
+            }
+            else
+            {
+                _lastReputationTestSuccess = false;
+                _lastReputationTestMessage = response.Message;
+                _reputationTestFailureCount++;
+                AddLog($"⚠️ 获取声望信息失败: {response.Message}");
+            }
+            
+            _reputationStatus = "已测试";
+        }
+        catch (Exception ex)
+        {
+            _lastReputationTestSuccess = false;
+            _lastReputationTestMessage = $"异常: {ex.Message}";
+            _reputationTestFailureCount++;
+            AddLog($"❌ 声望信息测试异常: {ex.Message}");
+            _reputationStatus = "测试异常";
+        }
+    }
+    
+    /// <summary>
+    /// 测试获取详细声望信息
+    /// </summary>
+    private async Task TestGetReputationDetails()
+    {
+        try
+        {
+            AddLog("⭐ 获取详细声望信息...");
+            
+            var testCharacterId = "test-character-id";
+            var response = await ReputationApi.GetAllReputationDetailsAsync(testCharacterId);
+            
+            if (response.Success && response.Data != null)
+            {
+                _reputationDetailCount = response.Data.Count;
+                _lastReputationTestSuccess = true;
+                _lastReputationTestMessage = $"成功获取 {_reputationDetailCount} 个阵营的详细信息";
+                _reputationTestSuccessCount++;
+                
+                AddLog($"✅ 获取到 {_reputationDetailCount} 个阵营的详细声望信息");
+                
+                foreach (var detail in response.Data.Take(3)) // 只显示前3个
+                {
+                    AddLog($"   - {detail.FactionName}: {detail.CurrentTier.Name} ({detail.CurrentValue}/{detail.CurrentTier.MaxValue})");
+                    AddLog($"     进度: {detail.ProgressPercentage:F1}%");
+                }
+                
+                if (response.Data.Count > 3)
+                {
+                    AddLog($"   ... 还有 {response.Data.Count - 3} 个阵营");
+                }
+            }
+            else
+            {
+                _lastReputationTestSuccess = false;
+                _lastReputationTestMessage = response.Message;
+                _reputationTestFailureCount++;
+                AddLog($"⚠️ 获取详细声望信息失败: {response.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _lastReputationTestSuccess = false;
+            _lastReputationTestMessage = $"异常: {ex.Message}";
+            _reputationTestFailureCount++;
+            AddLog($"❌ 详细声望信息测试异常: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 测试声望更新
+    /// </summary>
+    private async Task TestUpdateReputation()
+    {
+        try
+        {
+            AddLog("⭐ 测试声望更新...");
+            
+            var testCharacterId = "test-character-id";
+            var updateRequest = new UpdateReputationRequest
+            {
+                CharacterId = testCharacterId,
+                FactionName = "StormwindGuard",
+                Amount = 100,
+                Reason = "API测试奖励"
+            };
+            
+            var response = await ReputationApi.UpdateReputationAsync(updateRequest);
+            
+            if (response.Success && response.Data != null)
+            {
+                _lastReputationTestSuccess = true;
+                _lastReputationTestMessage = "声望更新测试成功";
+                _reputationTestSuccessCount++;
+                
+                AddLog($"✅ 声望更新成功: 暴风城卫兵 +100");
+                
+                // 显示更新后的声望值
+                var guardReputation = response.Data.FactionReputation.GetValueOrDefault("StormwindGuard", 0);
+                AddLog($"💰 暴风城卫兵当前声望: {guardReputation}");
+            }
+            else
+            {
+                _lastReputationTestSuccess = false;
+                _lastReputationTestMessage = response.Message;
+                _reputationTestFailureCount++;
+                AddLog($"⚠️ 声望更新测试失败: {response.Message}");
+                AddLog("ℹ️ 这通常是因为测试角色不存在，这是正常的");
+            }
+        }
+        catch (Exception ex)
+        {
+            _lastReputationTestSuccess = false;
+            _lastReputationTestMessage = $"异常: {ex.Message}";
+            _reputationTestFailureCount++;
+            AddLog($"❌ 声望更新测试异常: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 测试声望奖励信息
+    /// </summary>
+    private async Task TestReputationRewards()
+    {
+        try
+        {
+            AddLog("⭐ 获取声望奖励信息...");
+            
+            var testCharacterId = "test-character-id";
+            var response = await ReputationApi.GetAvailableRewardsAsync(testCharacterId);
+            
+            if (response.Success && response.Data != null)
+            {
+                var rewardCount = response.Data.Count;
+                _lastReputationTestSuccess = true;
+                _lastReputationTestMessage = $"获取到 {rewardCount} 个可用奖励";
+                _reputationTestSuccessCount++;
+                
+                AddLog($"✅ 获取到 {rewardCount} 个声望奖励");
+                
+                foreach (var reward in response.Data.Take(3))
+                {
+                    AddLog($"   - {reward.FactionName} {reward.TierName}:");
+                    AddLog($"     需要声望: {reward.RequiredReputation}");
+                    AddLog($"     奖励物品: {reward.Items.Count} 个");
+                    AddLog($"     特权: {string.Join(", ", reward.Perks)}");
+                }
+                
+                if (response.Data.Count > 3)
+                {
+                    AddLog($"   ... 还有 {response.Data.Count - 3} 个奖励");
+                }
+            }
+            else
+            {
+                _lastReputationTestSuccess = false;
+                _lastReputationTestMessage = response.Message;
+                _reputationTestFailureCount++;
+                AddLog($"⚠️ 获取声望奖励失败: {response.Message}");
+                AddLog("ℹ️ 这通常是因为测试角色不存在，这是正常的");
+            }
+        }
+        catch (Exception ex)
+        {
+            _lastReputationTestSuccess = false;
+            _lastReputationTestMessage = $"异常: {ex.Message}";
+            _reputationTestFailureCount++;
+            AddLog($"❌ 声望奖励测试异常: {ex.Message}");
         }
     }
 }
