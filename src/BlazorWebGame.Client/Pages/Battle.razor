@@ -6,12 +6,41 @@
 @using BlazorWebGame.Models.Monsters
 @using BlazorWebGame.Models.Regions
 @using BlazorWebGame.Services
+@using BlazorWebGame.Client.Services.Api
+@using BlazorWebGame.Shared.DTOs
 @using static BlazorWebGame.Services.CombatService
+@using BattleTypeLocal = BlazorWebGame.Models.Battles.BattleType
+@using BattleTypeServer = BlazorWebGame.Shared.DTOs.BattleType
 @inject GameStateService GameState
 @inject CharacterService CharacterService
+@inject ClientGameStateService NewGameState
+@inject GameApiService GameApi
+@inject OfflineService OfflineService
+@inject IConfiguration Configuration
+@inject ILogger<Battle> Logger
 @implements IDisposable
 
-<PageTitle>�Զ�ս��</PageTitle>
+<PageTitle>自动战斗</PageTitle>
+
+@* 系统模式提示 *@
+<div class="battle-system-indicator mb-2">
+    <div class="alert @(_useNewBattleSystem ? "alert-info" : "alert-secondary") d-flex justify-content-between align-items-center">
+        <div>
+            <i class="bi @(_useNewBattleSystem ? "bi-cloud" : "bi-cpu")"></i>
+            <strong>战斗系统:</strong> @(_useNewBattleSystem ? "服务器模式" : "本地模式")
+            @if (_useNewBattleSystem && OfflineService.IsOfflineMode)
+            {
+                <span class="badge bg-warning ms-2">离线模式</span>
+            }
+        </div>
+        @if (_useNewBattleSystem)
+        {
+            <small class="text-muted">
+                连接状态: @(_isConnected ? "已连接" : "连接断开")
+            </small>
+        }
+    </div>
+</div>
 
 @if (GameState.ActiveCharacter is Player character)
 {
@@ -30,7 +59,7 @@
             @if (party != null && party.CaptainId == character.Id)
             {
                 <button class="btn btn-outline-info" @onclick="ToggleDungeonSelector"
-                        disabled="@(battleContext != null && battleContext.BattleType == BattleType.Dungeon)">
+                        disabled="@(battleContext != null && battleContext.BattleType == BattleTypeLocal.Dungeon)">
                     <i class="bi bi-dungeon"></i> ѡ�񸱱�
                 </button>
             }
@@ -301,9 +330,9 @@
                 {
                     <div class="battle-status active">
                         <h5 class="battle-title">
-                            @(battleContext.BattleType == BattleType.Dungeon ?
+                            @(battleContext.BattleType == BattleTypeLocal.Dungeon ?
                                             $"����ս��: {GetDungeonName(battleContext.DungeonId)} (���� {battleContext.WaveNumber})" :
-                                            battleContext.BattleType == BattleType.Party ?
+                                            battleContext.BattleType == BattleTypeLocal.Party ?
                                             $"�Ŷ�ս�� ({battleContext.Players.Count}v{battleContext.Enemies.Count})" :
                                             $"����ս�� (1v{battleContext.Enemies.Count})")
                 <button class="btn btn-danger btn-sm" @onclick="GameState.StopCurrentAction">
@@ -833,6 +862,12 @@ else
 }
 
 @code {
+    // 双模式战斗系统变量
+    private bool _useNewBattleSystem = false;
+    private bool _isConnected = false;
+    private BattleStateDto? _serverBattleState;
+    private System.Threading.Timer? _fallbackPoller;
+    
     private bool _showMonsterSelector = false;
     private bool _showDungeonSelector = false;
     private string _selectedRegion = "";
@@ -1050,11 +1085,65 @@ else
     // ��ȡCombatServiceʵ��
     private CombatService? _combatService;
 
-    // �޸�OnInitialized����
-    protected override void OnInitialized()
+    // 更新OnInitialized方法以支持双模式
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // 从配置读取是否使用新系统
+            _useNewBattleSystem = Configuration.GetValue<bool>("Features:UseServerBattle", false);
+            
+            if (_useNewBattleSystem)
+            {
+                // 初始化新系统
+                await InitializeNewSystem();
+            }
+            else
+            {
+                // 使用旧系统
+                InitializeOldSystem();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "初始化战斗页面时出错");
+        }
+    }
+    
+    /// <summary>
+    /// 初始化新的客户端-服务器系统
+    /// </summary>
+    private async Task InitializeNewSystem()
+    {
+        // 订阅事件
+        NewGameState.OnBattleStateChanged += HandleNewBattleUpdate;
+        NewGameState.OnConnectionStatusChanged += HandleConnectionChanged;
+        OfflineService.OnOfflineModeChanged += HandleOfflineModeChanged;
+        
+        try
+        {
+            // 初始化游戏状态
+            await NewGameState.InitializeAsync();
+            _isConnected = true; // 假设初始化成功表示连接成功
+            
+            Logger.LogInformation("新战斗系统初始化成功");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "新战斗系统初始化失败");
+            _isConnected = false;
+        }
+    }
+    
+    /// <summary>
+    /// 初始化旧的本地系统
+    /// </summary>
+    private void InitializeOldSystem()
     {
         GameState.OnStateChanged += HandleStateChanged;
         _combatService = ServiceLocator.GetService<CombatService>();
+        
+        Logger.LogInformation("本地战斗系统初始化成功");
     }
 
     // ����Ƿ���ս��ˢ��״̬
@@ -1068,7 +1157,7 @@ else
     /// </summary>
     private bool IsInDungeonBattle(BattleContext? battleContext)
     {
-        return battleContext != null && battleContext.BattleType == BattleType.Dungeon;
+        return battleContext != null && battleContext.BattleType == BattleTypeLocal.Dungeon;
     }
 
     // ��ȡս��ˢ�µ���ʱ
@@ -1082,8 +1171,8 @@ else
     {
         return battleContext.BattleType switch
         {
-            BattleType.Dungeon => $"����ս�� - {GetDungeonName(battleContext.DungeonId)}",
-            BattleType.Party => $"�Ŷ�ս�� ({battleContext.Players.Count}v{battleContext.Enemies.Count})",
+            BattleTypeLocal.Dungeon => $"����ս�� - {GetDungeonName(battleContext.DungeonId)}",
+            BattleTypeLocal.Party => $"�Ŷ�ս�� ({battleContext.Players.Count}v{battleContext.Enemies.Count})",
             _ => $"����ս�� (1v{battleContext.Enemies.Count})"
         };
     }
@@ -1122,7 +1211,7 @@ else
     private bool IsCurrentlyFightingMonster(string monsterName, BattleContext? battleContext)
     {
         // �ڸ���ս���У���������ʾ�κι��ﰴť
-        if (battleContext == null || battleContext.BattleType == BattleType.Dungeon)
+        if (battleContext == null || battleContext.BattleType == BattleTypeLocal.Dungeon)
             return false;
 
         // ֻ����ͨս�������ս���и�����ʾ��Ӧ�Ĺ��ﰴť
@@ -1196,6 +1285,63 @@ else
         {
             CloseSelectors();
         }
+    }
+
+    /// <summary>
+    /// 新系统战斗启动
+    /// </summary>
+    private async Task StartBattleNewSystem(Enemy enemyTemplate)
+    {
+        var character = GameState.ActiveCharacter;
+        if (character == null) return;
+        
+        try
+        {
+            if (OfflineService.IsOfflineMode)
+            {
+                // 离线模式：记录操作并本地模拟
+                OfflineService.RecordOfflineAction(OfflineActionType.StartBattle, new StartBattleRequest
+                {
+                    CharacterId = character.Id,
+                    EnemyId = enemyTemplate.Name, // Enemy只有Name属性，没有Id
+                    PartyId = GetCurrentPartyId()
+                });
+                
+                // 本地模拟战斗  
+                _serverBattleState = OfflineService.SimulateLocalBattle(character.Id, enemyTemplate.Name, GetCurrentPartyId());
+            }
+            else
+            {
+                // 在线模式：调用服务器API
+                var success = await NewGameState.StartBattleAsync(enemyTemplate.Name, GetCurrentPartyId());
+                if (!success)
+                {
+                    Logger.LogWarning("服务器战斗启动失败，使用离线模式");
+                    await OfflineService.EnterOfflineMode();
+                    _serverBattleState = OfflineService.SimulateLocalBattle(character.Id, enemyTemplate.Name, GetCurrentPartyId());
+                }
+            }
+            
+            CloseSelectors();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "新系统战斗启动失败");
+            // 回退到离线模式
+            await OfflineService.EnterOfflineMode();
+        }
+    }
+    
+    /// <summary>
+    /// 获取当前队伍ID
+    /// </summary>
+    private string? GetCurrentPartyId()
+    {
+        var character = GameState.ActiveCharacter;
+        if (character == null) return null;
+        
+        var party = GameState.GetPartyForCharacter(character.Id);
+        return party?.Id.ToString();
     }
 
     /// <summary>
@@ -1358,9 +1504,105 @@ else
         return character.Inventory.Where(s => s.ItemId == itemId).Sum(s => s.Quantity);
     }
 
+    /// <summary>
+    /// 处理新系统的战斗状态更新
+    /// </summary>
+    private void HandleNewBattleUpdate(BattleStateDto? battleState)
+    {
+        InvokeAsync(() =>
+        {
+            _serverBattleState = battleState;
+            StateHasChanged();
+        });
+    }
+    
+    /// <summary>
+    /// 处理连接状态变化
+    /// </summary>
+    private void HandleConnectionChanged(bool isConnected)
+    {
+        _isConnected = isConnected;
+        
+        InvokeAsync(async () =>
+        {
+            if (isConnected)
+            {
+                // 连接恢复，停止轮询
+                _fallbackPoller?.Dispose();
+                _fallbackPoller = null;
+                
+                // 如果在离线模式，尝试同步
+                if (OfflineService.IsOfflineMode)
+                {
+                    await OfflineService.ExitOfflineMode(GameApi);
+                }
+            }
+            else
+            {
+                // 连接断开，启动轮询
+                StartFallbackPolling();
+            }
+            
+            StateHasChanged();
+        });
+    }
+    
+    /// <summary>
+    /// 处理离线模式变化
+    /// </summary>
+    private void HandleOfflineModeChanged(bool isOffline)
+    {
+        InvokeAsync(() =>
+        {
+            StateHasChanged();
+        });
+    }
+    
+    /// <summary>
+    /// 启动备用轮询机制
+    /// </summary>
+    private void StartFallbackPolling()
+    {
+        _fallbackPoller = new System.Threading.Timer(async _ =>
+        {
+            if (_serverBattleState != null && !_isConnected)
+            {
+                try
+                {
+                    var response = await GameApi.GetBattleStateAsync(_serverBattleState.BattleId);
+                    if (response.Success && response.Data != null)
+                    {
+                        await InvokeAsync(() =>
+                        {
+                            _serverBattleState = response.Data;
+                            StateHasChanged();
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "轮询战斗状态失败");
+                }
+            }
+        }, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(500));
+    }
+
     public void Dispose()
     {
-        GameState.OnStateChanged -= HandleStateChanged;
+        // 清理新系统事件
+        if (_useNewBattleSystem)
+        {
+            NewGameState.OnBattleStateChanged -= HandleNewBattleUpdate;
+            NewGameState.OnConnectionStatusChanged -= HandleConnectionChanged;
+            OfflineService.OnOfflineModeChanged -= HandleOfflineModeChanged;
+        }
+        else
+        {
+            GameState.OnStateChanged -= HandleStateChanged;
+        }
+        
+        // 清理定时器
+        _fallbackPoller?.Dispose();
     }
     private void HandleStateChanged()
     {
