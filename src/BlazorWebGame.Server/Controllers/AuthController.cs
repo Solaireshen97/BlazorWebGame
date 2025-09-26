@@ -318,6 +318,50 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// 演示登录 - 为测试目的快速生成临时令牌
+    /// </summary>
+    [HttpPost("demo-login")]
+    public ActionResult<object> DemoLogin()
+    {
+        try
+        {
+            // 为演示创建一个临时用户
+            var demoUserId = $"demo-user-{Guid.NewGuid():N}";
+            var demoUsername = "DemoUser";
+            var roles = new List<string> { "Player", "Tester" };
+
+            // 生成访问令牌
+            var accessToken = _authService.GenerateAccessToken(demoUserId, demoUsername, roles);
+            var refreshToken = _authService.GenerateRefreshToken();
+
+            _logger.LogInformation("Demo login successful for temporary user {UserId} from IP: {ClientIp}", 
+                demoUserId, GetClientIpAddress());
+
+            return Ok(new
+            {
+                success = true,
+                token = accessToken,
+                refreshToken = refreshToken,
+                userId = demoUserId,
+                username = demoUsername,
+                roles = roles,
+                message = "Demo login successful",
+                timestamp = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during demo login");
+            return StatusCode(500, new
+            {
+                success = false,
+                message = "Internal server error during demo login",
+                timestamp = DateTime.UtcNow
+            });
+        }
+    }
+
+    /// <summary>
     /// 获取客户端IP地址
     /// </summary>
     private string GetClientIpAddress()
