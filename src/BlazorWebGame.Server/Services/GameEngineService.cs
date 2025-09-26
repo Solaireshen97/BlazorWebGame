@@ -259,16 +259,31 @@ public class GameEngineService
     /// <summary>
     /// 处理战斗逻辑更新 - 重构为使用事件驱动架构
     /// 不再直接处理战斗逻辑，而是收集事件并入队
+    /// 优化版本：增强错误处理和性能监控
     /// </summary>
     public async Task ProcessBattleTickAsync(double deltaTime)
     {
         var activeContexts = _serverBattleContexts.Values.Where(c => c.IsActive).ToList();
         var events = new List<UnifiedEvent>();
+        var processedBattles = 0;
+        var eventsGenerated = 0;
         
         // 收集所有战斗相关事件而非直接处理
         foreach (var context in activeContexts)
         {
-            CollectBattleEvents(context, deltaTime, events);
+            try
+            {
+                var contextEvents = new List<UnifiedEvent>();
+                CollectBattleEvents(context, deltaTime, contextEvents);
+                events.AddRange(contextEvents);
+                eventsGenerated += contextEvents.Count;
+                processedBattles++;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error collecting battle events for battle {BattleId}", context.BattleId);
+                // 继续处理其他战斗，不让单个战斗错误影响整个系统
+            }
         }
         
         // 批量入队事件到统一事件队列
@@ -282,10 +297,22 @@ public class GameEngineService
                 _logger.LogWarning("Failed to enqueue {FailedCount} out of {TotalCount} battle events", 
                     events.Count - enqueuedCount, events.Count);
             }
+            else
+            {
+                _logger.LogDebug("Successfully processed {BattleCount} battles and generated {EventCount} events", 
+                    processedBattles, eventsGenerated);
+            }
         }
 
         // 处理战斗流程管理（刷新、波次进度等）
-        await _battleFlowService.ProcessBattleRefreshAsync(deltaTime, this);
+        try
+        {
+            await _battleFlowService.ProcessBattleRefreshAsync(deltaTime, this);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing battle refresh flow");
+        }
     }
 
     /// <summary>
