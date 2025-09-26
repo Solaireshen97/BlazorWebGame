@@ -534,6 +534,120 @@ public class StopGatheringRequest
     public string CharacterId { get; set; } = string.Empty;
 }
 
+// ==================== 制作系统 DTOs ====================
+
+/// <summary>
+/// 制作配方 DTO
+/// </summary>
+public class RecipeDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string RequiredProfession { get; set; } = string.Empty; // Alchemy, Engineering, etc.
+    public int RequiredLevel { get; set; }
+    public Dictionary<string, int> Ingredients { get; set; } = new(); // ItemId -> Quantity
+    public string ResultingItemId { get; set; } = string.Empty;
+    public int ResultingItemQuantity { get; set; } = 1;
+    public double CraftingTimeSeconds { get; set; }
+    public int XpReward { get; set; }
+    public bool IsDefault { get; set; } = false; // 是否默认学会
+    public string? UnlockItemId { get; set; } // 解锁配方所需的图纸物品ID
+}
+
+/// <summary>
+/// 获取配方请求
+/// </summary>
+public class GetRecipesRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string? Profession { get; set; } // 可选：筛选特定职业
+    public int? MaxLevel { get; set; } // 可选：筛选等级范围
+}
+
+/// <summary>
+/// 开始制作请求
+/// </summary>
+public class StartCraftingRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string RecipeId { get; set; } = string.Empty;
+    public int Quantity { get; set; } = 1; // 批量制作数量
+}
+
+/// <summary>
+/// 制作状态 DTO
+/// </summary>
+public class CraftingStateDto
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string? CurrentRecipeId { get; set; }
+    public int TotalQuantity { get; set; }
+    public int CompletedQuantity { get; set; }
+    public double RemainingTimeSeconds { get; set; }
+    public bool IsCrafting { get; set; }
+    public DateTime? StartTime { get; set; }
+    public DateTime? EstimatedCompletionTime { get; set; }
+}
+
+/// <summary>
+/// 制作完成结果
+/// </summary>
+public class CraftingResultDto
+{
+    public bool Success { get; set; }
+    public string ItemId { get; set; } = string.Empty;
+    public int Quantity { get; set; }
+    public int XpGained { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public List<string> MaterialsConsumed { get; set; } = new();
+}
+
+/// <summary>
+/// 停止制作请求
+/// </summary>
+public class StopCraftingRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 批量制作请求
+/// </summary>
+public class BatchCraftingRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public List<BatchCraftingItem> Items { get; set; } = new();
+}
+
+/// <summary>
+/// 批量制作项目
+/// </summary>
+public class BatchCraftingItem
+{
+    public string RecipeId { get; set; } = string.Empty;
+    public int Quantity { get; set; } = 1;
+}
+
+/// <summary>
+/// 节点解锁状态检查请求
+/// </summary>
+public class NodeUnlockCheckRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string NodeId { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 节点解锁状态响应
+/// </summary>
+public class NodeUnlockStatusDto
+{
+    public bool IsUnlocked { get; set; }
+    public string Reason { get; set; } = string.Empty;
+    public int? RequiredLevel { get; set; }
+    public string? RequiredMonsterId { get; set; }
+}
+
 /// <summary>
 /// 物品数据传输对象
 /// </summary>

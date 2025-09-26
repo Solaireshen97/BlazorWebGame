@@ -5,6 +5,7 @@
 @inject GameApiService LegacyApi
 @inject ShopApiService ShopApi
 @inject ReputationApiService ReputationApi
+@inject ProductionApiService ProductionApi
 
 <PageTitle>API 测试页面</PageTitle>
 
@@ -95,10 +96,32 @@
                     <h5>⚒️ 生产服务测试</h5>
                 </div>
                 <div class="card-body">
-                    <button class="btn btn-success mb-2" @onclick="TestGetGatheringNodes">获取采集节点</button>
-                    <button class="btn btn-info mb-2" @onclick="TestProductionOperations">测试生产操作</button>
-                    <div class="alert alert-success small">
-                        <strong>采集节点:</strong> @_nodeCount 个
+                    <div class="mb-2">
+                        <h6>采集功能测试</h6>
+                        <button class="btn btn-success btn-sm me-1" @onclick="TestGetGatheringNodes">获取采集节点</button>
+                        <button class="btn btn-info btn-sm me-1" @onclick="TestStartGathering">开始采集</button>
+                        <button class="btn btn-warning btn-sm me-1" @onclick="TestStopGathering">停止采集</button>
+                        <button class="btn btn-secondary btn-sm" @onclick="TestGatheringStatus">采集状态</button>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <h6>制作功能测试</h6>
+                        <button class="btn btn-success btn-sm me-1" @onclick="TestGetRecipes">获取配方</button>
+                        <button class="btn btn-info btn-sm me-1" @onclick="TestStartCrafting">开始制作</button>
+                        <button class="btn btn-warning btn-sm me-1" @onclick="TestStopCrafting">停止制作</button>
+                        <button class="btn btn-secondary btn-sm" @onclick="TestCraftingStatus">制作状态</button>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <button class="btn btn-primary btn-sm me-1" @onclick="TestNodeUnlock">节点解锁检查</button>
+                        <button class="btn btn-dark btn-sm" @onclick="TestMaterialsCheck">材料检查</button>
+                    </div>
+                    
+                    <div class="alert alert-success small mb-0">
+                        <strong>采集节点:</strong> @_nodeCount 个<br/>
+                        <strong>配方数量:</strong> @_recipeCount 个<br/>
+                        <strong>采集状态:</strong> @_gatheringStatus<br/>
+                        <strong>制作状态:</strong> @_craftingStatus
                     </div>
                 </div>
             </div>
@@ -315,6 +338,14 @@
     private string _inventoryStatus = "未测试";
     private int _nodeCount = 0;
     private string _questStatus = "未测试";
+    
+    // Production system test fields
+    private int _recipeCount = 0;
+    private string _productionStatus = "未测试";
+    private string _gatheringStatus = "未活跃";
+    private string _craftingStatus = "未活跃";
+    private bool _isGathering = false;
+    private bool _isCrafting = false;
     private string _serverStatus = "未知";
     private List<string> _testLogs = new();
     
@@ -492,11 +523,22 @@
         try
         {
             AddLog("⚒️ 获取采集节点...");
-            var response = await ApiClient.Production.GetGatheringNodesAsync();
+            var response = await ProductionApi.GetGatheringNodesAsync();
             if (response.Success && response.Data != null)
             {
                 _nodeCount = response.Data.Count;
                 AddLog($"✅ 获取到 {_nodeCount} 个采集节点");
+                
+                // 显示前几个节点的详细信息
+                foreach (var node in response.Data.Take(3))
+                {
+                    AddLog($"   📍 {node.Name} (等级:{node.RequiredLevel}, 时间:{node.GatheringTimeSeconds}s)");
+                }
+                
+                if (_nodeCount > 3)
+                {
+                    AddLog($"   ... 还有 {_nodeCount - 3} 个节点");
+                }
             }
             else
             {
@@ -509,10 +551,382 @@
         }
     }
 
+    private async Task TestStartGathering()
+    {
+        try
+        {
+            AddLog("🌿 测试开始采集...");
+            
+            // 首先获取一个测试用的节点
+            var nodesResponse = await ProductionApi.GetGatheringNodesAsync();
+            if (!nodesResponse.Success || nodesResponse.Data?.Any() != true)
+            {
+                AddLog("⚠️ 没有可用的采集节点进行测试");
+                return;
+            }
+            
+            var testNode = nodesResponse.Data.First();
+            var request = new StartGatheringRequest
+            {
+                CharacterId = "test_character_001",
+                NodeId = testNode.Id
+            };
+            
+            var response = await ProductionApi.StartGatheringAsync(request);
+            if (response.Success)
+            {
+                _isGathering = true;
+                _gatheringStatus = $"采集中 - {testNode.Name}";
+                AddLog($"✅ 开始采集 {testNode.Name}");
+            }
+            else
+            {
+                _gatheringStatus = "采集失败";
+                AddLog($"⚠️ 开始采集失败: {response.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            AddLog($"❌ 开始采集异常: {ex.Message}");
+        }
+    }
+
+    private async Task TestStopGathering()
+    {
+        try
+        {
+            AddLog("🛑 测试停止采集...");
+            
+            var request = new StopGatheringRequest
+            {
+                CharacterId = "test_character_001"
+            };
+            
+            var response = await ProductionApi.StopGatheringAsync(request);
+            if (response.Success)
+            {
+                _isGathering = false;
+                _gatheringStatus = "已停止";
+                AddLog("✅ 成功停止采集");
+                
+                if (response.Data != null)
+                {
+                    AddLog($"   获得物品: {response.Data.ItemId} x{response.Data.Quantity}");
+                    AddLog($"   获得经验: {response.Data.XpGained}");
+                }
+            }
+            else
+            {
+                AddLog($"⚠️ 停止采集失败: {response.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            AddLog($"❌ 停止采集异常: {ex.Message}");
+        }
+    }
+
+    private async Task TestGatheringStatus()
+    {
+        try
+        {
+            AddLog("📊 查询采集状态...");
+            
+            var response = await ProductionApi.GetGatheringStateAsync("test_character_001");
+            if (response.Success && response.Data != null)
+            {
+                var state = response.Data;
+                if (state.IsGathering)
+                {
+                    _gatheringStatus = $"采集中 - 剩余 {state.RemainingTimeSeconds:F1}s";
+                    AddLog($"✅ 正在采集节点: {state.CurrentNodeId}");
+                    AddLog($"   剩余时间: {state.RemainingTimeSeconds:F1} 秒");
+                    AddLog($"   预计完成: {state.EstimatedCompletionTime:HH:mm:ss}");
+                }
+                else
+                {
+                    _gatheringStatus = "未在采集";
+                    AddLog("ℹ️ 角色当前未在进行采集活动");
+                }
+            }
+            else
+            {
+                AddLog($"⚠️ 查询采集状态失败: {response.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            AddLog($"❌ 查询采集状态异常: {ex.Message}");
+        }
+    }
+
+    private async Task TestGetRecipes()
+    {
+        try
+        {
+            AddLog("📜 获取制作配方...");
+            
+            var request = new GetRecipesRequest
+            {
+                CharacterId = "test_character_001",
+                MaxLevel = 10 // 只获取低等级配方作为测试
+            };
+            
+            var response = await ProductionApi.GetRecipesAsync(request);
+            if (response.Success && response.Data != null)
+            {
+                _recipeCount = response.Data.Count;
+                AddLog($"✅ 获取到 {_recipeCount} 个配方");
+                
+                // 按职业分组显示
+                var groupedRecipes = response.Data.GroupBy(r => r.RequiredProfession);
+                foreach (var group in groupedRecipes)
+                {
+                    AddLog($"   🛠️ {group.Key}: {group.Count()} 个配方");
+                    foreach (var recipe in group.Take(2))
+                    {
+                        AddLog($"      - {recipe.Name} (等级:{recipe.RequiredLevel}, 时间:{recipe.CraftingTimeSeconds}s)");
+                    }
+                }
+            }
+            else
+            {
+                AddLog($"⚠️ 获取配方失败: {response.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            AddLog($"❌ 获取配方异常: {ex.Message}");
+        }
+    }
+
+    private async Task TestStartCrafting()
+    {
+        try
+        {
+            AddLog("🔨 测试开始制作...");
+            
+            // 首先获取一个测试用的配方
+            var recipesRequest = new GetRecipesRequest
+            {
+                CharacterId = "test_character_001",
+                MaxLevel = 5
+            };
+            
+            var recipesResponse = await ProductionApi.GetRecipesAsync(recipesRequest);
+            if (!recipesResponse.Success || recipesResponse.Data?.Any() != true)
+            {
+                AddLog("⚠️ 没有可用的配方进行测试");
+                return;
+            }
+            
+            var testRecipe = recipesResponse.Data.First();
+            var request = new StartCraftingRequest
+            {
+                CharacterId = "test_character_001",
+                RecipeId = testRecipe.Id,
+                Quantity = 1
+            };
+            
+            var response = await ProductionApi.StartCraftingAsync(request);
+            if (response.Success)
+            {
+                _isCrafting = true;
+                _craftingStatus = $"制作中 - {testRecipe.Name}";
+                AddLog($"✅ 开始制作 {testRecipe.Name}");
+            }
+            else
+            {
+                _craftingStatus = "制作失败";
+                AddLog($"⚠️ 开始制作失败: {response.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            AddLog($"❌ 开始制作异常: {ex.Message}");
+        }
+    }
+
+    private async Task TestStopCrafting()
+    {
+        try
+        {
+            AddLog("🛑 测试停止制作...");
+            
+            var request = new StopCraftingRequest
+            {
+                CharacterId = "test_character_001"
+            };
+            
+            var response = await ProductionApi.StopCraftingAsync(request);
+            if (response.Success)
+            {
+                _isCrafting = false;
+                _craftingStatus = "已停止";
+                AddLog("✅ 成功停止制作");
+                
+                if (response.Data != null)
+                {
+                    AddLog($"   制作物品: {response.Data.ItemId} x{response.Data.Quantity}");
+                    AddLog($"   获得经验: {response.Data.XpGained}");
+                }
+            }
+            else
+            {
+                AddLog($"⚠️ 停止制作失败: {response.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            AddLog($"❌ 停止制作异常: {ex.Message}");
+        }
+    }
+
+    private async Task TestCraftingStatus()
+    {
+        try
+        {
+            AddLog("📊 查询制作状态...");
+            
+            var response = await ProductionApi.GetCraftingStateAsync("test_character_001");
+            if (response.Success && response.Data != null)
+            {
+                var state = response.Data;
+                if (state.IsCrafting)
+                {
+                    _craftingStatus = $"制作中 - 剩余 {state.RemainingTimeSeconds:F1}s";
+                    AddLog($"✅ 正在制作配方: {state.CurrentRecipeId}");
+                    AddLog($"   进度: {state.CompletedQuantity}/{state.TotalQuantity}");
+                    AddLog($"   剩余时间: {state.RemainingTimeSeconds:F1} 秒");
+                    AddLog($"   预计完成: {state.EstimatedCompletionTime:HH:mm:ss}");
+                }
+                else
+                {
+                    _craftingStatus = "未在制作";
+                    AddLog("ℹ️ 角色当前未在进行制作活动");
+                }
+            }
+            else
+            {
+                AddLog($"⚠️ 查询制作状态失败: {response.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            AddLog($"❌ 查询制作状态异常: {ex.Message}");
+        }
+    }
+
+    private async Task TestNodeUnlock()
+    {
+        try
+        {
+            AddLog("🔓 测试节点解锁检查...");
+            
+            // 获取一个节点进行测试
+            var nodesResponse = await ProductionApi.GetGatheringNodesAsync();
+            if (!nodesResponse.Success || nodesResponse.Data?.Any() != true)
+            {
+                AddLog("⚠️ 没有可用的节点进行测试");
+                return;
+            }
+            
+            var testNode = nodesResponse.Data.First();
+            var request = new NodeUnlockCheckRequest
+            {
+                CharacterId = "test_character_001",
+                NodeId = testNode.Id
+            };
+            
+            var response = await ProductionApi.CheckNodeUnlockStatusAsync(request);
+            if (response.Success && response.Data != null)
+            {
+                var status = response.Data;
+                if (status.IsUnlocked)
+                {
+                    AddLog($"✅ 节点 {testNode.Name} 已解锁");
+                }
+                else
+                {
+                    AddLog($"🔒 节点 {testNode.Name} 未解锁: {status.Reason}");
+                    if (status.RequiredLevel.HasValue)
+                    {
+                        AddLog($"   需要等级: {status.RequiredLevel.Value}");
+                    }
+                }
+            }
+            else
+            {
+                AddLog($"⚠️ 检查节点解锁状态失败: {response.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            AddLog($"❌ 检查节点解锁状态异常: {ex.Message}");
+        }
+    }
+
+    private async Task TestMaterialsCheck()
+    {
+        try
+        {
+            AddLog("🧪 测试材料检查...");
+            
+            // 获取一个配方进行测试
+            var recipesRequest = new GetRecipesRequest
+            {
+                CharacterId = "test_character_001",
+                MaxLevel = 5
+            };
+            
+            var recipesResponse = await ProductionApi.GetRecipesAsync(recipesRequest);
+            if (!recipesResponse.Success || recipesResponse.Data?.Any() != true)
+            {
+                AddLog("⚠️ 没有可用的配方进行测试");
+                return;
+            }
+            
+            var testRecipe = recipesResponse.Data.First();
+            var response = await ProductionApi.CheckCraftingMaterialsAsync("test_character_001", testRecipe.Id, 1);
+            
+            if (response.Success)
+            {
+                if (response.Data)
+                {
+                    AddLog($"✅ 制作 {testRecipe.Name} 的材料充足");
+                }
+                else
+                {
+                    AddLog($"❌ 制作 {testRecipe.Name} 的材料不足");
+                }
+            }
+            else
+            {
+                AddLog($"⚠️ 检查材料失败: {response.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            AddLog($"❌ 检查材料异常: {ex.Message}");
+        }
+    }
+
     private async Task TestProductionOperations()
     {
-        AddLog("⚒️ 生产操作测试...");
-        AddLog("ℹ️ 生产操作包括开始采集、停止采集、查询状态等");
+        AddLog("⚒️ 开始生产系统综合测试...");
+        
+        await TestGetGatheringNodes();
+        await Task.Delay(500);
+        
+        await TestGetRecipes();
+        await Task.Delay(500);
+        
+        await TestNodeUnlock();
+        await Task.Delay(500);
+        
+        await TestMaterialsCheck();
+        
+        AddLog("✅ 生产系统综合测试完成");
     }
 
     private async Task TestQuestOperations()
@@ -808,7 +1222,7 @@
             _productionTestStatus = "测试中";
             
             // 1. 获取采集节点
-            var nodesResponse = await ApiClient.Production.GetGatheringNodesAsync();
+            var nodesResponse = await ProductionApi.GetGatheringNodesAsync();
             if (!nodesResponse.Success || nodesResponse.Data == null)
             {
                 AddLog($"❌ 获取采集节点失败: {nodesResponse.Message}");
@@ -955,7 +1369,7 @@
                 ApiClient.Character.GetCharactersAsync(),
                 ApiClient.Battle.GetActiveBattlesAsync(),
                 ApiClient.Party.GetAllPartiesAsync(),
-                ApiClient.Production.GetGatheringNodesAsync(),
+                ProductionApi.GetGatheringNodesAsync(),
                 ApiClient.Monitoring.GetGameStatusAsync()
             };
             
@@ -1069,7 +1483,7 @@
             }
             
             // 2. 获取资源
-            var nodesResponse = await ApiClient.Production.GetGatheringNodesAsync();
+            var nodesResponse = await ProductionApi.GetGatheringNodesAsync();
             AddLog($"✅ 获取到 {nodesResponse.Data?.Count ?? 0} 个生产节点");
             
             // 3. 模拟采集
@@ -1187,7 +1601,7 @@
                                 break;
                                 
                             case 2: // 生产操作
-                                var nodeResponse = await ApiClient.Production.GetGatheringNodesAsync();
+                                var nodeResponse = await ProductionApi.GetGatheringNodesAsync();
                                 if (nodeResponse.Success) Interlocked.Increment(ref successCount);
                                 else Interlocked.Increment(ref failureCount);
                                 break;
