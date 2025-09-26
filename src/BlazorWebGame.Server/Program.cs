@@ -43,15 +43,34 @@ builder.Services.AddSingleton<ServerPlayerUtilityService>();
 builder.Services.AddSingleton<ServerSkillSystem>();
 builder.Services.AddSingleton<ServerLootService>();
 builder.Services.AddSingleton<ServerCombatEngine>();
+builder.Services.AddSingleton<ServerCharacterCombatService>();  // 新增角色战斗服务
 builder.Services.AddSingleton<ServerPartyService>();
 builder.Services.AddSingleton<ServerBattleFlowService>();
 builder.Services.AddSingleton<ServerProductionService>();
 builder.Services.AddSingleton<ServerInventoryService>();
 builder.Services.AddSingleton<ServerQuestService>();
 builder.Services.AddSingleton<ServerEquipmentService>();  // 添加装备服务
+builder.Services.AddSingleton<ServerEquipmentGenerator>(); // 新增装备生成器
 builder.Services.AddSingleton<GameEngineService>();
 builder.Services.AddSingleton<ServerCharacterService>();
 builder.Services.AddSingleton<ServerEventService>();
+
+// 注册战斗管理器 - 需要初始化玩家列表
+builder.Services.AddSingleton<ServerBattleManager>(serviceProvider =>
+{
+    var allCharacters = new List<ServerBattlePlayer>(); // TODO: 从数据库或服务中获取
+    return new ServerBattleManager(
+        allCharacters,
+        serviceProvider.GetRequiredService<ServerCombatEngine>(),
+        serviceProvider.GetRequiredService<ServerBattleFlowService>(),
+        serviceProvider.GetRequiredService<ServerCharacterService>(),
+        serviceProvider.GetRequiredService<ServerSkillSystem>(),
+        serviceProvider.GetRequiredService<ServerLootService>(),
+        serviceProvider.GetRequiredService<ILogger<ServerBattleManager>>(),
+        serviceProvider.GetRequiredService<IHubContext<GameHub>>()
+    );
+});
+
 builder.Services.AddHostedService<GameLoopService>();
 
 var app = builder.Build();

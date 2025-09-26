@@ -205,7 +205,7 @@ public class EquipmentDto
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public int RequiredLevel { get; set; }
-    public string Slot { get; set; } = string.Empty;
+    public string Slot { get; set; } = string.Empty; // Store as string to avoid enum conflicts
     public string WeaponType { get; set; } = "None";
     public string ArmorType { get; set; } = "None";
     public bool IsTwoHanded { get; set; }
@@ -638,4 +638,70 @@ public class StatBuffDto
     public TimeSpan Duration { get; set; }
     public DateTime EndTime => StartTime.Add(Duration);
     public bool IsExpired => DateTime.UtcNow > EndTime;
+}
+
+// ====== Missing Enums and DTOs ======
+
+/// <summary>
+/// 武器类型枚举
+/// </summary>
+public enum WeaponType
+{
+    None,
+    Sword,
+    Axe,
+    Mace,
+    Dagger,
+    Staff,
+    Bow,
+    TwoHandSword,
+    TwoHandAxe,
+    TwoHandMace,
+    Polearm,
+    Shield
+}
+
+/// <summary>
+/// 护甲类型枚举
+/// </summary>
+public enum ArmorType
+{
+    None,
+    Cloth,
+    Leather,
+    Mail,
+    Plate
+}
+
+/// <summary>
+/// 服务端战斗状态枚举
+/// </summary>
+public enum ServerBattleState
+{
+    Preparing,
+    Active,
+    Completed,
+    Cancelled
+}
+
+/// <summary>
+/// 战斗开始请求
+/// </summary>
+public class BattleStartRequest
+{
+    public string? PlayerId { get; set; }
+    public Guid? PartyId { get; set; }
+    public string BattleType { get; set; } = "Normal";
+    public string? DungeonId { get; set; }
+    public List<string> EnemyIds { get; set; } = new();
+}
+
+/// <summary>
+/// 服务端敌人信息
+/// </summary>
+public class ServerEnemyInfo
+{
+    public string Name { get; set; } = string.Empty;
+    public int Count { get; set; } = 1;
+    public int Level { get; set; } = 1;
 }
