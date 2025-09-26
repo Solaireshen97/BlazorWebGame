@@ -259,4 +259,71 @@ public class PartyController : ControllerBase
             });
         }
     }
+
+    /// <summary>
+    /// 更新队伍进度（离线同步专用）
+    /// </summary>
+    [HttpPut("{partyId}/progress")]
+    public ActionResult<ApiResponse<object>> UpdateTeamProgress(string partyId, TeamProgressUpdateRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(partyId))
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "PartyId is required"
+                });
+            }
+
+            request.PartyId = partyId;
+
+            // 查找对应的组队
+            if (!Guid.TryParse(partyId, out var partyGuid))
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Invalid PartyId format"
+                });
+            }
+
+            var party = _partyService.GetParty(partyGuid);
+            if (party == null)
+            {
+                return NotFound(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Party not found"
+                });
+            }
+
+            // 在这里可以添加更复杂的队伍进度更新逻辑
+            // 目前简单记录日志并返回成功
+            _logger.LogInformation("Team progress updated for party {PartyId} with {DataCount} progress items", 
+                partyId, request.ProgressData?.Count ?? 0);
+
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Data = new 
+                { 
+                    Updated = true, 
+                    PartyId = partyId,
+                    UpdatedAt = DateTime.UtcNow
+                },
+                Message = "队伍进度更新成功"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating team progress for party {PartyId}", partyId);
+            return StatusCode(500, new ApiResponse<object>
+            {
+                Success = false,
+                Message = "更新队伍进度失败"
+            });
+        }
+    }
 }

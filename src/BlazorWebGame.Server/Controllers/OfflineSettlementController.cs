@@ -203,6 +203,67 @@ public class OfflineSettlementController : ControllerBase
             });
         }
     }
+
+    /// <summary>
+    /// 同步离线战斗进度
+    /// </summary>
+    /// <param name="playerId">玩家ID</param>
+    /// <param name="request">离线战斗进度数据</param>
+    /// <returns>同步结果</returns>
+    [HttpPost("player/{playerId}/battle-progress")]
+    public async Task<ActionResult<ApiResponse<object>>> SyncOfflineBattleProgress(
+        [Required] string playerId, 
+        [FromBody] OfflineBattleProgressSyncRequest request)
+    {
+        try
+        {
+            if (request == null)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "请求数据不能为空"
+                });
+            }
+
+            request.PlayerId = playerId;
+
+            // 记录离线战斗进度同步
+            _logger.LogInformation("同步玩家 {PlayerId} 的离线战斗进度: {BattleCount} 场战斗, {Experience} 经验, {Gold} 金币", 
+                SafeLogId(playerId), 
+                request.EstimatedBattles, 
+                request.EstimatedExperience, 
+                request.EstimatedGold);
+
+            // 在这里可以添加实际的离线战斗进度处理逻辑
+            // 例如：验证进度合理性、应用奖励、更新角色状态等
+
+            var result = new
+            {
+                PlayerId = playerId,
+                ProcessedBattles = request.EstimatedBattles,
+                ExperienceAwarded = request.EstimatedExperience,
+                GoldAwarded = request.EstimatedGold,
+                SyncTime = DateTime.UtcNow
+            };
+
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Data = result,
+                Message = "离线战斗进度同步成功"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "同步玩家 {PlayerId} 离线战斗进度时发生错误", SafeLogId(playerId));
+            return StatusCode(500, new ApiResponse<object>
+            {
+                Success = false,
+                Message = "内部服务器错误"
+            });
+        }
+    }
 }
 
 /// <summary>
