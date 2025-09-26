@@ -340,4 +340,89 @@ public class ServerInventoryService
             };
         }
     }
+
+    /// <summary>
+    /// 检查角色是否有足够的材料制作配方
+    /// </summary>
+    public bool CanAffordRecipe(string characterId, Dictionary<string, int> materials)
+    {
+        if (string.IsNullOrEmpty(characterId) || materials == null || materials.Count == 0)
+            return false;
+
+        try
+        {
+            var inventory = GetCharacterInventory(characterId);
+            
+            foreach (var material in materials)
+            {
+                var itemId = material.Key;
+                var requiredQuantity = material.Value;
+                
+                // 计算角色拥有的该物品总数量
+                var ownedQuantity = inventory.Slots
+                    .Where(slot => !string.IsNullOrEmpty(slot.ItemId) && slot.ItemId == itemId)
+                    .Sum(slot => slot.Quantity);
+                
+                if (ownedQuantity < requiredQuantity)
+                {
+                    return false;
+                }
+            }
+            
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking recipe affordability for character {CharacterId}", characterId);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 消耗制作材料
+    /// </summary>
+    public async Task<bool> ConsumeCraftingMaterialsAsync(string characterId, Dictionary<string, int> materials)
+    {
+        if (!CanAffordRecipe(characterId, materials))
+            return false;
+
+        try
+        {
+            var inventory = GetCharacterInventory(characterId);
+            
+            foreach (var material in materials)
+            {
+                var itemId = material.Key;
+                var requiredQuantity = material.Value;
+                var remainingToRemove = requiredQuantity;
+                
+                // 从背包中移除材料
+                for (int i = 0; i < inventory.Slots.Count && remainingToRemove > 0; i++)
+                {
+                    var slot = inventory.Slots[i];
+                    if (!string.IsNullOrEmpty(slot.ItemId) && slot.ItemId == itemId && slot.Quantity > 0)
+                    {
+                        var removeAmount = Math.Min(slot.Quantity, remainingToRemove);
+                        slot.Quantity -= removeAmount;
+                        remainingToRemove -= removeAmount;
+                        
+                        // 如果物品数量为0，清空物品槽
+                        if (slot.Quantity <= 0)
+                        {
+                            slot.ItemId = "";
+                            slot.Quantity = 0;
+                        }
+                    }
+                }
+            }
+            
+            OnInventoryChanged?.Invoke(characterId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error consuming crafting materials for character {CharacterId}", characterId);
+            return false;
+        }
+    }
 }

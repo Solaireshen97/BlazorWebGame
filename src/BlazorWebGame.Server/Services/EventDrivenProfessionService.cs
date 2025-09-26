@@ -15,6 +15,7 @@ public class EventDrivenProfessionService : IDisposable
     private readonly UnifiedEventService _eventService;
     private readonly IHubContext<GameHub> _hubContext;
     private readonly ILogger<EventDrivenProfessionService> _logger;
+    private readonly ServerInventoryService _inventoryService;
 
     // 活跃的职业活动状态
     private readonly ConcurrentDictionary<string, ProfessionActivityState> _activeActivities = new();
@@ -41,11 +42,13 @@ public class EventDrivenProfessionService : IDisposable
     public EventDrivenProfessionService(
         UnifiedEventService eventService,
         IHubContext<GameHub> hubContext,
-        ILogger<EventDrivenProfessionService> logger)
+        ILogger<EventDrivenProfessionService> logger,
+        ServerInventoryService inventoryService)
     {
         _eventService = eventService ?? throw new ArgumentNullException(nameof(eventService));
         _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _inventoryService = inventoryService ?? throw new ArgumentNullException(nameof(inventoryService));
 
         // 初始化数据
         _gatheringNodes = InitializeGatheringNodes();
@@ -277,16 +280,13 @@ public class EventDrivenProfessionService : IDisposable
             // 检查是否完成
             if (newProgress >= 1.0f)
             {
-                await CompleteActivityAsync(activity);
-                completedActivities.Add(characterId);
+                // 完成当前周期并自动开始下一周期（类似战斗系统的持续执行）
+                await CompleteAndRestartActivityAsync(activity);
             }
         }
 
-        // 移除已完成的活动
-        foreach (var characterId in completedActivities)
-        {
-            _activeActivities.TryRemove(characterId, out _);
-        }
+        // 不再移除已完成的活动，而是让它们自动重复
+        // 这实现了类似战斗系统的连续执行模式
     }
 
     /// <summary>
@@ -400,6 +400,121 @@ public class EventDrivenProfessionService : IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error completing activity for character {CharacterId}", activity.CharacterId);
+        }
+    }
+
+    /// <summary>
+    /// 完成当前活动周期并自动重启下一周期 - 实现类似战斗系统的连续执行
+    /// </summary>
+    private async Task CompleteAndRestartActivityAsync(ProfessionActivityState activity)
+    {
+        try
+        {
+            // 先完成当前周期
+            await CompleteActivityAsync(activity);
+
+            // 检查是否应该继续（类似战斗系统检查是否有敌人）
+            var shouldContinue = ShouldContinueActivity(activity);
+            
+            if (shouldContinue)
+            {
+                // 重启活动进入下一周期
+                RestartActivityForNextCycle(activity);
+                
+                _logger.LogDebug("Character {CharacterId} automatically restarted {ActivityType} activity", 
+                    activity.CharacterId, activity.ActivityType);
+            }
+            else
+            {
+                // 条件不满足，停止活动（例如制作材料不足）
+                await StopCurrentActivityAsync(activity.CharacterId);
+                
+                _logger.LogInformation("Character {CharacterId} stopped {ActivityType} activity due to conditions not met", 
+                    activity.CharacterId, activity.ActivityType);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error completing and restarting activity for character {CharacterId}", activity.CharacterId);
+            
+            // 发生错误时停止活动以防止无限循环错误
+            await StopCurrentActivityAsync(activity.CharacterId);
+        }
+    }
+
+    /// <summary>
+    /// 检查活动是否应该继续（类似战斗系统检查战斗条件）
+    /// </summary>
+    private bool ShouldContinueActivity(ProfessionActivityState activity)
+    {
+        try
+        {
+            if (activity.ActivityType == ProfessionActivityType.Gathering)
+            {
+                // 采集活动始终可以继续，除非资源节点耗尽（这里简化为始终可以）
+                return _gatheringNodes.ContainsKey(activity.NodeId!);
+            }
+            else if (activity.ActivityType == ProfessionActivityType.Crafting)
+            {
+                // 制作活动需要检查材料是否充足
+                if (!_craftingRecipes.TryGetValue(activity.RecipeId!, out var recipe))
+                {
+                    return false;
+                }
+                
+                // TODO: 实现真正的材料检查
+                // 当前的CraftingRecipeData只有MaterialCost (int)，不是详细的材料列表
+                // 这里暂时简化为始终可以继续，实际应该根据具体材料需求检查
+                _logger.LogDebug("Continuing crafting for character {CharacterId} - material checking simplified", 
+                    activity.CharacterId);
+                
+                return true; // 暂时始终允许继续制作
+            }
+            
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking if activity should continue for character {CharacterId}", activity.CharacterId);
+            return false; // 出错时停止活动
+        }
+    }
+
+    /// <summary>
+    /// 重启活动进入下一周期
+    /// </summary>
+    private void RestartActivityForNextCycle(ProfessionActivityState activity)
+    {
+        // 重置活动状态开始新周期
+        activity.StartTime = DateTime.UtcNow;
+        activity.Progress = 0.0f;
+        activity.IsActive = true;
+
+        // 根据活动类型设置持续时间
+        if (activity.ActivityType == ProfessionActivityType.Gathering && _gatheringNodes.TryGetValue(activity.NodeId!, out var node))
+        {
+            activity.Duration = TimeSpan.FromSeconds(node.GatheringTimeSeconds);
+        }
+        else if (activity.ActivityType == ProfessionActivityType.Crafting && _craftingRecipes.TryGetValue(activity.RecipeId!, out var recipe))
+        {
+            activity.Duration = TimeSpan.FromSeconds(recipe.CraftingTimeSeconds);
+        }
+
+        // 生成重启事件
+        var eventType = activity.ActivityType == ProfessionActivityType.Gathering 
+            ? GameEventTypes.GATHERING_STARTED 
+            : GameEventTypes.CRAFTING_STARTED;
+
+        _eventService.EnqueueEvent(eventType, EventPriority.Gameplay, 
+            (ulong)HashString(activity.CharacterId), 
+            activity.ActivityType == ProfessionActivityType.Gathering 
+                ? (ulong)HashString(activity.NodeId!) 
+                : (ulong)HashString(activity.RecipeId!));
+
+        lock (_statsLock)
+        {
+            _totalActivitiesStarted++; // 统计重新开始的活动
+            _totalEventsGenerated++;
         }
     }
 
