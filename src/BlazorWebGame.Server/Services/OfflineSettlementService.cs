@@ -31,6 +31,19 @@ public class OfflineSettlementService
     }
 
     /// <summary>
+    /// 安全地截取ID用于日志记录，防止日志注入攻击
+    /// </summary>
+    private static string SafeLogId(string id)
+    {
+        if (string.IsNullOrEmpty(id))
+            return "[empty]";
+        
+        // 只保留字母数字和连字符，并截取前8位
+        var sanitized = new string(id.Where(c => char.IsLetterOrDigit(c) || c == '-').ToArray());
+        return sanitized.Substring(0, Math.Min(8, sanitized.Length)) + (sanitized.Length > 8 ? "..." : "");
+    }
+
+    /// <summary>
     /// 处理单个玩家的离线结算
     /// </summary>
     /// <param name="playerId">玩家ID</param>
@@ -39,7 +52,7 @@ public class OfflineSettlementService
     {
         try
         {
-            _logger.LogInformation("开始处理玩家 {PlayerId} 的离线结算", playerId);
+            _logger.LogInformation("开始处理玩家 {PlayerId} 的离线结算", SafeLogId(playerId));
 
             // 1. 获取玩家数据
             var player = await _dataStorageService.GetPlayerAsync(playerId);
@@ -84,7 +97,7 @@ public class OfflineSettlementService
             await RecordSettlementHistoryAsync(settlementResult);
 
             _logger.LogInformation("玩家 {PlayerId} 离线结算完成，获得经验 {Experience}，金币 {Gold}", 
-                playerId, settlementResult.TotalExperience, settlementResult.TotalGold);
+                SafeLogId(playerId), settlementResult.TotalExperience, settlementResult.TotalGold);
 
             return new ApiResponse<OfflineSettlementResultDto>
             {
@@ -95,7 +108,7 @@ public class OfflineSettlementService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "处理玩家 {PlayerId} 离线结算时发生错误", playerId);
+            _logger.LogError(ex, "处理玩家 {PlayerId} 离线结算时发生错误", SafeLogId(playerId));
             return new ApiResponse<OfflineSettlementResultDto>
             {
                 Success = false,
@@ -113,7 +126,7 @@ public class OfflineSettlementService
     {
         try
         {
-            _logger.LogInformation("开始处理队伍 {TeamId} 的离线结算", teamId);
+            _logger.LogInformation("开始处理队伍 {TeamId} 的离线结算", SafeLogId(teamId));
 
             // 1. 获取队伍数据
             var team = await _dataStorageService.GetTeamAsync(teamId);
@@ -155,7 +168,7 @@ public class OfflineSettlementService
             await CalculateTeamOverallProgressAsync(team, settlementResults);
 
             _logger.LogInformation("队伍 {TeamId} 离线结算完成，处理了 {MemberCount} 个成员", 
-                teamId, settlementResults.Count);
+                SafeLogId(teamId), settlementResults.Count);
 
             return new ApiResponse<List<OfflineSettlementResultDto>>
             {
@@ -166,7 +179,7 @@ public class OfflineSettlementService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "处理队伍 {TeamId} 离线结算时发生错误", teamId);
+            _logger.LogError(ex, "处理队伍 {TeamId} 离线结算时发生错误", SafeLogId(teamId));
             return new ApiResponse<List<OfflineSettlementResultDto>>
             {
                 Success = false,
@@ -197,13 +210,13 @@ public class OfflineSettlementService
                 }
                 else
                 {
-                    result.Errors.Add($"玩家 {playerId}: {settlementResult.Message}");
+                    result.Errors.Add($"玩家 {SafeLogId(playerId)}: {settlementResult.Message}");
                     result.ErrorCount++;
                 }
             }
             catch (Exception ex)
             {
-                result.Errors.Add($"玩家 {playerId}: {ex.Message}");
+                result.Errors.Add($"玩家 {SafeLogId(playerId)}: {ex.Message}");
                 result.ErrorCount++;
             }
         }
@@ -279,7 +292,7 @@ public class OfflineSettlementService
         });
 
         _logger.LogDebug("玩家 {PlayerId} 离线战斗模拟完成，战斗 {BattleCount} 次", 
-            player.Id, battleCount);
+            SafeLogId(player.Id), battleCount);
     }
 
     /// <summary>
@@ -457,7 +470,7 @@ public class OfflineSettlementService
         var totalBattles = memberResults.Sum(r => r.BattleResults.Count);
         
         _logger.LogInformation("队伍 {TeamId} 整体进度：总经验 {TotalExp}，总战斗 {TotalBattles}", 
-            team.Id, totalExperience, totalBattles);
+            SafeLogId(team.Id), totalExperience, totalBattles);
         
         // 可以在这里更新队伍数据，记录整体进度信息
         // 为多人组队功能预留扩展点

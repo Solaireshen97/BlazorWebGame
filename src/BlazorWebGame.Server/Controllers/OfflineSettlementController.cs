@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using BlazorWebGame.Server.Services;
 using BlazorWebGame.Shared.DTOs;
 using Microsoft.AspNetCore.Mvc;
@@ -24,6 +25,19 @@ public class OfflineSettlementController : ControllerBase
     }
 
     /// <summary>
+    /// 安全地截取ID用于日志记录，防止日志注入攻击
+    /// </summary>
+    private static string SafeLogId(string id)
+    {
+        if (string.IsNullOrEmpty(id))
+            return "[empty]";
+        
+        // 只保留字母数字和连字符，并截取前8位
+        var sanitized = new string(id.Where(c => char.IsLetterOrDigit(c) || c == '-').ToArray());
+        return sanitized.Substring(0, Math.Min(8, sanitized.Length)) + (sanitized.Length > 8 ? "..." : "");
+    }
+
+    /// <summary>
     /// 处理单个玩家的离线结算
     /// </summary>
     /// <param name="playerId">玩家ID</param>
@@ -39,7 +53,7 @@ public class OfflineSettlementController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "处理玩家 {PlayerId} 离线结算时发生错误", playerId);
+            _logger.LogError(ex, "处理玩家 {PlayerId} 离线结算时发生错误", SafeLogId(playerId));
             return StatusCode(500, new ApiResponse<OfflineSettlementResultDto>
             {
                 Success = false,
@@ -64,7 +78,7 @@ public class OfflineSettlementController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "处理队伍 {TeamId} 离线结算时发生错误", teamId);
+            _logger.LogError(ex, "处理队伍 {TeamId} 离线结算时发生错误", SafeLogId(teamId));
             return StatusCode(500, new ApiResponse<List<OfflineSettlementResultDto>>
             {
                 Success = false,
@@ -145,7 +159,7 @@ public class OfflineSettlementController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取玩家 {PlayerId} 离线信息时发生错误", playerId);
+            _logger.LogError(ex, "获取玩家 {PlayerId} 离线信息时发生错误", SafeLogId(playerId));
             return StatusCode(500, new ApiResponse<PlayerOfflineInfoDto>
             {
                 Success = false,
