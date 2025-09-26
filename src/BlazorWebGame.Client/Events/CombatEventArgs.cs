@@ -2,6 +2,12 @@ using BlazorWebGame.Models;
 using BlazorWebGame.Models.Monsters;
 using BlazorWebGame.Models.Skills;
 
+
+using BlazorWebGame.Shared.Enums;
+using BlazorWebGame.Shared.Models.Items;
+using BlazorWebGame.Shared.Models.Skills;
+using BlazorWebGame.Shared.Models.Base;
+using BlazorWebGame.Shared.Models.Combat;
 namespace BlazorWebGame.Events
 {
     /// <summary>

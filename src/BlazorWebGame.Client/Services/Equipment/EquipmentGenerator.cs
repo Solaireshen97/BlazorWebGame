@@ -5,52 +5,57 @@ using System.Collections.Generic;
 using System.Linq;
 using BlazorWebGame.GameConfig;
 
+using BlazorWebGame.Shared.Enums;
+using SharedEquipment = BlazorWebGame.Shared.Models.Items.Equipment;
+using BlazorWebGame.Shared.Models.Skills;
+using BlazorWebGame.Shared.Models.Base;
+using BlazorWebGame.Shared.Models.Combat;
 namespace BlazorWebGame.Services.Equipments
 {
     /// <summary>
-    /// ×°±¸Éú³ÉÆ÷£º¸ù¾ÝÖ¸¶¨²ÎÊýÉú³ÉÓÎÏ·×°±¸
+    /// ×°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï·×°ï¿½ï¿½
     /// </summary>
     public static class EquipmentGenerator
     {
-        // Ëæ»úÊýÉú³ÉÆ÷
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         private static readonly Random Random = new Random();
 
         /// <summary>
-        /// ×°±¸Æ·ÖÊÃ¶¾Ù
+        /// ×°ï¿½ï¿½Æ·ï¿½ï¿½Ã¶ï¿½ï¿½
         /// </summary>
         public enum EquipmentQuality
         {
-            Common,     // °××°
-            Uncommon,   // ÂÌ×°
-            Rare,       // À¶×°
-            Epic        // ×Ï×°
+            Common,     // ï¿½ï¿½×°
+            Uncommon,   // ï¿½ï¿½×°
+            Rare,       // ï¿½ï¿½×°
+            Epic        // ï¿½ï¿½×°
         }
 
         /// <summary>
-        /// ÊôÐÔµÈ¼¶Ã¶¾Ù
+        /// ï¿½ï¿½ï¿½ÔµÈ¼ï¿½Ã¶ï¿½ï¿½
         /// </summary>
         public enum AttributeTier
         {
-            T1, // µÍµÈ¼¶ (0.8¡À0.05)
-            T2, // ÖÐµÈ¼¶ (1¡À0.05)
-            T3  // ¸ßµÈ¼¶ (1.2¡À0.05)
+            T1, // ï¿½ÍµÈ¼ï¿½ (0.8ï¿½ï¿½0.05)
+            T2, // ï¿½ÐµÈ¼ï¿½ (1ï¿½ï¿½0.05)
+            T3  // ï¿½ßµÈ¼ï¿½ (1.2ï¿½ï¿½0.05)
         }
 
-        #region Ö÷ÒªÉú³É·½·¨
+        #region ï¿½ï¿½Òªï¿½ï¿½ï¿½É·ï¿½ï¿½ï¿½
         /// <summary>
-        /// Éú³É×°±¸
+        /// ï¿½ï¿½ï¿½ï¿½×°ï¿½ï¿½
         /// </summary>
-        /// <param name="name">×°±¸Ãû³Æ</param>
-        /// <param name="level">×°±¸µÈ¼¶</param>
-        /// <param name="slot">×°±¸²ÛÎ»</param>
-        /// <param name="quality">×°±¸Æ·ÖÊ</param>
-        /// <param name="attributeTier">ÊôÐÔµÈ¼¶</param>
-        /// <param name="weaponType">ÎäÆ÷ÀàÐÍ(Èç¹ûÊÇÎäÆ÷)</param>
-        /// <param name="armorType">»¤¼×ÀàÐÍ(Èç¹ûÊÇ»¤¼×)</param>
-        /// <param name="isTwoHanded">ÊÇ·ñÎªË«ÊÖÎäÆ÷</param>
-        /// <param name="allowedProfessions">ÔÊÐíÊ¹ÓÃµÄÖ°Òµ</param>
-        /// <param name="secondaryAttributePool">¿ÉÑ¡µÄ¸±ÊôÐÔ³Ø</param>
-        /// <param name="customAttributes">×Ô¶¨ÒåÊôÐÔ</param>
+        /// <param name="name">×°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½</param>
+        /// <param name="level">×°ï¿½ï¿½ï¿½È¼ï¿½</param>
+        /// <param name="slot">×°ï¿½ï¿½ï¿½ï¿½Î»</param>
+        /// <param name="quality">×°ï¿½ï¿½Æ·ï¿½ï¿½</param>
+        /// <param name="attributeTier">ï¿½ï¿½ï¿½ÔµÈ¼ï¿½</param>
+        /// <param name="weaponType">ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)</param>
+        /// <param name="armorType">ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(ï¿½ï¿½ï¿½ï¿½Ç»ï¿½ï¿½ï¿½)</param>
+        /// <param name="isTwoHanded">ï¿½Ç·ï¿½ÎªË«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½</param>
+        /// <param name="allowedProfessions">ï¿½ï¿½ï¿½ï¿½Ê¹ï¿½Ãµï¿½Ö°Òµ</param>
+        /// <param name="secondaryAttributePool">ï¿½ï¿½Ñ¡ï¿½Ä¸ï¿½ï¿½ï¿½ï¿½Ô³ï¿½</param>
+        /// <param name="customAttributes">ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½</param>
         public static Equipment GenerateEquipment(
             string name,
             int level,
@@ -64,7 +69,7 @@ namespace BlazorWebGame.Services.Equipments
             List<string>? secondaryAttributePool = null,
             Dictionary<string, object>? customAttributes = null)
         {
-            // ´´½¨×°±¸ÊµÀý
+            // ï¿½ï¿½ï¿½ï¿½×°ï¿½ï¿½Êµï¿½ï¿½
             var equipment = new Equipment
             {
                 Name = name,
@@ -77,17 +82,17 @@ namespace BlazorWebGame.Services.Equipments
                 Description = GenerateDescription(name, quality, level, slot, weaponType, armorType)
             };
 
-            // ÉèÖÃ×°±¸Æ·ÖÊ¶ÔÓ¦µÄÃû³ÆÑÕÉ«
+            // ï¿½ï¿½ï¿½ï¿½×°ï¿½ï¿½Æ·ï¿½Ê¶ï¿½Ó¦ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É«
             equipment.Name = AddQualityColor(equipment.Name, quality);
 
-            // ÉèÖÃ×Ô¶¨ÒåÊôÐÔ(Èç¹ûÓÐ)
+            // ï¿½ï¿½ï¿½ï¿½ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(ï¿½ï¿½ï¿½ï¿½ï¿½)
             if (customAttributes != null)
             {
                 ApplyCustomAttributes(equipment, customAttributes);
             }
             else
             {
-                // ¸ù¾Ý×°±¸ÀàÐÍÓ¦ÓÃ²»Í¬µÄÉú³ÉÂß¼­
+                // ï¿½ï¿½ï¿½ï¿½×°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¦ï¿½Ã²ï¿½Í¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ß¼ï¿½
                 if (IsWeapon(slot))
                 {
                     GenerateWeaponAttributes(equipment, level, quality, attributeTier, weaponType, isTwoHanded);
@@ -101,7 +106,7 @@ namespace BlazorWebGame.Services.Equipments
                     GenerateJewelryAttributes(equipment, level, quality, attributeTier, slot);
                 }
 
-                // Éú³É¸±ÊôÐÔ
+                // ï¿½ï¿½ï¿½É¸ï¿½ï¿½ï¿½ï¿½ï¿½
                 GenerateSecondaryAttributes(equipment, level, quality, attributeTier, secondaryAttributePool);
             }
 
@@ -109,9 +114,9 @@ namespace BlazorWebGame.Services.Equipments
         }
         #endregion
 
-        #region ÊôÐÔÉú³É·½·¨
+        #region ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É·ï¿½ï¿½ï¿½
         /// <summary>
-        /// Éú³ÉÎäÆ÷ÊôÐÔ
+        /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         /// </summary>
         private static void GenerateWeaponAttributes(
             Equipment equipment,
@@ -121,13 +126,13 @@ namespace BlazorWebGame.Services.Equipments
             WeaponType weaponType,
             bool isTwoHanded)
         {
-            // È·±£ÎäÆ÷ÀàÐÍÉèÖÃÕýÈ·
+            // È·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È·
             if (weaponType == WeaponType.None)
             {
                 weaponType = equipment.Slot == EquipmentSlot.OffHand ? WeaponType.Shield : WeaponType.Sword;
             }
 
-            // Èç¹ûÊÇË«ÊÖÎäÆ÷ÀàÐÍ£¬È·±£IsTwoHanded±êÖ¾ÉèÖÃÕýÈ·
+            // ï¿½ï¿½ï¿½ï¿½ï¿½Ë«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í£ï¿½È·ï¿½ï¿½IsTwoHandedï¿½ï¿½Ö¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È·
             if (weaponType == WeaponType.TwoHandSword || weaponType == WeaponType.TwoHandAxe ||
                 weaponType == WeaponType.TwoHandMace || weaponType == WeaponType.Polearm ||
                 weaponType == WeaponType.Staff)
@@ -135,35 +140,35 @@ namespace BlazorWebGame.Services.Equipments
                 equipment.IsTwoHanded = true;
             }
 
-            // »ñÈ¡ÎäÆ÷ÀàÐÍÐÞÊÎ·û
+            // ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î·ï¿½
             var (damageModifier, speedBase) = EquipmentAttributeConfig.WeaponTypeModifiers[weaponType];
 
-            // Ë«ÊÖÎäÆ÷¶îÍâÔö¼ÓÉËº¦
+            // Ë«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ëºï¿½
             if (equipment.IsTwoHanded && !IsSpecificWeaponType(weaponType))
             {
                 damageModifier *= EquipmentAttributeConfig.TwoHandedDamageMultiplier;
             }
 
-            // ¼ÆËã»ù´¡ÉËº¦
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ëºï¿½
             double baseDPS = EquipmentAttributeConfig.BaseWeaponDPS *
                 Math.Pow(EquipmentAttributeConfig.WeaponDPSLevelMultiplier, level - 1);
 
-            // Ó¦ÓÃÆ·ÖÊÐÞÊÎ·û
+            // Ó¦ï¿½ï¿½Æ·ï¿½ï¿½ï¿½ï¿½ï¿½Î·ï¿½
             double qualityMultiplier = EquipmentAttributeConfig.WeaponMainAttributeMultipliers[quality];
             baseDPS *= qualityMultiplier;
 
-            // Ó¦ÓÃµÈ¼¶ÐÞÊÎ·û
+            // Ó¦ï¿½ÃµÈ¼ï¿½ï¿½ï¿½ï¿½Î·ï¿½
             baseDPS = ApplyAttributeTierMultiplier(baseDPS, attributeTier);
 
-            // ¼ÆËã¹¥»÷ËÙ¶ÈºÍÎäÆ÷ÉËº¦
+            // ï¿½ï¿½ï¿½ã¹¥ï¿½ï¿½ï¿½Ù¶Èºï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ëºï¿½
             equipment.AttackSpeed = speedBase;
             equipment.WeaponDamage = (int)Math.Round(baseDPS / speedBase * damageModifier);
 
-            // Ö÷ÊôÐÔ¼Ó³É
+            // ï¿½ï¿½ï¿½ï¿½ï¿½Ô¼Ó³ï¿½
             int mainAttributeBonus = (int)Math.Round(level * qualityMultiplier);
             mainAttributeBonus = (int)ApplyAttributeTierMultiplier(mainAttributeBonus, attributeTier);
 
-            // ¸ù¾ÝÎäÆ÷ÀàÐÍ·ÖÅäÖ÷ÊôÐÔ
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
             switch (weaponType)
             {
                 case WeaponType.Sword:
@@ -197,7 +202,7 @@ namespace BlazorWebGame.Services.Equipments
         }
 
         /// <summary>
-        /// Éú³É»¤¼×ÊôÐÔ
+        /// ï¿½ï¿½ï¿½É»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         /// </summary>
         private static void GenerateArmorAttributes(
             Equipment equipment,
@@ -206,41 +211,41 @@ namespace BlazorWebGame.Services.Equipments
             AttributeTier attributeTier,
             ArmorType armorType)
         {
-            // È·±£»¤¼×ÀàÐÍÉèÖÃÕýÈ·
+            // È·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È·
             if (armorType == ArmorType.None)
             {
                 armorType = ArmorType.Leather;
             }
             equipment.ArmorType = armorType;
 
-            // ¼ÆËã»ù´¡»¤¼×Öµ
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµ
             double baseArmor = EquipmentAttributeConfig.BaseArmorValue *
                 Math.Pow(EquipmentAttributeConfig.ArmorLevelMultiplier, level - 1);
 
-            // Ó¦ÓÃ»¤¼×ÀàÐÍÐÞÊÎ·û
+            // Ó¦ï¿½Ã»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î·ï¿½
             baseArmor *= EquipmentAttributeConfig.ArmorTypeModifiers[armorType];
 
-            // Ó¦ÓÃ²¿Î»ÐÞÊÎ·û
+            // Ó¦ï¿½Ã²ï¿½Î»ï¿½ï¿½ï¿½Î·ï¿½
             baseArmor *= GetArmorSlotModifier(equipment.Slot);
 
-            // Ó¦ÓÃÆ·ÖÊÐÞÊÎ·û
+            // Ó¦ï¿½ï¿½Æ·ï¿½ï¿½ï¿½ï¿½ï¿½Î·ï¿½
             double qualityMultiplier = GetQualityMultiplier(quality) / EquipmentAttributeConfig.ArmorQualityDivisor;
             baseArmor *= qualityMultiplier;
 
-            // Ó¦ÓÃµÈ¼¶ÐÞÊÎ·û
+            // Ó¦ï¿½ÃµÈ¼ï¿½ï¿½ï¿½ï¿½Î·ï¿½
             baseArmor = ApplyAttributeTierMultiplier(baseArmor, attributeTier);
 
             equipment.ArmorValue = (int)Math.Round(baseArmor);
 
-            // ¼ÆËãÖ÷ÊôÐÔ
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
             double totalMainAttributes = level * EquipmentAttributeConfig.QualityMainAttributeMultipliers[quality];
             double slotRatio = EquipmentAttributeConfig.SlotMainAttributeRatios[equipment.Slot];
             int mainAttributeValue = (int)Math.Round(totalMainAttributes * slotRatio);
 
-            // Ó¦ÓÃµÈ¼¶ÐÞÊÎ·û
+            // Ó¦ï¿½ÃµÈ¼ï¿½ï¿½ï¿½ï¿½Î·ï¿½
             mainAttributeValue = (int)ApplyAttributeTierMultiplier(mainAttributeValue, attributeTier);
 
-            // ¸ù¾Ý»¤¼×ÀàÐÍ·ÖÅäÖ÷ÊôÐÔ
+            // ï¿½ï¿½ï¿½Ý»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
             switch (armorType)
             {
                 case ArmorType.Cloth:
@@ -261,15 +266,15 @@ namespace BlazorWebGame.Services.Equipments
                     break;
             }
 
-            // ÄÍÁ¦ÊÇËùÓÐ»¤¼×µÄ´ÎÒªÊôÐÔ
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð»ï¿½ï¿½×µÄ´ï¿½Òªï¿½ï¿½ï¿½ï¿½
             equipment.AttributeBonuses.Stamina = (int)(mainAttributeValue * EquipmentAttributeConfig.ArmorStaminaRatio);
 
-            // Ìí¼ÓÉúÃüÖµ¼Ó³É
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµï¿½Ó³ï¿½
             equipment.HealthBonus = equipment.AttributeBonuses.Stamina * EquipmentAttributeConfig.StaminaToHealthRatio;
         }
 
         /// <summary>
-        /// Éú³ÉÊÎÆ·ÊôÐÔ
+        /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ·ï¿½ï¿½ï¿½ï¿½
         /// </summary>
         private static void GenerateJewelryAttributes(
             Equipment equipment,
@@ -278,19 +283,19 @@ namespace BlazorWebGame.Services.Equipments
             AttributeTier attributeTier,
             EquipmentSlot slot)
         {
-            // ¼ÆËãÖ÷ÊôÐÔ×ÜÖµ
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµ
             double totalMainAttributes = level * EquipmentAttributeConfig.QualityMainAttributeMultipliers[quality];
             double slotRatio = EquipmentAttributeConfig.SlotMainAttributeRatios[slot];
             int mainAttributeValue = (int)Math.Round(totalMainAttributes * slotRatio);
 
-            // Ó¦ÓÃµÈ¼¶ÐÞÊÎ·û
+            // Ó¦ï¿½ÃµÈ¼ï¿½ï¿½ï¿½ï¿½Î·ï¿½
             mainAttributeValue = (int)ApplyAttributeTierMultiplier(mainAttributeValue, attributeTier);
 
-            // ¸ù¾ÝÊÎÆ·ÀàÐÍ·ÖÅäÖ÷ÊôÐÔ
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ·ï¿½ï¿½ï¿½Í·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
             switch (slot)
             {
                 case EquipmentSlot.Neck:
-                    // ÏîÁ´¾ùºâ·ÖÅäËùÓÐÊôÐÔ
+                    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                     int perStat = (int)(mainAttributeValue * EquipmentAttributeConfig.NecklaceEqualStatRatio);
                     equipment.AttributeBonuses.Strength = perStat;
                     equipment.AttributeBonuses.Agility = perStat;
@@ -300,11 +305,11 @@ namespace BlazorWebGame.Services.Equipments
 
                 case EquipmentSlot.Finger1:
                 case EquipmentSlot.Finger2:
-                    // ½äÖ¸Ö÷ÒªÔö¼ÓÁ½ÖÖÖ÷ÊôÐÔ
+                    // ï¿½ï¿½Ö¸ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                     int primary = (int)(mainAttributeValue * EquipmentAttributeConfig.RingPrimaryStatRatio);
                     int secondary = mainAttributeValue - primary;
 
-                    // Ëæ»úÑ¡ÔñÁ½ÖÖÖ÷ÊôÐÔ
+                    // ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                     int randomPrimary = Random.Next(3);
                     int randomSecondary = (randomPrimary + 1 + Random.Next(2)) % 3;
 
@@ -327,10 +332,10 @@ namespace BlazorWebGame.Services.Equipments
 
                 case EquipmentSlot.Trinket1:
                 case EquipmentSlot.Trinket2:
-                    // ÊÎÆ·×¨×¢ÓÚÌØÊâÐ§¹û£¬Ö÷ÊôÐÔ½ÏÉÙ
+                    // ï¿½ï¿½Æ·×¨×¢ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð§ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô½ï¿½ï¿½ï¿½
                     int trinketMainStat = (int)(mainAttributeValue * EquipmentAttributeConfig.TrinketMainStatRatio);
 
-                    // Ëæ»úÑ¡ÔñÒ»ÖÖÖ÷ÊôÐÔ
+                    // ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                     switch (Random.Next(4))
                     {
                         case 0: equipment.AttributeBonuses.Strength = trinketMainStat; break;
@@ -341,7 +346,7 @@ namespace BlazorWebGame.Services.Equipments
 
                     equipment.AttributeBonuses.Stamina = (int)(mainAttributeValue * EquipmentAttributeConfig.TrinketStaminaRatio);
 
-                    // ÊÎÆ·ÓÐÌØÊâ¼¸ÂÊÊôÐÔ
+                    // ï¿½ï¿½Æ·ï¿½ï¿½ï¿½ï¿½ï¿½â¼¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                     equipment.CriticalChanceBonus = EquipmentAttributeConfig.TrinketBaseCriticalChance +
                         (level * EquipmentAttributeConfig.TrinketCriticalChanceLevelBonus);
                     equipment.ExtraLootChanceBonus = EquipmentAttributeConfig.TrinketBaseExtraLootChance +
@@ -351,7 +356,7 @@ namespace BlazorWebGame.Services.Equipments
         }
 
         /// <summary>
-        /// Éú³É¸±ÊôÐÔ
+        /// ï¿½ï¿½ï¿½É¸ï¿½ï¿½ï¿½ï¿½ï¿½
         /// </summary>
         private static void GenerateSecondaryAttributes(
             Equipment equipment,
@@ -360,42 +365,42 @@ namespace BlazorWebGame.Services.Equipments
             AttributeTier attributeTier,
             List<string>? secondaryAttributePool)
         {
-            // È·¶¨¸±ÊôÐÔÊýÁ¿
+            // È·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
             int secondaryCount = EquipmentAttributeConfig.QualitySecondaryAttributeCount[quality];
             if (secondaryCount <= 0) return;
 
-            // Ê¹ÓÃÄ¬ÈÏ¸±ÊôÐÔ³Ø»ò×Ô¶¨Òå³Ø
+            // Ê¹ï¿½ï¿½Ä¬ï¿½Ï¸ï¿½ï¿½ï¿½ï¿½Ô³Ø»ï¿½ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½
             var attributePool = secondaryAttributePool ?? GetDefaultSecondaryAttributePool(equipment);
             if (!attributePool.Any()) return;
 
-            // ¼ÆËã¸±ÊôÐÔ»ù´¡Öµ
+            // ï¿½ï¿½ï¿½ã¸±ï¿½ï¿½ï¿½Ô»ï¿½ï¿½ï¿½Öµ
             double baseSecondaryValue = level * EquipmentAttributeConfig.SecondaryAttributeBaseValueMultiplier;
 
-            // Ëæ»úÑ¡Ôñ²¢Ó¦ÓÃ¸±ÊôÐÔ
+            // ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½Ó¦ï¿½Ã¸ï¿½ï¿½ï¿½ï¿½ï¿½
             var selectedAttributes = new List<string>();
 
             for (int i = 0; i < secondaryCount && attributePool.Count > 0; i++)
             {
-                // Ëæ»úÑ¡ÔñÒ»¸ö¸±ÊôÐÔ
+                // ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                 int index = Random.Next(attributePool.Count);
                 string attribute = attributePool[index];
                 attributePool.RemoveAt(index);
                 selectedAttributes.Add(attribute);
 
-                // Îª¸ÃÊôÐÔËæ»úÑ¡ÔñÒ»¸öµÈ¼¶
+                // Îªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½Ò»ï¿½ï¿½ï¿½È¼ï¿½
                 var randomTier = (AttributeTier)Random.Next(3);
 
-                // ¼ÆËãÊôÐÔÖµ
+                // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµ
                 double attributeValue = baseSecondaryValue;
                 attributeValue = ApplyAttributeTierMultiplier(attributeValue, randomTier);
 
-                // Ó¦ÓÃ¸±ÊôÐÔ
+                // Ó¦ï¿½Ã¸ï¿½ï¿½ï¿½ï¿½ï¿½
                 ApplySecondaryAttribute(equipment, attribute, attributeValue, level);
             }
         }
 
         /// <summary>
-        /// Ó¦ÓÃ¸±ÊôÐÔ
+        /// Ó¦ï¿½Ã¸ï¿½ï¿½ï¿½ï¿½ï¿½
         /// </summary>
         private static void ApplySecondaryAttribute(Equipment equipment, string attribute, double value, int level)
         {
@@ -450,7 +455,7 @@ namespace BlazorWebGame.Services.Equipments
             }
             else
             {
-                // ´¦ÀíÖ÷ÊôÐÔºÍÔªËØ¿¹ÐÔ
+                // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ôºï¿½Ôªï¿½Ø¿ï¿½ï¿½ï¿½
                 switch (attribute)
                 {
                     case "strength":
@@ -502,9 +507,9 @@ namespace BlazorWebGame.Services.Equipments
         }
         #endregion
 
-        #region ¸¨Öú·½·¨
+        #region ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         /// <summary>
-        /// »ñÈ¡»¤¼×²ÛÎ»ÐÞÊÎ·û
+        /// ï¿½ï¿½È¡ï¿½ï¿½ï¿½×²ï¿½Î»ï¿½ï¿½ï¿½Î·ï¿½
         /// </summary>
         private static double GetArmorSlotModifier(EquipmentSlot slot)
         {
@@ -512,11 +517,11 @@ namespace BlazorWebGame.Services.Equipments
             {
                 return modifier;
             }
-            return 0.5; // Ä¬ÈÏÖµ
+            return 0.5; // Ä¬ï¿½ï¿½Öµ
         }
 
         /// <summary>
-        /// »ñÈ¡Æ·ÖÊ±¶ÂÊ
+        /// ï¿½ï¿½È¡Æ·ï¿½Ê±ï¿½ï¿½ï¿½
         /// </summary>
         private static double GetQualityMultiplier(EquipmentQuality quality)
         {
@@ -524,7 +529,7 @@ namespace BlazorWebGame.Services.Equipments
         }
 
         /// <summary>
-        /// Ó¦ÓÃÊôÐÔµÈ¼¶±¶ÂÊ
+        /// Ó¦ï¿½ï¿½ï¿½ï¿½ï¿½ÔµÈ¼ï¿½ï¿½ï¿½ï¿½ï¿½
         /// </summary>
         private static double ApplyAttributeTierMultiplier(double value, AttributeTier tier)
         {
@@ -533,7 +538,7 @@ namespace BlazorWebGame.Services.Equipments
         }
 
         /// <summary>
-        /// ÅÐ¶ÏÊÇ·ñÎªÎäÆ÷²ÛÎ»
+        /// ï¿½Ð¶ï¿½ï¿½Ç·ï¿½Îªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î»
         /// </summary>
         private static bool IsWeapon(EquipmentSlot slot)
         {
@@ -541,7 +546,7 @@ namespace BlazorWebGame.Services.Equipments
         }
 
         /// <summary>
-        /// ÅÐ¶ÏÊÇ·ñÎª»¤¼×²ÛÎ»
+        /// ï¿½Ð¶ï¿½ï¿½Ç·ï¿½Îªï¿½ï¿½ï¿½×²ï¿½Î»
         /// </summary>
         private static bool IsArmor(EquipmentSlot slot)
         {
@@ -553,7 +558,7 @@ namespace BlazorWebGame.Services.Equipments
         }
 
         /// <summary>
-        /// ÅÐ¶ÏÊÇ·ñÎªÊÎÆ·²ÛÎ»
+        /// ï¿½Ð¶ï¿½ï¿½Ç·ï¿½Îªï¿½ï¿½Æ·ï¿½ï¿½Î»
         /// </summary>
         private static bool IsJewelry(EquipmentSlot slot)
         {
@@ -563,7 +568,7 @@ namespace BlazorWebGame.Services.Equipments
         }
 
         /// <summary>
-        /// ÊÇ·ñÎªÌØ¶¨ÎäÆ÷ÀàÐÍ(Ë«ÊÖÎäÆ÷)
+        /// ï¿½Ç·ï¿½Îªï¿½Ø¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(Ë«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
         /// </summary>
         private static bool IsSpecificWeaponType(WeaponType weaponType)
         {
@@ -575,7 +580,7 @@ namespace BlazorWebGame.Services.Equipments
         }
 
         /// <summary>
-        /// Ìí¼ÓÔªËØ¿¹ÐÔ
+        /// ï¿½ï¿½ï¿½ï¿½Ôªï¿½Ø¿ï¿½ï¿½ï¿½
         /// </summary>
         private static void AddElementalResistance(Equipment equipment, ElementType element, double value)
         {
@@ -590,7 +595,7 @@ namespace BlazorWebGame.Services.Equipments
         }
 
         /// <summary>
-        /// »ñÈ¡Ä¬ÈÏ¸±ÊôÐÔ³Ø
+        /// ï¿½ï¿½È¡Ä¬ï¿½Ï¸ï¿½ï¿½ï¿½ï¿½Ô³ï¿½
         /// </summary>
         private static List<string> GetDefaultSecondaryAttributePool(Equipment equipment)
         {
@@ -602,7 +607,7 @@ namespace BlazorWebGame.Services.Equipments
                 "nature_resistance", "shadow_resistance", "holy_resistance"
             };
 
-            // ¶ÔÓÚ·ÇÕ½¶·×°±¸£¬Ìí¼ÓÉú²ú/²É¼¯ÊôÐÔ
+            // ï¿½ï¿½ï¿½Ú·ï¿½Õ½ï¿½ï¿½×°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½/ï¿½É¼ï¿½ï¿½ï¿½ï¿½ï¿½
             if (IsJewelry(equipment.Slot) || equipment.Slot == EquipmentSlot.Back ||
                 equipment.Slot == EquipmentSlot.Hands)
             {
@@ -616,7 +621,7 @@ namespace BlazorWebGame.Services.Equipments
         }
 
         /// <summary>
-        /// Ó¦ÓÃ×Ô¶¨ÒåÊôÐÔ
+        /// Ó¦ï¿½ï¿½ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         /// </summary>
         private static void ApplyCustomAttributes(Equipment equipment, Dictionary<string, object> attributes)
         {
@@ -651,13 +656,13 @@ namespace BlazorWebGame.Services.Equipments
                     case "CriticalDamageBonus" when pair.Value is double critDamage:
                         equipment.CriticalDamageBonus = critDamage;
                         break;
-                        // ÆäËû×Ô¶¨ÒåÊôÐÔ...
+                        // ï¿½ï¿½ï¿½ï¿½ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½...
                 }
             }
         }
 
         /// <summary>
-        /// Éú³É×°±¸ÃèÊö
+        /// ï¿½ï¿½ï¿½ï¿½×°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         /// </summary>
         private static string GenerateDescription(
             string name,
@@ -685,11 +690,11 @@ namespace BlazorWebGame.Services.Equipments
                 typeDesc = EquipmentAttributeConfig.SlotDescriptions[slot];
             }
 
-            return $"{qualityDesc}{typeDesc}£¬ÊÊºÏ{level}¼¶Ã°ÏÕÕßÊ¹ÓÃ¡£";
+            return $"{qualityDesc}{typeDesc}ï¿½ï¿½ï¿½Êºï¿½{level}ï¿½ï¿½Ã°ï¿½ï¿½ï¿½ï¿½Ê¹ï¿½Ã¡ï¿½";
         }
 
         /// <summary>
-        /// Ìí¼ÓÆ·ÖÊÑÕÉ«Ç°×º
+        /// ï¿½ï¿½ï¿½ï¿½Æ·ï¿½ï¿½ï¿½ï¿½É«Ç°×º
         /// </summary>
         private static string AddQualityColor(string name, EquipmentQuality quality)
         {
@@ -697,23 +702,23 @@ namespace BlazorWebGame.Services.Equipments
         }
         #endregion
 
-        #region ¹«¹²ÊµÓÃ·½·¨
+        #region ï¿½ï¿½ï¿½ï¿½Êµï¿½Ã·ï¿½ï¿½ï¿½
         /// <summary>
-        /// »ñÈ¡×°±¸µÄÐéÄâ¼ÛÖµ£¬ÓÃÓÚ³öÊÛ¼Û¸ñ¼ÆËã
+        /// ï¿½ï¿½È¡×°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµï¿½ï¿½ï¿½ï¿½ï¿½Ú³ï¿½ï¿½Û¼Û¸ï¿½ï¿½ï¿½ï¿½
         /// </summary>
         public static int CalculateEquipmentValue(Equipment equipment)
         {
             int baseValue = equipment.RequiredLevel * EquipmentAttributeConfig.EquipmentBasePricePerLevel;
 
-            // ¸ù¾ÝÆ·ÖÊÔö¼Ó¼ÛÖµ
+            // ï¿½ï¿½ï¿½ï¿½Æ·ï¿½ï¿½ï¿½ï¿½ï¿½Ó¼ï¿½Öµ
             if (equipment.Name.StartsWith("[Ê·Ê«]"))
                 baseValue *= EquipmentAttributeConfig.QualityPriceMultipliers[EquipmentQuality.Epic];
-            else if (equipment.Name.StartsWith("[Ï¡ÓÐ]"))
+            else if (equipment.Name.StartsWith("[Ï¡ï¿½ï¿½]"))
                 baseValue *= EquipmentAttributeConfig.QualityPriceMultipliers[EquipmentQuality.Rare];
-            else if (equipment.Name.StartsWith("[ÓÅÖÊ]"))
+            else if (equipment.Name.StartsWith("[ï¿½ï¿½ï¿½ï¿½]"))
                 baseValue *= EquipmentAttributeConfig.QualityPriceMultipliers[EquipmentQuality.Uncommon];
 
-            // ÎäÆ÷ºÍ»¤¼×ÓÐ¶îÍâ¼ÛÖµ
+            // ï¿½ï¿½ï¿½ï¿½ï¿½Í»ï¿½ï¿½ï¿½ï¿½Ð¶ï¿½ï¿½ï¿½ï¿½Öµ
             if (equipment.WeaponDamage > 0)
             {
                 baseValue += equipment.WeaponDamage * EquipmentAttributeConfig.WeaponDamagePriceMultiplier;
@@ -724,14 +729,14 @@ namespace BlazorWebGame.Services.Equipments
                 baseValue += equipment.ArmorValue * EquipmentAttributeConfig.ArmorValuePriceMultiplier;
             }
 
-            // Ö÷ÊôÐÔÔö¼Ó¼ÛÖµ
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¼ï¿½Öµ
             baseValue += equipment.AttributeBonuses.Strength * EquipmentAttributeConfig.MainAttributePriceMultiplier;
             baseValue += equipment.AttributeBonuses.Agility * EquipmentAttributeConfig.MainAttributePriceMultiplier;
             baseValue += equipment.AttributeBonuses.Intellect * EquipmentAttributeConfig.MainAttributePriceMultiplier;
             baseValue += equipment.AttributeBonuses.Spirit * EquipmentAttributeConfig.MainAttributePriceMultiplier;
             baseValue += equipment.AttributeBonuses.Stamina * EquipmentAttributeConfig.MainAttributePriceMultiplier;
 
-            // ÆäËûÌØÊâÊôÐÔÔö¼Ó¼ÛÖµ
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¼ï¿½Öµ
             baseValue += equipment.HealthBonus / EquipmentAttributeConfig.HealthBonusPriceDivisor;
             baseValue += equipment.AttackBonus * EquipmentAttributeConfig.AttackBonusPriceMultiplier;
             baseValue += (int)(equipment.CriticalChanceBonus * EquipmentAttributeConfig.CriticalChancePriceMultiplier);
@@ -741,39 +746,39 @@ namespace BlazorWebGame.Services.Equipments
         }
 
         /// <summary>
-        /// ¸ù¾ÝÃû³Æ²Â²â×°±¸µÄÎäÆ÷ÀàÐÍ
+        /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ²Â²ï¿½×°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         /// </summary>
         public static WeaponType GuessWeaponTypeFromName(string name)
         {
             name = name.ToLower();
 
-            if (name.Contains("½£")) return name.Contains("Ë«ÊÖ") ? WeaponType.TwoHandSword : WeaponType.Sword;
-            if (name.Contains("Ø°Ê×") || name.Contains("¶Ì½£")) return WeaponType.Dagger;
-            if (name.Contains("¸«")) return name.Contains("Ë«ÊÖ") ? WeaponType.TwoHandAxe : WeaponType.Axe;
-            if (name.Contains("´¸") || name.Contains("é³")) return name.Contains("Ë«ÊÖ") ? WeaponType.TwoHandMace : WeaponType.Mace;
-            if (name.Contains("·¨ÕÈ") || name.Contains("Ä§ÕÈ")) return name.Contains("·¨ÕÈ") ? WeaponType.Staff : WeaponType.Wand;
-            if (name.Contains("¹­")) return name.Contains("åó") ? WeaponType.Crossbow : WeaponType.Bow;
+            if (name.Contains("ï¿½ï¿½")) return name.Contains("Ë«ï¿½ï¿½") ? WeaponType.TwoHandSword : WeaponType.Sword;
+            if (name.Contains("Ø°ï¿½ï¿½") || name.Contains("ï¿½Ì½ï¿½")) return WeaponType.Dagger;
+            if (name.Contains("ï¿½ï¿½")) return name.Contains("Ë«ï¿½ï¿½") ? WeaponType.TwoHandAxe : WeaponType.Axe;
+            if (name.Contains("ï¿½ï¿½") || name.Contains("ï¿½")) return name.Contains("Ë«ï¿½ï¿½") ? WeaponType.TwoHandMace : WeaponType.Mace;
+            if (name.Contains("ï¿½ï¿½ï¿½ï¿½") || name.Contains("Ä§ï¿½ï¿½")) return name.Contains("ï¿½ï¿½ï¿½ï¿½") ? WeaponType.Staff : WeaponType.Wand;
+            if (name.Contains("ï¿½ï¿½")) return name.Contains("ï¿½ï¿½") ? WeaponType.Crossbow : WeaponType.Bow;
             if (name.Contains("Ç¹")) return WeaponType.Gun;
-            if (name.Contains("¶Ü") || name.Contains("shield")) return WeaponType.Shield;
-            if (name.Contains("³¤±ú") || name.Contains("Ã¬") || name.Contains("Ç¹")) return WeaponType.Polearm;
+            if (name.Contains("ï¿½ï¿½") || name.Contains("shield")) return WeaponType.Shield;
+            if (name.Contains("ï¿½ï¿½ï¿½ï¿½") || name.Contains("Ã¬") || name.Contains("Ç¹")) return WeaponType.Polearm;
 
-            // Ä¬ÈÏÎª½£
+            // Ä¬ï¿½ï¿½Îªï¿½ï¿½
             return WeaponType.Sword;
         }
 
         /// <summary>
-        /// ¸ù¾ÝÃû³Æ²Â²â×°±¸µÄ»¤¼×ÀàÐÍ
+        /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ²Â²ï¿½×°ï¿½ï¿½ï¿½Ä»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         /// </summary>
         public static ArmorType GuessArmorTypeFromName(string name)
         {
             name = name.ToLower();
 
-            if (name.Contains("²¼") || name.Contains("ÅÛ") || name.Contains("·¨Ê¦")) return ArmorType.Cloth;
-            if (name.Contains("Æ¤") || name.Contains("ÁÔÈË")) return ArmorType.Leather;
-            if (name.Contains("Ëø") || name.Contains("Á´") || name.Contains("ÈøÂú")) return ArmorType.Mail;
-            if (name.Contains("°å") || name.Contains("Õ½Ê¿")) return ArmorType.Plate;
+            if (name.Contains("ï¿½ï¿½") || name.Contains("ï¿½ï¿½") || name.Contains("ï¿½ï¿½Ê¦")) return ArmorType.Cloth;
+            if (name.Contains("Æ¤") || name.Contains("ï¿½ï¿½ï¿½ï¿½")) return ArmorType.Leather;
+            if (name.Contains("ï¿½ï¿½") || name.Contains("ï¿½ï¿½") || name.Contains("ï¿½ï¿½ï¿½ï¿½")) return ArmorType.Mail;
+            if (name.Contains("ï¿½ï¿½") || name.Contains("Õ½Ê¿")) return ArmorType.Plate;
 
-            // Ä¬ÈÏÎªÆ¤¼×
+            // Ä¬ï¿½ï¿½ÎªÆ¤ï¿½ï¿½
             return ArmorType.Leather;
         }
         #endregion

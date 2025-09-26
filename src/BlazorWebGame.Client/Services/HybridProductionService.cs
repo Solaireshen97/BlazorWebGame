@@ -2,6 +2,11 @@ using BlazorWebGame.Client.Services.Api;
 using BlazorWebGame.Models;
 using BlazorWebGame.Services;
 using BlazorWebGame.Shared.DTOs;
+using BlazorWebGame.Shared.Enums;
+using BlazorWebGame.Shared.Models.Items;
+using BlazorWebGame.Shared.Models.Skills;
+using BlazorWebGame.Shared.Models.Base;
+using BlazorWebGame.Shared.Models.Combat;
 using Microsoft.AspNetCore.SignalR.Client;
 
 namespace BlazorWebGame.Client.Services;

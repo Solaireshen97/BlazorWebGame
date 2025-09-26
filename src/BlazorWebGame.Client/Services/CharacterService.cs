@@ -6,6 +6,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
+
+using BlazorWebGame.Shared.Enums;
+using BlazorWebGame.Shared.Models.Items;
+using BlazorWebGame.Shared.Models.Skills;
+using BlazorWebGame.Shared.Models.Base;
+using BlazorWebGame.Shared.Models.Combat;
 namespace BlazorWebGame.Services
 {
     /// <summary>
