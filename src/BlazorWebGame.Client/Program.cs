@@ -39,6 +39,7 @@ builder.Services.AddSingleton<InventoryApiService>();
 builder.Services.AddSingleton<EquipmentApiService>();
 builder.Services.AddSingleton<ProductionApiServiceNew>();
 builder.Services.AddSingleton<QuestApiService>();
+builder.Services.AddSingleton<ShopApiService>();  // 添加商店API服务
 builder.Services.AddSingleton<AuthApiService>();
 builder.Services.AddSingleton<OfflineSettlementApiService>();
 builder.Services.AddSingleton<MonitoringApiService>();
@@ -78,6 +79,7 @@ builder.Services.AddSingleton<HybridQuestService>();
 builder.Services.AddSingleton<ServerCharacterApiService>();
 builder.Services.AddSingleton<HybridCharacterService>();
 builder.Services.AddSingleton<HybridEventService>();
+builder.Services.AddSingleton<HybridShopService>();  // 添加混合商店服务
 builder.Services.AddSingleton<ServerPlayerApiService>();
 
 // 添加服务端API测试服务
