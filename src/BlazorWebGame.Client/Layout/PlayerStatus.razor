@@ -2,6 +2,7 @@
 @using BlazorWebGame.Models.Items
 @using BlazorWebGame.Services
 @using BlazorWebGame.Events
+@using BlazorWebGame.Shared.DTOs
 @inject GameStateService GameState
 @implements IDisposable
 
@@ -17,7 +18,7 @@
                         | 状态: <strong>@GetFormattedStatus(character.CurrentAction)</strong>
                         @if (IsShowingHealth(character.CurrentAction))
                         {
-                            <span>| 生命: <strong>@character.Health / @character.MaxHealth</strong></span>
+                            <span>| 锟斤拷锟斤拷: <strong>@character.Health / @character.MaxHealth</strong></span>
                         }
                     </div>
 
@@ -53,7 +54,7 @@
 else
 {
     <div class="multi-character-status-container">
-        <p>正在加载角色...</p>
+        <p>锟斤拷锟节硷拷锟截斤拷色...</p>
     </div>
 }
 
@@ -62,14 +63,14 @@ else
     {
         GameState.OnStateChanged += StateHasChanged;
 
-        // 订阅经验值变化事件
+        // 锟斤拷锟侥撅拷锟斤拷值锟戒化锟铰硷拷
         GameState.SubscribeToEvent(GameEventType.ExperienceGained, OnExperienceGained);
         GameState.SubscribeToEvent(GameEventType.LevelUp, _ => StateHasChanged());
     }
 
     private void OnExperienceGained(GameEventArgs args)
     {
-        // 确保UI更新
+        // 确锟斤拷UI锟斤拷锟斤拷
         StateHasChanged();
     }
 
@@ -87,10 +88,10 @@ else
     private string GetFormattedStatus(PlayerActionState state)
     {
         if (state.ToString().StartsWith("Gathering"))
-            return "采集中";
+            return "锟缴硷拷锟斤拷";
         if (state.ToString().StartsWith("Crafting"))
-            return "制作中";
-        return state == PlayerActionState.Idle ? "空闲" : "战斗";
+            return "锟斤拷锟斤拷锟斤拷";
+        return state == PlayerActionState.Idle ? "锟斤拷锟斤拷" : "战锟斤拷";
     }
 
     private string GetExpBarClass(PlayerActionState state)
@@ -102,8 +103,8 @@ else
         return "battle-exp";
     }
 
-    // 获取当前职业名称和等级
-    // 获取当前职业名称和等级
+    // 锟斤拷取锟斤拷前职业锟斤拷锟狡和等硷拷
+    // 锟斤拷取锟斤拷前职业锟斤拷锟狡和等硷拷
     private string GetProfessionNameAndLevel(Player character)
     {
         if (character.CurrentAction.ToString().StartsWith("Gathering"))
@@ -122,7 +123,7 @@ else
         }
     }
 
-    // 获取当前采集职业
+    // 锟斤拷取锟斤拷前锟缴硷拷职业
     private GatheringProfession GetCurrentGatheringProfession(PlayerActionState state)
     {
         return state switch
@@ -130,11 +131,11 @@ else
             PlayerActionState.GatheringMining => GatheringProfession.Miner,
             PlayerActionState.GatheringHerbalism => GatheringProfession.Herbalist,
             PlayerActionState.GatheringFishing => GatheringProfession.Fishing,
-            _ => GatheringProfession.Miner  // 默认
+            _ => GatheringProfession.Miner  // 默锟斤拷
         };
     }
 
-    // 获取当前生产职业
+    // 锟斤拷取锟斤拷前锟斤拷锟斤拷职业
     private ProductionProfession GetCurrentProductionProfession(PlayerActionState state)
     {
         return state switch
@@ -146,11 +147,11 @@ else
             PlayerActionState.CraftingLeatherworking => ProductionProfession.Leatherworking,
             PlayerActionState.CraftingTailoring => ProductionProfession.Tailoring,
             PlayerActionState.CraftingEngineering => ProductionProfession.Engineering,
-            _ => ProductionProfession.Cooking  // 默认
+            _ => ProductionProfession.Cooking  // 默锟斤拷
         };
     }
 
-    // 获取当前经验信息
+    // 锟斤拷取锟斤拷前锟斤拷锟斤拷锟斤拷息
     private (string ProfessionName, double ProgressPercent, long CurrentExpInLevel, long ExpForNextLevel) GetExpInfo(Player character)
     {
         if (character.CurrentAction.ToString().StartsWith("Gathering"))
@@ -189,7 +190,7 @@ else
     {
         GameState.OnStateChanged -= StateHasChanged;
 
-        // 取消订阅事件
+        // 取锟斤拷锟斤拷锟斤拷锟铰硷拷
         GameState.UnsubscribeFromEvent(GameEventType.ExperienceGained, OnExperienceGained);
         GameState.UnsubscribeFromEvent(GameEventType.LevelUp, _ => StateHasChanged());
     }
