@@ -3,6 +3,7 @@ using BlazorWebGame.Server.Services;
 using BlazorWebGame.Server.Security;
 using BlazorWebGame.Server.Middleware;
 using BlazorWebGame.Server;
+using BlazorWebGame.Server.Configuration;
 using BlazorWebGame.Shared.Models;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
@@ -10,8 +11,23 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Serilog;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// 配置选项系统
+builder.Services.Configure<GameServerOptions>(
+    builder.Configuration.GetSection(GameServerOptions.SectionName));
+builder.Services.Configure<SecurityOptions>(
+    builder.Configuration.GetSection(SecurityOptions.SectionName));
+builder.Services.Configure<MonitoringOptions>(
+    builder.Configuration.GetSection(MonitoringOptions.SectionName));
+
+// 验证配置
+builder.Services.AddOptions<GameServerOptions>()
+    .Bind(builder.Configuration.GetSection(GameServerOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
 
 // 配置 Serilog 日志
 Log.Logger = new LoggerConfiguration()
@@ -76,8 +92,9 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        var allowedOrigins = builder.Configuration.GetSection("Security:Cors:AllowedOrigins").Get<string[]>() 
-            ?? new[] { "https://localhost:7051", "http://localhost:5190" };
+        var securityOptions = builder.Configuration.GetSection(SecurityOptions.SectionName).Get<SecurityOptions>();
+        var allowedOrigins = securityOptions?.Cors?.AllowedOrigins ?? 
+            new[] { "https://localhost:7051", "http://localhost:5190" };
             
         policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
@@ -88,21 +105,42 @@ builder.Services.AddCors(options =>
 
 // 配置速率限制选项
 var rateLimitOptions = new RateLimitOptions();
-var rateLimitConfig = builder.Configuration.GetSection("Security:RateLimit");
+var securityConfig = builder.Configuration.GetSection(SecurityOptions.SectionName).Get<SecurityOptions>();
 
-rateLimitOptions.IpRateLimit = new RateLimitRule
+if (securityConfig?.RateLimit != null)
 {
-    MaxRequests = rateLimitConfig.GetValue<int>("IpRateLimit:MaxRequests", 100),
-    TimeWindow = TimeSpan.FromMinutes(rateLimitConfig.GetValue<int>("IpRateLimit:TimeWindowMinutes", 1))
-};
+    rateLimitOptions.IpRateLimit = new BlazorWebGame.Server.Middleware.RateLimitRule
+    {
+        MaxRequests = securityConfig.RateLimit.IpRateLimit.MaxRequests,
+        TimeWindow = securityConfig.RateLimit.IpRateLimit.TimeWindow
+    };
 
-rateLimitOptions.UserRateLimit = new RateLimitRule
+    rateLimitOptions.UserRateLimit = new BlazorWebGame.Server.Middleware.RateLimitRule
+    {
+        MaxRequests = securityConfig.RateLimit.UserRateLimit.MaxRequests,
+        TimeWindow = securityConfig.RateLimit.UserRateLimit.TimeWindow
+    };
+}
+else
 {
-    MaxRequests = rateLimitConfig.GetValue<int>("UserRateLimit:MaxRequests", 200),
-    TimeWindow = TimeSpan.FromMinutes(rateLimitConfig.GetValue<int>("UserRateLimit:TimeWindowMinutes", 1))
-};
+    // 默认值
+    rateLimitOptions.IpRateLimit = new BlazorWebGame.Server.Middleware.RateLimitRule
+    {
+        MaxRequests = 100,
+        TimeWindow = TimeSpan.FromMinutes(1)
+    };
+
+    rateLimitOptions.UserRateLimit = new BlazorWebGame.Server.Middleware.RateLimitRule
+    {
+        MaxRequests = 200,
+        TimeWindow = TimeSpan.FromMinutes(1)
+    };
+}
 
 builder.Services.AddSingleton(rateLimitOptions);
+
+// 注册统一服务
+builder.Services.AddSingleton<ErrorHandlingService>();
 
 // 注册安全服务
 builder.Services.AddSingleton<GameAuthenticationService>();
@@ -165,49 +203,38 @@ var app = builder.Build();
 // 初始化服务定位器
 ServerServiceLocator.Initialize(app.Services);
 
-// 在开发环境中运行战斗系统测试
+// 在开发环境中运行战斗系统测试（基于配置）
 if (app.Environment.IsDevelopment())
 {
     var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    var gameServerOptions = app.Services.GetRequiredService<IOptions<GameServerOptions>>().Value;
     
-    // 运行战斗系统测试
-    try
+    if (gameServerOptions.EnableDevelopmentTests)
     {
-        TestBattleSystem.RunBattleTest(app.Services, logger);
+        // 运行战斗系统测试
+        try
+        {
+            TestBattleSystem.RunBattleTest(app.Services, logger);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Battle system test failed");
+        }
+        
+        // 运行组队系统测试
+        try
+        {
+            TestPartySystem.RunPartyTest(logger);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Party system test failed");
+        }
     }
-    catch (Exception ex)
+    else
     {
-        logger.LogError(ex, "Battle system test failed");
+        logger.LogInformation("Development tests are disabled in configuration");
     }
-    
-    // 运行组队系统测试
-    try
-    {
-        TestPartySystem.RunPartyTest(logger);
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "Party system test failed");
-    }
-    
-    // 暂时禁用这些测试，直到服务器稳定运行
-    // try
-    // {
-    //     await BlazorWebGame.Server.Tests.DataStorageServiceTests.RunBasicTests(logger);
-    // }
-    // catch (Exception ex)
-    // {
-    //     logger.LogError(ex, "DataStorageService test failed");
-    // }
-    
-    // try
-    // {
-    //     await BlazorWebGame.Server.Tests.OfflineSettlementServiceTests.RunBasicTests(logger);
-    // }
-    // catch (Exception ex)
-    // {
-    //     logger.LogError(ex, "OfflineSettlementService test failed");
-    // }
 }
 
 // Configure the HTTP request pipeline.

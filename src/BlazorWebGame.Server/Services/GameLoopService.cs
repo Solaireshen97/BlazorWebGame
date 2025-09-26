@@ -1,3 +1,6 @@
+using BlazorWebGame.Server.Configuration;
+using Microsoft.Extensions.Options;
+
 namespace BlazorWebGame.Server.Services;
 
 /// <summary>
@@ -8,16 +11,20 @@ public class GameLoopService : BackgroundService
     private readonly GameEngineService _gameEngine;
     private readonly ServerProductionService _productionService;
     private readonly ILogger<GameLoopService> _logger;
-    private readonly TimeSpan _tickInterval = TimeSpan.FromMilliseconds(500); // 500ms 间隔
+    private readonly GameServerOptions _options;
+    private readonly TimeSpan _tickInterval;
 
     public GameLoopService(
         GameEngineService gameEngine,
         ServerProductionService productionService,
-        ILogger<GameLoopService> logger)
+        ILogger<GameLoopService> logger,
+        IOptions<GameServerOptions> options)
     {
         _gameEngine = gameEngine;
         _productionService = productionService;
         _logger = logger;
+        _options = options.Value;
+        _tickInterval = TimeSpan.FromMilliseconds(_options.GameLoopIntervalMs);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
