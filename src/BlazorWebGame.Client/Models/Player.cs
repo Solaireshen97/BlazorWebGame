@@ -3,6 +3,11 @@ using BlazorWebGame.Models.Items;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+// Use aliases to avoid conflicts with shared DTOs
+using BattleProfession = BlazorWebGame.Shared.DTOs.BattleProfession;
+using GatheringProfession = BlazorWebGame.Shared.DTOs.GatheringProfession;
+using ProductionProfession = BlazorWebGame.Shared.DTOs.ProductionProfession;
+using PlayerActionState = BlazorWebGame.Shared.DTOs.PlayerActionState;
 
 namespace BlazorWebGame.Models
 {

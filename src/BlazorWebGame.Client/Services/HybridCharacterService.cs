@@ -178,7 +178,7 @@ namespace BlazorWebGame.Client.Services
         /// <summary>
         /// 添加战斗经验值
         /// </summary>
-        public async Task AddBattleXPAsync(Player player, BattleProfession profession, int amount)
+        public async Task AddBattleXPAsync(Player player, BlazorWebGame.Shared.DTOs.BattleProfession profession, int amount)
         {
             if (UseServerMode)
             {
@@ -218,7 +218,7 @@ namespace BlazorWebGame.Client.Services
         /// <summary>
         /// 添加采集经验值
         /// </summary>
-        public async Task AddGatheringXPAsync(Player player, GatheringProfession profession, int amount)
+        public async Task AddGatheringXPAsync(Player player, BlazorWebGame.Shared.DTOs.GatheringProfession profession, int amount)
         {
             if (UseServerMode)
             {
@@ -341,9 +341,9 @@ namespace BlazorWebGame.Client.Services
         // 转发本地服务的方法
         public void UpdateBuffs(Player character, double elapsedSeconds) => _localCharacterService.UpdateBuffs(character, elapsedSeconds);
         public void InitializePlayerState(Player character) => _localCharacterService.InitializePlayerState(character);
-        public int GetLevel(Player player, BattleProfession profession) => _localCharacterService.GetLevel(player, profession);
-        public int GetLevel(Player player, GatheringProfession profession) => _localCharacterService.GetLevel(player, profession);
-        public int GetLevel(Player player, ProductionProfession profession) => _localCharacterService.GetLevel(player, profession);
+        public int GetLevel(Player player, BlazorWebGame.Shared.DTOs.BattleProfession profession) => _localCharacterService.GetLevel(player, profession);
+        public int GetLevel(Player player, BlazorWebGame.Shared.DTOs.GatheringProfession profession) => _localCharacterService.GetLevel(player, profession);
+        public int GetLevel(Player player, BlazorWebGame.Shared.DTOs.ProductionProfession profession) => _localCharacterService.GetLevel(player, profession);
 
         public async ValueTask DisposeAsync()
         {

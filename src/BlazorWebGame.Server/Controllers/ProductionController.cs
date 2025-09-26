@@ -224,4 +224,178 @@ public class ProductionController : ControllerBase
             });
         }
     }
+
+    /// <summary>
+    /// 获取所有可用的制作配方
+    /// </summary>
+    [HttpGet("recipes")]
+    public ActionResult<ApiResponse<List<RecipeDto>>> GetAvailableRecipes([FromQuery] string profession = "")
+    {
+        try
+        {
+            var recipes = _productionService.GetAvailableRecipes(profession);
+            return Ok(new ApiResponse<List<RecipeDto>>
+            {
+                Success = true,
+                Message = "获取制作配方成功",
+                Data = recipes
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting available recipes");
+            return StatusCode(500, new ApiResponse<List<RecipeDto>>
+            {
+                Success = false,
+                Message = "获取制作配方时发生错误"
+            });
+        }
+    }
+
+    /// <summary>
+    /// 开始制作
+    /// </summary>
+    [HttpPost("crafting/start")]
+    public async Task<ActionResult<ApiResponse<CraftingStateDto>>> StartCrafting(StartCraftingRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(request.CharacterId) || string.IsNullOrEmpty(request.RecipeId))
+            {
+                return BadRequest(new ApiResponse<CraftingStateDto>
+                {
+                    Success = false,
+                    Message = "角色ID和配方ID不能为空"
+                });
+            }
+
+            var result = await _productionService.StartCraftingAsync(request);
+            
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return BadRequest(result);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error starting crafting for character {CharacterId}", request.CharacterId);
+            return StatusCode(500, new ApiResponse<CraftingStateDto>
+            {
+                Success = false,
+                Message = "开始制作时发生错误"
+            });
+        }
+    }
+
+    /// <summary>
+    /// 停止制作
+    /// </summary>
+    [HttpPost("crafting/stop")]
+    public async Task<ActionResult<ApiResponse<string>>> StopCrafting(StopCraftingRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(request.CharacterId))
+            {
+                return BadRequest(new ApiResponse<string>
+                {
+                    Success = false,
+                    Message = "角色ID不能为空"
+                });
+            }
+
+            var result = await _productionService.StopCraftingAsync(request);
+            
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return BadRequest(result);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error stopping crafting for character {CharacterId}", request.CharacterId);
+            return StatusCode(500, new ApiResponse<string>
+            {
+                Success = false,
+                Message = "停止制作时发生错误"
+            });
+        }
+    }
+
+    /// <summary>
+    /// 获取玩家当前的制作状态
+    /// </summary>
+    [HttpGet("crafting/state/{characterId}")]
+    public ActionResult<ApiResponse<CraftingStateDto>> GetCraftingState(string characterId)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(characterId))
+            {
+                return BadRequest(new ApiResponse<CraftingStateDto>
+                {
+                    Success = false,
+                    Message = "角色ID不能为空"
+                });
+            }
+
+            var state = _productionService.GetCraftingState(characterId);
+            
+            return Ok(new ApiResponse<CraftingStateDto>
+            {
+                Success = true,
+                Message = state != null ? "获取制作状态成功" : "玩家当前未在制作",
+                Data = state
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting crafting state for character {CharacterId}", characterId);
+            return StatusCode(500, new ApiResponse<CraftingStateDto>
+            {
+                Success = false,
+                Message = "获取制作状态时发生错误"
+            });
+        }
+    }
+
+    /// <summary>
+    /// 停止所有生产活动
+    /// </summary>
+    [HttpPost("stop-all")]
+    public async Task<ActionResult<ApiResponse<string>>> StopAllProductionActivities(StopAllProductionRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(request.CharacterId))
+            {
+                return BadRequest(new ApiResponse<string>
+                {
+                    Success = false,
+                    Message = "角色ID不能为空"
+                });
+            }
+
+            var result = await _productionService.StopAllProductionAsync(request);
+            
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error stopping all production activities for character {CharacterId}", request.CharacterId);
+            return StatusCode(500, new ApiResponse<string>
+            {
+                Success = false,
+                Message = "停止生产活动时发生错误"
+            });
+        }
+    }
 }

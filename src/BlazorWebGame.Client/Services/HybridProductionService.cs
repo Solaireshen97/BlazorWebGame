@@ -99,7 +99,7 @@ public class HybridProductionService : IAsyncDisposable
     /// <summary>
     /// 获取可用的采集节点
     /// </summary>
-    public async Task<List<GatheringNode>> GetAvailableNodesAsync(GatheringProfession profession)
+    public async Task<List<GatheringNode>> GetAvailableNodesAsync(BlazorWebGame.Shared.DTOs.GatheringProfession profession)
     {
         if (_useServerProduction)
         {

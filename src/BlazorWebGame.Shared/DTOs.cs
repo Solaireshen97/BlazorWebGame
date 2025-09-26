@@ -3,6 +3,65 @@ using System.Collections.Generic;
 
 namespace BlazorWebGame.Shared.DTOs;
 
+// ============================================================================
+// 共享枚举定义
+// ============================================================================
+
+/// <summary>
+/// 角色动作状态
+/// </summary>
+public enum PlayerActionState
+{
+    Idle,
+    Combat,
+    Reviving,
+    // 细分采集类
+    GatheringMining,       // 采矿
+    GatheringHerbalism,    // 草药学
+    GatheringFishing,      // 钓鱼
+    // 细分制作类
+    CraftingCooking,       // 烹饪
+    CraftingAlchemy,       // 炼金
+    CraftingBlacksmithing, // 锻造
+    CraftingJewelcrafting, // 珠宝加工
+    CraftingLeatherworking,// 制皮
+    CraftingTailoring,     // 裁缝
+    CraftingEngineering    // 工程学
+}
+
+/// <summary>
+/// 战斗职业
+/// </summary>
+public enum BattleProfession
+{
+    Warrior, // 战士
+    Mage     // 法师
+}
+
+/// <summary>
+/// 采集职业
+/// </summary>
+public enum GatheringProfession
+{
+    Miner,     // 采矿
+    Herbalist, // 草药学
+    Fishing    // 钓鱼
+}
+
+/// <summary>
+/// 生产职业
+/// </summary>
+public enum ProductionProfession
+{
+    Cooking,       // 烹饪
+    Alchemy,       // 炼金
+    Blacksmithing, // 锻造
+    Jewelcrafting, // 珠宝加工
+    Leatherworking,// 制皮
+    Tailoring,     // 裁缝
+    Engineering    // 工程学
+}
+
 /// <summary>
 /// API响应基类
 /// </summary>
@@ -830,4 +889,208 @@ public class GameStatusDto
     public int ActiveParties { get; set; }
     public string ServerStatus { get; set; } = string.Empty;
     public DateTime LastUpdated { get; set; }
+}
+
+// ============================================================================
+// 游戏状态管理相关 DTOs (新增)
+// ============================================================================
+
+/// <summary>
+/// 完整游戏状态 DTO
+/// </summary>
+public class GameStateDto
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public CharacterDto? Character { get; set; }
+    public InventoryDto? Inventory { get; set; }
+    public PartyDto? Party { get; set; }
+    public CharacterQuestStatusDto? Quests { get; set; }
+    public GatheringStateDto? GatheringState { get; set; }
+    public CraftingStateDto? CraftingState { get; set; }
+    public AutomationStateDto? AutomationState { get; set; }
+    public long LastUpdateTick { get; set; }
+}
+
+/// <summary>
+/// 游戏状态更新 DTO
+/// </summary>
+public class GameStateUpdateDto
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public long UpdateTick { get; set; }
+    public bool HasUpdates { get; set; }
+    public CharacterDto? Character { get; set; }
+    public GatheringStateDto? GatheringState { get; set; }
+    public CraftingStateDto? CraftingState { get; set; }
+    public AutomationStateDto? AutomationState { get; set; }
+}
+
+/// <summary>
+/// 角色动作状态 DTO
+/// </summary>
+public class PlayerActionStateDto
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public PlayerActionState ActionState { get; set; }
+    public double GatheringCooldown { get; set; }
+    public double CraftingCooldown { get; set; }
+    public double ReviveCooldown { get; set; }
+}
+
+/// <summary>
+/// 自动化状态 DTO
+/// </summary>
+public class AutomationStateDto
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public bool IsAutoBattleEnabled { get; set; }
+    public bool IsAutoGatheringEnabled { get; set; }
+    public bool IsAutoCraftingEnabled { get; set; }
+    public AutoBattleSettingsDto? AutoBattleSettings { get; set; }
+    public AutoGatheringSettingsDto? AutoGatheringSettings { get; set; }
+    public AutoCraftingSettingsDto? AutoCraftingSettings { get; set; }
+}
+
+/// <summary>
+/// 自动战斗设置
+/// </summary>
+public class AutoBattleSettingsDto
+{
+    public bool UseSkills { get; set; } = true;
+    public bool UsePotions { get; set; } = true;
+    public int MinHealthPercentForPotion { get; set; } = 30;
+    public List<string> PreferredEnemies { get; set; } = new();
+}
+
+/// <summary>
+/// 自动采集设置
+/// </summary>
+public class AutoGatheringSettingsDto
+{
+    public List<string> PreferredNodes { get; set; } = new();
+    public bool AutoSwitchNodes { get; set; } = true;
+}
+
+/// <summary>
+/// 自动制作设置
+/// </summary>
+public class AutoCraftingSettingsDto
+{
+    public List<string> PreferredRecipes { get; set; } = new();
+    public bool CraftInPriority { get; set; } = true;
+}
+
+/// <summary>
+/// 角色状态 DTO
+/// </summary>
+public class CharacterStatusDto
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public double Health { get; set; }
+    public double MaxHealth { get; set; }
+    public double Mana { get; set; }
+    public double MaxMana { get; set; }
+    public PlayerActionState ActionState { get; set; }
+}
+
+// ============================================================================
+// 制作系统相关 DTOs (新增)
+// ============================================================================
+
+/// <summary>
+/// 制作状态 DTO
+/// </summary>
+public class CraftingStateDto
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string? CurrentRecipeId { get; set; }
+    public double RemainingTimeSeconds { get; set; }
+    public bool IsCrafting { get; set; }
+    public DateTime? StartTime { get; set; }
+    public DateTime? EstimatedCompletionTime { get; set; }
+}
+
+/// <summary>
+/// 配方 DTO
+/// </summary>
+public class RecipeDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public ProductionProfession RequiredProfession { get; set; }
+    public int RequiredLevel { get; set; }
+    public double CraftingTimeSeconds { get; set; }
+    public Dictionary<string, int> Ingredients { get; set; } = new();
+    public string ResultingItemId { get; set; } = string.Empty;
+    public int ResultingItemQuantity { get; set; } = 1;
+    public int XpReward { get; set; }
+}
+
+/// <summary>
+/// 开始制作请求
+/// </summary>
+public class StartCraftingRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string RecipeId { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 停止制作请求
+/// </summary>
+public class StopCraftingRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+}
+
+// ============================================================================
+// 游戏状态管理请求 DTOs (新增)
+// ============================================================================
+
+/// <summary>
+/// 更新角色动作请求
+/// </summary>
+public class UpdatePlayerActionRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public PlayerActionState ActionState { get; set; }
+}
+
+/// <summary>
+/// 设置自动化请求
+/// </summary>
+public class SetAutomationRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public bool IsAutoBattleEnabled { get; set; }
+    public bool IsAutoGatheringEnabled { get; set; }
+    public bool IsAutoCraftingEnabled { get; set; }
+    public AutoBattleSettingsDto? AutoBattleSettings { get; set; }
+    public AutoGatheringSettingsDto? AutoGatheringSettings { get; set; }
+    public AutoCraftingSettingsDto? AutoCraftingSettings { get; set; }
+}
+
+/// <summary>
+/// 角色复活请求
+/// </summary>
+public class ReviveCharacterRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 重置角色状态请求
+/// </summary>
+public class ResetCharacterStateRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 停止所有生产活动请求
+/// </summary>
+public class StopAllProductionRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
 }

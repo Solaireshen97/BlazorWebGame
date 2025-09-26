@@ -24,6 +24,7 @@ public class ServerProductionService
         _logger = logger;
         _hubContext = hubContext;
         _gatheringNodes = InitializeGatheringNodes();
+        _recipes = InitializeRecipes();
     }
 
     /// <summary>
@@ -318,5 +319,358 @@ public class ServerProductionService
     public List<GatheringStateDto> GetAllActiveGatheringStates()
     {
         return _gatheringStates.Values.Where(s => s.IsGathering).ToList();
+    }
+
+    // ============================================================================
+    // 制作系统方法 (新增)
+    // ============================================================================
+
+    // 存储玩家的制作状态
+    private readonly ConcurrentDictionary<string, CraftingStateDto> _craftingStates = new();
+    
+    // 制作配方数据
+    private readonly Dictionary<string, RecipeDto> _recipes;
+
+    /// <summary>
+    /// 初始化制作配方数据
+    /// </summary>
+    private Dictionary<string, RecipeDto> InitializeRecipes()
+    {
+        var recipes = new Dictionary<string, RecipeDto>();
+
+        // 烹饪配方
+        recipes["RECIPE_BREAD"] = new RecipeDto
+        {
+            Id = "RECIPE_BREAD",
+            Name = "面包",
+            Description = "简单的面包，能恢复少量生命值。",
+            RequiredProfession = ProductionProfession.Cooking,
+            RequiredLevel = 1,
+            CraftingTimeSeconds = 5,
+            Ingredients = new Dictionary<string, int> { { "WHEAT", 2 } },
+            ResultingItemId = "BREAD",
+            ResultingItemQuantity = 1,
+            XpReward = 5
+        };
+
+        recipes["RECIPE_STEW"] = new RecipeDto
+        {
+            Id = "RECIPE_STEW",
+            Name = "炖菜",
+            Description = "营养丰富的炖菜，能大幅恢复生命值。",
+            RequiredProfession = ProductionProfession.Cooking,
+            RequiredLevel = 3,
+            CraftingTimeSeconds = 12,
+            Ingredients = new Dictionary<string, int> 
+            { 
+                { "MEAT", 1 }, 
+                { "VEGETABLES", 2 }, 
+                { "WATER", 1 } 
+            },
+            ResultingItemId = "STEW",
+            ResultingItemQuantity = 1,
+            XpReward = 15
+        };
+
+        // 炼金配方
+        recipes["RECIPE_HEALTH_POTION"] = new RecipeDto
+        {
+            Id = "RECIPE_HEALTH_POTION",
+            Name = "治疗药水",
+            Description = "能立即恢复生命值的药水。",
+            RequiredProfession = ProductionProfession.Alchemy,
+            RequiredLevel = 1,
+            CraftingTimeSeconds = 8,
+            Ingredients = new Dictionary<string, int> 
+            { 
+                { "HERB_HEALING", 1 }, 
+                { "WATER", 1 } 
+            },
+            ResultingItemId = "HEALTH_POTION",
+            ResultingItemQuantity = 1,
+            XpReward = 8
+        };
+
+        // 锻造配方
+        recipes["RECIPE_IRON_SWORD"] = new RecipeDto
+        {
+            Id = "RECIPE_IRON_SWORD",
+            Name = "铁剑",
+            Description = "用铁锭锻造的基础武器。",
+            RequiredProfession = ProductionProfession.Blacksmithing,
+            RequiredLevel = 2,
+            CraftingTimeSeconds = 20,
+            Ingredients = new Dictionary<string, int> 
+            { 
+                { "IRON_INGOT", 3 }, 
+                { "WOOD", 1 } 
+            },
+            ResultingItemId = "IRON_SWORD",
+            ResultingItemQuantity = 1,
+            XpReward = 25
+        };
+
+        return recipes;
+    }
+
+    /// <summary>
+    /// 获取所有可用的制作配方
+    /// </summary>
+    public List<RecipeDto> GetAvailableRecipes(string profession = "")
+    {
+        var recipes = _recipes.Values.ToList();
+        
+        if (!string.IsNullOrEmpty(profession) && Enum.TryParse<ProductionProfession>(profession, out var professionEnum))
+        {
+            recipes = recipes.Where(r => r.RequiredProfession == professionEnum).ToList();
+        }
+
+        return recipes;
+    }
+
+    /// <summary>
+    /// 根据ID获取配方
+    /// </summary>
+    public RecipeDto? GetRecipeById(string recipeId)
+    {
+        return _recipes.GetValueOrDefault(recipeId);
+    }
+
+    /// <summary>
+    /// 开始制作
+    /// </summary>
+    public async Task<ApiResponse<CraftingStateDto>> StartCraftingAsync(StartCraftingRequest request)
+    {
+        try
+        {
+            var recipe = GetRecipeById(request.RecipeId);
+            if (recipe == null)
+            {
+                return new ApiResponse<CraftingStateDto>
+                {
+                    Success = false,
+                    Message = "配方不存在"
+                };
+            }
+
+            // 检查是否已在制作
+            if (_craftingStates.ContainsKey(request.CharacterId))
+            {
+                return new ApiResponse<CraftingStateDto>
+                {
+                    Success = false,
+                    Message = "已在制作中，请先停止当前制作"
+                };
+            }
+
+            var startTime = DateTime.UtcNow;
+            var craftingState = new CraftingStateDto
+            {
+                CharacterId = request.CharacterId,
+                CurrentRecipeId = request.RecipeId,
+                RemainingTimeSeconds = recipe.CraftingTimeSeconds,
+                IsCrafting = true,
+                StartTime = startTime,
+                EstimatedCompletionTime = startTime.AddSeconds(recipe.CraftingTimeSeconds)
+            };
+
+            _craftingStates[request.CharacterId] = craftingState;
+
+            _logger.LogInformation("Player {CharacterId} started crafting {RecipeId}, duration: {Duration}s",
+                request.CharacterId, request.RecipeId, recipe.CraftingTimeSeconds);
+
+            // 通知客户端制作开始
+            await _hubContext.Clients.User(request.CharacterId).SendAsync("CraftingStarted", craftingState);
+
+            return new ApiResponse<CraftingStateDto>
+            {
+                Success = true,
+                Message = "开始制作成功",
+                Data = craftingState
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error starting crafting for player {CharacterId}", request.CharacterId);
+            return new ApiResponse<CraftingStateDto>
+            {
+                Success = false,
+                Message = "开始制作时发生错误"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 停止制作
+    /// </summary>
+    public async Task<ApiResponse<string>> StopCraftingAsync(StopCraftingRequest request)
+    {
+        try
+        {
+            if (!_craftingStates.TryRemove(request.CharacterId, out var craftingState))
+            {
+                return new ApiResponse<string>
+                {
+                    Success = false,
+                    Message = "角色当前未在制作"
+                };
+            }
+
+            _logger.LogInformation("Player {CharacterId} stopped crafting {RecipeId}",
+                request.CharacterId, craftingState.CurrentRecipeId);
+
+            // 通知客户端制作停止
+            await _hubContext.Clients.User(request.CharacterId).SendAsync("CraftingStopped", request.CharacterId);
+
+            return new ApiResponse<string>
+            {
+                Success = true,
+                Message = "停止制作成功"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error stopping crafting for player {CharacterId}", request.CharacterId);
+            return new ApiResponse<string>
+            {
+                Success = false,
+                Message = "停止制作时发生错误"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 获取玩家的制作状态
+    /// </summary>
+    public CraftingStateDto? GetCraftingState(string characterId)
+    {
+        return _craftingStates.GetValueOrDefault(characterId);
+    }
+
+    /// <summary>
+    /// 停止所有生产活动
+    /// </summary>
+    public async Task<ApiResponse<string>> StopAllProductionAsync(StopAllProductionRequest request)
+    {
+        try
+        {
+            bool stoppedAny = false;
+
+            // 停止采集
+            if (_gatheringStates.TryRemove(request.CharacterId, out var gatheringState))
+            {
+                stoppedAny = true;
+                _logger.LogInformation("Stopped gathering for player {CharacterId}", request.CharacterId);
+            }
+
+            // 停止制作
+            if (_craftingStates.TryRemove(request.CharacterId, out var craftingState))
+            {
+                stoppedAny = true;
+                _logger.LogInformation("Stopped crafting for player {CharacterId}", request.CharacterId);
+            }
+
+            if (stoppedAny)
+            {
+                // 通知客户端所有生产活动已停止
+                await _hubContext.Clients.User(request.CharacterId).SendAsync("AllProductionStopped", request.CharacterId);
+            }
+
+            return new ApiResponse<string>
+            {
+                Success = true,
+                Message = stoppedAny ? "停止所有生产活动成功" : "没有活跃的生产活动"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error stopping all production for player {CharacterId}", request.CharacterId);
+            return new ApiResponse<string>
+            {
+                Success = false,
+                Message = "停止生产活动时发生错误"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 游戏循环处理制作状态
+    /// </summary>
+    public async Task ProcessCraftingTickAsync(double deltaTime)
+    {
+        var completedCrafting = new List<string>();
+
+        foreach (var kvp in _craftingStates)
+        {
+            var characterId = kvp.Key;
+            var state = kvp.Value;
+
+            if (!state.IsCrafting) continue;
+
+            state.RemainingTimeSeconds -= deltaTime;
+
+            if (state.RemainingTimeSeconds <= 0)
+            {
+                completedCrafting.Add(characterId);
+            }
+        }
+
+        // 处理完成的制作
+        foreach (var characterId in completedCrafting)
+        {
+            await CompleteCraftingAsync(characterId);
+        }
+    }
+
+    /// <summary>
+    /// 完成制作
+    /// </summary>
+    private async Task CompleteCraftingAsync(string characterId)
+    {
+        try
+        {
+            if (!_craftingStates.TryRemove(characterId, out var state) || 
+                string.IsNullOrEmpty(state.CurrentRecipeId))
+            {
+                return;
+            }
+
+            var recipe = GetRecipeById(state.CurrentRecipeId);
+            if (recipe == null) return;
+
+            // 创建制作结果
+            var result = new CraftingResultDto
+            {
+                Success = true,
+                ItemId = recipe.ResultingItemId,
+                Quantity = recipe.ResultingItemQuantity,
+                XpGained = recipe.XpReward,
+                Message = $"成功制作了 {recipe.Name}"
+            };
+
+            _logger.LogInformation("Player {CharacterId} completed crafting {RecipeId}, gained {ItemId} x{Quantity} and {Xp} XP",
+                characterId, recipe.Id, result.ItemId, result.Quantity, result.XpGained);
+
+            // 通知客户端制作完成
+            await _hubContext.Clients.User(characterId).SendAsync("CraftingCompleted", result);
+
+            // TODO: 这里应该调用库存服务来添加物品，调用角色服务来添加经验
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error completing crafting for player {CharacterId}", characterId);
+        }
+    }
+
+    /// <summary>
+    /// 制作结果 DTO
+    /// </summary>
+    public class CraftingResultDto
+    {
+        public bool Success { get; set; }
+        public string ItemId { get; set; } = string.Empty;
+        public int Quantity { get; set; }
+        public int XpGained { get; set; }
+        public string Message { get; set; } = string.Empty;
     }
 }

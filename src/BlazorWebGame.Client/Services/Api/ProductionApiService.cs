@@ -167,4 +167,124 @@ public class ProductionApiService : BaseApiService
             return new List<GatheringStateDto>();
         }
     }
+
+    // ============================================================================
+    // 制作系统API方法 (新增)
+    // ============================================================================
+
+    /// <summary>
+    /// 获取所有可用的制作配方
+    /// </summary>
+    public async Task<ApiResponse<List<RecipeDto>>> GetRecipesAsync(string profession = "")
+    {
+        var url = string.IsNullOrEmpty(profession) ? "api/production/recipes" : $"api/production/recipes?profession={profession}";
+        return await GetAsync<List<RecipeDto>>(url);
+    }
+
+    /// <summary>
+    /// 开始制作
+    /// </summary>
+    public async Task<ApiResponse<CraftingStateDto>> StartCraftingAsync(StartCraftingRequest request)
+    {
+        return await PostAsync<CraftingStateDto>("api/production/crafting/start", request);
+    }
+
+    /// <summary>
+    /// 停止制作
+    /// </summary>
+    public async Task<ApiResponse<string>> StopCraftingAsync(StopCraftingRequest request)
+    {
+        return await PostAsync<string>("api/production/crafting/stop", request);
+    }
+
+    /// <summary>
+    /// 获取角色的制作状态
+    /// </summary>
+    public async Task<ApiResponse<CraftingStateDto>> GetCraftingStateAsync(string characterId)
+    {
+        return await GetAsync<CraftingStateDto>($"api/production/crafting/state/{characterId}");
+    }
+
+    /// <summary>
+    /// 停止所有生产活动
+    /// </summary>
+    public async Task<ApiResponse<string>> StopAllProductionAsync(string characterId)
+    {
+        var request = new StopAllProductionRequest { CharacterId = characterId };
+        return await PostAsync<string>("api/production/stop-all", request);
+    }
+
+    // ============================================================================
+    // 向后兼容的制作方法 (新增)
+    // ============================================================================
+
+    /// <summary>
+    /// 获取所有可用的制作配方 (向后兼容方法)
+    /// </summary>
+    public async Task<List<RecipeDto>> GetAvailableRecipesAsync(string profession = "")
+    {
+        try
+        {
+            var response = await GetRecipesAsync(profession);
+            return response.Success && response.Data != null ? response.Data : new List<RecipeDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting available recipes");
+            return new List<RecipeDto>();
+        }
+    }
+
+    /// <summary>
+    /// 开始制作 (向后兼容方法)
+    /// </summary>
+    public async Task<(bool success, string message)> StartCraftingAsync_Legacy(string characterId, string recipeId)
+    {
+        try
+        {
+            var request = new StartCraftingRequest { CharacterId = characterId, RecipeId = recipeId };
+            var response = await StartCraftingAsync(request);
+            return (response.Success, response.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error starting crafting for character {CharacterId}", characterId);
+            return (false, "开始制作时发生错误");
+        }
+    }
+
+    /// <summary>
+    /// 停止制作 (向后兼容方法)
+    /// </summary>
+    public async Task<(bool success, string message)> StopCraftingAsync_Legacy(string characterId)
+    {
+        try
+        {
+            var request = new StopCraftingRequest { CharacterId = characterId };
+            var response = await StopCraftingAsync(request);
+            return (response.Success, response.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error stopping crafting for character {CharacterId}", characterId);
+            return (false, "停止制作时发生错误");
+        }
+    }
+
+    /// <summary>
+    /// 获取角色的制作状态 (向后兼容方法)
+    /// </summary>
+    public async Task<CraftingStateDto?> GetCraftingStateAsync_Legacy(string characterId)
+    {
+        try
+        {
+            var response = await GetCraftingStateAsync(characterId);
+            return response.Success ? response.Data : null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting crafting state for character {CharacterId}", characterId);
+            return null;
+        }
+    }
 }
