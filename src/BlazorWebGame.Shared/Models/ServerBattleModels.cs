@@ -86,6 +86,11 @@ public class ServerBattleContext
     // Party info (if applicable)
     public string? PartyId { get; set; }
     
+    // Dungeon-specific properties
+    public string? DungeonId { get; set; }
+    public int WaveNumber { get; set; } = 0;
+    public bool AllowAutoRevive { get; set; } = false;
+    
     public bool IsActive => Status == "Active";
     public bool HasActiveParticipants => 
         Players.Any(p => p.IsAlive) && Enemies.Any(e => e.IsAlive);
