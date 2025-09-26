@@ -228,6 +228,20 @@ public class ServerProductionService
     }
 
     /// <summary>
+    /// 停止采集（内部使用的简化版本）
+    /// </summary>
+    private async Task StopGatheringAsync(string characterId)
+    {
+        if (_gatheringStates.TryRemove(characterId, out var state))
+        {
+            _logger.LogInformation("Player {CharacterId} stopped gathering (auto)", characterId);
+            
+            // 通知客户端采集停止
+            await _hubContext.Clients.User(characterId).SendAsync("GatheringStopped");
+        }
+    }
+
+    /// <summary>
     /// 获取玩家的采集状态
     /// </summary>
     public GatheringStateDto? GetGatheringState(string characterId)
@@ -241,9 +255,9 @@ public class ServerProductionService
     /// </summary>
     public async Task UpdateGatheringStatesAsync(double deltaTimeSeconds)
     {
-        var completedGatherings = new List<string>();
+        var statesToProcess = _gatheringStates.ToArray(); // 避免在迭代时修改集合
 
-        foreach (var kvp in _gatheringStates)
+        foreach (var kvp in statesToProcess)
         {
             var characterId = kvp.Key;
             var state = kvp.Value;
@@ -255,9 +269,8 @@ public class ServerProductionService
 
             if (state.RemainingTimeSeconds <= 0)
             {
-                // 采集完成
-                await CompleteGatheringAsync(characterId, state);
-                completedGatherings.Add(characterId);
+                // 采集完成 - 实现类似战斗系统的自动重复机制
+                await CompleteAndRestartGatheringAsync(characterId, state);
             }
             else
             {
@@ -266,10 +279,94 @@ public class ServerProductionService
             }
         }
 
-        // 移除已完成的采集
-        foreach (var characterId in completedGatherings)
+        // 不再移除已完成的采集状态，让它们自动重复
+        // 这实现了类似战斗系统的连续执行模式
+    }
+
+    /// <summary>
+    /// 完成当前采集周期并自动重启下一周期 - 实现类似战斗系统的连续执行
+    /// </summary>
+    private async Task CompleteAndRestartGatheringAsync(string characterId, GatheringStateDto state)
+    {
+        try
         {
-            _gatheringStates.TryRemove(characterId, out _);
+            // 先完成当前周期
+            await CompleteGatheringAsync(characterId, state);
+
+            // 检查是否应该继续采集（类似战斗系统检查是否有敌人）
+            var shouldContinue = ShouldContinueGathering(characterId, state);
+            
+            if (shouldContinue)
+            {
+                // 重启采集进入下一周期
+                RestartGatheringForNextCycle(state);
+                
+                _logger.LogDebug("Character {CharacterId} automatically restarted gathering at node {NodeId}", 
+                    characterId, state.CurrentNodeId);
+            }
+            else
+            {
+                // 条件不满足，停止采集
+                await StopGatheringAsync(characterId);
+                
+                _logger.LogInformation("Character {CharacterId} stopped gathering due to conditions not met", 
+                    characterId);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error completing and restarting gathering for character {CharacterId}", characterId);
+            
+            // 发生错误时停止采集以防止无限循环错误
+            await StopGatheringAsync(characterId);
+        }
+    }
+
+    /// <summary>
+    /// 检查是否应该继续采集（类似战斗系统检查战斗条件）
+    /// </summary>
+    private bool ShouldContinueGathering(string characterId, GatheringStateDto state)
+    {
+        try
+        {
+            // 检查采集节点是否仍然存在
+            var node = GetNodeById(state.CurrentNodeId!);
+            if (node == null)
+            {
+                _logger.LogWarning("Gathering node {NodeId} no longer exists", state.CurrentNodeId);
+                return false;
+            }
+
+            // TODO: 未来可以添加更多条件检查：
+            // - 角色是否还在节点附近
+            // - 节点是否已被耗尽
+            // - 角色背包是否已满
+            // - 角色是否有足够的工具耐久度
+            
+            return true; // 目前简化为始终可以继续
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking if gathering should continue for character {CharacterId}", characterId);
+            return false; // 出错时停止采集
+        }
+    }
+
+    /// <summary>
+    /// 重启采集进入下一周期
+    /// </summary>
+    private void RestartGatheringForNextCycle(GatheringStateDto state)
+    {
+        var node = GetNodeById(state.CurrentNodeId!);
+        if (node != null)
+        {
+            // 重置采集状态开始新周期
+            state.RemainingTimeSeconds = node.GatheringTimeSeconds;
+            state.IsGathering = true;
+            state.StartTime = DateTime.UtcNow;
+            
+            _logger.LogDebug("Restarted gathering cycle for node {NodeId}, duration: {Duration}s", 
+                node.Id, node.GatheringTimeSeconds);
         }
     }
 
