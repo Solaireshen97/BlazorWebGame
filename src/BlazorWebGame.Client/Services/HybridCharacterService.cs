@@ -15,6 +15,7 @@ namespace BlazorWebGame.Client.Services
         private readonly CharacterService _localCharacterService;
         private readonly ServerCharacterApiService _serverApiService;
         private readonly GameApiService _gameApiService;
+        private readonly ServerConfigurationService _serverConfig;
         private readonly ILogger<HybridCharacterService> _logger;
         private HubConnection? _hubConnection;
         private bool _useServerMode = false;
@@ -54,11 +55,13 @@ namespace BlazorWebGame.Client.Services
             CharacterService localCharacterService,
             ServerCharacterApiService serverApiService,
             GameApiService gameApiService,
+            ServerConfigurationService serverConfig,
             ILogger<HybridCharacterService> logger)
         {
             _localCharacterService = localCharacterService;
             _serverApiService = serverApiService;
             _gameApiService = gameApiService;
+            _serverConfig = serverConfig;
             _logger = logger;
 
             // 转发本地服务的状态变化事件
@@ -258,7 +261,7 @@ namespace BlazorWebGame.Client.Services
             try
             {
                 _hubConnection = new HubConnectionBuilder()
-                    .WithUrl($"{_gameApiService.BaseUrl}/gamehub")
+                    .WithUrl($"{_serverConfig.CurrentServerUrl}/gamehub")
                     .Build();
 
                 // 订阅服务器事件

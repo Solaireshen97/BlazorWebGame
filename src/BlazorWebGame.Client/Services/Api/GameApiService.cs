@@ -8,32 +8,19 @@ namespace BlazorWebGame.Client.Services.Api;
 /// </summary>
 public class GameApiService
 {
-    private readonly HttpClient _httpClient;
+    private readonly ConfigurableHttpClientFactory _httpClientFactory;
     private readonly ILogger<GameApiService> _logger;
-    private string _baseUrl = "https://localhost:7000"; // 默认服务器地址
 
-    public string BaseUrl => _baseUrl;
-
-    public GameApiService(HttpClient httpClient, ILogger<GameApiService> logger)
+    public GameApiService(ConfigurableHttpClientFactory httpClientFactory, ILogger<GameApiService> logger)
     {
-        _httpClient = httpClient;
+        _httpClientFactory = httpClientFactory;
         _logger = logger;
-        
-        // 配置基础地址
-        if (_httpClient.BaseAddress == null)
-        {
-            _httpClient.BaseAddress = new Uri(_baseUrl);
-        }
     }
 
     /// <summary>
-    /// 设置服务器基础地址
+    /// 获取当前配置的 HttpClient
     /// </summary>
-    public void SetBaseUrl(string baseUrl)
-    {
-        _baseUrl = baseUrl;
-        _httpClient.BaseAddress = new Uri(baseUrl);
-    }
+    private HttpClient GetHttpClient() => _httpClientFactory.GetHttpClient();
 
     /// <summary>
     /// 开始战斗
@@ -42,7 +29,8 @@ public class GameApiService
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("api/battle/start", request);
+            var httpClient = GetHttpClient();
+            var response = await httpClient.PostAsJsonAsync("api/battle/start", request);
             
             if (response.IsSuccessStatusCode)
             {
@@ -74,7 +62,8 @@ public class GameApiService
     {
         try
         {
-            return await _httpClient.GetFromJsonAsync<ApiResponse<BattleStateDto>>(
+            var httpClient = GetHttpClient();
+            return await httpClient.GetFromJsonAsync<ApiResponse<BattleStateDto>>(
                 $"api/battle/state/{battleId}") 
                 ?? new ApiResponse<BattleStateDto> { Success = false };
         }
@@ -96,7 +85,8 @@ public class GameApiService
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("api/battle/action", request);
+            var httpClient = GetHttpClient();
+            var response = await httpClient.PostAsJsonAsync("api/battle/action", request);
             
             if (response.IsSuccessStatusCode)
             {
@@ -128,7 +118,8 @@ public class GameApiService
     {
         try
         {
-            var response = await _httpClient.PostAsync($"api/battle/stop/{battleId}", null);
+            var httpClient = GetHttpClient();
+            var response = await httpClient.PostAsync($"api/battle/stop/{battleId}", null);
             
             if (response.IsSuccessStatusCode)
             {
@@ -160,7 +151,8 @@ public class GameApiService
     {
         try
         {
-            var response = await _httpClient.GetAsync("api/battle/state/00000000-0000-0000-0000-000000000000");
+            var httpClient = GetHttpClient();
+            var response = await httpClient.GetAsync("api/battle/state/00000000-0000-0000-0000-000000000000");
             // 我们不关心返回内容，只要能连通就行
             return true;
         }
@@ -179,8 +171,9 @@ public class GameApiService
     {
         try
         {
+            var httpClient = GetHttpClient();
             var request = new CreatePartyRequest { CharacterId = characterId };
-            var response = await _httpClient.PostAsJsonAsync("api/party/create", request);
+            var response = await httpClient.PostAsJsonAsync("api/party/create", request);
             
             if (response.IsSuccessStatusCode)
             {
@@ -212,8 +205,9 @@ public class GameApiService
     {
         try
         {
+            var httpClient = GetHttpClient();
             var request = new JoinPartyRequest { CharacterId = characterId, PartyId = partyId };
-            var response = await _httpClient.PostAsJsonAsync("api/party/join", request);
+            var response = await httpClient.PostAsJsonAsync("api/party/join", request);
             
             if (response.IsSuccessStatusCode)
             {
@@ -245,8 +239,9 @@ public class GameApiService
     {
         try
         {
+            var httpClient = GetHttpClient();
             var request = new LeavePartyRequest { CharacterId = characterId };
-            var response = await _httpClient.PostAsJsonAsync("api/party/leave", request);
+            var response = await httpClient.PostAsJsonAsync("api/party/leave", request);
             
             if (response.IsSuccessStatusCode)
             {
@@ -278,7 +273,8 @@ public class GameApiService
     {
         try
         {
-            return await _httpClient.GetFromJsonAsync<ApiResponse<PartyDto>>(
+            var httpClient = GetHttpClient();
+            return await httpClient.GetFromJsonAsync<ApiResponse<PartyDto>>(
                 $"api/party/character/{characterId}") 
                 ?? new ApiResponse<PartyDto> { Success = false };
         }
@@ -300,7 +296,8 @@ public class GameApiService
     {
         try
         {
-            return await _httpClient.GetFromJsonAsync<ApiResponse<List<PartyDto>>>("api/party/all") 
+            var httpClient = GetHttpClient();
+            return await httpClient.GetFromJsonAsync<ApiResponse<List<PartyDto>>>("api/party/all") 
                 ?? new ApiResponse<List<PartyDto>> { Success = false };
         }
         catch (Exception ex)
@@ -321,7 +318,8 @@ public class GameApiService
     {
         try
         {
-            return await _httpClient.GetFromJsonAsync<ApiResponse<PartyDto>>($"api/party/{partyId}") 
+            var httpClient = GetHttpClient();
+            return await httpClient.GetFromJsonAsync<ApiResponse<PartyDto>>($"api/party/{partyId}") 
                 ?? new ApiResponse<PartyDto> { Success = false };
         }
         catch (Exception ex)
@@ -346,7 +344,8 @@ public class GameApiService
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("api/character/update", request);
+            var httpClient = GetHttpClient();
+            var response = await httpClient.PostAsJsonAsync("api/character/update", request);
             
             if (response.IsSuccessStatusCode)
             {
@@ -378,7 +377,8 @@ public class GameApiService
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("api/team/progress", request);
+            var httpClient = GetHttpClient();
+            var response = await httpClient.PostAsJsonAsync("api/team/progress", request);
             
             if (response.IsSuccessStatusCode)
             {
@@ -410,7 +410,8 @@ public class GameApiService
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("api/offline-settlement", request);
+            var httpClient = GetHttpClient();
+            var response = await httpClient.PostAsJsonAsync("api/offline-settlement", request);
             
             if (response.IsSuccessStatusCode)
             {
@@ -442,7 +443,8 @@ public class GameApiService
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("api/offline-settlement/batch", request);
+            var httpClient = GetHttpClient();
+            var response = await httpClient.PostAsJsonAsync("api/offline-settlement/batch", request);
             
             if (response.IsSuccessStatusCode)
             {

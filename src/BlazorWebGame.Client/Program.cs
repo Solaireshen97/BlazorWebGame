@@ -17,8 +17,16 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 // 配置日志服务 - 对于Blazor WebAssembly，默认已经配置了控制台日志
 builder.Logging.SetMinimumLevel(LogLevel.Information);
 
-// 配置HTTP客户端，指向服务器（与服务器实际运行端口匹配）
-builder.Services.AddSingleton(sp => new HttpClient { BaseAddress = new Uri("https://localhost:7000") });
+// 添加统一的服务器配置服务
+builder.Services.AddSingleton<ServerConfigurationService>();
+builder.Services.AddSingleton<ConfigurableHttpClientFactory>();
+
+// 配置动态 HttpClient 工厂，支持运行时更改服务器地址
+builder.Services.AddSingleton<HttpClient>(sp =>
+{
+    var factory = sp.GetRequiredService<ConfigurableHttpClientFactory>();
+    return factory.GetHttpClient();
+});
 
 // 添加新的API服务
 builder.Services.AddSingleton<GameApiService>();

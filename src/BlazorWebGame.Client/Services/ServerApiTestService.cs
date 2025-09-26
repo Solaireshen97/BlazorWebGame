@@ -9,21 +9,37 @@ namespace BlazorWebGame.Client.Services;
 /// </summary>
 public class ServerApiTestService
 {
-    private readonly HttpClient _httpClient;
+    private readonly ConfigurableHttpClientFactory _httpClientFactory;
+    private readonly ServerConfigurationService _serverConfig;
     private readonly ILogger<ServerApiTestService> _logger;
-    private string _baseUrl = "https://localhost:7000";
 
-    public ServerApiTestService(HttpClient httpClient, ILogger<ServerApiTestService> logger)
+    public ServerApiTestService(
+        ConfigurableHttpClientFactory httpClientFactory,
+        ServerConfigurationService serverConfig,
+        ILogger<ServerApiTestService> logger)
     {
-        _httpClient = httpClient;
+        _httpClientFactory = httpClientFactory;
+        _serverConfig = serverConfig;
         _logger = logger;
     }
 
-    public void SetBaseUrl(string baseUrl)
+    /// <summary>
+    /// 获取当前配置的 HttpClient
+    /// </summary>
+    private HttpClient GetHttpClient() => _httpClientFactory.GetHttpClient();
+
+    /// <summary>
+    /// 设置服务器地址（通过统一配置服务）
+    /// </summary>
+    public async Task SetBaseUrlAsync(string baseUrl)
     {
-        _baseUrl = baseUrl;
-        _httpClient.BaseAddress = new Uri(baseUrl);
+        await _serverConfig.SetServerUrlAsync(baseUrl);
     }
+
+    /// <summary>
+    /// 获取当前服务器地址
+    /// </summary>
+    public string GetCurrentBaseUrl() => _serverConfig.CurrentServerUrl;
 
     // ====== 健康检查和系统信息 ======
     
@@ -31,7 +47,8 @@ public class ServerApiTestService
     {
         try
         {
-            var response = await _httpClient.GetAsync("/health/simple");
+            var httpClient = GetHttpClient();
+            var response = await httpClient.GetAsync("/health/simple");
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
@@ -49,7 +66,8 @@ public class ServerApiTestService
     {
         try
         {
-            var response = await _httpClient.GetAsync("/api/info");
+            var httpClient = GetHttpClient();
+            var response = await httpClient.GetAsync("/api/info");
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
@@ -69,7 +87,8 @@ public class ServerApiTestService
     {
         try
         {
-            var response = await _httpClient.GetAsync("/api/monitoring/system-metrics");
+            var httpClient = GetHttpClient();
+            var response = await httpClient.GetAsync("/api/monitoring/system-metrics");
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
