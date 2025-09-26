@@ -75,7 +75,7 @@ public class ServerApiTestService
     {
         try
         {
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.GetAsync("/api/info");
             if (response.IsSuccessStatusCode)
             {
@@ -96,7 +96,7 @@ public class ServerApiTestService
     {
         try
         {
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.GetAsync("/api/monitoring/system-metrics");
             if (response.IsSuccessStatusCode)
             {
@@ -121,7 +121,7 @@ public class ServerApiTestService
     {
         try
         {
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.GetAsync("/api/monitoring/operation-metrics");
             if (response.IsSuccessStatusCode)
             {
@@ -142,7 +142,7 @@ public class ServerApiTestService
     {
         try
         {
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.GetAsync("/api/character");
             if (response.IsSuccessStatusCode)
             {
@@ -167,7 +167,7 @@ public class ServerApiTestService
         try
         {
             var request = new CreateCharacterRequest { Name = name };
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.PostAsJsonAsync("/api/character", request);
             if (response.IsSuccessStatusCode)
             {
@@ -198,7 +198,7 @@ public class ServerApiTestService
                 CharacterId = characterId, 
                 EnemyId = enemyId 
             };
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.PostAsJsonAsync("/api/battle/start", request);
             if (response.IsSuccessStatusCode)
             {
@@ -222,7 +222,7 @@ public class ServerApiTestService
     {
         try
         {
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.GetAsync($"/api/battle/state/{battleId}");
             if (response.IsSuccessStatusCode)
             {
@@ -250,7 +250,7 @@ public class ServerApiTestService
         try
         {
             var request = new CreatePartyRequest { CharacterId = characterId };
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.PostAsJsonAsync("/api/party", request);
             if (response.IsSuccessStatusCode)
             {
@@ -284,7 +284,7 @@ public class ServerApiTestService
                 Quality = EquipmentQuality.Common,
                 WeaponType = "Sword"
             };
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.PostAsJsonAsync("/api/equipment/generate", request);
             if (response.IsSuccessStatusCode)
             {
@@ -310,7 +310,7 @@ public class ServerApiTestService
     {
         try
         {
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.GetAsync($"/api/inventory/{characterId}");
             if (response.IsSuccessStatusCode)
             {
@@ -338,8 +338,8 @@ public class ServerApiTestService
     {
         try
         {
-            var response = var httpClient = GetHttpClient();
-            var response = await httpClient.GetAsync("/api/production/gathering-nodes");
+            var httpClient = GetHttpClient();
+            var response = await httpClient.GetAsync("/api/production/nodes");
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
@@ -364,8 +364,8 @@ public class ServerApiTestService
     {
         try
         {
-            var response = var httpClient = GetHttpClient();
-            var response = await httpClient.GetAsync($"/api/quest/{characterId}");
+            var httpClient = GetHttpClient();
+            var response = await httpClient.GetAsync($"/api/quest/status/{characterId}");
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
@@ -391,7 +391,7 @@ public class ServerApiTestService
     {
         try
         {
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.GetAsync("/api/apidocumentation/overview");
             if (response.IsSuccessStatusCode)
             {
@@ -418,7 +418,7 @@ public class ServerApiTestService
     {
         try
         {
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.GetAsync("/api/apidocumentation/server-info");
             if (response.IsSuccessStatusCode)
             {
@@ -447,7 +447,7 @@ public class ServerApiTestService
     {
         try
         {
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.GetAsync("/api/datastorage/stats");
             if (response.IsSuccessStatusCode)
             {
@@ -462,13 +462,15 @@ public class ServerApiTestService
         }
     }
 
-    // ====== 认证API测试 ======
+    /// <summary>
+    /// 认证API测试
+    /// </summary>
     
     public async Task<string> TestDemoLoginAsync()
     {
         try
         {
-            var response = var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient();
             var response = await httpClient.PostAsync("/api/auth/demo-login", null);
             if (response.IsSuccessStatusCode)
             {
@@ -477,7 +479,7 @@ public class ServerApiTestService
                 if (tokenResponse.TryGetProperty("token", out var tokenElement))
                 {
                     var token = tokenElement.GetString();
-                    // 设置认证头
+                    // 设置认证头到当前HttpClient实例
                     httpClient.DefaultRequestHeaders.Authorization = 
                         new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
                     return $"✅ 演示登录成功: 获得JWT令牌";
@@ -492,7 +494,39 @@ public class ServerApiTestService
         }
     }
 
-    // ====== 批量测试 ======
+    /// <summary>
+    /// 设置认证令牌 - 为后续API调用做准备
+    /// </summary>
+    public async Task<string> SetupAuthenticationAsync()
+    {
+        try
+        {
+            var httpClient = GetHttpClient();
+            var response = await httpClient.PostAsync("/api/auth/demo-login", null);
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                var tokenResponse = JsonSerializer.Deserialize<JsonElement>(content);
+                if (tokenResponse.TryGetProperty("token", out var tokenElement))
+                {
+                    var token = tokenElement.GetString();
+                    // 设置认证头到HttpClientFactory的所有实例
+                    _httpClientFactory.SetAuthorizationHeader($"Bearer {token}");
+                    return $"✅ 认证设置成功: 已为所有API调用设置JWT令牌";
+                }
+                return $"❌ 认证设置失败: 未获得令牌";
+            }
+            return $"❌ 认证设置失败: 登录请求返回 {response.StatusCode}";
+        }
+        catch (Exception ex)
+        {
+            return $"❌ 认证设置异常: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// 批量测试 - 包含认证设置
+    /// </summary>
     
     public async Task<List<string>> RunAllBasicTestsAsync()
     {
@@ -502,12 +536,12 @@ public class ServerApiTestService
         results.Add(await TestHealthAsync());
         results.Add(await TestApiInfoAsync());
         
+        results.Add("\n=== 认证测试 ===");
+        results.Add(await SetupAuthenticationAsync());
+        
         results.Add("\n=== 监控API测试 ===");
         results.Add(await TestSystemMetricsAsync());
         results.Add(await TestOperationMetricsAsync());
-        
-        results.Add("\n=== 认证测试 ===");
-        results.Add(await TestDemoLoginAsync());
         
         results.Add("\n=== 角色API测试 ===");
         results.Add(await TestGetCharactersAsync());
@@ -524,6 +558,40 @@ public class ServerApiTestService
         
         results.Add("\n=== 数据存储测试 ===");
         results.Add(await TestDataStorageAsync());
+        
+        return results;
+    }
+
+    /// <summary>
+    /// 运行需要认证的API测试
+    /// </summary>
+    public async Task<List<string>> RunAuthenticatedTestsAsync()
+    {
+        var results = new List<string>();
+        
+        results.Add("=== 认证设置 ===");
+        var authResult = await SetupAuthenticationAsync();
+        results.Add(authResult);
+        
+        if (!authResult.StartsWith("✅"))
+        {
+            results.Add("⚠️ 认证失败，跳过需要认证的测试");
+            return results;
+        }
+        
+        results.Add("\n=== 战斗系统测试（需认证）===");
+        // 使用一个示例ID进行测试，实际使用中需要先创建角色
+        results.Add(await TestStartBattleAsync("demo-character", "slime"));
+        results.Add(await TestGetBattleStateAsync("00000000-0000-0000-0000-000000000000"));
+        
+        results.Add("\n=== 组队系统测试（需认证）===");
+        results.Add(await TestCreatePartyAsync("demo-character"));
+        
+        results.Add("\n=== 库存系统测试（需认证）===");
+        results.Add(await TestGetInventoryAsync("demo-character"));
+        
+        results.Add("\n=== 任务系统测试（需认证）===");
+        results.Add(await TestGetQuestsAsync("demo-character"));
         
         return results;
     }

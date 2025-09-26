@@ -35,6 +35,27 @@ public class ConfigurableHttpClientFactory
     }
 
     /// <summary>
+    /// 设置认证头部到当前HttpClient
+    /// </summary>
+    public void SetAuthorizationHeader(string authHeaderValue)
+    {
+        var httpClient = GetHttpClient();
+        if (authHeaderValue.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        {
+            var token = authHeaderValue.Substring("Bearer ".Length);
+            httpClient.DefaultRequestHeaders.Authorization = 
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        }
+        else
+        {
+            httpClient.DefaultRequestHeaders.Authorization = 
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", authHeaderValue);
+        }
+        
+        _logger.LogInformation("已设置认证头部到 HttpClient");
+    }
+
+    /// <summary>
     /// 创建新的 HttpClient 实例
     /// </summary>
     private void CreateNewHttpClient()
