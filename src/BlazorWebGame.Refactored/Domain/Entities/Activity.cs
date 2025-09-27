@@ -299,7 +299,7 @@ public static class ActivityFactory
             ActivityType.Gathering => new GatheringActivity(id, characterId, 
                 parameters.GetValue<GatheringType>("GatheringType"), parameters),
             ActivityType.Crafting => new CraftingActivity(id, characterId, 
-                parameters.GetValue<Recipe>("Recipe"), 
+                parameters.GetValue<Recipe>("Recipe") ?? throw new ArgumentNullException("Recipe is required for crafting activity"), 
                 parameters.GetValue<int>("Quantity"), parameters),
             _ => throw new ArgumentException($"Unknown activity type: {type}")
         };

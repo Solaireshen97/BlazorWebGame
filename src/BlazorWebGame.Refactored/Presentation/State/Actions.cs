@@ -309,3 +309,12 @@ public record ResetApplicationStateAction();
 /// 设置调试模式
 /// </summary>
 public record SetDebugModeAction(bool Enabled);
+
+// ======================
+// 数据管理相关 Actions
+// ======================
+
+/// <summary>
+/// 清除所有数据
+/// </summary>
+public record ClearAllDataAction();

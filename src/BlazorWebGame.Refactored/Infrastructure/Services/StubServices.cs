@@ -109,11 +109,13 @@ public class SignalRService : ISignalRService
 {
     public bool IsConnected => false;
 
+#pragma warning disable CS0067 // Event is never used - these are stub events for testing
     public event Func<string, Task>? OnCharacterUpdate;
     public event Func<string, Task>? OnActivityUpdate;
     public event Func<string, Task>? OnBattleUpdate;
     public event Func<string, Task>? OnNotification;
     public event Func<string, object, Task>? OnRealtimeEvent;
+#pragma warning restore CS0067
 
     public async Task StartAsync()
     {
