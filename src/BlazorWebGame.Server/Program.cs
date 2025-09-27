@@ -15,7 +15,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Text;
 using Serilog;
-using Microsoft.Extensions.Options;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -193,21 +193,57 @@ builder.Services.AddSingleton<DemoUserService>();
 // 注册共享事件管理器
 builder.Services.AddSingleton<BlazorWebGame.Shared.Events.GameEventManager>();
 
-// 注册事件持久化服务（开发环境使用内存实现）
-builder.Services.AddSingleton<BlazorWebGame.Shared.Events.IRedisEventPersistence, BlazorWebGame.Shared.Events.InMemoryEventPersistence>();
-
 // 注册统一事件系统
 builder.Services.AddSingleton<UnifiedEventService>();
 
 // 注册服务定位器（单例模式）
 builder.Services.AddSingleton<ServerServiceLocator>();
 
-// 注册数据存储服务
+// 注册数据存储服务（临时禁用有问题的实现）
 builder.Services.AddSingleton<BlazorWebGame.Shared.Interfaces.IDataStorageService, DataStorageService>();
 builder.Services.AddSingleton<DataStorageIntegrationService>();
 
 // 添加内存缓存支持
 builder.Services.AddMemoryCache();
+
+// 配置 Redis 分布式缓存
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+try
+{
+    // 添加 StackExchange.Redis 连接
+    builder.Services.AddSingleton<IConnectionMultiplexer>(provider =>
+    {
+        var configuration = ConfigurationOptions.Parse(redisConnectionString);
+        configuration.AbortOnConnectFail = false; // 允许在连接失败时继续运行
+        configuration.ConnectTimeout = 5000; // 5秒连接超时
+        configuration.SyncTimeout = 5000; // 5秒同步超时
+        return ConnectionMultiplexer.Connect(configuration);
+    });
+
+    // 添加分布式缓存
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = redisConnectionString;
+        options.InstanceName = "BlazorWebGame";
+    });
+
+    // 注册 Redis 游戏缓存服务
+    builder.Services.AddSingleton<RedisGameCacheService>();
+    
+    // 注册 Redis 事件持久化服务（替换内存实现）
+    builder.Services.AddSingleton<BlazorWebGame.Shared.Events.IRedisEventPersistence, RedisEventPersistenceService>();
+
+    builder.Services.GetRequiredService<ILogger<IServiceCollection>>()?.LogInformation("Redis services configured with connection: {ConnectionString}", redisConnectionString.Split('@').LastOrDefault());
+}
+catch (Exception ex)
+{
+    // Redis 连接失败时的降级处理
+    var logger = LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger<Program>();
+    logger.LogWarning(ex, "Failed to configure Redis, falling back to in-memory implementations");
+    
+    // 使用内存实现作为后备
+    builder.Services.AddSingleton<BlazorWebGame.Shared.Events.IRedisEventPersistence, BlazorWebGame.Shared.Events.InMemoryEventPersistence>();
+}
 
 // 注册离线结算服务
 builder.Services.AddSingleton<OfflineSettlementService>();
@@ -294,6 +330,22 @@ using (var scope = app.Services.CreateScope())
 
 // 初始化服务定位器
 ServerServiceLocator.Initialize(app.Services);
+
+// 初始化服务集成和缓存
+try
+{
+    await app.Services.InitializeServicesAsync(app.Services.GetRequiredService<ILogger<Program>>());
+}
+catch (Exception ex)
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogError(ex, "Failed to initialize services");
+    // 在开发环境继续运行，生产环境可能需要停止
+    if (!app.Environment.IsDevelopment())
+    {
+        throw;
+    }
+}
 
 // 在开发环境中运行战斗系统测试（基于配置）
 if (app.Environment.IsDevelopment())
@@ -393,6 +445,42 @@ app.MapGet("/health/simple", () => new {
     Status = "Healthy", 
     Timestamp = DateTime.UtcNow,
     Environment = app.Environment.EnvironmentName 
+});
+
+// 添加详细服务健康检查端点
+app.MapGet("/health/services", async (IServiceProvider services) =>
+{
+    try
+    {
+        var health = await services.GetServiceHealthAsync();
+        return Results.Ok(health);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(
+            detail: ex.Message,
+            statusCode: 500,
+            title: "Service Health Check Failed"
+        );
+    }
+});
+
+// 添加服务性能指标端点
+app.MapGet("/metrics/services", async (IServiceProvider services) =>
+{
+    try
+    {
+        var metrics = await services.GetServiceMetricsAsync();
+        return Results.Ok(metrics);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(
+            detail: ex.Message,
+            statusCode: 500,
+            title: "Service Metrics Failed"
+        );
+    }
 });
 
 // 添加API信息端点

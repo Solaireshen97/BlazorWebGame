@@ -80,11 +80,27 @@ public class GameLoopService : BackgroundService
         // 发送系统tick事件
         _eventService.EnqueueSystemEvent(GameEventTypes.SYSTEM_TICK, EventPriority.Analytics);
 
-        // 处理游戏逻辑 - 现在是事件收集而非直接处理
-        await _gameEngine.ProcessBattleTickAsync(deltaTime);
+        // 处理游戏逻辑 - 现在是事件收集而非直接处理，同时更新缓存
+        await _gameEngine.ProcessBattleTickWithCacheAsync(deltaTime);
         
         // 处理生产系统逻辑
         await _productionService.UpdateGatheringStatesAsync(deltaTime);
+        
+        // 定期清理完成的战斗缓存（每分钟一次）
+        if (_totalFrames % (60000 / _options.GameLoopIntervalMs) == 0)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _gameEngine.CleanupCompletedBattleCacheAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error cleaning up battle cache");
+                }
+            });
+        }
         
         // 事件处理由EventDispatcher自动进行，无需在这里等待
         // 这实现了真正的异步事件处理和帧率稳定

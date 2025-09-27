@@ -16,8 +16,14 @@ public class ServerProductionService
     // 存储玩家的采集状态
     private readonly ConcurrentDictionary<string, GatheringStateDto> _gatheringStates = new();
     
+    // 存储玩家的制作状态
+    private readonly ConcurrentDictionary<string, CraftingStateDto> _craftingStates = new();
+    
     // 采集节点数据 - 从客户端迁移过来的静态数据
     private readonly Dictionary<string, GatheringNodeDto> _gatheringNodes;
+    
+    // 配方数据 - 从客户端迁移过来的静态数据
+    private readonly Dictionary<string, RecipeDto> _recipes;
 
     public ServerProductionService(ILogger<ServerProductionService> logger, IHubContext<GameHub> hubContext)
     {
@@ -98,6 +104,71 @@ public class ServerProductionService
         };
 
         return nodes;
+    }
+
+    /// <summary>
+    /// 初始化配方数据
+    /// </summary>
+    private Dictionary<string, RecipeDto> InitializeRecipes()
+    {
+        var recipes = new Dictionary<string, RecipeDto>();
+
+        // 基础配方
+        recipes["RECIPE_COPPER_SWORD"] = new RecipeDto
+        {
+            Id = "RECIPE_COPPER_SWORD",
+            Name = "铜剑制作",
+            Description = "使用铜矿制作基础武器",
+            RequiredProfession = "Blacksmithing",
+            RequiredLevel = 1,
+            CraftingTimeSeconds = 30,
+            ResultingItemId = "WEAPON_COPPER_SWORD",
+            ResultingItemQuantity = 1,
+            Ingredients = new Dictionary<string, int>
+            {
+                { "ORE_COPPER", 3 },
+                { "ITEM_COAL", 1 }
+            },
+            XpReward = 10
+        };
+
+        recipes["RECIPE_HEALING_POTION"] = new RecipeDto
+        {
+            Id = "RECIPE_HEALING_POTION",
+            Name = "治疗药水",
+            Description = "制作基础治疗药水",
+            RequiredProfession = "Alchemy",
+            RequiredLevel = 1,
+            CraftingTimeSeconds = 20,
+            ResultingItemId = "POTION_HEALING",
+            ResultingItemQuantity = 2,
+            Ingredients = new Dictionary<string, int>
+            {
+                { "HERB_HEALING", 2 },
+                { "ITEM_WATER", 1 }
+            },
+            XpReward = 8
+        };
+
+        recipes["RECIPE_LEATHER_ARMOR"] = new RecipeDto
+        {
+            Id = "RECIPE_LEATHER_ARMOR",
+            Name = "皮甲制作",
+            Description = "制作基础皮革护甲",
+            RequiredProfession = "Tailoring",
+            RequiredLevel = 2,
+            CraftingTimeSeconds = 45,
+            ResultingItemId = "ARMOR_LEATHER_CHEST",
+            ResultingItemQuantity = 1,
+            Ingredients = new Dictionary<string, int>
+            {
+                { "MAT_LEATHER", 4 },
+                { "MAT_THREAD", 2 }
+            },
+            XpReward = 15
+        };
+
+        return recipes;
     }
 
     /// <summary>
@@ -420,13 +491,10 @@ public class ServerProductionService
 
     // ==================== 制作系统方法 ====================
 
-    private readonly ConcurrentDictionary<string, CraftingStateDto> _craftingStates = new();
-    private readonly Dictionary<string, RecipeDto> _recipes;
-
     /// <summary>
     /// 初始化配方数据（需要从客户端迁移过来）
     /// </summary>
-    private Dictionary<string, RecipeDto> InitializeRecipes()
+    private Dictionary<string, RecipeDto> InitializeRecipesLegacy()
     {
         var recipes = new Dictionary<string, RecipeDto>();
 
