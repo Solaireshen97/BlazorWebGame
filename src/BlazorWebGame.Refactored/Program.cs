@@ -21,6 +21,7 @@ using Serilog.Core;
 using MediatR;
 using FluentValidation;
 using Polly;
+using Polly.Extensions.Http;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");

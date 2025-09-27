@@ -50,9 +50,9 @@ public interface IActivityService
     Task<ActivityResult> CompleteActivityAsync(Guid activityId);
     Task UpdateActivityProgressAsync(Guid activityId, double progress);
     
-    // Additional methods for CQRS
+    // Additional methods for CQRS (with different signatures to avoid conflict)
     Task<Activity> StartActivityAsync(Guid characterId, ActivityType activityType, ActivityParameters parameters);
-    Task<List<Activity>> GetCharacterActivitiesAsync(Guid characterId);
+    Task<List<Activity>> GetCharacterActivitiesListAsync(Guid characterId);
     Task<Activity?> GetActivityAsync(Guid activityId);
 }
 
@@ -94,8 +94,8 @@ public interface ISignalRService
 /// </summary>
 public interface ICacheService
 {
-    Task<T?> GetAsync<T>(string key) where T : class;
-    Task SetAsync<T>(string key, T value, TimeSpan? expiration = null) where T : class;
+    Task<T?> GetAsync<T>(string key);
+    Task SetAsync<T>(string key, T value, TimeSpan? expiration = null);
     Task RemoveAsync(string key);
     Task ClearAsync();
     Task CleanupExpiredEntriesAsync();

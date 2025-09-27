@@ -1,6 +1,9 @@
 using BlazorWebGame.Refactored.Application.Interfaces;
+using BlazorWebGame.Refactored.Application.DTOs;
+using BlazorWebGame.Refactored.Infrastructure.Http;
 using BlazorWebGame.Refactored.Presentation.State;
 using BlazorWebGame.Refactored.Domain.ValueObjects;
+using BlazorWebGame.Refactored.Domain.Entities;
 
 namespace BlazorWebGame.Refactored.Infrastructure.Services;
 
@@ -41,6 +44,26 @@ public class ActivityService : IActivityService
     public async Task UpdateActivityProgressAsync(Guid activityId, double progress)
     {
         await Task.Delay(100);
+    }
+
+    // Additional methods for CQRS
+    public async Task<Activity> StartActivityAsync(Guid characterId, ActivityType activityType, ActivityParameters parameters)
+    {
+        await Task.Delay(100);
+        // Return a simplified activity since the BattleActivity constructor has complex requirements
+        return new GatheringActivity(Guid.NewGuid(), characterId, "Gathering", parameters);
+    }
+
+    public async Task<List<Activity>> GetCharacterActivitiesListAsync(Guid characterId)
+    {
+        await Task.Delay(100);
+        return new List<Activity>();
+    }
+
+    public async Task<Activity?> GetActivityAsync(Guid activityId)
+    {
+        await Task.Delay(100);
+        return null;
     }
 }
 
@@ -86,11 +109,11 @@ public class SignalRService : ISignalRService
 {
     public bool IsConnected => false;
 
-    public event Action<CharacterUpdateEvent>? OnCharacterUpdate;
-    public event Action<BattleUpdateEvent>? OnBattleUpdate;
-    public event Action<ActivityUpdateEvent>? OnActivityUpdate;
-    public event Action<NotificationMessage>? OnNotification;
-    public event Action<RealtimeEvent>? OnRealtimeEvent;
+    public event Func<string, Task>? OnCharacterUpdate;
+    public event Func<string, Task>? OnActivityUpdate;
+    public event Func<string, Task>? OnBattleUpdate;
+    public event Func<string, Task>? OnNotification;
+    public event Func<string, object, Task>? OnRealtimeEvent;
 
     public async Task StartAsync()
     {
@@ -102,32 +125,17 @@ public class SignalRService : ISignalRService
         await Task.Delay(100);
     }
 
-    public async Task JoinGroupAsync(string groupName)
+    public async Task JoinGameAsync(string userId)
     {
         await Task.Delay(100);
     }
 
-    public async Task LeaveGroupAsync(string groupName)
+    public async Task LeaveGameAsync()
     {
         await Task.Delay(100);
     }
 
-    public async Task JoinCharacterGroupAsync(Guid characterId)
-    {
-        await Task.Delay(100);
-    }
-
-    public async Task LeaveCharacterGroupAsync(Guid characterId)
-    {
-        await Task.Delay(100);
-    }
-
-    public async Task JoinBattleGroupAsync(Guid battleId)
-    {
-        await Task.Delay(100);
-    }
-
-    public async Task LeaveBattleGroupAsync(Guid battleId)
+    public async Task SendCharacterActionAsync(Guid characterId, string action, object data)
     {
         await Task.Delay(100);
     }
@@ -138,13 +146,13 @@ public class SignalRService : ISignalRService
 /// </summary>
 public class CacheService : ICacheService
 {
-    public async Task<T?> GetAsync<T>(string key) where T : class
+    public async Task<T?> GetAsync<T>(string key)
     {
         await Task.Delay(10);
-        return null;
+        return default(T);
     }
 
-    public async Task SetAsync<T>(string key, T value, TimeSpan? expiration = null) where T : class
+    public async Task SetAsync<T>(string key, T value, TimeSpan? expiration = null)
     {
         await Task.Delay(10);
     }
@@ -181,46 +189,77 @@ public class CacheService : ICacheService
 /// </summary>
 public class HttpClientService : IHttpClientService
 {
-    public async Task<ApiResponse<T>> GetAsync<T>(string endpoint) where T : class
+    public async Task<T?> GetAsync<T>(string endpoint)
     {
         await Task.Delay(100);
-        return new ApiResponse<T> { Success = false, Message = "Not implemented" };
+        return default(T);
     }
 
-    public async Task<ApiResponse<T>> PostAsync<T>(string endpoint, object data) where T : class
+    public async Task<TResponse?> PostAsync<TRequest, TResponse>(string endpoint, TRequest data)
     {
         await Task.Delay(100);
-        return new ApiResponse<T> { Success = false, Message = "Not implemented" };
+        return default(TResponse);
     }
 
-    public async Task<ApiResponse<T>> PutAsync<T>(string endpoint, object data) where T : class
+    public async Task<TResponse?> PutAsync<TRequest, TResponse>(string endpoint, TRequest data)
     {
         await Task.Delay(100);
-        return new ApiResponse<T> { Success = false, Message = "Not implemented" };
+        return default(TResponse);
     }
 
-    public async Task<ApiResponse<T>> DeleteAsync<T>(string endpoint) where T : class
+    public async Task<bool> DeleteAsync(string endpoint)
     {
         await Task.Delay(100);
-        return new ApiResponse<T> { Success = false, Message = "Not implemented" };
+        return false;
     }
 
-    public async Task<ApiResponse> PostAsync(string endpoint, object data)
+    // Game-specific API methods
+    public async Task<List<CharacterDto>> GetCharactersAsync(string userId)
     {
         await Task.Delay(100);
-        return new ApiResponse { Success = false, Message = "Not implemented" };
+        return new List<CharacterDto>();
     }
 
-    public async Task<ApiResponse> PutAsync(string endpoint, object data)
+    public async Task<CharacterDto?> GetCharacterAsync(Guid characterId)
     {
         await Task.Delay(100);
-        return new ApiResponse { Success = false, Message = "Not implemented" };
+        return null;
     }
 
-    public async Task<ApiResponse> DeleteAsync(string endpoint)
+    public async Task<CharacterDto?> CreateCharacterAsync(CreateCharacterRequest request)
     {
         await Task.Delay(100);
-        return new ApiResponse { Success = false, Message = "Not implemented" };
+        return new CharacterDto { Id = Guid.NewGuid(), Name = request.Name, CharacterClass = request.CharacterClass };
+    }
+
+    public async Task<bool> DeleteCharacterAsync(Guid characterId)
+    {
+        await Task.Delay(100);
+        return true;
+    }
+
+    public async Task<List<ActivityDto>> GetCharacterActivitiesAsync(Guid characterId)
+    {
+        await Task.Delay(100);
+        return new List<ActivityDto>();
+    }
+
+    public async Task<ActivityDto?> StartActivityAsync(StartActivityRequest request)
+    {
+        await Task.Delay(100);
+        return new ActivityDto { Id = Guid.NewGuid(), CharacterId = request.CharacterId, ActivityType = request.ActivityType };
+    }
+
+    public async Task<bool> CancelActivityAsync(Guid activityId)
+    {
+        await Task.Delay(100);
+        return true;
+    }
+
+    public async Task<ActivityDto?> GetActivityAsync(Guid activityId)
+    {
+        await Task.Delay(100);
+        return null;
     }
 }
 
