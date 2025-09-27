@@ -47,4 +47,19 @@ public class GameServerOptions
     /// </summary>
     [Range(30, 3600)]
     public int AutoSaveIntervalSeconds { get; set; } = 300; // 5分钟
+
+    /// <summary>
+    /// 数据库提供程序 (InMemory, LocalDb, SqlServer)
+    /// </summary>
+    public string DatabaseProvider { get; set; } = "InMemory";
+
+    /// <summary>
+    /// 启用数据库迁移
+    /// </summary>
+    public bool EnableDatabaseMigration { get; set; } = true;
+
+    /// <summary>
+    /// 启用数据库种子数据
+    /// </summary>
+    public bool EnableDatabaseSeeding { get; set; } = true;
 }
