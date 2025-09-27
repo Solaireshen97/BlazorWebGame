@@ -37,6 +37,9 @@
     <!-- JSON Serialization -->
     <PackageReference Include="System.Text.Json" Version="9.0.0" />
     
+    <!-- Reactive Extensions -->
+    <PackageReference Include="System.Reactive" Version="6.0.1" />
+    
     <!-- Logging -->
     <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0" />
     <PackageReference Include="Serilog.Sinks.BrowserConsole" Version="2.0.0" />

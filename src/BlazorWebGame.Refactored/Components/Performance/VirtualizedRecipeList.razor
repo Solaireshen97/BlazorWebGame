@@ -1,0 +1,236 @@
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@using BlazorWebGame.Refactored.Domain.ValueObjects
+@typeparam TRecipe
+
+<div class="recipe-list-container">
+    <Virtualize Items="@Items" Context="recipe" ItemSize="150" OverscanCount="5">
+        <ItemContent>
+            <div class="recipe-card @GetRecipeCardClass(recipe)">
+                <div class="recipe-header">
+                    <h4>@GetRecipeName(recipe)</h4>
+                    <span class="level-req">需求等级: @GetRequiredLevel(recipe)</span>
+                </div>
+                <div class="recipe-materials">
+                    <strong>所需材料:</strong>
+                    @foreach (var material in GetRequiredMaterials(recipe))
+                    {
+                        var hasEnough = HasMaterial?.Invoke(material.Key, material.Value) ?? false;
+                        <div class="material @(hasEnough ? "has-enough" : "not-enough")">
+                            @material.Key: @material.Value
+                        </div>
+                    }
+                </div>
+                <div class="recipe-output">
+                    <strong>产出:</strong> @GetOutputDescription(recipe)
+                </div>
+                <div class="recipe-actions">
+                    <button class="btn btn-primary" 
+                            disabled="@(!CanCraft?.Invoke(recipe) ?? true)" 
+                            @onclick="() => OnCraftClicked.InvokeAsync(recipe)">
+                        制作
+                    </button>
+                    @if (ShowDetails != null)
+                    {
+                        <button class="btn btn-secondary" @onclick="() => ShowDetails.InvokeAsync(recipe)">
+                            详情
+                        </button>
+                    }
+                </div>
+            </div>
+        </ItemContent>
+        <Placeholder>
+            <div class="recipe-card-placeholder">
+                <div class="shimmer-container">
+                    <div class="shimmer shimmer-title"></div>
+                    <div class="shimmer shimmer-text"></div>
+                    <div class="shimmer shimmer-text"></div>
+                    <div class="shimmer shimmer-button"></div>
+                </div>
+            </div>
+        </Placeholder>
+    </Virtualize>
+</div>
+
+<style>
+    .recipe-list-container {
+        height: 600px;
+        overflow-y: auto;
+    }
+    
+    .recipe-card {
+        height: 140px;
+        margin: 10px;
+        padding: 15px;
+        border: 2px solid #bdc3c7;
+        border-radius: 8px;
+        background: white;
+        transition: all 0.3s;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    
+    .recipe-card.affordable {
+        border-color: #27ae60;
+        box-shadow: 0 2px 4px rgba(39, 174, 96, 0.2);
+    }
+    
+    .recipe-card.unaffordable {
+        border-color: #e74c3c;
+        opacity: 0.7;
+    }
+    
+    .recipe-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .recipe-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+    
+    .recipe-header h4 {
+        margin: 0;
+        color: #2c3e50;
+        font-size: 16px;
+    }
+    
+    .level-req {
+        font-size: 12px;
+        color: #7f8c8d;
+        background: #ecf0f1;
+        padding: 2px 6px;
+        border-radius: 4px;
+    }
+    
+    .recipe-materials {
+        margin-bottom: 8px;
+    }
+    
+    .material {
+        font-size: 12px;
+        margin: 2px 0;
+        display: inline-block;
+        margin-right: 10px;
+    }
+    
+    .material.has-enough {
+        color: #27ae60;
+    }
+    
+    .material.not-enough {
+        color: #e74c3c;
+    }
+    
+    .recipe-output {
+        font-size: 13px;
+        color: #34495e;
+        margin-bottom: 8px;
+    }
+    
+    .recipe-actions {
+        display: flex;
+        gap: 8px;
+    }
+    
+    .btn {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        transition: all 0.2s;
+        flex: 1;
+    }
+    
+    .btn-primary {
+        background: #3498db;
+        color: white;
+    }
+    
+    .btn-primary:hover:not(:disabled) {
+        background: #2980b9;
+    }
+    
+    .btn-primary:disabled {
+        background: #bdc3c7;
+        cursor: not-allowed;
+    }
+    
+    .btn-secondary {
+        background: #95a5a6;
+        color: white;
+    }
+    
+    .btn-secondary:hover {
+        background: #7f8c8d;
+    }
+    
+    .recipe-card-placeholder {
+        height: 140px;
+        margin: 10px;
+        padding: 15px;
+        border: 2px solid #ecf0f1;
+        border-radius: 8px;
+        background: #f8f9fa;
+    }
+    
+    .shimmer-container {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    
+    .shimmer {
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+        border-radius: 4px;
+    }
+    
+    .shimmer-title {
+        height: 20px;
+        width: 60%;
+    }
+    
+    .shimmer-text {
+        height: 12px;
+        width: 80%;
+        margin: 4px 0;
+    }
+    
+    .shimmer-button {
+        height: 28px;
+        width: 40%;
+    }
+    
+    @keyframes shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+</style>
+
+@code {
+    [Parameter] public List<TRecipe> Items { get; set; } = new();
+    [Parameter] public EventCallback<TRecipe> OnCraftClicked { get; set; }
+    [Parameter] public EventCallback<TRecipe>? ShowDetails { get; set; }
+    [Parameter] public Func<TRecipe, bool>? CanCraft { get; set; }
+    [Parameter] public Func<string, int, bool>? HasMaterial { get; set; }
+    
+    // 委托用于获取配方信息
+    [Parameter] public Func<TRecipe, string> GetRecipeName { get; set; } = recipe => recipe?.ToString() ?? "";
+    [Parameter] public Func<TRecipe, int> GetRequiredLevel { get; set; } = _ => 1;
+    [Parameter] public Func<TRecipe, Dictionary<string, int>> GetRequiredMaterials { get; set; } = _ => new();
+    [Parameter] public Func<TRecipe, string> GetOutputDescription { get; set; } = _ => "";
+    
+    private string GetRecipeCardClass(TRecipe recipe)
+    {
+        if (CanCraft?.Invoke(recipe) ?? false)
+            return "affordable";
+        return "unaffordable";
+    }
+}

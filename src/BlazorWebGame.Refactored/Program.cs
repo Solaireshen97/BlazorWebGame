@@ -11,6 +11,7 @@ using BlazorWebGame.Refactored.Infrastructure.Services;
 using BlazorWebGame.Refactored.Domain.Services;
 using BlazorWebGame.Refactored.Application.Commands;
 using BlazorWebGame.Refactored.Application.Behaviors;
+using BlazorWebGame.Refactored.State.Reactive;
 using Blazored.LocalStorage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Caching.Memory;
@@ -56,6 +57,12 @@ builder.Services.AddValidatorsFromAssemblyContaining<CreateCharacterCommandValid
 // ========== 存储层 ==========
 builder.Services.AddScoped<ICharacterRepository, CharacterRepository>();
 builder.Services.AddScoped<IDataPersistenceService, IndexedDbRepository>();
+
+// ========== 缓存服务 ==========
+builder.Services.AddScoped<ICachedDataService, CachedDataService>();
+
+// ========== 响应式状态管理 ==========
+builder.Services.AddSingleton<GameStore>();
 
 // ========== 领域服务 ==========
 builder.Services.AddScoped<CharacterDomainService>();

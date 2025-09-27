@@ -1,0 +1,422 @@
+@page "/tailoring"
+@inherits ProductionPageBase
+@using BlazorWebGame.Refactored.Pages.Base
+@using BlazorWebGame.Refactored.Domain.ValueObjects
+
+<PageTitle>@PageTitle</PageTitle>
+
+<div class="production-layout">
+    <div class="header-section">
+        <!-- 职业信息头部 -->
+        <div class="profession-header">
+            <h2>@PageTitle</h2>
+            <div class="profession-stats">
+                <span>等级: @GetProfessionLevel()</span>
+                <span>经验: @GetProfessionExperience()</span>
+                <span>制作速度加成: +@(GetCraftingSpeedBonus():P0)</span>
+            </div>
+        </div>
+        
+        <!-- 快捷栏 -->
+        <div class="quick-slot-bar">
+            <span>生产工具栏:</span>
+            @for (int i = 0; i < 5; i++)
+            {
+                var slotIndex = i;
+                <button class="quick-slot" @onclick="() => OpenQuickSlotPicker('tools', slotIndex, 'production')">
+                    [空]
+                </button>
+            }
+        </div>
+    </div>
+    
+    <div class="main-content">
+        @if (IsCrafting())
+        {
+            <!-- 制作进度显示 -->
+            <div class="crafting-progress">
+                <h3>正在制作中...</h3>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: @(GetCraftingProgress())%"></div>
+                </div>
+                <div class="progress-info">
+                    <span>进度: @(GetCraftingProgress():F1)%</span>
+                    <span>剩余时间: @(GetCurrentCraftingTime():F1)秒</span>
+                </div>
+                <button class="btn btn-warning" @onclick="StopCrafting">停止制作</button>
+            </div>
+        }
+        else if (IsBlocked())
+        {
+            <!-- 活动被阻塞提示 -->
+            <div class="action-blocked">
+                <h3>正在进行其他活动</h3>
+                <p>请先完成当前活动再开始制作</p>
+                <button class="btn btn-danger" @onclick="StopCurrentAction">停止当前活动</button>
+            </div>
+        }
+        
+        <!-- 配方网格 -->
+        <div class="recipe-grid">
+            <h3>可用配方</h3>
+            <div class="recipes">
+                @foreach (var recipe in GetAvailableRecipes())
+                {
+                    <div class="recipe-card @(CanAffordRecipe(recipe) ? "affordable" : "unaffordable")">
+                        <div class="recipe-header">
+                            <h4>@recipe.Name</h4>
+                            <span class="level-req">需求等级: @recipe.RequiredLevel</span>
+                        </div>
+                        <div class="recipe-materials">
+                            <strong>所需材料:</strong>
+                            @foreach (var material in recipe.RequiredMaterials)
+                            {
+                                var hasEnough = GetItemCountInInventory(material.MaterialId) >= material.Quantity;
+                                <div class="material @(hasEnough ? "has-enough" : "not-enough")">
+                                    @material.MaterialId: @material.Quantity (@GetItemCountInInventory(material.MaterialId))
+                                </div>
+                            }
+                        </div>
+                        <div class="recipe-output">
+                            <strong>产出:</strong> @recipe.OutputItem.ItemId x@recipe.OutputItem.Quantity
+                        </div>
+                        <div class="recipe-time">
+                            <strong>制作时间:</strong> @recipe.CraftTime秒
+                        </div>
+                        <div class="recipe-exp">
+                            <strong>经验奖励:</strong> @recipe.ExperienceReward
+                        </div>
+                        <button class="btn btn-primary" 
+                                disabled="@(!CanAffordRecipe(recipe))" 
+                                @onclick="() => StartCraftingAsync(recipe)">
+                            开始制作
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (IsPickerVisible)
+{
+    <!-- 快捷栏选择器 -->
+    <div class="modal-overlay" @onclick="CloseQuickSlotPicker">
+        <div class="picker-modal" @onclick:stopPropagation="true">
+            <h3>选择物品</h3>
+            <div class="item-list">
+                <!-- 这里应该显示可选择的物品列表 -->
+                <p>物品选择器 - 待实现</p>
+            </div>
+            <button class="btn btn-secondary" @onclick="CloseQuickSlotPicker">关闭</button>
+        </div>
+    </div>
+}
+
+<style>
+    .production-layout {
+        padding: 20px;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .header-section {
+        margin-bottom: 30px;
+        border-bottom: 2px solid #ddd;
+        padding-bottom: 20px;
+    }
+    
+    .profession-header h2 {
+        color: #2c3e50;
+        margin-bottom: 10px;
+    }
+    
+    .profession-stats {
+        display: flex;
+        gap: 20px;
+        color: #7f8c8d;
+        font-size: 14px;
+    }
+    
+    .quick-slot-bar {
+        margin-top: 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .quick-slot {
+        width: 50px;
+        height: 50px;
+        border: 2px solid #bdc3c7;
+        background: #ecf0f1;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .quick-slot:hover {
+        border-color: #3498db;
+        background: #d5dbdb;
+    }
+    
+    .crafting-progress {
+        background: #e8f5e8;
+        border: 2px solid #27ae60;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .progress-bar {
+        width: 100%;
+        height: 20px;
+        background: #bdc3c7;
+        border-radius: 10px;
+        overflow: hidden;
+        margin: 10px 0;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #27ae60, #2ecc71);
+        transition: width 0.3s ease;
+    }
+    
+    .progress-info {
+        display: flex;
+        justify-content: space-between;
+        font-size: 14px;
+        color: #27ae60;
+    }
+    
+    .action-blocked {
+        background: #fdf2e9;
+        border: 2px solid #e67e22;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+    
+    .recipe-grid h3 {
+        color: #2c3e50;
+        margin-bottom: 20px;
+    }
+    
+    .recipes {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 20px;
+    }
+    
+    .recipe-card {
+        border: 2px solid #bdc3c7;
+        border-radius: 8px;
+        padding: 15px;
+        background: white;
+        transition: all 0.3s;
+    }
+    
+    .recipe-card.affordable {
+        border-color: #27ae60;
+    }
+    
+    .recipe-card.unaffordable {
+        border-color: #e74c3c;
+        opacity: 0.7;
+    }
+    
+    .recipe-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    
+    .recipe-header h4 {
+        margin: 0;
+        color: #2c3e50;
+    }
+    
+    .level-req {
+        font-size: 12px;
+        color: #7f8c8d;
+    }
+    
+    .material {
+        font-size: 14px;
+        margin: 2px 0;
+    }
+    
+    .material.has-enough {
+        color: #27ae60;
+    }
+    
+    .material.not-enough {	
+        color: #e74c3c;
+    }
+    
+    .recipe-output, .recipe-time, .recipe-exp {
+        margin: 8px 0;
+        font-size: 14px;
+    }
+    
+    .btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+    
+    .btn-primary {
+        background: #3498db;
+        color: white;
+    }
+    
+    .btn-primary:hover:not(:disabled) {
+        background: #2980b9;
+    }
+    
+    .btn-primary:disabled {
+        background: #bdc3c7;
+        cursor: not-allowed;
+    }
+    
+    .btn-warning {
+        background: #f39c12;
+        color: white;
+    }
+    
+    .btn-warning:hover {
+        background: #e67e22;
+    }
+    
+    .btn-danger {
+        background: #e74c3c;
+        color: white;
+    }
+    
+    .btn-danger:hover {
+        background: #c0392b;
+    }
+    
+    .btn-secondary {
+        background: #95a5a6;
+        color: white;
+    }
+    
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+    
+    .picker-modal {
+        background: white;
+        border-radius: 8px;
+        padding: 30px;
+        max-width: 500px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+</style>
+
+@code {
+    protected override ProductionProfession Profession => ProductionProfession.Tailoring;
+    protected override string PageTitle => "裁缝工坊";
+    
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        // 裁缝页面特定的初始化逻辑
+    }
+    
+    protected override IEnumerable<Recipe> GetRecipesForProfession(ProductionProfession profession)
+    {
+        // 返回裁缝职业特定的配方
+        return new List<Recipe>
+        {
+            new Recipe
+            {
+                RecipeId = "cloth_shirt",
+                Name = "布衬衫",
+                RequiredMaterials = new List<MaterialRequirement>
+                {
+                    new("cloth", 5),
+                    new("thread", 2)
+                },
+                OutputItem = new ItemReward("shirt", 1),
+                CraftTime = 45,
+                ExperienceReward = new BigNumber(30),
+                RequiredLevel = 1
+            },
+            new Recipe
+            {
+                RecipeId = "leather_boots",
+                Name = "皮靴",
+                RequiredMaterials = new List<MaterialRequirement>
+                {
+                    new("leather", 3),
+                    new("thread", 1)
+                },
+                OutputItem = new ItemReward("boots", 1),
+                CraftTime = 60,
+                ExperienceReward = new BigNumber(45),
+                RequiredLevel = 2
+            },
+            new Recipe
+            {
+                RecipeId = "silk_robe",
+                Name = "丝绸长袍",
+                RequiredMaterials = new List<MaterialRequirement>
+                {
+                    new("silk", 8),
+                    new("gold_thread", 3),
+                    new("magic_essence", 1)
+                },
+                OutputItem = new ItemReward("silk_robe", 1, ItemRarity.Rare),
+                CraftTime = 120,
+                ExperienceReward = new BigNumber(100),
+                RequiredLevel = 5
+            }
+        };
+    }
+    
+    private async Task StopCrafting()
+    {
+        try
+        {
+            // 实现停止制作逻辑
+            await ShowNotificationAsync("制作已停止", NotificationType.Info);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error stopping crafting");
+            await ShowNotificationAsync("停止制作失败", NotificationType.Error);
+        }
+    }
+    
+    private async Task StopCurrentAction()
+    {
+        try
+        {
+            // 实现停止当前活动逻辑
+            await ShowNotificationAsync("活动已停止", NotificationType.Info);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error stopping current action");
+            await ShowNotificationAsync("停止活动失败", NotificationType.Error);
+        }
+    }
+}

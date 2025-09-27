@@ -210,9 +210,16 @@ public class CacheService : ICacheService
         return false;
     }
 
-    public CacheStatistics GetStatistics()
+    public BlazorWebGame.Refactored.Application.Interfaces.CacheStatistics GetStatistics()
     {
-        return new CacheStatistics();
+        return new BlazorWebGame.Refactored.Application.Interfaces.CacheStatistics
+        {
+            TotalEntries = 0,
+            TotalSize = 0,
+            HitCount = 0,
+            MissCount = 0,
+            LastCleanup = DateTime.UtcNow
+        };
     }
 }
 
