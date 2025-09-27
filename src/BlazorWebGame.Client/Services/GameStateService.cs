@@ -369,6 +369,28 @@ public class GameStateService : IAsyncDisposable
         // 本地自动售卖逻辑已移除，请使用服务器API
     }
     
+    // 添加缺失的方法作为已移除的存根
+    [Obsolete("本地生产系统已移除，请使用服务器生产API")]
+    public void StartCrafting(Recipe recipe) { /* 本地生产系统已移除 */ }
+    
+    [Obsolete("本地采集系统已移除，请使用服务器采集API")]
+    public void StartGathering(GatheringNode node) { /* 本地采集系统已移除 */ }
+    
+    [Obsolete("本地物品系统已移除，请使用服务器物品API")]
+    public void EquipItem(Equipment item) { /* 本地物品系统已移除 */ }
+    
+    [Obsolete("本地物品系统已移除，请使用服务器物品API")]
+    public void EquipItem(string itemId) { /* 本地物品系统已移除 */ }
+    
+    [Obsolete("本地物品系统已移除，请使用服务器物品API")]
+    public void UnequipItem(EquipmentSlot slot) { /* 本地物品系统已移除 */ }
+    
+    [Obsolete("本地物品系统已移除，请使用服务器物品API")]
+    public void UseItem(string itemId) { /* 本地物品系统已移除 */ }
+    
+    [Obsolete("本地物品系统已移除，请使用服务器物品API")]
+    public void SellItem(string itemId, int quantity = 1) { /* 本地物品系统已移除 */ }
+
     // 战斗相关方法已移除 - 请使用服务器API
     [Obsolete("本地战斗系统已移除，请使用服务器API")]
     public void SetBattleProfession(BattleProfession profession) { /* 本地战斗系统已移除 */ }
