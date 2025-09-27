@@ -115,6 +115,9 @@ public class ServerInventoryService
     {
         try
         {
+            // 模拟异步数据库操作
+            await Task.Delay(1);
+            
             if (string.IsNullOrEmpty(characterId) || string.IsNullOrEmpty(itemId) || quantity <= 0)
             {
                 return new ApiResponse<bool>
@@ -188,6 +191,9 @@ public class ServerInventoryService
     {
         try
         {
+            // 模拟异步数据库操作
+            await Task.Delay(1);
+            
             var inventory = GetCharacterInventory(characterId);
             
             InventorySlotDto? targetSlot = null;
