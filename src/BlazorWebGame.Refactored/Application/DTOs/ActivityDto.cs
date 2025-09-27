@@ -47,7 +47,7 @@ public class GatheringActivityDto : ActivityDto
     public int ToolLevel { get; set; }
     public double SuccessRate { get; set; }
     public string ExpectedYield { get; set; } = "0"; // BigNumber as string
-    public List<GatheringResultDto> Results { get; set; } = new();
+    public new List<GatheringResultDto> Results { get; set; } = new();
 }
 
 public class GatheringResultDto

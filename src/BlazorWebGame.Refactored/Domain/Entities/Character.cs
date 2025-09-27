@@ -9,6 +9,7 @@ namespace BlazorWebGame.Refactored.Domain.Entities;
 public class Character : AggregateRoot
 {
     public Guid Id { get; private set; }
+    public Guid UserId { get; private set; }
     public string Name { get; private set; } = string.Empty;
     public int Level { get; private set; }
     public BigNumber Experience { get; private set; } = BigNumber.Zero;
@@ -24,9 +25,10 @@ public class Character : AggregateRoot
 
     private Character() { } // For serialization
 
-    public Character(Guid id, string name, CharacterClass characterClass)
+    public Character(Guid id, string name, CharacterClass characterClass, Guid userId)
     {
         Id = id;
+        UserId = userId;
         Name = name;
         Class = characterClass;
         Level = 1;

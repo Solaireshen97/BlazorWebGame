@@ -93,6 +93,60 @@ public class GameHubClient : ISignalRService, IAsyncDisposable
         }
     }
 
+    public async Task JoinCharacterGroupAsync(Guid characterId)
+    {
+        if (_connection?.State == HubConnectionState.Connected)
+        {
+            await _connection.InvokeAsync("JoinCharacterGroup", characterId);
+            _logger.LogInformation("Joined character group: {CharacterId}", characterId);
+        }
+    }
+
+    public async Task LeaveCharacterGroupAsync(Guid characterId)
+    {
+        if (_connection?.State == HubConnectionState.Connected)
+        {
+            await _connection.InvokeAsync("LeaveCharacterGroup", characterId);
+            _logger.LogInformation("Left character group: {CharacterId}", characterId);
+        }
+    }
+
+    public async Task JoinBattleGroupAsync(Guid battleId)
+    {
+        if (_connection?.State == HubConnectionState.Connected)
+        {
+            await _connection.InvokeAsync("JoinBattleGroup", battleId);
+            _logger.LogInformation("Joined battle group: {BattleId}", battleId);
+        }
+    }
+
+    public async Task LeaveBattleGroupAsync(Guid battleId)
+    {
+        if (_connection?.State == HubConnectionState.Connected)
+        {
+            await _connection.InvokeAsync("LeaveBattleGroup", battleId);
+            _logger.LogInformation("Left battle group: {BattleId}", battleId);
+        }
+    }
+
+    public async Task JoinGroupAsync(string groupName)
+    {
+        if (_connection?.State == HubConnectionState.Connected)
+        {
+            await _connection.InvokeAsync("JoinGroup", groupName);
+            _logger.LogInformation("Joined group: {GroupName}", groupName);
+        }
+    }
+
+    public async Task LeaveGroupAsync(string groupName)
+    {
+        if (_connection?.State == HubConnectionState.Connected)
+        {
+            await _connection.InvokeAsync("LeaveGroup", groupName);
+            _logger.LogInformation("Left group: {GroupName}", groupName);
+        }
+    }
+
     private void RegisterEventHandlers()
     {
         if (_connection == null) return;

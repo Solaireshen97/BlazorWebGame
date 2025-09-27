@@ -51,7 +51,7 @@ public class ActivityService : IActivityService
     {
         await Task.Delay(100);
         // Return a simplified activity since the BattleActivity constructor has complex requirements
-        return new GatheringActivity(Guid.NewGuid(), characterId, "Gathering", parameters);
+        return new GatheringActivity(Guid.NewGuid(), characterId, GatheringType.Mining, parameters);
     }
 
     public async Task<List<Activity>> GetCharacterActivitiesListAsync(Guid characterId)
@@ -136,6 +136,36 @@ public class SignalRService : ISignalRService
     }
 
     public async Task SendCharacterActionAsync(Guid characterId, string action, object data)
+    {
+        await Task.Delay(100);
+    }
+
+    public async Task JoinCharacterGroupAsync(Guid characterId)
+    {
+        await Task.Delay(100);
+    }
+
+    public async Task LeaveCharacterGroupAsync(Guid characterId)
+    {
+        await Task.Delay(100);
+    }
+
+    public async Task JoinBattleGroupAsync(Guid battleId)
+    {
+        await Task.Delay(100);
+    }
+
+    public async Task LeaveBattleGroupAsync(Guid battleId)
+    {
+        await Task.Delay(100);
+    }
+
+    public async Task JoinGroupAsync(string groupName)
+    {
+        await Task.Delay(100);
+    }
+
+    public async Task LeaveGroupAsync(string groupName)
     {
         await Task.Delay(100);
     }

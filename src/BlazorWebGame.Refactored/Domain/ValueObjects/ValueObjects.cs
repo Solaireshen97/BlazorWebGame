@@ -114,6 +114,11 @@ public class ActivitySlots
         return AvailableSlots > 0;
     }
 
+    public bool HasAvailableSlot()
+    {
+        return AvailableSlots > 0;
+    }
+
     public void AddActivity(Activity activity)
     {
         if (!CanStartActivity(activity.Type))

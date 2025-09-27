@@ -6,8 +6,8 @@ namespace BlazorWebGame.Refactored.Application.Commands;
 
 public record CreateCharacterCommand(
     string Name,
-    string CharacterClass,
-    string UserId
+    CharacterClass CharacterClass,
+    Guid UserId
 ) : IRequest<Character>;
 
 public class CreateCharacterCommandHandler : IRequestHandler<CreateCharacterCommand, Character>
