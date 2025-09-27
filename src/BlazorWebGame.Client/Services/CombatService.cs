@@ -68,6 +68,22 @@ namespace BlazorWebGame.Services
             return 0;
         }
 
+        /// <summary>
+        /// 检查新技能解锁 - 本地实现已移除
+        /// </summary>
+        public void CheckForNewSkillUnlocks(Player player, BattleProfession profession, int level, bool forceCheck)
+        {
+            // 本地战斗系统已移除，技能解锁由服务器处理
+        }
+
+        /// <summary>
+        /// 重置玩家技能冷却 - 本地实现已移除
+        /// </summary>
+        public void ResetPlayerSkillCooldowns(Player player)
+        {
+            // 本地战斗系统已移除，技能冷却由服务器处理
+        }
+
         #endregion
 
         #region 战斗处理 - 本地实现已移除，全部由服务器处理
