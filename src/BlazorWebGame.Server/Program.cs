@@ -171,6 +171,10 @@ builder.Services.AddSingleton<DataStorageIntegrationService>();
 // 注册离线结算服务
 builder.Services.AddSingleton<OfflineSettlementService>();
 
+// 注册增强的离线结算系统
+builder.Services.AddSingleton<OfflineActivityManager>();
+builder.Services.AddSingleton<EnhancedOfflineSettlementService>();
+
 // 注册新的玩家服务系统
 builder.Services.AddSingleton<ServerPlayerAttributeService>();
 builder.Services.AddSingleton<ServerPlayerProfessionService>();
