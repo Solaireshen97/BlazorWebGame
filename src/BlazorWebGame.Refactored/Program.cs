@@ -7,6 +7,8 @@ using BlazorWebGame.Refactored.Application.Systems;
 using BlazorWebGame.Refactored.Application.Services;
 using BlazorWebGame.Refactored.Infrastructure.Persistence;
 using BlazorWebGame.Refactored.Application.Interfaces;
+using BlazorWebGame.Refactored.Infrastructure.Services;
+using Blazored.LocalStorage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
@@ -30,20 +32,21 @@ builder.Services.Configure<GameEngineOptions>(
     builder.Configuration.GetSection("GameEngine"));
 
 // ========== 基础设施 ==========
-builder.Services.AddSingleton<IEventBus, EventBus>();
+builder.Services.AddScoped<IEventBus, EventBus>();
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpClient();
+builder.Services.AddBlazoredLocalStorage();
 
 // ========== 存储层 ==========
 builder.Services.AddScoped<ICharacterRepository, CharacterRepository>();
 builder.Services.AddScoped<IDataPersistenceService, IndexedDbRepository>();
 
 // ========== 游戏系统 ==========
-builder.Services.AddSingleton<IGameSystem, ActivitySystem>();
+builder.Services.AddScoped<IGameSystem, ActivitySystem>();
 
 // ========== 应用服务 ==========
-builder.Services.AddSingleton<IGameStateManager, GameStateManager>();
-builder.Services.AddSingleton<GameEngine>();
+builder.Services.AddScoped<IGameStateManager, GameStateManager>();
+builder.Services.AddScoped<GameEngine>();
 
 var app = builder.Build();
 
@@ -57,18 +60,23 @@ await app.RunAsync();
 
 static async Task InitializeGameAsync(IServiceProvider services)
 {
-    var eventBus = services.GetRequiredService<IEventBus>();
-    var stateManager = services.GetRequiredService<IGameStateManager>();
-    var gameEngine = services.GetRequiredService<GameEngine>();
-    var logger = services.GetRequiredService<ILogger<Program>>();
-    
     try
     {
+        using var scope = services.CreateScope();
+        var eventBus = scope.ServiceProvider.GetRequiredService<IEventBus>();
+        var stateManager = scope.ServiceProvider.GetRequiredService<IGameStateManager>();
+        var gameEngine = scope.ServiceProvider.GetRequiredService<GameEngine>();
+        var persistenceService = scope.ServiceProvider.GetRequiredService<IDataPersistenceService>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        
+        // 初始化数据持久化服务
+        await persistenceService.InitializeAsync();
+        
         // 启动游戏引擎
         await gameEngine.StartAsync();
         
-        // 创建默认用户ID（简化版本）
-        var playerId = "default-player";
+        // 创建默认用户ID（使用固定的GUID）
+        var playerId = "550e8400-e29b-41d4-a716-446655440000"; // 固定的测试用户GUID
         
         // 检查是否已有角色，如果没有则创建一个
         var characters = await stateManager.GetUserCharactersAsync(playerId);
@@ -91,6 +99,7 @@ static async Task InitializeGameAsync(IServiceProvider services)
     }
     catch (Exception ex)
     {
+        var logger = services.GetRequiredService<ILogger<Program>>();
         logger.LogError(ex, "Failed to initialize game");
     }
 }

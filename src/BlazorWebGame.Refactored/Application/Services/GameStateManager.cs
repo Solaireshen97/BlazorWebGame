@@ -92,7 +92,7 @@ public sealed class GameStateManager : IGameStateManager, IDisposable
 
     public async Task CreateCharacterAsync(string name, string userId, CancellationToken cancellationToken = default)
     {
-        var character = Character.Create(name, Guid.Parse(userId));
+        var character = new Character(Guid.NewGuid(), name, CharacterClass.Warrior, Guid.Parse(userId));
         await _characterRepository.AddAsync(character, cancellationToken);
         
         await _eventBus.PublishAsync(new NewCharacterCreatedEvent

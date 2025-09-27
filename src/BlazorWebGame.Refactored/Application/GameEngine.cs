@@ -110,7 +110,7 @@ public sealed class GameEngine : IDisposable
     {
         try
         {
-            using var activity = System.Diagnostics.Activity.StartActivity($"GameSystem.{system.Name}");
+            // Skip Activity tracing for now to fix compilation
             await system.ProcessAsync(deltaTime, cancellationToken);
         }
         catch (Exception ex)
