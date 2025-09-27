@@ -7,476 +7,207 @@ using System.Linq;
 namespace BlazorWebGame.Services
 {
     /// <summary>
-    /// ÎïÆ·ÏµÍ³·şÎñ£¬¸ºÔğ¹ÜÀíÎïÆ·µÄËùÓĞ²Ù×÷
+    /// ç®€åŒ–çš„ç‰©å“ç³»ç»ŸæœåŠ¡ - ä»…ä¿ç•™UIçŠ¶æ€ç®¡ç†ï¼Œæ‰€æœ‰åº“å­˜é€»è¾‘ç”±æœåŠ¡å™¨å¤„ç†
     /// </summary>
     public class InventoryService
     {
         /// <summary>
-        /// ×´Ì¬±ä¸üÊÂ¼ş
+        /// çŠ¶æ€æ”¹å˜äº‹ä»¶
         /// </summary>
         public event Action? OnStateChanged;
 
+        #region ç‰©å“ç®¡ç† - å·²ç§»é™¤æœ¬åœ°å®ç°
+
         /// <summary>
-        /// Ìí¼ÓÎïÆ·µ½½ÇÉ«±³°ü
+        /// æ·»åŠ ç‰©å“åˆ°è§’è‰²èƒŒåŒ… - å·²ç§»é™¤æœ¬åœ°å®ç°
         /// </summary>
+        [Obsolete("æœ¬åœ°åº“å­˜ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
         public void AddItemToInventory(Player character, string itemId, int quantity)
         {
-            if (character == null) return;
-            
-            var itemToAdd = ItemData.GetItemById(itemId);
-            if (itemToAdd == null) return;
-            
-            // ¼ì²éÎïÆ·ÊÇ·ñÉèÖÃÎª×Ô¶¯³öÊÛ
-            if (character.AutoSellItemIds.Contains(itemId))
-            {
-                character.Gold += itemToAdd.Value * quantity;
-                return;
-            }
-            
-            // ³¢ÊÔ¶ÑµşÎïÆ·
-            if (itemToAdd.IsStackable)
-            {
-                var existingSlot = character.Inventory.FirstOrDefault(s => s.ItemId == itemId && s.Quantity < 99);
-                if (existingSlot != null)
-                {
-                    existingSlot.Quantity += quantity;
-                    NotifyStateChanged();
-                    return;
-                }
-            }
-            
-            // ²éÕÒ¿Õ²ÛÎ»·ÅÈëÎïÆ·
-            var emptySlot = character.Inventory.FirstOrDefault(s => s.IsEmpty);
-            if (emptySlot != null)
-            {
-                emptySlot.ItemId = itemId;
-                emptySlot.Quantity = quantity;
-                NotifyStateChanged();
-            }
+            // æœ¬åœ°åº“å­˜ç³»ç»Ÿå·²ç§»é™¤ï¼Œæ‰€æœ‰åº“å­˜æ“ä½œç”±æœåŠ¡å™¨å¤„ç†
         }
 
         /// <summary>
-        /// ´Ó½ÇÉ«±³°üÒÆ³ıÎïÆ·
+        /// ä»è§’è‰²èƒŒåŒ…ç§»é™¤ç‰©å“ - å·²ç§»é™¤æœ¬åœ°å®ç°
         /// </summary>
-        /// <returns>ÊÇ·ñ³É¹¦ÒÆ³ıÖÁÉÙÒ»¸öÎïÆ·</returns>
+        [Obsolete("æœ¬åœ°åº“å­˜ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
         public bool RemoveItemFromInventory(Player character, string itemId, int quantityToRemove, out int actuallyRemoved)
         {
             actuallyRemoved = 0;
-            if (character == null) return false;
-            
-            for (int i = character.Inventory.Count - 1; i >= 0; i--)
-            {
-                var slot = character.Inventory[i];
-                if (slot.ItemId == itemId)
-                {
-                    int amountToRemoveFromSlot = Math.Min(quantityToRemove - actuallyRemoved, slot.Quantity);
-                    slot.Quantity -= amountToRemoveFromSlot;
-                    actuallyRemoved += amountToRemoveFromSlot;
-                    
-                    if (slot.Quantity <= 0) 
-                        slot.ItemId = null;
-                        
-                    if (actuallyRemoved >= quantityToRemove) 
-                        break;
-                }
-            }
-            
-            if (actuallyRemoved > 0)
-                NotifyStateChanged();
-                
-            return actuallyRemoved > 0;
-        }
-        
-        /// <summary>
-        /// ¼ò»¯°æÒÆ³ıÎïÆ··½·¨£¬ÎŞĞèÊä³ö²ÎÊı
-        /// </summary>
-        public void RemoveItem(Player character, string itemId, int quantity)
-        {
-            if (character == null) return;
-            
-            int quantityToRemove = quantity;
-            
-            // ´ÓºóÍùÇ°±éÀú£¬ÕâÑù¼´Ê¹ÒÆ³ıÁËÒ»¸ö¶Ñµş£¬Ë÷ÒıÒ²²»»á³ö´í
-            for (int i = character.Inventory.Count - 1; i >= 0; i--)
-            {
-                var stack = character.Inventory[i];
-                if (stack.ItemId == itemId)
-                {
-                    if (stack.Quantity > quantityToRemove)
-                    {
-                        stack.Quantity -= quantityToRemove;
-                        quantityToRemove = 0;
-                    }
-                    else
-                    {
-                        quantityToRemove -= stack.Quantity;
-                        stack.ItemId = null;
-                        stack.Quantity = 0;
-                    }
-                    
-                    if (quantityToRemove == 0)
-                    {
-                        NotifyStateChanged();
-                        break;
-                    }
-                }
-            }
+            // æœ¬åœ°åº“å­˜ç³»ç»Ÿå·²ç§»é™¤
+            return false;
         }
 
         /// <summary>
-        /// ×°±¸ÎïÆ·
+        /// æ£€æŸ¥è§’è‰²æ˜¯å¦æœ‰è¶³å¤Ÿç‰©å“ - å·²ç§»é™¤æœ¬åœ°å®ç°
         /// </summary>
+        [Obsolete("æœ¬åœ°åº“å­˜ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
+        public bool HasItem(Player character, string itemId, int quantity = 1)
+        {
+            // æœ¬åœ°åº“å­˜ç³»ç»Ÿå·²ç§»é™¤
+            return false;
+        }
+
+        /// <summary>
+        /// è·å–è§’è‰²æ‹¥æœ‰çš„ç‰©å“æ•°é‡ - å·²ç§»é™¤æœ¬åœ°å®ç°
+        /// </summary>
+        [Obsolete("æœ¬åœ°åº“å­˜ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
+        public int GetItemCount(Player character, string itemId)
+        {
+            // æœ¬åœ°åº“å­˜ç³»ç»Ÿå·²ç§»é™¤
+            return 0;
+        }
+
+        #endregion
+
+        #region è£…å¤‡ç³»ç»Ÿ - å·²ç§»é™¤æœ¬åœ°å®ç°
+
+        /// <summary>
+        /// ç©¿æˆ´è£…å¤‡ - å·²ç§»é™¤æœ¬åœ°å®ç°
+        /// </summary>
+        [Obsolete("æœ¬åœ°åº“å­˜ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
         public void EquipItem(Player character, string itemId)
         {
-            if (character == null) return;
-            
-            var slotToEquipFrom = character.Inventory.FirstOrDefault(s => s.ItemId == itemId);
-            if (slotToEquipFrom == null) return;
-            
-            if (ItemData.GetItemById(itemId) is not Equipment equipmentToEquip) return;
-
-            List<EquipmentSlot> targetSlots = equipmentToEquip.Slot switch
-            {
-                EquipmentSlot.Finger1 or EquipmentSlot.Finger2 => new() { EquipmentSlot.Finger1, EquipmentSlot.Finger2 },
-                EquipmentSlot.Trinket1 or EquipmentSlot.Trinket2 => new() { EquipmentSlot.Trinket1, EquipmentSlot.Trinket2 },
-                _ => new() { equipmentToEquip.Slot }
-            };
-
-            // 1. ÓÅÏÈÑ°ÕÒÒ»¸ö¿ÕµÄ¿ÉÓÃ²ÛÎ»
-            int emptySlotIndex = targetSlots.FindIndex(slot => !character.EquippedItems.ContainsKey(slot));
-            
-            EquipmentSlot? finalSlot;
-            if (emptySlotIndex != -1)
-            {
-                // Èç¹ûÕÒµ½ÁË¿ÕÎ»£¬¾ÍÓÃËü
-                finalSlot = targetSlots[emptySlotIndex];
-            }
-            else if (targetSlots.Any())
-            {
-                // Èç¹ûÃ»ÓĞ¿ÕÎ»£¬µ«ÖÁÉÙÓĞÒ»¸öÄ¿±ê²ÛÎ»£¬Ôò×¼±¸Ìæ»»µÚÒ»¸ö
-                finalSlot = targetSlots.First();
-            }
-            else
-            {
-                // Èç¹ûÁ¬Ä¿±ê²ÛÎ»¶¼Ã»ÓĞ£¨²»Ó¦¸Ã·¢Éú£©£¬ÔòÎŞ·¨×°±¸
-                finalSlot = null;
-            }
-
-            // Èç¹û×îÖÕÃ»ÓĞÕÒµ½¿É×°±¸µÄ²ÛÎ»£¬ÔòÖ±½Ó·µ»Ø
-            if (finalSlot == null) return;
-
-            // Èç¹û×îÖÕÈ·¶¨µÄ²ÛÎ»ÉÏÒÑ¾­ÓĞ×°±¸£¬ÔòÏÈĞ¶ÏÂËü
-            if (character.EquippedItems.TryGetValue(finalSlot.Value, out var currentItemId))
-            {
-                UnequipItem(character, finalSlot.Value);
-            }
-
-            // ´Ó±³°üÖĞ¼õÉÙÎïÆ·ÊıÁ¿
-            slotToEquipFrom.Quantity--;
-            if (slotToEquipFrom.Quantity <= 0) 
-                slotToEquipFrom.ItemId = null;
-
-            // ½«ĞÂÎïÆ·×°±¸µ½×îÖÕÈ·¶¨µÄ²ÛÎ»ÉÏ
-            character.EquippedItems[finalSlot.Value] = itemId;
-            character.Health = Math.Min(character.Health, character.GetTotalMaxHealth());
-            NotifyStateChanged();
+            // æœ¬åœ°è£…å¤‡ç³»ç»Ÿå·²ç§»é™¤
         }
 
         /// <summary>
-        /// Ğ¶ÏÂ×°±¸
+        /// å¸ä¸‹è£…å¤‡ - å·²ç§»é™¤æœ¬åœ°å®ç°
         /// </summary>
+        [Obsolete("æœ¬åœ°åº“å­˜ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
         public void UnequipItem(Player character, EquipmentSlot slot)
         {
-            if (character == null || !character.EquippedItems.TryGetValue(slot, out var itemIdToUnequip)) 
-                return;
-                
-            character.EquippedItems.Remove(slot);
-            AddItemToInventory(character, itemIdToUnequip, 1);
-            character.Health = Math.Min(character.Health, character.GetTotalMaxHealth());
-            NotifyStateChanged();
+            // æœ¬åœ°è£…å¤‡ç³»ç»Ÿå·²ç§»é™¤
         }
 
-        /// <summary>
-        /// ³öÊÛÎïÆ·
-        /// </summary>
-        public void SellItem(Player character, string itemId, int quantity = 1)
-        {
-            if (character == null) return;
-            
-            var itemData = ItemData.GetItemById(itemId);
-            if (itemData == null) return;
-            
-            if (RemoveItemFromInventory(character, itemId, quantity, out int soldCount) && soldCount > 0)
-            {
-                character.Gold += itemData.Value * soldCount;
-                NotifyStateChanged();
-            }
-        }
+        #endregion
+
+        #region ç‰©å“ä½¿ç”¨ - å·²ç§»é™¤æœ¬åœ°å®ç°
 
         /// <summary>
-        /// Ê¹ÓÃÎïÆ·
+        /// ä½¿ç”¨ç‰©å“ - å·²ç§»é™¤æœ¬åœ°å®ç°
         /// </summary>
+        [Obsolete("æœ¬åœ°åº“å­˜ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
         public void UseItem(Player character, string itemId)
         {
-            if (character == null) return;
-            
-            if (ItemData.GetItemById(itemId) is not Consumable consumable) 
-                return;
-                
-            if (consumable.CooldownSeconds > 0 && character.ConsumableCooldowns.ContainsKey(consumable.Id)) 
-                return;
-                
-            if (RemoveItemFromInventory(character, itemId, 1, out int removedCount) && removedCount > 0)
-            {
-                ApplyConsumableEffect(character, consumable);
-            }
+            // æœ¬åœ°ç‰©å“ä½¿ç”¨ç³»ç»Ÿå·²ç§»é™¤
         }
 
         /// <summary>
-        /// ¹ºÂòÎïÆ·
+        /// ä½¿ç”¨æ¶ˆè€—å“ - å·²ç§»é™¤æœ¬åœ°å®ç°
         /// </summary>
-        public bool BuyItem(Player character, string itemId)
+        [Obsolete("æœ¬åœ°åº“å­˜ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
+        public void UseConsumable(Player character, Consumable consumable)
         {
-            if (character == null) return false;
-            
-            // ²éÕÒÎïÆ·¼°ÆäÉÌµêĞÅÏ¢
-            var itemToBuy = ItemData.GetItemById(itemId);
-            if (itemToBuy?.ShopPurchaseInfo == null)
-                return false; // ÎïÆ·²»´æÔÚ»ò²»¿É¹ºÂò
-            
-            var purchaseInfo = itemToBuy.ShopPurchaseInfo;
+            // æœ¬åœ°æ¶ˆè€—å“ç³»ç»Ÿå·²ç§»é™¤
+        }
 
-            // ¼ì²é»õ±ÒÊÇ·ñ×ã¹»
-            if (purchaseInfo.Currency == CurrencyType.Gold)
-            {
-                if (character.Gold < purchaseInfo.Price)
-                    return false; // ½ğ±Ò²»×ã
-            }
-            else // Èç¹û»õ±ÒÊÇÎïÆ·
-            {
-                int ownedAmount = character.Inventory
-                    .Where(s => s.ItemId == purchaseInfo.CurrencyItemId)
-                    .Sum(s => s.Quantity);
-                    
-                if (ownedAmount < purchaseInfo.Price)
-                    return false; // ÎïÆ·»õ±Ò²»×ã
-            }
+        #endregion
 
-            // ¿Û³ı»¨·Ñ
-            if (purchaseInfo.Currency == CurrencyType.Gold)
-            {
-                character.Gold -= purchaseInfo.Price;
-            }
-            else
-            {
-                RemoveItem(character, purchaseInfo.CurrencyItemId!, purchaseInfo.Price);
-            }
+        #region å•†åº—ç³»ç»Ÿ - å·²ç§»é™¤æœ¬åœ°å®ç°
 
-            // ½«¹ºÂòµÄÎïÆ·Ìí¼Óµ½±³°ü
-            AddItemToInventory(character, itemToBuy.Id, 1);
-            return true;
+        /// <summary>
+        /// è´­ä¹°ç‰©å“ - å·²ç§»é™¤æœ¬åœ°å®ç°
+        /// </summary>
+        [Obsolete("æœ¬åœ°åº“å­˜ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
+        public bool BuyItem(Player character, string itemId, int quantity = 1)
+        {
+            // æœ¬åœ°å•†åº—ç³»ç»Ÿå·²ç§»é™¤
+            return false;
         }
 
         /// <summary>
-        /// ÉèÖÃ¿ìËÙÀ¸ÎïÆ·
+        /// å‡ºå”®ç‰©å“ - å·²ç§»é™¤æœ¬åœ°å®ç°
         /// </summary>
+        [Obsolete("æœ¬åœ°åº“å­˜ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
+        public void SellItem(Player character, string itemId, int quantity = 1)
+        {
+            // æœ¬åœ°å•†åº—ç³»ç»Ÿå·²ç§»é™¤
+        }
+
+        #endregion
+
+        #region å¿«æ·æ ç®¡ç† - å·²ç§»é™¤æœ¬åœ°å®ç°
+
+        /// <summary>
+        /// è®¾ç½®å¿«æ·æ ç‰©å“ - å·²ç§»é™¤æœ¬åœ°å®ç°
+        /// </summary>
+        [Obsolete("æœ¬åœ°åº“å­˜ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
         public void SetQuickSlotItem(Player character, ConsumableCategory category, int slotId, string itemId)
         {
-            if (character == null) return;
-            
-            var item = ItemData.GetItemById(itemId) as Consumable;
-            if (item == null || item.Category != category) return;
-
-            Dictionary<int, string>? targetSlots = category switch
-            {
-                ConsumableCategory.Potion => character.PotionQuickSlots,
-                ConsumableCategory.Food when item.FoodType == FoodType.Combat => character.CombatFoodQuickSlots,
-                ConsumableCategory.Food when item.FoodType == FoodType.Gathering => character.GatheringFoodQuickSlots,
-                ConsumableCategory.Food when item.FoodType == FoodType.Production => character.ProductionFoodQuickSlots,
-                _ => null
-            };
-            
-            if (targetSlots == null) return;
-
-            // Èç¹û¸ÃÎïÆ·ÒÑÔÚÆäËû¿ì½İÀ¸£¬ÔòÒÆ³ı
-            var otherItemSlots = targetSlots.Where(kv => kv.Value == itemId && kv.Key != slotId).ToList();
-            foreach (var otherSlot in otherItemSlots)
-            {
-                targetSlots.Remove(otherSlot.Key);
-            }
-
-            // ÉèÖÃĞÂµÄ¿ì½İÀ¸
-            targetSlots[slotId] = itemId;
-            NotifyStateChanged();
+            // æœ¬åœ°å¿«æ·æ ç³»ç»Ÿå·²ç§»é™¤
         }
 
         /// <summary>
-        /// Çå³ı¿ìËÙÀ¸ÎïÆ·
+        /// æ¸…ç†å¿«æ·æ ç‰©å“ - å·²ç§»é™¤æœ¬åœ°å®ç°
         /// </summary>
+        [Obsolete("æœ¬åœ°åº“å­˜ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
         public void ClearQuickSlotItem(Player character, ConsumableCategory category, int slotId, FoodType foodType = FoodType.None)
         {
-            if (character == null) return;
-            
-            Dictionary<int, string>? targetSlots = category switch
-            {
-                ConsumableCategory.Potion => character.PotionQuickSlots,
-                ConsumableCategory.Food when foodType == FoodType.Combat => character.CombatFoodQuickSlots,
-                ConsumableCategory.Food when foodType == FoodType.Gathering => character.GatheringFoodQuickSlots,
-                ConsumableCategory.Food when foodType == FoodType.Production => character.ProductionFoodQuickSlots,
-                _ => null
-            };
-            
-            targetSlots?.Remove(slotId);
-            NotifyStateChanged();
+            // æœ¬åœ°å¿«æ·æ ç³»ç»Ÿå·²ç§»é™¤
         }
 
+        #endregion
+
+        #region è‡ªåŠ¨å‡ºå”® - å·²ç§»é™¤æœ¬åœ°å®ç°
+
         /// <summary>
-        /// ÇĞ»»×Ô¶¯³öÊÛÎïÆ·ÉèÖÃ
+        /// åˆ‡æ¢ç‰©å“è‡ªåŠ¨å‡ºå”®çŠ¶æ€ - å·²ç§»é™¤æœ¬åœ°å®ç°
         /// </summary>
+        [Obsolete("æœ¬åœ°åº“å­˜ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
         public void ToggleAutoSellItem(Player character, string itemId)
         {
-            if (character == null) return;
-
-            if (character.AutoSellItemIds.Contains(itemId))
-            {
-                character.AutoSellItemIds.Remove(itemId);
-            }
-            else
-            {
-                character.AutoSellItemIds.Add(itemId);
-            }
-            
-            NotifyStateChanged();
+            // æœ¬åœ°è‡ªåŠ¨å‡ºå”®ç³»ç»Ÿå·²ç§»é™¤
         }
 
+        #endregion
+
+        #region é…æ–¹æ£€æŸ¥ - å·²ç§»é™¤æœ¬åœ°å®ç°
+
         /// <summary>
-        /// ¼ì²é½ÇÉ«ÊÇ·ñÄÜ¸ºµ£Ä³¸öÅä·½µÄ²ÄÁÏ
+        /// æ£€æŸ¥æ˜¯å¦èƒ½å¤Ÿåˆ¶ä½œé…æ–¹ - å·²ç§»é™¤æœ¬åœ°å®ç°
         /// </summary>
+        [Obsolete("æœ¬åœ°åº“å­˜ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
         public bool CanAffordRecipe(Player character, Recipe recipe)
         {
-            if (character == null || recipe == null) return false;
-            
-            foreach (var ingredient in recipe.Ingredients)
-            {
-                if (character.Inventory
-                    .Where(s => s.ItemId == ingredient.Key)
-                    .Sum(s => s.Quantity) < ingredient.Value) 
-                    return false;
-            }
-            
-            return true;
+            // æœ¬åœ°é…æ–¹ç³»ç»Ÿå·²ç§»é™¤
+            return false;
         }
 
-        /// <summary>
-        /// Ó¦ÓÃÏûºÄÆ·Ğ§¹û
-        /// </summary>
-        private void ApplyConsumableEffect(Player character, Consumable consumable)
-        {
-            switch (consumable.Effect)
-            {
-                case ConsumableEffectType.Heal:
-                    character.Health = Math.Min(character.GetTotalMaxHealth(), character.Health + (int)consumable.EffectValue);
-                    break;
-                    
-                case ConsumableEffectType.StatBuff:
-                    if (consumable.BuffType.HasValue && consumable.DurationSeconds.HasValue)
-                    {
-                        character.ActiveBuffs.RemoveAll(b => 
-                            b.FoodType == consumable.FoodType && 
-                            b.BuffType == consumable.BuffType.Value);
-                            
-                        character.ActiveBuffs.Add(new Buff
-                        {
-                            SourceItemId = consumable.Id,
-                            BuffType = consumable.BuffType.Value,
-                            BuffValue = (int)consumable.EffectValue,
-                            TimeRemainingSeconds = consumable.DurationSeconds.Value,
-                            FoodType = consumable.FoodType
-                        });
-                    }
-                    break;
-                    
-                case ConsumableEffectType.LearnRecipe:
-                    if (!string.IsNullOrEmpty(consumable.RecipeIdToLearn))
-                    {
-                        // ½«Åä·½IDÌí¼Óµ½Íæ¼ÒµÄÒÑÑ§Ï°ÁĞ±íÖĞ
-                        character.LearnedRecipeIds.Add(consumable.RecipeIdToLearn);
-                    }
-                    break;
-            }
-            
-            character.ConsumableCooldowns[consumable.Id] = consumable.CooldownSeconds;
-            NotifyStateChanged();
-        }
+        #endregion
+
+        #region æ¶ˆè€—å“å¤„ç† - å·²ç§»é™¤æœ¬åœ°å®ç°
 
         /// <summary>
-        /// ´¦Àí×Ô¶¯ÏûºÄÆ·Ê¹ÓÃ
+        /// æ›´æ–°æ¶ˆè€—å“å†·å´æ—¶é—´ - å·²ç§»é™¤æœ¬åœ°å®ç°
         /// </summary>
-        public void ProcessAutoConsumables(Player character)
-        {
-            if (character == null) return;
-
-            var allQuickSlotItems = character.PotionQuickSlots
-                .Concat(character.CombatFoodQuickSlots)
-                .Concat(character.GatheringFoodQuickSlots)
-                .Concat(character.ProductionFoodQuickSlots);
-
-            foreach (var slot in allQuickSlotItems)
-            {
-                var itemId = slot.Value;
-                if (string.IsNullOrEmpty(itemId) || character.ConsumableCooldowns.ContainsKey(itemId))
-                    continue;
-
-                if (ItemData.GetItemById(itemId) is not Consumable item)
-                    continue;
-
-                bool shouldUse = false;
-                switch (item.Category)
-                {
-                    case ConsumableCategory.Potion:
-                        if ((double)character.Health / character.GetTotalMaxHealth() < 0.7)
-                            shouldUse = true;
-                        break;
-
-                    case ConsumableCategory.Food:
-                        var actionState = character.CurrentAction.ToString();
-                        if (item.FoodType == FoodType.Combat && character.CurrentAction == PlayerActionState.Combat ||
-                            item.FoodType == FoodType.Gathering && actionState.StartsWith("Gathering") ||
-                            item.FoodType == FoodType.Production && actionState.StartsWith("Crafting"))
-                        {
-                            if (!character.ActiveBuffs.Any(b => b.BuffType == item.BuffType))
-                                shouldUse = true;
-                        }
-                        break;
-                }
-
-                if (shouldUse && RemoveItemFromInventory(character, itemId, 1, out int removedCount) && removedCount > 0)
-                {
-                    ApplyConsumableEffect(character, item);
-                }
-            }
-        }
-
-        /// <summary>
-        /// ¸üĞÂÏûºÄÆ·ÀäÈ´Ê±¼ä
-        /// </summary>
+        [Obsolete("æœ¬åœ°åº“å­˜ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
         public void UpdateConsumableCooldowns(Player character, double elapsedSeconds)
         {
-            if (character == null || !character.ConsumableCooldowns.Any()) 
-                return;
-                
-            var keys = character.ConsumableCooldowns.Keys.ToList();
-            foreach (var key in keys)
-            {
-                character.ConsumableCooldowns[key] -= elapsedSeconds;
-                if (character.ConsumableCooldowns[key] <= 0) 
-                    character.ConsumableCooldowns.Remove(key);
-            }
+            // æœ¬åœ°æ¶ˆè€—å“ç³»ç»Ÿå·²ç§»é™¤
         }
 
         /// <summary>
-        /// ´¥·¢×´Ì¬±ä¸üÊÂ¼ş
+        /// å¤„ç†è‡ªåŠ¨æ¶ˆè€—å“ - å·²ç§»é™¤æœ¬åœ°å®ç°
         /// </summary>
-        private void NotifyStateChanged() => OnStateChanged?.Invoke();
+        [Obsolete("æœ¬åœ°åº“å­˜ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
+        public void ProcessAutoConsumables(Player character)
+        {
+            // æœ¬åœ°æ¶ˆè€—å“ç³»ç»Ÿå·²ç§»é™¤
+        }
+
+        #endregion
+
+        #region çŠ¶æ€ç®¡ç†
+
+        /// <summary>
+        /// è§¦å‘çŠ¶æ€æ”¹å˜äº‹ä»¶
+        /// </summary>
+        public void NotifyStateChanged()
+        {
+            OnStateChanged?.Invoke();
+        }
+
+        #endregion
     }
 }
