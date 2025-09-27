@@ -22,34 +22,22 @@
 
 <PageTitle>自动战斗</PageTitle>
 
-@* 系统模式切换和提示 *@
+@* 纯在线模式指示器 *@
 <div class="battle-system-indicator mb-2">
-    <div class="alert @(_useNewBattleSystem ? "alert-info" : "alert-secondary") d-flex justify-content-between align-items-center">
+    <div class="alert alert-info d-flex justify-content-between align-items-center">
         <div>
-            <i class="bi @(_useNewBattleSystem ? "bi-cloud" : "bi-cpu")"></i>
-            <strong>战斗系统:</strong> @(_useNewBattleSystem ? "服务器模式" : "本地模式")
-            @if (_useNewBattleSystem && OfflineService.IsOfflineMode)
+            <i class="bi bi-cloud"></i>
+            <strong>战斗系统:</strong> 纯在线模式
+            @if (OfflineService.IsOfflineMode)
             {
-                <span class="badge bg-warning ms-2">离线模式</span>
+                <span class="badge bg-warning ms-2">连接异常</span>
             }
         </div>
         <div class="d-flex align-items-center gap-2">
-            @if (_useNewBattleSystem)
-            {
-                <small class="text-muted">
-                    连接状态: @(_isConnected ? "已连接" : "连接断开")
-                </small>
-            }
-            <div class="btn-group" role="group">
-                <button type="button" class="btn @(!_useNewBattleSystem ? "btn-primary" : "btn-outline-primary") btn-sm" 
-                        @onclick="() => ToggleBattleSystem(false)">
-                    <i class="bi bi-cpu"></i> 本地模式
-                </button>
-                <button type="button" class="btn @(_useNewBattleSystem ? "btn-primary" : "btn-outline-primary") btn-sm" 
-                        @onclick="() => ToggleBattleSystem(true)">
-                    <i class="bi bi-cloud"></i> 服务器模式
-                </button>
-            </div>
+            <small class="text-muted">
+                连接状态: @(_isConnected ? "已连接" : "连接断开")
+            </small>
+            <span class="badge bg-success">纯在线游戏</span>
         </div>
     </div>
 </div>
@@ -279,7 +267,7 @@
 
                             <div class="battle-actions">
                                 <button class="btn btn-primary" @onclick="() => StartBattleUnified(_selectedMonster)">
-                                    <i class="bi bi-sword"></i> ��ʼս�� (@(_useNewBattleSystem ? "������" : "����"))
+                                    <i class="bi bi-sword"></i> 开始战斗 (在线模式)
                                 </button>
                             </div>
                         }
@@ -338,7 +326,7 @@
         @if (_currentView == BattleView.Battle)
         {
             <div class="battle-info-panel mb-3">
-                @if (battleContext != null || (_useNewBattleSystem && _serverBattleState?.IsActive == true))
+                @if (battleContext != null || _serverBattleState?.IsActive == true)
                 {
                     <div class="battle-status active">
                         <h5 class="battle-title">
@@ -870,8 +858,7 @@ else
 }
 
 @code {
-    // 双模式战斗系统变量
-    private bool _useNewBattleSystem = false;
+    // 纯在线战斗系统 - 移除本地模式
     private bool _isConnected = false;
     private BattleStateDto? _serverBattleState;
     private System.Threading.Timer? _fallbackPoller;
@@ -1098,19 +1085,8 @@ else
     {
         try
         {
-            // 从配置读取是否使用新系统
-            _useNewBattleSystem = Configuration.GetValue<bool>("Features:UseServerBattle", false);
-            
-            if (_useNewBattleSystem)
-            {
-                // 初始化新系统
-                await InitializeNewSystem();
-            }
-            else
-            {
-                // 使用旧系统
-                InitializeOldSystem();
-            }
+            // 纯在线游戏，始终使用服务器模式
+            await InitializeServerBattleSystem();
         }
         catch (Exception ex)
         {
@@ -1119,9 +1095,9 @@ else
     }
     
     /// <summary>
-    /// 初始化新的客户端-服务器系统
+    /// 初始化服务器战斗系统 - 纯在线模式
     /// </summary>
-    private async Task InitializeNewSystem()
+    private async Task InitializeServerBattleSystem()
     {
         // 订阅事件
         NewGameState.OnBattleStateChanged += HandleNewBattleUpdate;
@@ -1134,27 +1110,16 @@ else
             await NewGameState.InitializeAsync();
             _isConnected = true; // 假设初始化成功表示连接成功
             
-            Logger.LogInformation("新战斗系统初始化成功");
+            Logger.LogInformation("服务器战斗系统初始化成功");
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "新战斗系统初始化失败");
+            Logger.LogError(ex, "服务器战斗系统初始化失败");
             _isConnected = false;
         }
     }
-    
-    /// <summary>
-    /// 初始化旧的本地系统
-    /// </summary>
-    private void InitializeOldSystem()
-    {
-        GameState.OnStateChanged += HandleStateChanged;
-        _combatService = ServiceLocator.GetService<CombatService>();
-        
-        Logger.LogInformation("本地战斗系统初始化成功");
-    }
 
-    // ����Ƿ���ս��ˢ��״̬
+    // 检查玩家是否在战斗刷新状态 - 本地战斗系统已移除
     private bool IsInBattleRefresh(string playerId)
     {
         return _combatService?.IsPlayerInBattleRefresh(playerId) ?? false;
@@ -1179,12 +1144,12 @@ else
     /// </summary>
     private string GetUnifiedBattleModeText(BattleContext? battleContext, BattleStateDto? serverBattleState)
     {
-        if (_useNewBattleSystem && serverBattleState != null)
+        if (serverBattleState != null)
         {
             return serverBattleState.BattleType switch
             {
-                BattleTypeServer.Dungeon => $"服务器副本战斗 (Battle ID: {serverBattleState.BattleId.ToString()[..8]})",
-                _ => $"服务器普通战斗 (Battle ID: {serverBattleState.BattleId.ToString()[..8]})"
+                BattleTypeServer.Dungeon => $"在线副本战斗 (Battle ID: {serverBattleState.BattleId.ToString()[..8]})",
+                _ => $"在线战斗 (Battle ID: {serverBattleState.BattleId.ToString()[..8]})"
             };
         }
         else if (battleContext != null)
@@ -1202,9 +1167,9 @@ else
     {
         try
         {
-            if (_useNewBattleSystem && _serverBattleState != null)
+            if (_serverBattleState != null)
             {
-                // 新系统：调用服务器API停止战斗
+                // 调用服务器API停止战斗
                 var success = await NewGameState.StopBattleAsync(_serverBattleState.BattleId);
                 if (success)
                 {
@@ -1351,7 +1316,7 @@ else
     /// <summary>
     /// 新系统战斗启动
     /// </summary>
-    private async Task StartBattleNewSystem(Enemy enemyTemplate)
+    private async Task StartBattleServerMode(Enemy enemyTemplate)
     {
         var character = GameState.ActiveCharacter;
         if (character == null) return;
@@ -1398,20 +1363,16 @@ else
     /// </summary>
     private BattleContext? GetUnifiedBattleContext(string playerId)
     {
-        if (_useNewBattleSystem)
+        // 从服务器战斗状态转换为本地战斗上下文（用于UI显示）
+        if (_serverBattleState != null && _serverBattleState.IsActive)
         {
-            // 新系统：从服务器战斗状态转换为本地战斗上下文（用于UI显示）
-            if (_serverBattleState != null && _serverBattleState.IsActive)
-            {
                 return ConvertServerBattleToContext(_serverBattleState, playerId);
             }
             return null;
         }
-        else
-        {
-            // 旧系统：直接使用本地战斗上下文
-            return _combatService?.GetBattleContextForPlayer(playerId);
-        }
+        
+        // 旧的本地战斗系统已移除，始终返回null
+        return null;
     }
     
     /// <summary>
@@ -1472,63 +1433,13 @@ else
     /// </summary>
     private async Task StartBattleUnified(Enemy enemyTemplate)
     {
-        if (_useNewBattleSystem)
-        {
-            await StartBattleNewSystem(enemyTemplate);
-        }
-        else
-        {
-            StartBattle(enemyTemplate);
-        }
+        // 纯在线模式，始终使用服务器战斗系统
+        await StartBattleServerMode(enemyTemplate);
     }
     
     /// <summary>
     /// 切换战斗系统模式
     /// </summary>
-    private async Task ToggleBattleSystem(bool useNewSystem)
-    {
-        if (_useNewBattleSystem == useNewSystem) return;
-        
-        try
-        {
-            // 停止当前战斗
-            if (GameState.ActiveCharacter?.CurrentAction == PlayerActionState.Combat)
-            {
-                GameState.StopCurrentAction();
-            }
-            
-            // 清理旧系统的事件订阅
-            if (_useNewBattleSystem)
-            {
-                NewGameState.OnBattleStateChanged -= HandleNewBattleUpdate;
-                NewGameState.OnConnectionStatusChanged -= HandleConnectionChanged;
-                OfflineService.OnOfflineModeChanged -= HandleOfflineModeChanged;
-            }
-            else
-            {
-                GameState.OnStateChanged -= HandleStateChanged;
-            }
-            
-            _useNewBattleSystem = useNewSystem;
-            
-            // 初始化新系统
-            if (_useNewBattleSystem)
-            {
-                await InitializeNewSystem();
-            }
-            else
-            {
-                InitializeOldSystem();
-            }
-            
-            Logger.LogInformation("战斗系统已切换到 {SystemType}", _useNewBattleSystem ? "服务器模式" : "本地模式");
-            StateHasChanged();
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "切换战斗系统时出错");
-        }
-    }
     
     /// <summary>
     /// 获取当前队伍ID
@@ -1787,17 +1698,10 @@ else
 
     public void Dispose()
     {
-        // 清理新系统事件
-        if (_useNewBattleSystem)
-        {
-            NewGameState.OnBattleStateChanged -= HandleNewBattleUpdate;
-            NewGameState.OnConnectionStatusChanged -= HandleConnectionChanged;
-            OfflineService.OnOfflineModeChanged -= HandleOfflineModeChanged;
-        }
-        else
-        {
-            GameState.OnStateChanged -= HandleStateChanged;
-        }
+        // 清理服务器战斗系统事件
+        NewGameState.OnBattleStateChanged -= HandleNewBattleUpdate;
+        NewGameState.OnConnectionStatusChanged -= HandleConnectionChanged;
+        OfflineService.OnOfflineModeChanged -= HandleOfflineModeChanged;
         
         // 清理定时器
         _fallbackPoller?.Dispose();
