@@ -11,7 +11,7 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 // 配置 HTTP 客户端
 builder.Services.AddScoped(sp => new HttpClient 
 { 
-    BaseAddress = new Uri(builder.Configuration["ServerUrl"] ?? "https://localhost:7001/") 
+    BaseAddress = new Uri(builder.Configuration["ServerUrl"] ?? "https://localhost:7000/") 
 });
 
 // 注册游戏服务

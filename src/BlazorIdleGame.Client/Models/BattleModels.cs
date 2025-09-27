@@ -19,6 +19,7 @@ namespace BlazorIdleGame.Client.Models
         
         public bool IsPartyBattle => PlayerTeam.Count > 1;
         public bool IsActive => Status == BattleStatus.InProgress;
+        public string Version { get; set; } = "";
     }
     
     public class BattleParticipant

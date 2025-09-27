@@ -5,6 +5,8 @@ namespace BlazorIdleGame.Client.Models
 {
     public class PartyInfo
     {
+        public string Version { get; set; } = "";
+
         public string Id { get; set; } = "";
         public string Name { get; set; } = "";
         public string LeaderId { get; set; } = "";

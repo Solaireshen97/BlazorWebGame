@@ -14,6 +14,7 @@ namespace BlazorIdleGame.Client.Models
         public DateTime ServerTime { get; set; }
         public int Version { get; set; }
         public DateTime LastSyncTime { get; set; }
+
     }
     
     public class PlayerInfo
