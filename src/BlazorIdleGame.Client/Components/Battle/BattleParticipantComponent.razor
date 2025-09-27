@@ -1,0 +1,356 @@
+@using BlazorIdleGame.Client.Models
+@using BlazorIdleGame.Client.Store.BattleStore
+@using Fluxor
+@using Fluxor.Blazor.Web.Components
+@inherits FluxorComponent
+
+@inject IDispatcher Dispatcher
+
+@if (Participant != null)
+{
+    <div class="battle-participant @(Participant.IsPlayer ? "player" : "enemy") @(!Participant.IsAlive ? "defeated" : "")">
+        <div class="participant-avatar">
+            <span class="avatar-icon">@(Participant.IsPlayer ? "🧑‍💼" : "👹")</span>
+            @if (!Participant.IsAlive)
+            {
+                <div class="defeated-overlay">💀</div>
+            }
+        </div>
+        
+        <div class="participant-info">
+            <div class="participant-header">
+                <span class="participant-name">@Participant.Name</span>
+                <span class="participant-level">Lv.@Participant.Level</span>
+            </div>
+            
+            <div class="health-section">
+                <div class="health-bar">
+                    <div class="health-fill @(Participant.IsPlayer ? "player-health" : "enemy-health")" 
+                         style="width: @Participant.HealthPercent%"></div>
+                    <span class="health-text">@Participant.CurrentHealth / @Participant.MaxHealth</span>
+                </div>
+                <div class="health-percentage">@Participant.HealthPercent.ToString("F1")%</div>
+            </div>
+            
+            <div class="combat-stats">
+                <div class="stat-item">
+                    <span class="stat-icon">⚔️</span>
+                    <span class="stat-value">@Participant.AttackPower</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-icon">🛡️</span>
+                    <span class="stat-value">@Participant.Defense</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-icon">⚡</span>
+                    <span class="stat-value">@Participant.AttackSpeed.ToString("F1")</span>
+                </div>
+            </div>
+            
+            @if (Participant.IsAlive)
+            {
+                <div class="attack-timer">
+                    <div class="timer-bar">
+                        <div class="timer-fill" style="width: @CalculateAttackProgress()%"></div>
+                    </div>
+                    <span class="timer-text">下次攻击: @GetNextAttackTime()</span>
+                </div>
+            }
+        </div>
+        
+        @if (Participant.IsPlayer && Participant.IsAlive && ShowSkillButtons)
+        {
+            <div class="participant-actions">
+                <button class="btn btn-sm btn-primary" @onclick="() => UseSkill(\"basic_attack\", GetRandomEnemyId())">
+                    普通攻击
+                </button>
+                <button class="btn btn-sm btn-info" @onclick="() => UseSkill(\"power_strike\", GetRandomEnemyId())">
+                    强力一击
+                </button>
+                <button class="btn btn-sm btn-success" @onclick="() => UseSkill(\"heal\", Participant.Id)">
+                    治疗
+                </button>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public BattleParticipant? Participant { get; set; }
+    [Parameter] public bool ShowSkillButtons { get; set; } = true;
+    [Parameter] public List<string>? EnemyIds { get; set; }
+
+    private void UseSkill(string skillId, string targetId)
+    {
+        if (!string.IsNullOrEmpty(targetId))
+        {
+            Dispatcher.Dispatch(new UseSkillAction(skillId, targetId));
+        }
+    }
+
+    private string GetRandomEnemyId()
+    {
+        if (EnemyIds != null && EnemyIds.Any())
+        {
+            var random = new Random();
+            return EnemyIds[random.Next(EnemyIds.Count)];
+        }
+        return "";
+    }
+
+    private double CalculateAttackProgress()
+    {
+        // 这里应该基于实际的攻击冷却时间计算进度
+        // 简化实现，返回一个随机值作为示例
+        var now = DateTime.UtcNow.Ticks / TimeSpan.TicksPerSecond;
+        var progress = (now % 10) * 10; // 10秒循环
+        return Math.Min(progress, 100);
+    }
+
+    private string GetNextAttackTime()
+    {
+        if (Participant == null) return "0.0s";
+        
+        var currentTime = DateTime.UtcNow.Ticks / TimeSpan.TicksPerSecond;
+        var timeToNextAttack = Math.Max(0, Participant.NextAttackTime - currentTime);
+        return $"{timeToNextAttack:F1}s";
+    }
+}
+
+<style>
+    .battle-participant {
+        display: flex;
+        align-items: center;
+        background: white;
+        border: 2px solid #dee2e6;
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 15px;
+        gap: 15px;
+        transition: all 0.3s ease;
+        position: relative;
+    }
+
+    .battle-participant:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    }
+
+    .battle-participant.player {
+        border-color: #007bff;
+        background: linear-gradient(135deg, #e7f3ff, #ffffff);
+    }
+
+    .battle-participant.enemy {
+        border-color: #dc3545;
+        background: linear-gradient(135deg, #ffe6e6, #ffffff);
+    }
+
+    .battle-participant.defeated {
+        opacity: 0.6;
+        filter: grayscale(50%);
+        border-style: dashed;
+    }
+
+    .participant-avatar {
+        position: relative;
+        width: 80px;
+        height: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f8f9fa;
+        border-radius: 50%;
+        font-size: 2.5em;
+        border: 3px solid transparent;
+    }
+
+    .battle-participant.player .participant-avatar {
+        border-color: #007bff;
+    }
+
+    .battle-participant.enemy .participant-avatar {
+        border-color: #dc3545;
+    }
+
+    .defeated-overlay {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 1.5em;
+        z-index: 2;
+    }
+
+    .participant-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .participant-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+
+    .participant-name {
+        font-weight: bold;
+        font-size: 1.2em;
+        color: #333;
+    }
+
+    .participant-level {
+        background: #6c757d;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.8em;
+        font-weight: bold;
+    }
+
+    .battle-participant.player .participant-level {
+        background: #007bff;
+    }
+
+    .battle-participant.enemy .participant-level {
+        background: #dc3545;
+    }
+
+    .health-section {
+        margin-bottom: 12px;
+    }
+
+    .health-bar {
+        position: relative;
+        background: #e9ecef;
+        height: 24px;
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 4px;
+    }
+
+    .health-fill {
+        height: 100%;
+        border-radius: 12px;
+        transition: width 0.5s ease;
+    }
+
+    .health-fill.player-health {
+        background: linear-gradient(90deg, #007bff, #17a2b8);
+    }
+
+    .health-fill.enemy-health {
+        background: linear-gradient(90deg, #dc3545, #fd7e14);
+    }
+
+    .health-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 0.8em;
+        font-weight: bold;
+        color: #333;
+        text-shadow: 1px 1px 2px rgba(255,255,255,0.8);
+    }
+
+    .health-percentage {
+        text-align: center;
+        font-size: 0.9em;
+        font-weight: bold;
+        color: #333;
+    }
+
+    .combat-stats {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 12px;
+    }
+
+    .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        background: #f8f9fa;
+        padding: 4px 8px;
+        border-radius: 16px;
+        border: 1px solid #dee2e6;
+    }
+
+    .stat-icon {
+        font-size: 0.9em;
+    }
+
+    .stat-value {
+        font-weight: bold;
+        font-size: 0.9em;
+        color: #333;
+    }
+
+    .attack-timer {
+        margin-bottom: 8px;
+    }
+
+    .timer-bar {
+        background: #e9ecef;
+        height: 6px;
+        border-radius: 3px;
+        overflow: hidden;
+        margin-bottom: 4px;
+    }
+
+    .timer-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #ffc107, #fd7e14);
+        border-radius: 3px;
+        transition: width 0.1s linear;
+    }
+
+    .timer-text {
+        font-size: 0.8em;
+        color: #6c757d;
+        text-align: center;
+        display: block;
+    }
+
+    .participant-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-width: 100px;
+    }
+
+    .participant-actions .btn {
+        font-size: 0.8em;
+        padding: 4px 8px;
+    }
+
+    @media (max-width: 768px) {
+        .battle-participant {
+            flex-direction: column;
+            text-align: center;
+            gap: 10px;
+        }
+
+        .participant-avatar {
+            width: 60px;
+            height: 60px;
+            font-size: 2em;
+        }
+
+        .participant-header {
+            justify-content: center;
+        }
+
+        .combat-stats {
+            justify-content: center;
+        }
+
+        .participant-actions {
+            flex-direction: row;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+    }
+</style>

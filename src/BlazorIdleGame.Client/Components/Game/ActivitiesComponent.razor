@@ -1,0 +1,283 @@
+@using BlazorIdleGame.Client.Models
+@using BlazorIdleGame.Client.Store.GameStore
+@using Fluxor
+@using Fluxor.Blazor.Web.Components
+@inherits FluxorComponent
+
+@inject IDispatcher Dispatcher
+
+@if (Activities != null && Activities.Any())
+{
+    <div class="activities-card">
+        <h4>当前活动</h4>
+        
+        @foreach (var activity in Activities)
+        {
+            <div class="activity-item @(activity.IsPartyActivity ? "party-activity" : "")">
+                <div class="activity-header">
+                    <div class="activity-info">
+                        <span class="activity-name">@activity.Name</span>
+                        <span class="activity-type">@GetActivityTypeText(activity.Type)</span>
+                        @if (activity.IsPartyActivity)
+                        {
+                            <span class="party-badge">组队</span>
+                        }
+                    </div>
+                    <button class="btn btn-sm btn-outline-danger" @onclick="() => StopActivity(activity.Id)">
+                        停止
+                    </button>
+                </div>
+                
+                <div class="activity-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: @(activity.Progress * 100)%"></div>
+                    </div>
+                    <div class="progress-info">
+                        <span class="progress-text">@($"{activity.Progress * 100:F1}%")</span>
+                        <span class="time-remaining">剩余: @FormatTimeSpan(activity.TimeRemaining)</span>
+                    </div>
+                </div>
+                
+                <div class="activity-loops">
+                    <span class="loops-text">循环: @activity.CurrentLoop / @activity.MaxLoops</span>
+                </div>
+                
+                @if (activity.RewardsPerLoop.Any())
+                {
+                    <div class="activity-rewards">
+                        <span class="rewards-label">每循环奖励:</span>
+                        @foreach (var reward in activity.RewardsPerLoop)
+                        {
+                            <span class="reward-item">@reward.Key: @reward.Value</span>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div class="activities-card empty">
+        <h4>当前活动</h4>
+        <p class="no-activities">暂无进行中的活动</p>
+        
+        <div class="activity-actions">
+            <button class="btn btn-primary" @onclick="() => StartActivity(ActivityType.Battle, \"enemy1\")">
+                开始战斗
+            </button>
+            <button class="btn btn-success" @onclick="() => StartActivity(ActivityType.Gathering, \"wood\")">
+                采集资源
+            </button>
+            <button class="btn btn-info" @onclick="() => StartActivity(ActivityType.Training, \"strength\")">
+                技能训练
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public List<Activity>? Activities { get; set; }
+
+    private void StartActivity(ActivityType type, string target)
+    {
+        Dispatcher.Dispatch(new StartActivityAction(type, target));
+    }
+
+    private void StopActivity(string activityId)
+    {
+        Dispatcher.Dispatch(new StopActivityAction(activityId));
+    }
+
+    private string GetActivityTypeText(ActivityType type)
+    {
+        return type switch
+        {
+            ActivityType.Battle => "战斗",
+            ActivityType.Gathering => "采集",
+            ActivityType.Crafting => "制造",
+            ActivityType.Training => "训练",
+            ActivityType.PartyBattle => "组队战斗",
+            ActivityType.PartyRaid => "团队副本",
+            _ => "未知"
+        };
+    }
+
+    private string FormatTimeSpan(TimeSpan timeSpan)
+    {
+        if (timeSpan.TotalDays >= 1)
+            return $"{timeSpan.Days}天 {timeSpan.Hours}小时";
+        if (timeSpan.TotalHours >= 1)
+            return $"{timeSpan.Hours}小时 {timeSpan.Minutes}分钟";
+        if (timeSpan.TotalMinutes >= 1)
+            return $"{timeSpan.Minutes}分钟 {timeSpan.Seconds}秒";
+        return $"{timeSpan.Seconds}秒";
+    }
+}
+
+<style>
+    .activities-card {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .activities-card h4 {
+        margin: 0 0 15px 0;
+        color: #333;
+        text-align: center;
+    }
+
+    .activities-card.empty {
+        text-align: center;
+    }
+
+    .no-activities {
+        color: #6c757d;
+        font-style: italic;
+        margin-bottom: 20px;
+    }
+
+    .activity-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .activity-item {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 15px;
+        margin-bottom: 10px;
+        transition: all 0.2s ease;
+    }
+
+    .activity-item:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    .activity-item.party-activity {
+        border-color: #28a745;
+        background: linear-gradient(135deg, #d4edda, #ffffff);
+    }
+
+    .activity-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+
+    .activity-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .activity-name {
+        font-weight: bold;
+        color: #333;
+    }
+
+    .activity-type {
+        font-size: 0.9em;
+        color: #6c757d;
+        background: #e9ecef;
+        padding: 2px 8px;
+        border-radius: 12px;
+    }
+
+    .party-badge {
+        font-size: 0.8em;
+        color: white;
+        background: #28a745;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-weight: bold;
+    }
+
+    .activity-progress {
+        margin-bottom: 10px;
+    }
+
+    .progress-bar {
+        width: 100%;
+        height: 20px;
+        background: #e9ecef;
+        border-radius: 10px;
+        overflow: hidden;
+        margin-bottom: 5px;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #007bff, #28a745);
+        border-radius: 10px;
+        transition: width 0.3s ease;
+    }
+
+    .progress-info {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.9em;
+    }
+
+    .progress-text {
+        font-weight: bold;
+        color: #007bff;
+    }
+
+    .time-remaining {
+        color: #6c757d;
+    }
+
+    .activity-loops {
+        margin-bottom: 10px;
+        font-size: 0.9em;
+        color: #6c757d;
+    }
+
+    .activity-rewards {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        font-size: 0.9em;
+    }
+
+    .rewards-label {
+        color: #6c757d;
+        font-weight: bold;
+    }
+
+    .reward-item {
+        background: #e7f3ff;
+        color: #0066cc;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-weight: bold;
+    }
+
+    @media (max-width: 768px) {
+        .activity-header {
+            flex-direction: column;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .activity-info {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 5px;
+        }
+
+        .activity-actions {
+            flex-direction: column;
+        }
+    }
+</style>

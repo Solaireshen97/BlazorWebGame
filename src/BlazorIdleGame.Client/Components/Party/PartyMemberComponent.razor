@@ -1,0 +1,313 @@
+@using BlazorIdleGame.Client.Models
+@using BlazorIdleGame.Client.Store.PartyStore
+@using Fluxor
+@using Fluxor.Blazor.Web.Components
+@inherits FluxorComponent
+
+@inject IDispatcher Dispatcher
+
+@if (Member != null)
+{
+    <div class="party-member @(Member.IsLeader ? "leader" : "") @GetStatusClass(Member.Status)">
+        <div class="member-avatar">
+            @if (Member.IsLeader)
+            {
+                <span class="leader-crown">👑</span>
+            }
+            <span class="avatar-icon">🧑‍💼</span>
+        </div>
+        
+        <div class="member-info">
+            <div class="member-header">
+                <span class="member-name">@Member.Name</span>
+                <span class="member-level">Lv.@Member.Level</span>
+            </div>
+            
+            <div class="member-stats">
+                <div class="health-bar">
+                    <div class="health-fill" style="width: @((double)Member.Stats.Health / Member.Stats.MaxHealth * 100)%"></div>
+                    <span class="health-text">@Member.Stats.Health/@Member.Stats.MaxHealth</span>
+                </div>
+            </div>
+            
+            <div class="member-status">
+                <span class="status-indicator @GetStatusClass(Member.Status)">
+                    @GetStatusText(Member.Status)
+                </span>
+                
+                @if (Member.IsReady)
+                {
+                    <span class="ready-badge">已准备</span>
+                }
+                else
+                {
+                    <span class="not-ready-badge">未准备</span>
+                }
+            </div>
+        </div>
+        
+        @if (CanManageMember && !Member.IsLeader)
+        {
+            <div class="member-actions">
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        操作
+                    </button>
+                    <div class="dropdown-menu">
+                        <button class="dropdown-item" @onclick="() => PromoteToLeader(Member.Id)">
+                            转让队长
+                        </button>
+                        <button class="dropdown-item text-danger" @onclick="() => KickMember(Member.Id)">
+                            踢出队伍
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public PartyMember? Member { get; set; }
+    [Parameter] public bool CanManageMember { get; set; }
+
+    private void PromoteToLeader(string memberId)
+    {
+        Dispatcher.Dispatch(new PromoteToLeaderAction(memberId));
+    }
+
+    private void KickMember(string memberId)
+    {
+        Dispatcher.Dispatch(new KickMemberAction(memberId));
+    }
+
+    private string GetStatusClass(MemberStatus status)
+    {
+        return status switch
+        {
+            MemberStatus.Online => "online",
+            MemberStatus.InBattle => "in-battle",
+            MemberStatus.Idle => "idle", 
+            MemberStatus.Offline => "offline",
+            _ => ""
+        };
+    }
+
+    private string GetStatusText(MemberStatus status)
+    {
+        return status switch
+        {
+            MemberStatus.Online => "在线",
+            MemberStatus.InBattle => "战斗中",
+            MemberStatus.Idle => "空闲",
+            MemberStatus.Offline => "离线",
+            _ => "未知"
+        };
+    }
+}
+
+<style>
+    .party-member {
+        display: flex;
+        align-items: center;
+        background: white;
+        border: 2px solid #dee2e6;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 10px;
+        transition: all 0.2s ease;
+        gap: 15px;
+    }
+
+    .party-member:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    .party-member.leader {
+        border-color: #ffc107;
+        background: linear-gradient(135deg, #fff3cd, #ffffff);
+    }
+
+    .party-member.online {
+        border-left: 4px solid #28a745;
+    }
+
+    .party-member.in-battle {
+        border-left: 4px solid #dc3545;
+    }
+
+    .party-member.idle {
+        border-left: 4px solid #ffc107;
+    }
+
+    .party-member.offline {
+        border-left: 4px solid #6c757d;
+        opacity: 0.7;
+    }
+
+    .member-avatar {
+        position: relative;
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f8f9fa;
+        border-radius: 50%;
+        font-size: 1.5em;
+    }
+
+    .leader-crown {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        font-size: 1.2em;
+        z-index: 1;
+    }
+
+    .avatar-icon {
+        font-size: 1.8em;
+    }
+
+    .member-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .member-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 8px;
+    }
+
+    .member-name {
+        font-weight: bold;
+        font-size: 1.1em;
+        color: #333;
+    }
+
+    .member-level {
+        background: #007bff;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.8em;
+        font-weight: bold;
+    }
+
+    .member-stats {
+        margin-bottom: 8px;
+    }
+
+    .health-bar {
+        position: relative;
+        background: #e9ecef;
+        height: 16px;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 4px;
+    }
+
+    .health-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #dc3545, #fd7e14);
+        border-radius: 8px;
+        transition: width 0.3s ease;
+    }
+
+    .health-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 0.7em;
+        font-weight: bold;
+        color: #333;
+        text-shadow: 1px 1px 2px rgba(255,255,255,0.8);
+    }
+
+    .member-status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .status-indicator {
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.8em;
+        font-weight: bold;
+    }
+
+    .status-indicator.online {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .status-indicator.in-battle {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .status-indicator.idle {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .status-indicator.offline {
+        background: #e2e3e5;
+        color: #383d41;
+    }
+
+    .ready-badge {
+        background: #28a745;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.8em;
+        font-weight: bold;
+    }
+
+    .not-ready-badge {
+        background: #6c757d;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.8em;
+        font-weight: bold;
+    }
+
+    .member-actions {
+        margin-left: auto;
+    }
+
+    .dropdown-menu {
+        min-width: 120px;
+    }
+
+    .dropdown-item {
+        font-size: 0.9em;
+    }
+
+    @media (max-width: 768px) {
+        .party-member {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .member-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 5px;
+        }
+
+        .member-actions {
+            margin-left: 0;
+            width: 100%;
+        }
+    }
+</style>
