@@ -1,0 +1,337 @@
+@using BlazorIdleGame.Client.Models
+@using BlazorIdleGame.Client.Store.PartyStore
+@using Fluxor
+@using Fluxor.Blazor.Web.Components
+@inherits FluxorComponent
+
+@inject IDispatcher Dispatcher
+
+@if (Party != null)
+{
+    <div class="party-info-card">
+        <div class="party-header">
+            <div class="party-title">
+                <h3>@Party.Name</h3>
+                <span class="party-status @GetStatusClass(Party.Status)">
+                    @GetStatusText(Party.Status)
+                </span>
+            </div>
+            
+            <div class="party-actions">
+                @if (IsCurrentPlayerLeader)
+                {
+                    <button class="btn btn-sm btn-outline-danger" @onclick="DisbandParty">
+                        解散队伍
+                    </button>
+                }
+                else
+                {
+                    <button class="btn btn-sm btn-outline-warning" @onclick="LeaveParty">
+                        离开队伍
+                    </button>
+                }
+            </div>
+        </div>
+        
+        <div class="party-details">
+            <div class="party-stats">
+                <div class="stat-item">
+                    <span class="stat-label">队伍人数</span>
+                    <span class="stat-value">@Party.Members.Count / @Party.MaxMembers</span>
+                </div>
+                
+                <div class="stat-item">
+                    <span class="stat-label">创建时间</span>
+                    <span class="stat-value">@Party.CreatedAt.ToString("MM-dd HH:mm")</span>
+                </div>
+                
+                @if (Party.IsInActivity)
+                {
+                    <div class="stat-item">
+                        <span class="stat-label">当前活动</span>
+                        <span class="stat-value activity">进行中</span>
+                    </div>
+                }
+            </div>
+        </div>
+        
+        <div class="party-members">
+            <h5>队伍成员</h5>
+            
+            @foreach (var member in Party.Members)
+            {
+                <PartyMemberComponent 
+                    Member="member" 
+                    CanManageMember="IsCurrentPlayerLeader && member.Id != CurrentPlayerId" />
+            }
+        </div>
+        
+        @if (IsCurrentPlayerLeader && !Party.IsFull)
+        {
+            <div class="party-invite-section">
+                <h6>邀请玩家</h6>
+                <div class="invite-form">
+                    <input type="text" class="form-control" placeholder="玩家ID或名称" @bind="InvitePlayerId" />
+                    <button class="btn btn-primary" @onclick="InvitePlayer" disabled="@string.IsNullOrWhiteSpace(InvitePlayerId)">
+                        邀请
+                    </button>
+                </div>
+            </div>
+        }
+        
+        <div class="party-ready-section">
+            <div class="ready-status">
+                <span class="ready-count">
+                    已准备: @Party.Members.Count(m => m.IsReady) / @Party.Members.Count
+                </span>
+                
+                @if (AllMembersReady && IsCurrentPlayerLeader)
+                {
+                    <button class="btn btn-success" @onclick="StartPartyActivity">
+                        开始组队活动
+                    </button>
+                }
+            </div>
+            
+            <div class="ready-toggle">
+                <button class="btn @(IsCurrentPlayerReady ? "btn-warning" : "btn-success")" @onclick="ToggleReady">
+                    @(IsCurrentPlayerReady ? "取消准备" : "准备")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public PartyInfo? Party { get; set; }
+    [Parameter] public string? CurrentPlayerId { get; set; }
+
+    private string InvitePlayerId = "";
+
+    private bool IsCurrentPlayerLeader => Party?.LeaderId == CurrentPlayerId;
+    private bool IsCurrentPlayerReady => Party?.Members.FirstOrDefault(m => m.Id == CurrentPlayerId)?.IsReady ?? false;
+    private bool AllMembersReady => Party?.Members.All(m => m.IsReady) ?? false;
+
+    private void LeaveParty()
+    {
+        Dispatcher.Dispatch(new LeavePartyAction());
+    }
+
+    private void DisbandParty()
+    {
+        // 队长离开等同于解散队伍
+        Dispatcher.Dispatch(new LeavePartyAction());
+    }
+
+    private void InvitePlayer()
+    {
+        if (!string.IsNullOrWhiteSpace(InvitePlayerId))
+        {
+            Dispatcher.Dispatch(new InvitePlayerAction(InvitePlayerId));
+            InvitePlayerId = "";
+        }
+    }
+
+    private void ToggleReady()
+    {
+        Dispatcher.Dispatch(new SetReadyStatusAction(!IsCurrentPlayerReady));
+    }
+
+    private void StartPartyActivity()
+    {
+        // TODO: 实现开始组队活动的逻辑
+        // 可以弹出活动选择对话框
+    }
+
+    private string GetStatusClass(PartyStatus status)
+    {
+        return status switch
+        {
+            PartyStatus.Idle => "idle",
+            PartyStatus.Preparing => "preparing",
+            PartyStatus.InActivity => "in-activity",
+            PartyStatus.Disbanding => "disbanding",
+            _ => ""
+        };
+    }
+
+    private string GetStatusText(PartyStatus status)
+    {
+        return status switch
+        {
+            PartyStatus.Idle => "空闲",
+            PartyStatus.Preparing => "准备中",
+            PartyStatus.InActivity => "活动中",
+            PartyStatus.Disbanding => "解散中",
+            _ => "未知"
+        };
+    }
+}
+
+<style>
+    .party-info-card {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    .party-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .party-title h3 {
+        margin: 0;
+        color: #333;
+        font-size: 1.5em;
+    }
+
+    .party-status {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.9em;
+        font-weight: bold;
+        margin-top: 5px;
+        display: inline-block;
+    }
+
+    .party-status.idle {
+        background: #e2e3e5;
+        color: #383d41;
+    }
+
+    .party-status.preparing {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .party-status.in-activity {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .party-status.disbanding {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .party-details {
+        margin-bottom: 20px;
+    }
+
+    .party-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+    }
+
+    .stat-item {
+        background: white;
+        padding: 12px;
+        border-radius: 6px;
+        border: 1px solid #dee2e6;
+        text-align: center;
+    }
+
+    .stat-label {
+        display: block;
+        font-size: 0.9em;
+        color: #6c757d;
+        margin-bottom: 4px;
+    }
+
+    .stat-value {
+        display: block;
+        font-size: 1.1em;
+        font-weight: bold;
+        color: #333;
+    }
+
+    .stat-value.activity {
+        color: #28a745;
+    }
+
+    .party-members {
+        margin-bottom: 20px;
+    }
+
+    .party-members h5 {
+        margin-bottom: 15px;
+        color: #333;
+        border-bottom: 1px solid #dee2e6;
+        padding-bottom: 8px;
+    }
+
+    .party-invite-section {
+        margin-bottom: 20px;
+        padding: 15px;
+        background: white;
+        border-radius: 6px;
+        border: 1px solid #dee2e6;
+    }
+
+    .party-invite-section h6 {
+        margin-bottom: 10px;
+        color: #333;
+    }
+
+    .invite-form {
+        display: flex;
+        gap: 10px;
+    }
+
+    .invite-form input {
+        flex: 1;
+    }
+
+    .party-ready-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px;
+        background: white;
+        border-radius: 6px;
+        border: 1px solid #dee2e6;
+    }
+
+    .ready-status {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .ready-count {
+        font-weight: bold;
+        color: #333;
+    }
+
+    @media (max-width: 768px) {
+        .party-header {
+            flex-direction: column;
+            gap: 15px;
+            align-items: flex-start;
+        }
+
+        .party-ready-section {
+            flex-direction: column;
+            gap: 15px;
+            align-items: stretch;
+        }
+
+        .ready-status {
+            flex-direction: column;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .invite-form {
+            flex-direction: column;
+        }
+    }
+</style>
