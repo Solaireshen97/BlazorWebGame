@@ -182,7 +182,7 @@ else
     private bool CanAfford(Player character, Item? item)
     {
         if (item?.ShopPurchaseInfo == null) return false;
-        return ShopService.CanAffordItem(item.Id, 1);
+        return ShopService.CanAffordItem(character, item);
     }
 
     private async Task BuySelectedItemAsync()
