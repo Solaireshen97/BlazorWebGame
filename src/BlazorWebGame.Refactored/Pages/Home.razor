@@ -20,14 +20,14 @@
                     }
                 </div>
                 <div class="card-body">
-                    @if (CurrentCharacter?.Activities?.ActiveSlots?.Any() == true)
+                    @if (CurrentCharacterActivities?.Any() == true)
                     {
-                        @foreach (var activity in CurrentCharacter.Activities.ActiveSlots.Values)
+                        @foreach (var activity in CurrentCharacterActivities)
                         {
                             <ActivityProgressBar 
-                                ActivityName="@activity.Type.ToString()"
-                                ActivityDescription="@GetActivityDescription(activity)"
-                                ProgressPercentage="@GetActivityProgress(activity)"
+                                ActivityName="@activity.DisplayName"
+                                ActivityDescription="@activity.Description"
+                                ProgressPercentage="@(activity.Progress * 100)"
                                 RemainingTime="@GetRemainingTime(activity)"
                                 TotalTime="@GetTotalTime(activity)"
                                 IsCompleted="@IsActivityCompleted(activity)"
@@ -72,8 +72,8 @@
                                 <strong>@CurrentCharacter.Class</strong>
                             </div>
                             <div class="d-flex justify-content-between mb-2">
-                                <span>活动槽位:</span>
-                                <strong>@(CurrentCharacter.Activities?.ActiveSlots?.Count ?? 0) / @(CurrentCharacter.Activities?.MaxSlots ?? 0)</strong>
+                                <span>活跃活动:</span>
+                                <strong>@GetActiveActivitiesCount()</strong>
                             </div>
                         </div>
                     }
@@ -96,7 +96,7 @@
                             @foreach (var notification in Notifications.Take(5))
                             {
                                 <div class="notification-item mb-2 p-2 border-start border-primary border-3">
-                                    <small class="text-muted">@notification.Timestamp.ToString("HH:mm")</small>
+                                    <small class="text-muted">@notification.CreatedAt.ToString("HH:mm")</small>
                                     <div>@notification.Message</div>
                                 </div>
                             }
@@ -150,12 +150,23 @@
     [Inject] private IState<AppState> AppState { get; set; } = default!;
     [Inject] private IDispatcher Dispatcher { get; set; } = default!;
 
-    private Domain.Entities.Character? CurrentCharacter => AppState.Value.Characters?.CurrentCharacter;
-    private IEnumerable<Domain.Entities.Notification>? Notifications => AppState.Value.Notifications?.Items;
+    private CharacterData? CurrentCharacter => AppState.Value.Characters.CurrentCharacter;
+    private IEnumerable<NotificationMessage>? Notifications => AppState.Value.UI.Notifications;
+    
+    private IEnumerable<ActivitySummary>? CurrentCharacterActivities => 
+        CurrentCharacter != null 
+            ? AppState.Value.Characters.ActiveActivities.Values
+                .Where(a => a.CharacterId == CurrentCharacter.Id)
+            : null;
 
-    private string GetActivityDescription(Domain.Entities.Activity activity)
+    private int GetActiveActivitiesCount()
     {
-        return activity.Type switch
+        return CurrentCharacterActivities?.Count() ?? 0;
+    }
+
+    private string GetActivityDescription(ActivitySummary activity)
+    {
+        return !string.IsNullOrEmpty(activity.Description) ? activity.Description : activity.Type switch
         {
             Domain.ValueObjects.ActivityType.Gathering => "采集资源中...",
             Domain.ValueObjects.ActivityType.Crafting => "制作物品中...",
@@ -165,36 +176,36 @@
         };
     }
 
-    private double GetActivityProgress(Domain.Entities.Activity activity)
+    private TimeSpan GetRemainingTime(ActivitySummary activity)
     {
-        if (activity.Duration.TotalSeconds == 0) return 0;
-        var elapsed = DateTime.UtcNow - activity.StartTime;
-        return Math.Min(100, (elapsed.TotalSeconds / activity.Duration.TotalSeconds) * 100);
+        if (activity.EndTime.HasValue)
+        {
+            var remaining = activity.EndTime.Value - DateTime.UtcNow;
+            return remaining.TotalSeconds > 0 ? remaining : TimeSpan.Zero;
+        }
+        return TimeSpan.Zero;
     }
 
-    private TimeSpan GetRemainingTime(Domain.Entities.Activity activity)
+    private TimeSpan GetTotalTime(ActivitySummary activity)
     {
-        var elapsed = DateTime.UtcNow - activity.StartTime;
-        var remaining = activity.Duration - elapsed;
-        return remaining.TotalSeconds > 0 ? remaining : TimeSpan.Zero;
+        if (activity.EndTime.HasValue)
+        {
+            return activity.EndTime.Value - activity.StartTime;
+        }
+        return TimeSpan.FromHours(1); // Default
     }
 
-    private TimeSpan GetTotalTime(Domain.Entities.Activity activity)
+    private bool IsActivityCompleted(ActivitySummary activity)
     {
-        return activity.Duration;
+        return activity.Progress >= 1.0 || GetRemainingTime(activity) <= TimeSpan.Zero;
     }
 
-    private bool IsActivityCompleted(Domain.Entities.Activity activity)
+    private bool IsActivityPaused(ActivitySummary activity)
     {
-        return GetRemainingTime(activity) <= TimeSpan.Zero;
+        return activity.State == ActivityDisplayState.Paused;
     }
 
-    private bool IsActivityPaused(Domain.Entities.Activity activity)
-    {
-        return activity.State == Domain.ValueObjects.ActivityState.Paused;
-    }
-
-    private IEnumerable<string> GetActivityRewards(Domain.Entities.Activity activity)
+    private IEnumerable<string> GetActivityRewards(ActivitySummary activity)
     {
         // This would normally come from the activity configuration
         return activity.Type switch

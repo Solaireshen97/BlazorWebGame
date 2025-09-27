@@ -7,17 +7,17 @@
         <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
             @if (CurrentCharacter != null)
             {
-                <i class="bi bi-person-circle me-2"></i>@CurrentCharacter.Name (等级 @CurrentCharacter.Level)
+                <i class="bi bi-person-circle me-2"></i>@($"{CurrentCharacter.Name} (等级 {CurrentCharacter.Level})")
             }
             else
             {
-                <i class="bi bi-person-plus me-2"></i>选择角色
+                <i class="bi bi-person-plus me-2"></i><span>选择角色</span>
             }
         </button>
         <ul class="dropdown-menu">
-            @if (Characters?.Any() == true)
+            @if (AllCharacters?.Any() == true)
             {
-                @foreach (var character in Characters)
+                @foreach (var character in AllCharacters)
                 {
                     <li>
                         <a class="dropdown-item @(IsCurrentCharacter(character.Id) ? "active" : "")" 
@@ -25,9 +25,9 @@
                             <i class="bi bi-person-circle me-2"></i>
                             <span class="character-name">@character.Name</span>
                             <small class="text-muted ms-2">Lv.@character.Level</small>
-                            @if (character.Activities?.ActiveSlots?.Count > 0)
+                            @if (GetActiveActivitiesCount(character.Id) > 0)
                             {
-                                <span class="badge bg-primary ms-2">@character.Activities.ActiveSlots.Count</span>
+                                <span class="badge bg-primary ms-2">@GetActiveActivitiesCount(character.Id)</span>
                             }
                         </a>
                     </li>
@@ -42,10 +42,10 @@
         </ul>
     </div>
     
-    @if (CurrentCharacter != null && CurrentCharacter.Activities?.ActiveSlots?.Count > 0)
+    @if (CurrentCharacter != null && GetActiveActivitiesCount(CurrentCharacter.Id) > 0)
     {
         <div class="active-activities-indicator ms-3">
-            <span class="badge bg-success">@CurrentCharacter.Activities.ActiveSlots.Count 个活动进行中</span>
+            <span class="badge bg-success">@GetActiveActivitiesCount(CurrentCharacter.Id) 个活动进行中</span>
         </div>
     }
 </div>
@@ -54,12 +54,19 @@
     [Inject] private IState<AppState> AppState { get; set; } = default!;
     [Inject] private IDispatcher Dispatcher { get; set; } = default!;
 
-    private Domain.Entities.Character? CurrentCharacter => AppState.Value.Characters?.CurrentCharacter;
-    private IEnumerable<Domain.Entities.Character>? Characters => AppState.Value.Characters?.AllCharacters;
+    private CharacterData? CurrentCharacter => AppState.Value.Characters.CurrentCharacter;
+    private IEnumerable<CharacterData> AllCharacters => AppState.Value.Characters.AllCharacters;
 
     private bool IsCurrentCharacter(Guid characterId)
     {
         return CurrentCharacter?.Id == characterId;
+    }
+
+    private int GetActiveActivitiesCount(Guid characterId)
+    {
+        return AppState.Value.Characters.ActiveActivities
+            .Where(kv => kv.Value.CharacterId == characterId)
+            .Count();
     }
 
     private void SelectCharacter(Guid characterId)
@@ -88,11 +95,7 @@
         animation: pulse 2s infinite;
     }
 
-    @keyframes pulse {
-        0% { opacity: 1; }
-        50% { opacity: 0.7; }
-        100% { opacity: 1; }
-    }
+    /* Keyframes are defined in a global CSS file or removed for now */
 
     .dropdown-item.active {
         background-color: var(--bs-primary);

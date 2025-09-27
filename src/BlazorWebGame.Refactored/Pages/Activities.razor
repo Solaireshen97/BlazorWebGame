@@ -97,9 +97,9 @@
                         <div class="mb-3">
                             <strong>活动槽位使用:</strong>
                             <div class="d-flex justify-content-between">
-                                <span>@(CurrentCharacter.Activities?.ActiveSlots?.Count ?? 0) / @(CurrentCharacter.Activities?.MaxSlots ?? 0)</span>
+                                <span>@(GetActiveActivityCount()) / 3</span>
                                 <span class="@GetSlotUsageClass()">
-                                    @(GetSlotUsagePercentage():F0)%
+                                    @(GetSlotUsagePercentage().ToString("F0"))%
                                 </span>
                             </div>
                             <div class="progress mt-1" style="height: 6px;">
@@ -134,12 +134,22 @@
     [Inject] private IState<AppState> AppState { get; set; } = default!;
     [Inject] private IDispatcher Dispatcher { get; set; } = default!;
 
-    private Domain.Entities.Character? CurrentCharacter => AppState.Value.Characters?.CurrentCharacter;
+    private CharacterData? CurrentCharacter => AppState.Value.Characters.CurrentCharacter;
+
+    private int GetActiveActivityCount()
+    {
+        if (CurrentCharacter == null) return 0;
+        return AppState.Value.Characters.ActiveActivities.Values
+            .Count(a => a.CharacterId == CurrentCharacter.Id);
+    }
 
     private bool CanStartActivity()
     {
-        if (CurrentCharacter?.Activities == null) return false;
-        return CurrentCharacter.Activities.ActiveSlots.Count < CurrentCharacter.Activities.MaxSlots;
+        if (CurrentCharacter == null) return false;
+        // For now, assume max 3 activities per character
+        var activeCount = AppState.Value.Characters.ActiveActivities.Values
+            .Count(a => a.CharacterId == CurrentCharacter.Id);
+        return activeCount < 3;
     }
 
     private void StartActivity(Domain.ValueObjects.ActivityType activityType)
@@ -161,10 +171,11 @@
 
     private double GetSlotUsagePercentage()
     {
-        if (CurrentCharacter?.Activities == null) return 0;
-        var active = CurrentCharacter.Activities.ActiveSlots.Count;
-        var max = CurrentCharacter.Activities.MaxSlots;
-        return max > 0 ? (double)active / max * 100 : 0;
+        if (CurrentCharacter == null) return 0;
+        var activeCount = AppState.Value.Characters.ActiveActivities.Values
+            .Count(a => a.CharacterId == CurrentCharacter.Id);
+        const int maxSlots = 3; // Hardcoded for now
+        return (double)activeCount / maxSlots * 100;
     }
 
     private string GetSlotUsageClass()
