@@ -2,12 +2,14 @@ using System.Collections.Immutable;
 using Microsoft.AspNetCore.SignalR.Client;
 using BlazorWebGame.Refactored.Domain.Entities;
 using BlazorWebGame.Refactored.Domain.ValueObjects;
+using Fluxor;
 
 namespace BlazorWebGame.Refactored.Presentation.State;
 
 /// <summary>
 /// 全局应用状态
 /// </summary>
+[FeatureState]
 public record AppState
 {
     public AuthState Auth { get; init; } = new();

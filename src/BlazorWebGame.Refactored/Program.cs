@@ -36,7 +36,7 @@ Log.Logger = new LoggerConfiguration()
 builder.Logging.AddSerilog(Log.Logger);
 
 // 配置HTTP客户端（带Polly重试策略）
-var serverBaseUrl = builder.Configuration.GetValue<string>("ServerBaseUrl") ?? "https://localhost:7000";
+var serverBaseUrl = builder.Configuration.GetValue<string>("ServerBaseUrl") ?? "http://localhost:5000";
 builder.Services.AddHttpClient("ServerApi", client =>
 {
     client.BaseAddress = new Uri(serverBaseUrl);
