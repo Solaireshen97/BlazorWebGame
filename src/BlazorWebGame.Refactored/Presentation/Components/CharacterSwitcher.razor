@@ -1,0 +1,101 @@
+@using BlazorWebGame.Refactored.Presentation.State
+@using Fluxor
+@inherits FluxorComponent
+
+<div class="character-switcher">
+    <div class="dropdown">
+        <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            @if (CurrentCharacter != null)
+            {
+                <i class="bi bi-person-circle me-2"></i>@CurrentCharacter.Name (等级 @CurrentCharacter.Level)
+            }
+            else
+            {
+                <i class="bi bi-person-plus me-2"></i>选择角色
+            }
+        </button>
+        <ul class="dropdown-menu">
+            @if (Characters?.Any() == true)
+            {
+                @foreach (var character in Characters)
+                {
+                    <li>
+                        <a class="dropdown-item @(IsCurrentCharacter(character.Id) ? "active" : "")" 
+                           href="#" @onclick="() => SelectCharacter(character.Id)" @onclick:preventDefault="true">
+                            <i class="bi bi-person-circle me-2"></i>
+                            <span class="character-name">@character.Name</span>
+                            <small class="text-muted ms-2">Lv.@character.Level</small>
+                            @if (character.Activities?.ActiveSlots?.Count > 0)
+                            {
+                                <span class="badge bg-primary ms-2">@character.Activities.ActiveSlots.Count</span>
+                            }
+                        </a>
+                    </li>
+                }
+                <li><hr class="dropdown-divider"></li>
+            }
+            <li>
+                <a class="dropdown-item" href="#" @onclick="CreateNewCharacter" @onclick:preventDefault="true">
+                    <i class="bi bi-person-plus me-2"></i>创建新角色
+                </a>
+            </li>
+        </ul>
+    </div>
+    
+    @if (CurrentCharacter != null && CurrentCharacter.Activities?.ActiveSlots?.Count > 0)
+    {
+        <div class="active-activities-indicator ms-3">
+            <span class="badge bg-success">@CurrentCharacter.Activities.ActiveSlots.Count 个活动进行中</span>
+        </div>
+    }
+</div>
+
+@code {
+    [Inject] private IState<AppState> AppState { get; set; } = default!;
+    [Inject] private IDispatcher Dispatcher { get; set; } = default!;
+
+    private Domain.Entities.Character? CurrentCharacter => AppState.Value.Characters?.CurrentCharacter;
+    private IEnumerable<Domain.Entities.Character>? Characters => AppState.Value.Characters?.AllCharacters;
+
+    private bool IsCurrentCharacter(Guid characterId)
+    {
+        return CurrentCharacter?.Id == characterId;
+    }
+
+    private void SelectCharacter(Guid characterId)
+    {
+        Dispatcher.Dispatch(new SelectCharacterAction(characterId));
+    }
+
+    private void CreateNewCharacter()
+    {
+        // Navigate to character creation or dispatch action
+        Dispatcher.Dispatch(new NavigateToCharacterCreationAction());
+    }
+}
+
+<style>
+    .character-switcher {
+        display: flex;
+        align-items: center;
+    }
+
+    .character-name {
+        font-weight: 500;
+    }
+
+    .active-activities-indicator {
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.7; }
+        100% { opacity: 1; }
+    }
+
+    .dropdown-item.active {
+        background-color: var(--bs-primary);
+        color: white;
+    }
+</style>

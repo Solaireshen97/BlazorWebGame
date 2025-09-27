@@ -31,6 +31,9 @@ public record SwitchCharacterAction(Guid CharacterId);
 public record SwitchCharacterSuccessAction(Guid CharacterId);
 public record SwitchCharacterFailureAction(string Error);
 
+public record SelectCharacterAction(Guid CharacterId);
+public record NavigateToCharacterCreationAction();
+
 public record CreateCharacterAction(string Name, CharacterClass Class);
 public record CreateCharacterSuccessAction(CharacterData Character);
 public record CreateCharacterFailureAction(string Error);
@@ -53,6 +56,9 @@ public record StartActivityFailureAction(string Error);
 public record CancelActivityAction(Guid ActivityId);
 public record CancelActivitySuccessAction(Guid ActivityId);
 public record CancelActivityFailureAction(string Error);
+
+public record PauseActivityAction(Guid ActivityId);
+public record ResumeActivityAction(Guid ActivityId);
 
 public record ActivityProgressUpdateAction(Guid ActivityId, double Progress);
 public record ActivityCompletedAction(Guid ActivityId, ActivityResult Result);

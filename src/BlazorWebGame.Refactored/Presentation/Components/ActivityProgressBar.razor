@@ -1,0 +1,151 @@
+@using BlazorWebGame.Refactored.Domain.Entities
+@using BlazorWebGame.Refactored.Domain.ValueObjects
+
+<div class="activity-progress-card @(IsCompleted ? "completed" : "") @(IsPaused ? "paused" : "")">
+    <div class="activity-header d-flex justify-content-between align-items-center">
+        <div class="activity-info">
+            <h6 class="activity-name mb-1">@ActivityName</h6>
+            <small class="text-muted">@ActivityDescription</small>
+        </div>
+        <div class="activity-controls">
+            @if (!IsCompleted && !IsPaused)
+            {
+                <button class="btn btn-sm btn-outline-warning" @onclick="OnPause" title="暂停">
+                    <i class="bi bi-pause-fill"></i>
+                </button>
+            }
+            @if (IsPaused)
+            {
+                <button class="btn btn-sm btn-outline-success" @onclick="OnResume" title="继续">
+                    <i class="bi bi-play-fill"></i>
+                </button>
+            }
+            <button class="btn btn-sm btn-outline-danger" @onclick="OnCancel" title="取消">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+    </div>
+    
+    <div class="progress mt-2" style="height: 8px;">
+        <div class="progress-bar @ProgressBarClass" 
+             role="progressbar" 
+             style="width: @(ProgressPercentage)%"
+             aria-valuenow="@ProgressPercentage" 
+             aria-valuemin="0" 
+             aria-valuemax="100">
+        </div>
+    </div>
+    
+    <div class="activity-details mt-2 d-flex justify-content-between">
+        <small class="text-muted">
+            @TimeDisplayText
+        </small>
+        <small class="text-muted">
+            @ProgressText
+        </small>
+    </div>
+    
+    @if (Rewards?.Any() == true)
+    {
+        <div class="expected-rewards mt-2">
+            <small class="text-muted">预期奖励:</small>
+            <div class="rewards-list">
+                @foreach (var reward in Rewards.Take(3))
+                {
+                    <span class="badge bg-light text-dark me-1">@reward</span>
+                }
+                @if (Rewards.Count() > 3)
+                {
+                    <span class="badge bg-secondary">+@(Rewards.Count() - 3)</span>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string ActivityName { get; set; } = "";
+    [Parameter] public string ActivityDescription { get; set; } = "";
+    [Parameter] public double ProgressPercentage { get; set; } = 0;
+    [Parameter] public TimeSpan RemainingTime { get; set; }
+    [Parameter] public TimeSpan TotalTime { get; set; }
+    [Parameter] public bool IsCompleted { get; set; } = false;
+    [Parameter] public bool IsPaused { get; set; } = false;
+    [Parameter] public IEnumerable<string>? Rewards { get; set; }
+    [Parameter] public EventCallback OnPause { get; set; }
+    [Parameter] public EventCallback OnResume { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private string ProgressBarClass => IsCompleted ? "bg-success" : IsPaused ? "bg-warning" : "bg-primary";
+    
+    private string TimeDisplayText
+    {
+        get
+        {
+            if (IsCompleted)
+                return "已完成";
+            if (IsPaused)
+                return "已暂停";
+            if (RemainingTime.TotalSeconds > 0)
+                return $"剩余: {FormatTime(RemainingTime)}";
+            return "计算中...";
+        }
+    }
+    
+    private string ProgressText => $"{ProgressPercentage:F1}%";
+    
+    private string FormatTime(TimeSpan time)
+    {
+        if (time.TotalDays >= 1)
+            return $"{time.Days}天 {time.Hours:D2}:{time.Minutes:D2}:{time.Seconds:D2}";
+        if (time.TotalHours >= 1)
+            return $"{time.Hours:D2}:{time.Minutes:D2}:{time.Seconds:D2}";
+        return $"{time.Minutes:D2}:{time.Seconds:D2}";
+    }
+}
+
+<style>
+    .activity-progress-card {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 8px;
+        background: white;
+        transition: all 0.3s ease;
+    }
+
+    .activity-progress-card:hover {
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .activity-progress-card.completed {
+        border-color: #28a745;
+        background-color: #f8fff9;
+    }
+
+    .activity-progress-card.paused {
+        border-color: #ffc107;
+        background-color: #fffef8;
+    }
+
+    .activity-name {
+        font-weight: 600;
+        color: #333;
+    }
+
+    .activity-controls .btn {
+        padding: 2px 6px;
+    }
+
+    .rewards-list {
+        margin-top: 4px;
+    }
+
+    .progress {
+        border-radius: 4px;
+    }
+
+    .progress-bar {
+        transition: width 1s ease-in-out;
+    }
+</style>

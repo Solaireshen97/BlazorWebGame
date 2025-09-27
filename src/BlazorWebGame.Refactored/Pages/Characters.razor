@@ -1,0 +1,322 @@
+@page "/characters"
+@using BlazorWebGame.Refactored.Presentation.State
+@using BlazorWebGame.Refactored.Presentation.Components
+@using Fluxor
+@inherits FluxorComponent
+
+<PageTitle>角色管理 - BlazorWebGame</PageTitle>
+
+<div class="characters-page">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="bi bi-people me-2"></i>角色管理</h2>
+                <button class="btn btn-success" @onclick="ShowCreateCharacterModal" 
+                        disabled="@(AllCharacters?.Count() >= 5)">
+                    <i class="bi bi-person-plus me-2"></i>创建新角色
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @if (AllCharacters?.Any() == true)
+    {
+        <div class="row">
+            @foreach (var character in AllCharacters)
+            {
+                <div class="col-lg-4 col-md-6 col-sm-12 mb-4">
+                    <div class="card character-card @(IsCurrentCharacter(character.Id) ? "current" : "")"
+                         @onclick="() => SelectCharacter(character.Id)">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">@character.Name</h5>
+                            @if (IsCurrentCharacter(character.Id))
+                            {
+                                <span class="badge bg-primary">当前</span>
+                            }
+                        </div>
+                        <div class="card-body">
+                            <div class="character-info">
+                                <div class="row mb-3">
+                                    <div class="col-6">
+                                        <strong>等级</strong><br>
+                                        <span class="h4 text-primary">@character.Level</span>
+                                    </div>
+                                    <div class="col-6">
+                                        <strong>职业</strong><br>
+                                        <span class="badge bg-secondary">@character.Class</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-12">
+                                        <strong>经验值</strong><br>
+                                        <div class="progress">
+                                            <div class="progress-bar" style="width: @(GetExpPercentage(character))%"></div>
+                                        </div>
+                                        <small class="text-muted">@character.Experience.ToString()</small>
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-6">
+                                        <strong>活动槽位</strong><br>
+                                        <span class="@(GetActivitySlotClass(character))">
+                                            @(character.Activities?.ActiveSlots?.Count ?? 0) / @(character.Activities?.MaxSlots ?? 0)
+                                        </span>
+                                    </div>
+                                    <div class="col-6">
+                                        <strong>状态</strong><br>
+                                        <span class="badge @(GetStatusBadgeClass(character))">
+                                            @GetCharacterStatus(character)
+                                        </span>
+                                    </div>
+                                </div>
+
+                                @if (character.Activities?.ActiveSlots?.Any() == true)
+                                {
+                                    <div class="active-activities">
+                                        <strong>进行中的活动:</strong>
+                                        @foreach (var activity in character.Activities.ActiveSlots.Values.Take(3))
+                                        {
+                                            <div class="activity-item mt-1">
+                                                <i class="bi bi-clock me-1"></i>
+                                                <small>@activity.Type.ToString()</small>
+                                                <span class="badge bg-info ms-1">@(GetActivityProgress(activity):F0)%</span>
+                                            </div>
+                                        }
+                                        @if (character.Activities.ActiveSlots.Count > 3)
+                                        {
+                                            <small class="text-muted">还有 @(character.Activities.ActiveSlots.Count - 3) 个活动...</small>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <div class="btn-group w-100" role="group">
+                                <button class="btn btn-outline-primary btn-sm" 
+                                        @onclick="() => SelectCharacter(character.Id)"
+                                        @onclick:stopPropagation="true">
+                                    选择
+                                </button>
+                                <button class="btn btn-outline-info btn-sm" 
+                                        @onclick="() => ViewCharacterDetails(character.Id)"
+                                        @onclick:stopPropagation="true">
+                                    详情
+                                </button>
+                                <button class="btn btn-outline-danger btn-sm" 
+                                        @onclick="() => DeleteCharacter(character.Id)"
+                                        @onclick:stopPropagation="true"
+                                        disabled="@IsCurrentCharacter(character.Id)">
+                                    删除
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="text-center py-5">
+            <i class="bi bi-person-x text-muted" style="font-size: 4rem;"></i>
+            <h4 class="text-muted mt-3">还没有创建角色</h4>
+            <p class="text-muted">创建你的第一个角色开始游戏吧！</p>
+            <button class="btn btn-primary btn-lg" @onclick="ShowCreateCharacterModal">
+                <i class="bi bi-person-plus me-2"></i>创建角色
+            </button>
+        </div>
+    }
+
+    @if (AllCharacters?.Count() >= 5)
+    {
+        <div class="alert alert-info mt-4">
+            <i class="bi bi-info-circle me-2"></i>
+            最多只能创建5个角色。如需创建新角色，请先删除现有角色。
+        </div>
+    }
+</div>
+
+<!-- Character Creation Modal (placeholder) -->
+@if (ShowCreateModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">创建新角色</h5>
+                    <button type="button" class="btn-close" @onclick="HideCreateCharacterModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">角色名称</label>
+                        <input type="text" class="form-control" @bind="NewCharacterName" placeholder="输入角色名称" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">职业</label>
+                        <select class="form-select" @bind="NewCharacterClass">
+                            <option value="@Domain.Entities.CharacterClass.Warrior">战士</option>
+                            <option value="@Domain.Entities.CharacterClass.Mage">法师</option>
+                            <option value="@Domain.Entities.CharacterClass.Archer">弓箭手</option>
+                            <option value="@Domain.Entities.CharacterClass.Rogue">盗贼</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="HideCreateCharacterModal">取消</button>
+                    <button type="button" class="btn btn-primary" @onclick="CreateCharacter" 
+                            disabled="@string.IsNullOrWhiteSpace(NewCharacterName)">
+                        创建角色
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Inject] private IState<AppState> AppState { get; set; } = default!;
+    [Inject] private IDispatcher Dispatcher { get; set; } = default!;
+
+    private Domain.Entities.Character? CurrentCharacter => AppState.Value.Characters?.CurrentCharacter;
+    private IEnumerable<Domain.Entities.Character>? AllCharacters => AppState.Value.Characters?.AllCharacters;
+
+    private bool ShowCreateModal = false;
+    private string NewCharacterName = "";
+    private Domain.Entities.CharacterClass NewCharacterClass = Domain.Entities.CharacterClass.Warrior;
+
+    private bool IsCurrentCharacter(Guid characterId)
+    {
+        return CurrentCharacter?.Id == characterId;
+    }
+
+    private void SelectCharacter(Guid characterId)
+    {
+        Dispatcher.Dispatch(new SelectCharacterAction(characterId));
+    }
+
+    private void ShowCreateCharacterModal()
+    {
+        ShowCreateModal = true;
+        NewCharacterName = "";
+        NewCharacterClass = Domain.Entities.CharacterClass.Warrior;
+    }
+
+    private void HideCreateCharacterModal()
+    {
+        ShowCreateModal = false;
+    }
+
+    private void CreateCharacter()
+    {
+        if (!string.IsNullOrWhiteSpace(NewCharacterName))
+        {
+            Dispatcher.Dispatch(new CreateCharacterAction(NewCharacterName.Trim(), NewCharacterClass));
+            HideCreateCharacterModal();
+        }
+    }
+
+    private void ViewCharacterDetails(Guid characterId)
+    {
+        // Navigate to character details page or show details modal
+        // For now, just select the character
+        SelectCharacter(characterId);
+    }
+
+    private void DeleteCharacter(Guid characterId)
+    {
+        if (IsCurrentCharacter(characterId))
+            return;
+
+        // In a real app, you'd show a confirmation dialog
+        if (confirm("确定要删除这个角色吗？此操作不可恢复。"))
+        {
+            Dispatcher.Dispatch(new DeleteCharacterAction(characterId));
+        }
+    }
+
+    private double GetExpPercentage(Domain.Entities.Character character)
+    {
+        // This would normally calculate based on level progression
+        // For now, return a mock value
+        return (character.Level % 10) * 10;
+    }
+
+    private string GetActivitySlotClass(Domain.Entities.Character character)
+    {
+        var active = character.Activities?.ActiveSlots?.Count ?? 0;
+        var max = character.Activities?.MaxSlots ?? 0;
+        
+        if (active == max) return "text-danger fw-bold";
+        if (active > max * 0.7) return "text-warning fw-bold";
+        return "text-success";
+    }
+
+    private string GetStatusBadgeClass(Domain.Entities.Character character)
+    {
+        var activeCount = character.Activities?.ActiveSlots?.Count ?? 0;
+        if (activeCount > 0) return "bg-success";
+        return "bg-secondary";
+    }
+
+    private string GetCharacterStatus(Domain.Entities.Character character)
+    {
+        var activeCount = character.Activities?.ActiveSlots?.Count ?? 0;
+        if (activeCount > 0) return "活跃";
+        return "空闲";
+    }
+
+    private double GetActivityProgress(Domain.Entities.Activity activity)
+    {
+        if (activity.Duration.TotalSeconds == 0) return 0;
+        var elapsed = DateTime.UtcNow - activity.StartTime;
+        return Math.Min(100, (elapsed.TotalSeconds / activity.Duration.TotalSeconds) * 100);
+    }
+
+    private bool confirm(string message)
+    {
+        // This would normally show a proper confirmation dialog
+        // For now, return true for demo purposes
+        return true;
+    }
+}
+
+<style>
+    .character-card {
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+    }
+
+    .character-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .character-card.current {
+        border-color: var(--bs-primary);
+        box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.25);
+    }
+
+    .activity-item {
+        font-size: 0.85rem;
+        padding: 2px 0;
+    }
+
+    .modal.show {
+        display: block !important;
+    }
+
+    .characters-page {
+        padding: 1rem 0;
+    }
+
+    .character-info {
+        font-size: 0.9rem;
+    }
+
+    .progress {
+        height: 6px;
+    }
+</style>

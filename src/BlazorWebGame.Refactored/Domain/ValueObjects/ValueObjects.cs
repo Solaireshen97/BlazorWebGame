@@ -360,7 +360,8 @@ public enum ActivityType
     Gathering = 2,
     Crafting = 3,
     Quest = 4,
-    Boss = 5
+    Boss = 5,
+    Training = 6
 }
 
 public enum ActivityState

@@ -16,6 +16,10 @@ public abstract class Activity : Entity
     public int Priority { get; protected set; }
     public ActivityMetadata Metadata { get; protected set; } = new(new ActivityParameters());
 
+    // Convenience properties for UI
+    public DateTime StartTime => StartTimeUtc;
+    public TimeSpan Duration => EndTimeUtc.HasValue ? EndTimeUtc.Value - StartTimeUtc : TimeSpan.FromHours(1); // Default 1 hour
+
     protected Activity() { } // For serialization
 
     protected Activity(Guid id, Guid characterId, ActivityType type, ActivityParameters parameters)
