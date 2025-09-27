@@ -5,11 +5,12 @@ namespace BlazorWebGame.Models
 {
     public class Enemy
     {
+        public string Id { get; set; } = Guid.NewGuid().ToString();
         public double EnemyAttackCooldown { get; set; }
-        public string Name { get; set; } = "Î´ÖªÉúÎï";
+        public string Name { get; set; } = "Î´Öªï¿½ï¿½ï¿½ï¿½";
         public string Description { get; set; } = "";
         
-        // ½«Ä¬ÈÏÖµÉèÎª0£¬ÒÔ±ã¼ÆËãÆ÷¸ù¾ÝµÈ¼¶¼ÆËãÊµ¼ÊÖµ
+        // ï¿½ï¿½Ä¬ï¿½ï¿½Öµï¿½ï¿½Îª0ï¿½ï¿½ï¿½Ô±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÝµÈ¼ï¿½ï¿½ï¿½ï¿½ï¿½Êµï¿½ï¿½Öµ
         public int Health { get; set; } = 0;
         public int MaxHealth { get; set; } = 0;
         public int AttackPower { get; set; } = 0;
@@ -19,29 +20,29 @@ namespace BlazorWebGame.Models
         public int MaxGold { get; set; } = 0;
         public int Level { get; set; } = 1;
 
-        // ÎïÆ·¼ÛÖµÊôÐÔ
+        // ï¿½ï¿½Æ·ï¿½ï¿½Öµï¿½ï¿½ï¿½ï¿½
         public double ItemValue { get; set; } = 0;
 
-        // ¹ÖÎïÀàÐÍÊôÐÔ
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         public MonsterType Type { get; set; } = MonsterType.Normal;
         public MonsterRace Race { get; set; } = MonsterRace.Humanoid;
         
-        // ÉÁ±ÜÏµÍ³Ïà¹Ø
+        // ï¿½ï¿½ï¿½ï¿½ÏµÍ³ï¿½ï¿½ï¿½
         public int AvoidanceRating { get; set; } = 0;
         public double DodgeChance { get; set; } = 0.0;
         
-        // ÃüÖÐÏµÍ³Ïà¹Ø
+        // ï¿½ï¿½ï¿½ï¿½ÏµÍ³ï¿½ï¿½ï¿½
         public int AccuracyRating { get; set; } = 0;
         
-        // ±©»÷ÏµÍ³
+        // ï¿½ï¿½ï¿½ï¿½ÏµÍ³
         public double CriticalChance { get; set; } = 0.05;
         public double CriticalMultiplier { get; set; } = 1.5;
         
-        // ÔªËØÏµÍ³
+        // Ôªï¿½ï¿½ÏµÍ³
         public ElementType ElementType { get; set; } = ElementType.None;
         public Dictionary<ElementType, double> ElementalResistances { get; set; } = new();
         
-        // ÏÖÓÐÊôÐÔ
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         public List<string> SkillIds { get; set; } = new();
         public Dictionary<string, int> SkillCooldowns { get; set; } = new();
         public Dictionary<string, double> LootTable { get; set; } = new();
@@ -53,18 +54,18 @@ namespace BlazorWebGame.Models
 
         public Enemy Regenerate()
         {
-            // ´´½¨Ëæ»úÊýÉú³ÉÆ÷ÓÃÓÚÌí¼ÓÒ»Ð©Ëæ»ú±ä»¯
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»Ð©ï¿½ï¿½ï¿½ï¿½ä»¯
             var random = new System.Random();
 
-            // Îª¾­ÑéºÍµôÂä±ÈÀýÌí¼ÓÒ»Ð©Ð¡µÄËæ»ú±ä»¯ (¡À5%)
+            // Îªï¿½ï¿½ï¿½ï¿½Íµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»Ð©Ð¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ä»¯ (ï¿½ï¿½5%)
             double expRatioVariance = 0.9 + random.NextDouble() * 0.1;
             double lootRatioVariance = 0.9 + random.NextDouble() * 0.1;
 
-            // ¹À¼ÆÔ­Ê¼µÄ¾­ÑéºÍµôÂä±ÈÀý (ÕâÊÇÒ»¸ö¼òµ¥µÄ¹À¼Æ)
+            // ï¿½ï¿½ï¿½ï¿½Ô­Ê¼ï¿½Ä¾ï¿½ï¿½ï¿½Íµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ (ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½òµ¥µÄ¹ï¿½ï¿½ï¿½)
             double baseExpRatio = this.XpReward > 0 ? 0.6 * expRatioVariance : 0.6;
             double baseLootRatio = this.ItemValue > 0 ? 0.2 * lootRatioVariance : 0.2;
             this.XpReward = 0;
-            // Ê¹ÓÃµ±Ç°¹ÖÎï×÷ÎªÄ£°å£¬Í¨¹ýMonsterAttributeCalculatorÖØÐÂÉú³É
+            // Ê¹ï¿½Ãµï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÎªÄ£ï¿½å£¬Í¨ï¿½ï¿½MonsterAttributeCalculatorï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
             return MonsterAttributeCalculator.GenerateMonster(
                 level: this.Level,
                 expRatio: baseExpRatio,
@@ -77,14 +78,14 @@ namespace BlazorWebGame.Models
         {
             if (regenerate)
             {
-                // Ê¹ÓÃ Regenerate Éú³ÉÓÐ±ä»¯µÄ¹ÖÎïÊµÀý
+                // Ê¹ï¿½ï¿½ Regenerate ï¿½ï¿½ï¿½ï¿½ï¿½Ð±ä»¯ï¿½Ä¹ï¿½ï¿½ï¿½Êµï¿½ï¿½
                 return this.Regenerate();
             }
             else
             {
-                // Ô­ÓÐµÄÍêÈ«¸´ÖÆÂß¼­
+                // Ô­ï¿½Ðµï¿½ï¿½ï¿½È«ï¿½ï¿½ï¿½ï¿½ï¿½ß¼ï¿½
                 var clone = (Enemy)this.MemberwiseClone();
-                // ÎªÒýÓÃÀàÐÍ´´½¨ÐÂµÄÊµÀý
+                // Îªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í´ï¿½ï¿½ï¿½ï¿½Âµï¿½Êµï¿½ï¿½
                 clone.SkillIds = new List<string>(this.SkillIds);
                 clone.SkillCooldowns = new Dictionary<string, int>(this.SkillCooldowns);
                 clone.LootTable = new Dictionary<string, double>(this.LootTable);
