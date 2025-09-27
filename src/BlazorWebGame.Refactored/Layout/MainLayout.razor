@@ -1,12 +1,16 @@
-﻿@inherits LayoutComponentBase
+﻿@using BlazorWebGame.Refactored.Presentation.Components
+@inherits LayoutComponentBase
 <div class="page">
     <div class="sidebar">
         <NavMenu />
     </div>
 
     <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+        <div class="top-row px-4 d-flex justify-content-between align-items-center">
+            <CharacterSwitcher />
+            <div class="user-info">
+                <span class="server-status text-muted">连接状态: 离线</span>
+            </div>
         </div>
 
         <article class="content px-4">

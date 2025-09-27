@@ -1,0 +1,204 @@
+@page "/activities"
+@using BlazorWebGame.Refactored.Presentation.State
+@using Fluxor
+@inherits FluxorComponent
+
+<PageTitle>活动中心 - BlazorWebGame</PageTitle>
+
+<div class="activities-page">
+    <div class="row">
+        <div class="col-12">
+            <h2><i class="bi bi-activity me-2"></i>活动中心</h2>
+            <p class="text-muted">管理角色的各种活动，支持多角色并行操作</p>
+        </div>
+    </div>
+
+    @if (CurrentCharacter != null)
+    {
+        <div class="row mt-4">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">可用活动</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <div class="activity-type-card">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="bi bi-tree text-success me-2" style="font-size: 1.5rem;"></i>
+                                        <h6 class="mb-0">采集活动</h6>
+                                    </div>
+                                    <p class="text-muted small">收集各种资源材料</p>
+                                    <button class="btn btn-outline-success btn-sm w-100" 
+                                            @onclick="() => StartActivity(Domain.ValueObjects.ActivityType.Gathering)"
+                                            disabled="@(!CanStartActivity())">
+                                        开始采集
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="activity-type-card">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="bi bi-hammer text-warning me-2" style="font-size: 1.5rem;"></i>
+                                        <h6 class="mb-0">制作活动</h6>
+                                    </div>
+                                    <p class="text-muted small">制作装备和道具</p>
+                                    <button class="btn btn-outline-warning btn-sm w-100" 
+                                            @onclick="() => StartActivity(Domain.ValueObjects.ActivityType.Crafting)"
+                                            disabled="@(!CanStartActivity())">
+                                        开始制作
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="activity-type-card">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="bi bi-lightning text-danger me-2" style="font-size: 1.5rem;"></i>
+                                        <h6 class="mb-0">战斗活动</h6>
+                                    </div>
+                                    <p class="text-muted small">与怪物战斗获得经验</p>
+                                    <button class="btn btn-outline-danger btn-sm w-100" 
+                                            @onclick="() => StartActivity(Domain.ValueObjects.ActivityType.Battle)"
+                                            disabled="@(!CanStartActivity())">
+                                        开始战斗
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="activity-type-card">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="bi bi-mortarboard text-info me-2" style="font-size: 1.5rem;"></i>
+                                        <h6 class="mb-0">训练活动</h6>
+                                    </div>
+                                    <p class="text-muted small">提升角色属性</p>
+                                    <button class="btn btn-outline-info btn-sm w-100" 
+                                            @onclick="() => StartActivity(Domain.ValueObjects.ActivityType.Training)"
+                                            disabled="@(!CanStartActivity())">
+                                        开始训练
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">角色状态</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <strong>@CurrentCharacter.Name</strong>
+                            <br><small class="text-muted">等级 @CurrentCharacter.Level</small>
+                        </div>
+                        <div class="mb-3">
+                            <strong>活动槽位使用:</strong>
+                            <div class="d-flex justify-content-between">
+                                <span>@(CurrentCharacter.Activities?.ActiveSlots?.Count ?? 0) / @(CurrentCharacter.Activities?.MaxSlots ?? 0)</span>
+                                <span class="@GetSlotUsageClass()">
+                                    @(GetSlotUsagePercentage():F0)%
+                                </span>
+                            </div>
+                            <div class="progress mt-1" style="height: 6px;">
+                                <div class="progress-bar @GetSlotUsageProgressClass()" 
+                                     style="width: @(GetSlotUsagePercentage())%"></div>
+                            </div>
+                        </div>
+                        
+                        @if (!CanStartActivity())
+                        {
+                            <div class="alert alert-warning py-2">
+                                <small>活动槽位已满，无法开始新活动</small>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="text-center py-5">
+            <i class="bi bi-person-x text-muted" style="font-size: 3rem;"></i>
+            <h4 class="text-muted mt-3">请先选择角色</h4>
+            <p class="text-muted">需要选择一个角色才能管理活动</p>
+            <a href="/characters" class="btn btn-primary">选择角色</a>
+        </div>
+    }
+</div>
+
+@code {
+    [Inject] private IState<AppState> AppState { get; set; } = default!;
+    [Inject] private IDispatcher Dispatcher { get; set; } = default!;
+
+    private Domain.Entities.Character? CurrentCharacter => AppState.Value.Characters?.CurrentCharacter;
+
+    private bool CanStartActivity()
+    {
+        if (CurrentCharacter?.Activities == null) return false;
+        return CurrentCharacter.Activities.ActiveSlots.Count < CurrentCharacter.Activities.MaxSlots;
+    }
+
+    private void StartActivity(Domain.ValueObjects.ActivityType activityType)
+    {
+        if (CurrentCharacter == null || !CanStartActivity()) return;
+
+        var request = new ActivityRequest
+        {
+            Type = activityType,
+            Parameters = new Dictionary<string, object>
+            {
+                ["duration"] = TimeSpan.FromMinutes(30), // Default 30 minutes
+                ["autoComplete"] = true
+            }
+        };
+
+        Dispatcher.Dispatch(new StartActivityAction(CurrentCharacter.Id, request));
+    }
+
+    private double GetSlotUsagePercentage()
+    {
+        if (CurrentCharacter?.Activities == null) return 0;
+        var active = CurrentCharacter.Activities.ActiveSlots.Count;
+        var max = CurrentCharacter.Activities.MaxSlots;
+        return max > 0 ? (double)active / max * 100 : 0;
+    }
+
+    private string GetSlotUsageClass()
+    {
+        var percentage = GetSlotUsagePercentage();
+        if (percentage >= 100) return "text-danger fw-bold";
+        if (percentage >= 80) return "text-warning fw-bold";
+        return "text-success";
+    }
+
+    private string GetSlotUsageProgressClass()
+    {
+        var percentage = GetSlotUsagePercentage();
+        if (percentage >= 100) return "bg-danger";
+        if (percentage >= 80) return "bg-warning";
+        return "bg-success";
+    }
+}
+
+<style>
+    .activities-page {
+        padding: 1rem 0;
+    }
+
+    .activity-type-card {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 1rem;
+        height: 100%;
+        transition: all 0.3s ease;
+    }
+
+    .activity-type-card:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transform: translateY(-1px);
+    }
+</style>
