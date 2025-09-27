@@ -116,13 +116,13 @@ if (securityConfig?.RateLimit != null)
     rateLimitOptions.IpRateLimit = new BlazorWebGame.Server.Middleware.RateLimitRule
     {
         MaxRequests = securityConfig.RateLimit.IpRateLimit.MaxRequests,
-        TimeWindow = securityConfig.RateLimit.IpRateLimit.TimeWindow
+        TimeWindow = TimeSpan.FromMinutes(securityConfig.RateLimit.IpRateLimit.TimeWindowMinutes)
     };
 
     rateLimitOptions.UserRateLimit = new BlazorWebGame.Server.Middleware.RateLimitRule
     {
         MaxRequests = securityConfig.RateLimit.UserRateLimit.MaxRequests,
-        TimeWindow = securityConfig.RateLimit.UserRateLimit.TimeWindow
+        TimeWindow = TimeSpan.FromMinutes(securityConfig.RateLimit.UserRateLimit.TimeWindowMinutes)
     };
 }
 else
@@ -205,6 +205,9 @@ builder.Services.AddSingleton<ServerServiceLocator>();
 // 注册数据存储服务
 builder.Services.AddSingleton<BlazorWebGame.Shared.Interfaces.IDataStorageService, DataStorageService>();
 builder.Services.AddSingleton<DataStorageIntegrationService>();
+
+// 添加内存缓存支持
+builder.Services.AddMemoryCache();
 
 // 注册离线结算服务
 builder.Services.AddSingleton<OfflineSettlementService>();
