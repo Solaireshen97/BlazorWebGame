@@ -23,7 +23,7 @@ public class GameHubClient : ISignalRService, IAsyncDisposable
     public GameHubClient(ILogger<GameHubClient> logger, IConfiguration configuration)
     {
         _logger = logger;
-        _hubUrl = configuration.GetValue<string>("SignalR:HubUrl") ?? "http://localhost:5000/gamehub";
+        _hubUrl = configuration.GetValue<string>("SignalR:HubUrl") ?? "http://localhost:5239/gamehub";
     }
 
     public async Task StartAsync()

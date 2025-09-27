@@ -92,9 +92,14 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        var securityOptions = builder.Configuration.GetSection(SecurityOptions.SectionName).Get<SecurityOptions>();
-        var allowedOrigins = securityOptions?.Cors?.AllowedOrigins ?? 
-            new[] { "https://localhost:7051", "http://localhost:5190" };
+        // 在开发环境中添加更多端口支持
+        var allowedOrigins = new[] 
+        { 
+            "https://localhost:7051", 
+            "http://localhost:5190", 
+            "http://localhost:5202",  // BlazorWebGame.Refactored
+            "https://localhost:7202"  // BlazorWebGame.Refactored HTTPS
+        };
             
         policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
