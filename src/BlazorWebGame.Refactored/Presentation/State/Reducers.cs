@@ -518,6 +518,10 @@ public static class CacheReducers
 
 public static class GlobalDataReducers
 {
+    [ReducerMethod(typeof(InitializeApplicationAction))]
+    public static AppState ReduceInitializeApplication(AppState state) =>
+        state; // No state change needed for initialization
+        
     [ReducerMethod(typeof(ClearAllDataAction))]
     public static AppState ReduceClearAllData(AppState state) =>
         new AppState(); // 重置为初始状态
