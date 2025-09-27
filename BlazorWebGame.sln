@@ -30,6 +30,8 @@ Project("{E24C65DC-7377-472B-9ABA-BC803B73C61A}") = "react-client", "react-clien
 		SlnRelativePath = "react-client\"
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlazorWebGame.Refactored", "src\BlazorWebGame.Refactored\BlazorWebGame.Refactored.csproj", "{86D95A19-9C49-5629-E270-1D365A212CDD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -70,6 +72,14 @@ Global
 		{CC4AD229-F09F-7348-56A8-DA75B24E5055}.Release|Any CPU.Build.0 = Debug|Any CPU
 		{CC4AD229-F09F-7348-56A8-DA75B24E5055}.Release|x64.ActiveCfg = Debug|Any CPU
 		{CC4AD229-F09F-7348-56A8-DA75B24E5055}.Release|x64.Build.0 = Debug|Any CPU
+		{86D95A19-9C49-5629-E270-1D365A212CDD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{86D95A19-9C49-5629-E270-1D365A212CDD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{86D95A19-9C49-5629-E270-1D365A212CDD}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{86D95A19-9C49-5629-E270-1D365A212CDD}.Debug|x64.Build.0 = Debug|Any CPU
+		{86D95A19-9C49-5629-E270-1D365A212CDD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{86D95A19-9C49-5629-E270-1D365A212CDD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{86D95A19-9C49-5629-E270-1D365A212CDD}.Release|x64.ActiveCfg = Release|Any CPU
+		{86D95A19-9C49-5629-E270-1D365A212CDD}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
