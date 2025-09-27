@@ -1,0 +1,84 @@
+@page "/test"
+@using BlazorIdleGame.Client.Models
+@using BlazorIdleGame.Client.Store.GameStore
+@using Fluxor
+@using Fluxor.Blazor.Web.Components
+@inherits FluxorComponent
+
+@inject IState<BlazorIdleGame.Client.Store.GameStore.GameState> GameState
+@inject IDispatcher Dispatcher
+
+<PageTitle>BlazorIdleGame - Test</PageTitle>
+
+<div class="test-page">
+    <h1>BlazorIdleGame - Test Page</h1>
+    
+    <div class="status-info">
+        <p><strong>Loading:</strong> @GameState.Value.IsLoading</p>
+        <p><strong>Connected:</strong> @GameState.Value.IsConnected</p>
+        <p><strong>Error:</strong> @(GameState.Value.ErrorMessage ?? "None")</p>
+    </div>
+    
+    <div class="actions">
+        <button class="btn btn-primary" @onclick="InitializeGame">
+            Initialize Game
+        </button>
+    </div>
+    
+    @if (GameState.Value.CurrentGameState != null)
+    {
+        <div class="game-info">
+            <h3>Game State Loaded</h3>
+            <p><strong>Player Name:</strong> @GameState.Value.CurrentGameState.Player.Name</p>
+            <p><strong>Player Level:</strong> @GameState.Value.CurrentGameState.Player.Level</p>
+            <p><strong>Gold:</strong> @GameState.Value.CurrentGameState.Resources.Gold</p>
+            <p><strong>Activities:</strong> @GameState.Value.CurrentGameState.Activities.Count</p>
+        </div>
+    }
+</div>
+
+@code {
+    private void InitializeGame()
+    {
+        Dispatcher.Dispatch(new LoadGameStateAction());
+    }
+}
+
+<style>
+    .test-page {
+        padding: 20px;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    
+    .status-info {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin: 20px 0;
+    }
+    
+    .actions {
+        margin: 20px 0;
+    }
+    
+    .game-info {
+        background: #d4edda;
+        padding: 15px;
+        border-radius: 8px;
+        margin: 20px 0;
+    }
+    
+    .btn {
+        padding: 10px 20px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    
+    .btn:hover {
+        background: #0056b3;
+    }
+</style>
