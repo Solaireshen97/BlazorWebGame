@@ -563,9 +563,13 @@ public class GameStateService : IAsyncDisposable
     public void SetQuickSlotItem(ConsumableCategory category, int slotId, string itemId) => _inventoryService.SetQuickSlotItem(ActiveCharacter, category, slotId, itemId);
     public void ClearQuickSlotItem(ConsumableCategory category, int slotId, FoodType foodType = FoodType.None) => _inventoryService.ClearQuickSlotItem(ActiveCharacter, category, slotId, foodType);
     public void ToggleAutoSellItem(string itemId) => _inventoryService.ToggleAutoSellItem(ActiveCharacter, itemId);
-    public void SetBattleProfession(BattleProfession profession) =>_combatService.SetBattleProfession(ActiveCharacter, profession);
-    public void EquipSkill(string skillId) =>_combatService.EquipSkill(ActiveCharacter, skillId, MaxEquippedSkills);
-    public void UnequipSkill(string skillId) =>_combatService.UnequipSkill(ActiveCharacter, skillId);
+    // 战斗相关方法已移除 - 请使用服务器API
+    [Obsolete("本地战斗系统已移除，请使用服务器API")]
+    public void SetBattleProfession(BattleProfession profession) { /* 本地战斗系统已移除 */ }
+    [Obsolete("本地战斗系统已移除，请使用服务器API")]
+    public void EquipSkill(string skillId) { /* 本地战斗系统已移除 */ }
+    [Obsolete("本地战斗系统已移除，请使用服务器API")]
+    public void UnequipSkill(string skillId) { /* 本地战斗系统已移除 */ }
     // 修改为委托到QuestService
     public void TryCompleteQuest(string questId) =>_questService.TryCompleteQuest(ActiveCharacter, questId);
 
@@ -573,30 +577,10 @@ public class GameStateService : IAsyncDisposable
     {
         if (character == null) return;
 
-        // 检查是否在新战斗系统中
-        var battleContext = _combatService.GetBattleContextForPlayer(character.Id);
-        if (battleContext != null)
-        {
-            // 停止新战斗系统的战斗
-            _combatService.StopBattle(battleContext);
-            NotifyStateChanged();
-            return;
-        }
-
-        // 新增：检查是否在战斗刷新状态
-        if (_combatService.IsPlayerInBattleRefresh(character.Id))
-        {
-            // 取消玩家的战斗刷新状态
-            _combatService.CancelPlayerBattleRefresh(character.Id);
-
-            // 确保角色状态为空闲
-            character.CurrentAction = PlayerActionState.Idle;
-            character.CurrentEnemy = null;
-            character.AttackCooldown = 0;
-
-            NotifyStateChanged();
-            return;
-        }
+        // 本地战斗系统已移除，简化处理
+        // 确保角色状态为空闲
+        character.CurrentAction = PlayerActionState.Idle;
+        character.AttackCooldown = 0;
 
         // 获取当前状态的字符串表示
         var actionState = character.CurrentAction.ToString();
