@@ -349,10 +349,11 @@ public record MaterialRequirement(string MaterialId, int Quantity);
 public record Result
 {
     public bool IsSuccess { get; init; }
-    public string ErrorMessage { get; init; } = string.Empty;
+    public string Error { get; init; } = string.Empty;
+    public string ErrorMessage => Error; // Alias for compatibility
 
     public static Result Success() => new() { IsSuccess = true };
-    public static Result Failure(string error) => new() { IsSuccess = false, ErrorMessage = error };
+    public static Result Failure(string error) => new() { IsSuccess = false, Error = error };
 }
 
 /// <summary>

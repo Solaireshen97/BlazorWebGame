@@ -261,7 +261,18 @@ public class HttpClientService : IHttpClientService
     public async Task<CharacterDto?> CreateCharacterAsync(CreateCharacterRequest request)
     {
         await Task.Delay(100);
-        return new CharacterDto { Id = Guid.NewGuid(), Name = request.Name, CharacterClass = request.CharacterClass };
+        // Parse the string to enum
+        var characterClass = Enum.TryParse<Domain.Entities.CharacterClass>(request.CharacterClass, out var parsed) 
+            ? parsed 
+            : Domain.Entities.CharacterClass.Warrior;
+        
+        return new CharacterDto 
+        { 
+            Id = Guid.NewGuid(), 
+            Name = request.Name, 
+            CharacterClass = characterClass,
+            UserId = Guid.TryParse(request.UserId, out var userId) ? userId : Guid.NewGuid()
+        };
     }
 
     public async Task<bool> DeleteCharacterAsync(Guid characterId)

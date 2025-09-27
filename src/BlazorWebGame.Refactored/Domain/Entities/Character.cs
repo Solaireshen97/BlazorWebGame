@@ -14,9 +14,10 @@ public class Character : AggregateRoot
     public int Level { get; private set; }
     public BigNumber Experience { get; private set; } = BigNumber.Zero;
     public CharacterClass Class { get; private set; }
-    public CharacterStats Stats { get; private set; } = new();
+    public CharacterClass CharacterClass => Class; // Alias for compatibility
+    public CharacterStats Stats { get; internal set; } = new();
     public ActivitySlots Activities { get; private set; } = new();
-    public ResourcePool Resources { get; private set; } = new();
+    public ResourcePool Resources { get; internal set; } = new();
     public CooldownTracker Cooldowns { get; private set; } = new();
     
     public DateTime LastLogin { get; private set; }
@@ -38,6 +39,14 @@ public class Character : AggregateRoot
         IsActive = true;
         
         InitializeStartingStats();
+    }
+
+    /// <summary>
+    /// 工厂方法创建新角色
+    /// </summary>
+    public static Character Create(string name, CharacterClass characterClass, Guid userId)
+    {
+        return new Character(Guid.NewGuid(), name, characterClass, userId);
     }
 
     public Result StartActivity(ActivityType type, ActivityParameters parameters)

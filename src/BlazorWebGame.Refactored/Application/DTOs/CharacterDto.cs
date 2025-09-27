@@ -1,20 +1,24 @@
 using BlazorWebGame.Refactored.Domain.ValueObjects;
+using BlazorWebGame.Refactored.Domain.Entities;
 
 namespace BlazorWebGame.Refactored.Application.DTOs;
 
 public class CharacterDto
 {
     public Guid Id { get; set; }
+    public Guid UserId { get; set; }
     public string Name { get; set; } = string.Empty;
-    public string CharacterClass { get; set; } = string.Empty;
+    public CharacterClass CharacterClass { get; set; }
     public int Level { get; set; }
-    public string Experience { get; set; } = "0"; // BigNumber as string
+    public long Experience { get; set; } // BigNumber as long for simplicity
     public CharacterStatsDto Stats { get; set; } = new();
+    public long Gold { get; set; } // BigNumber as long
+    public bool IsActive { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime LastLogin { get; set; }
     public ActivitySlotsDto Activities { get; set; } = new();
     public ResourcePoolDto Resources { get; set; } = new();
     public List<CooldownDto> Cooldowns { get; set; } = new();
-    public DateTime CreatedAt { get; set; }
-    public DateTime LastActiveAt { get; set; }
 }
 
 public class CharacterStatsDto
@@ -30,8 +34,12 @@ public class CharacterStatsDto
     public int Stamina { get; set; }
     
     public int AttackPower { get; set; }
+    public int MagicPower { get; set; }
+    public int MaxHealth { get; set; }
+    public int MaxMana { get; set; }
+    public double CriticalChance { get; set; }
+    public double AttackSpeed { get; set; }
     public int Defense { get; set; }
-    public int CriticalChance { get; set; }
     public int CriticalDamage { get; set; }
 }
 

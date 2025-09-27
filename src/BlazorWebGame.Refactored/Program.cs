@@ -8,11 +8,16 @@ using BlazorWebGame.Refactored.Application.Services;
 using BlazorWebGame.Refactored.Infrastructure.Persistence;
 using BlazorWebGame.Refactored.Application.Interfaces;
 using BlazorWebGame.Refactored.Infrastructure.Services;
+using BlazorWebGame.Refactored.Domain.Services;
+using BlazorWebGame.Refactored.Application.Commands;
+using BlazorWebGame.Refactored.Application.Behaviors;
 using Blazored.LocalStorage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Serilog;
+using FluentValidation;
+using MediatR;
 using BlazorWebGame.Refactored.Domain.Entities;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -37,9 +42,23 @@ builder.Services.AddMemoryCache();
 builder.Services.AddHttpClient();
 builder.Services.AddBlazoredLocalStorage();
 
+// ========== MediatR 和 CQRS ==========
+builder.Services.AddMediatR(cfg => 
+{
+    cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
+    cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+    cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+});
+
+// ========== FluentValidation ==========
+builder.Services.AddValidatorsFromAssemblyContaining<CreateCharacterCommandValidator>();
+
 // ========== 存储层 ==========
 builder.Services.AddScoped<ICharacterRepository, CharacterRepository>();
 builder.Services.AddScoped<IDataPersistenceService, IndexedDbRepository>();
+
+// ========== 领域服务 ==========
+builder.Services.AddScoped<CharacterDomainService>();
 
 // ========== 游戏系统 ==========
 builder.Services.AddScoped<IGameSystem, ActivitySystem>();
@@ -49,6 +68,14 @@ builder.Services.AddScoped<IGameStateManager, GameStateManager>();
 builder.Services.AddScoped<GameEngine>();
 
 var app = builder.Build();
+
+// 初始化游戏
+await InitializeGameAsync(app.Services);
+
+Log.Information("BlazorWebGame.Refactored application started with Optimized Architecture");
+Log.Information("Architecture: Clean Architecture + CQRS + Domain Services + Validation");
+
+await app.RunAsync();
 
 // 初始化游戏
 await InitializeGameAsync(app.Services);

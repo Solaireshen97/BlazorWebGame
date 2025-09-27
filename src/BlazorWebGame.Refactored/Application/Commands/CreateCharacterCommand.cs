@@ -1,6 +1,9 @@
 using MediatR;
+using FluentValidation;
 using BlazorWebGame.Refactored.Domain.Entities;
-using BlazorWebGame.Refactored.Application.Interfaces;
+using BlazorWebGame.Refactored.Domain.Services;
+using BlazorWebGame.Refactored.Domain.ValueObjects;
+using BlazorWebGame.Refactored.Application.DTOs;
 
 namespace BlazorWebGame.Refactored.Application.Commands;
 
@@ -8,34 +11,115 @@ public record CreateCharacterCommand(
     string Name,
     CharacterClass CharacterClass,
     Guid UserId
-) : IRequest<Character>;
+) : IRequest<Result<CharacterDto>>;
 
-public class CreateCharacterCommandHandler : IRequestHandler<CreateCharacterCommand, Character>
+public class CreateCharacterCommandValidator : AbstractValidator<CreateCharacterCommand>
 {
-    private readonly ICharacterService _characterService;
-
-    public CreateCharacterCommandHandler(ICharacterService characterService)
+    public CreateCharacterCommandValidator()
     {
-        _characterService = characterService;
+        RuleFor(x => x.Name)
+            .NotEmpty().WithMessage("Character name is required")
+            .Length(3, 20).WithMessage("Character name must be between 3 and 20 characters")
+            .Matches(@"^[a-zA-Z0-9_\-\u4e00-\u9fa5]+$")
+            .WithMessage("Character name contains invalid characters");
+        
+        RuleFor(x => x.CharacterClass)
+            .IsInEnum().WithMessage("Invalid character class");
+        
+        RuleFor(x => x.UserId)
+            .NotEmpty().WithMessage("User ID is required");
     }
+}
 
-    public async Task<Character> Handle(CreateCharacterCommand request, CancellationToken cancellationToken)
+public class CreateCharacterCommandHandler : IRequestHandler<CreateCharacterCommand, Result<CharacterDto>>
+{
+    private readonly CharacterDomainService _domainService;
+    private readonly IValidator<CreateCharacterCommand> _validator;
+    private readonly ILogger<CreateCharacterCommandHandler> _logger;
+    
+    public CreateCharacterCommandHandler(
+        CharacterDomainService domainService,
+        IValidator<CreateCharacterCommand> validator,
+        ILogger<CreateCharacterCommandHandler> logger)
     {
-        // 验证字符名是否可用
-        var existingCharacter = await _characterService.GetCharacterByNameAsync(request.Name);
-        if (existingCharacter != null)
+        _domainService = domainService;
+        _validator = validator;
+        _logger = logger;
+    }
+    
+    public async Task<Result<CharacterDto>> Handle(
+        CreateCharacterCommand request, 
+        CancellationToken cancellationToken)
+    {
+        try
         {
-            throw new InvalidOperationException($"Character name '{request.Name}' is already taken.");
+            // 验证命令
+            var validationResult = await _validator.ValidateAsync(request, cancellationToken);
+            if (!validationResult.IsValid)
+            {
+                var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
+                return Result<CharacterDto>.Failure(errors);
+            }
+            
+            // 创建值对象
+            var nameResult = CharacterName.Create(request.Name);
+            if (!nameResult.IsSuccess)
+                return Result<CharacterDto>.Failure(nameResult.Error);
+            
+            var userId = UserId.Create(request.UserId);
+            
+            // 调用领域服务
+            var result = await _domainService.CreateCharacterAsync(
+                nameResult.Value!,
+                request.CharacterClass,
+                userId,
+                cancellationToken);
+            
+            if (!result.IsSuccess)
+                return Result<CharacterDto>.Failure(result.Error);
+            
+            // 映射到DTO
+            var dto = MapToDto(result.Value!);
+            
+            _logger.LogInformation("Character {CharacterName} created successfully for user {UserId}", 
+                request.Name, request.UserId);
+            
+            return Result<CharacterDto>.Success(dto);
         }
-
-        // 创建新角色
-        var character = new Character(
-            Guid.NewGuid(),
-            request.Name,
-            request.CharacterClass,
-            request.UserId
-        );
-
-        return await _characterService.CreateCharacterAsync(character);
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating character");
+            return Result<CharacterDto>.Failure("An error occurred while creating the character");
+        }
+    }
+    
+    private CharacterDto MapToDto(Character character)
+    {
+        return new CharacterDto
+        {
+            Id = character.Id,
+            UserId = character.UserId,
+            Name = character.Name,
+            Level = character.Level,
+            Experience = character.Experience.ToLong(),
+            CharacterClass = character.CharacterClass,
+            Stats = new CharacterStatsDto
+            {
+                Strength = character.Stats.Strength,
+                Intelligence = character.Stats.Intelligence,
+                Agility = character.Stats.Agility,
+                Vitality = character.Stats.Vitality,
+                AttackPower = character.Stats.AttackPower,
+                MagicPower = character.Stats.MagicPower,
+                MaxHealth = character.Stats.MaxHealth,
+                MaxMana = character.Stats.MaxMana,
+                CriticalChance = character.Stats.CriticalChance,
+                AttackSpeed = character.Stats.AttackSpeed
+            },
+            Gold = character.Resources.Gold.ToLong(),
+            IsActive = character.IsActive,
+            CreatedAt = character.CreatedAt,
+            LastLogin = character.LastLogin
+        };
     }
 }

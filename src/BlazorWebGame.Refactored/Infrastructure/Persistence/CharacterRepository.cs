@@ -86,4 +86,51 @@ public class CharacterRepository : ICharacterRepository
             throw;
         }
     }
+
+    public async Task<Character?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await GetByIdAsync(id.ToString(), cancellationToken);
+    }
+
+    public async Task<bool> ExistsByNameAsync(string name, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var characters = await GetAllAsync(cancellationToken);
+            return characters.Any(c => string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking if character name {Name} exists", name);
+            return false;
+        }
+    }
+
+    public async Task<int> CountByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var characters = await GetAllAsync(cancellationToken);
+            return characters.Count(c => c.UserId == userId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error counting characters for user {UserId}", userId);
+            return 0;
+        }
+    }
+
+    public async Task<List<Character>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var characters = await GetAllAsync(cancellationToken);
+            return characters.Where(c => c.UserId == userId).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting characters for user {UserId}", userId);
+            return new List<Character>();
+        }
+    }
 }
