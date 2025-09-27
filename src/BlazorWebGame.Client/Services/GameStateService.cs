@@ -125,35 +125,58 @@ public class GameStateService : IAsyncDisposable
     #region 事件管理
 
     /// <summary>
-    /// 订阅事件
+    /// 订阅事件 - 使用原始事件系统签名
     /// </summary>
-    public void Subscribe<T>(GameEventType eventType, Action<T> handler)
+    public void Subscribe(GameEventType eventType, Action<GameEventArgs> handler)
     {
         _eventManager.Subscribe(eventType, handler);
     }
 
     /// <summary>
-    /// 取消订阅事件
+    /// 取消订阅事件 - 使用原始事件系统签名
     /// </summary>
-    public void Unsubscribe<T>(GameEventType eventType, Action<T> handler)
+    public void Unsubscribe(GameEventType eventType, Action<GameEventArgs> handler)
     {
         _eventManager.Unsubscribe(eventType, handler);
     }
 
     /// <summary>
-    /// 触发事件
+    /// 订阅事件 - 向后兼容方法
     /// </summary>
-    public void RaiseEvent<T>(GameEventType eventType, T eventData = default)
+    public void SubscribeToEvent(GameEventType eventType, Action<GameEventArgs> handler)
     {
-        _eventManager.RaiseEvent(eventType, eventData);
+        Subscribe(eventType, handler);
     }
 
     /// <summary>
-    /// 触发无参数事件
+    /// 取消订阅事件 - 向后兼容方法
     /// </summary>
-    public void RaiseEvent(GameEventType eventType)
+    public void UnsubscribeFromEvent(GameEventType eventType, Action<GameEventArgs> handler)
     {
-        _eventManager.RaiseEvent<object>(eventType, null);
+        Unsubscribe(eventType, handler);
+    }
+
+    /// <summary>
+    /// 触发事件 - 基础版本
+    /// </summary>
+    public void RaiseEvent(GameEventType eventType, Player? player = null)
+    {
+        var args = new GameEventArgs(eventType, player);
+        _eventManager.Raise(args);
+    }
+
+    /// <summary>
+    /// 触发事件 - 泛型版本，兼容旧代码
+    /// </summary>
+    public void RaiseEvent<T>(GameEventType eventType, T eventData = default)
+    {
+        Player? player = null;
+        if (eventData is Player p)
+        {
+            player = p;
+        }
+        var args = new GameEventArgs(eventType, player);
+        _eventManager.Raise(args);
     }
 
     #endregion
@@ -168,6 +191,106 @@ public class GameStateService : IAsyncDisposable
     {
         // 本地制作逻辑已移除，请使用服务器API
         // 可以通过 ProductionApiServiceNew 调用服务器制作接口
+    }
+
+    /// <summary>
+    /// 设置快捷栏物品 - 仅保留UI状态管理
+    /// </summary>
+    [Obsolete("请直接通过角色对象管理快捷栏")]
+    public void SetQuickSlotItem(Player character, int slotIndex, string itemId)
+    {
+        // 简化实现，仅更新UI状态
+        if (character != null && slotIndex >= 0 && slotIndex < character.GatheringFoodQuickSlots.Count)
+        {
+            character.GatheringFoodQuickSlots[slotIndex] = itemId;
+            RaiseEvent(GameEventType.GenericStateChanged);
+        }
+    }
+
+    /// <summary>
+    /// 设置快捷栏物品 - 重载方法处理不同的快捷栏类型
+    /// </summary>
+    [Obsolete("请直接通过角色对象管理快捷栏")]
+    public void SetQuickSlotItem(ConsumableCategory category, int slotIndex, string itemId)
+    {
+        // 简化实现，仅更新UI状态
+        if (ActiveCharacter != null)
+        {
+            SetQuickSlotItem(ActiveCharacter, slotIndex, itemId);
+        }
+    }
+
+    /// <summary>
+    /// 清除快捷栏物品 - 仅保留UI状态管理
+    /// </summary>
+    [Obsolete("请直接通过角色对象管理快捷栏")]
+    public void ClearQuickSlotItem(Player character, int slotIndex)
+    {
+        // 简化实现，仅更新UI状态
+        if (character != null && slotIndex >= 0 && slotIndex < character.GatheringFoodQuickSlots.Count)
+        {
+            character.GatheringFoodQuickSlots[slotIndex] = "";
+            RaiseEvent(GameEventType.GenericStateChanged);
+        }
+    }
+
+    /// <summary>
+    /// 清除快捷栏物品 - 重载方法处理不同参数
+    /// </summary>
+    [Obsolete("请直接通过角色对象管理快捷栏")]
+    public void ClearQuickSlotItem(Player character, int slotIndex, ConsumableCategory category)
+    {
+        // 简化实现，忽略category参数
+        ClearQuickSlotItem(character, slotIndex);
+    }
+
+    /// <summary>
+    /// 装备物品 - 本地实现已移除，请使用服务器API
+    /// </summary>
+    [Obsolete("本地装备系统已移除，请使用服务器API")]
+    public void EquipItem(Player character, string itemId)
+    {
+        // 本地装备系统已移除，请使用服务器API
+    }
+
+    /// <summary>
+    /// 卸下装备 - 本地实现已移除，请使用服务器API
+    /// </summary>
+    [Obsolete("本地装备系统已移除，请使用服务器API")]
+    public void UnequipItem(Player character, EquipmentSlot slot)
+    {
+        // 本地装备系统已移除，请使用服务器API
+    }
+
+    /// <summary>
+    /// 卸下装备 - 重载方法，使用当前活跃角色
+    /// </summary>
+    [Obsolete("本地装备系统已移除，请使用服务器API")]
+    public void UnequipItem(EquipmentSlot slot)
+    {
+        // 本地装备系统已移除，请使用服务器API
+        if (ActiveCharacter != null)
+        {
+            UnequipItem(ActiveCharacter, slot);
+        }
+    }
+
+    /// <summary>
+    /// 使用物品 - 本地实现已移除，请使用服务器API
+    /// </summary>
+    [Obsolete("本地物品系统已移除，请使用服务器API")]
+    public void UseItem(Player character, string itemId)
+    {
+        // 本地物品系统已移除，请使用服务器API
+    }
+
+    /// <summary>
+    /// 出售物品 - 本地实现已移除，请使用服务器API
+    /// </summary>
+    [Obsolete("本地商店系统已移除，请使用服务器API")]
+    public void SellItem(Player character, string itemId, int quantity = 1)
+    {
+        // 本地商店系统已移除，请使用服务器API
     }
 
     /// <summary>
