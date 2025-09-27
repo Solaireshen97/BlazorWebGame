@@ -457,24 +457,68 @@ public class SignalREffects
             dispatcher.Dispatch(new SignalRConnectedAction());
 
             // 设置事件处理器
-            _signalRService.OnCharacterUpdate += (characterUpdate) =>
+            _signalRService.OnCharacterUpdate += async (characterUpdateJson) =>
             {
-                dispatcher.Dispatch(new UpdateCharacterSuccessAction(characterUpdate.CharacterId, characterUpdate.Data));
+                try
+                {
+                    var characterUpdate = System.Text.Json.JsonSerializer.Deserialize<CharacterUpdateEvent>(characterUpdateJson);
+                    if (characterUpdate != null)
+                    {
+                        dispatcher.Dispatch(new UpdateCharacterSuccessAction(characterUpdate.CharacterId, characterUpdate.Data));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to process character update");  
+                }
             };
 
-            _signalRService.OnBattleUpdate += (battleUpdate) =>
+            _signalRService.OnBattleUpdate += async (battleUpdateJson) =>
             {
-                dispatcher.Dispatch(new BattleUpdateAction(battleUpdate.BattleId, battleUpdate.Data));
+                try
+                {
+                    var battleUpdate = System.Text.Json.JsonSerializer.Deserialize<BattleUpdateEvent>(battleUpdateJson);
+                    if (battleUpdate != null)
+                    {
+                        dispatcher.Dispatch(new BattleUpdateAction(battleUpdate.BattleId, battleUpdate.Data));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to process battle update");
+                }
             };
 
-            _signalRService.OnActivityUpdate += (activityUpdate) =>
+            _signalRService.OnActivityUpdate += async (activityUpdateJson) =>
             {
-                dispatcher.Dispatch(new ActivityProgressUpdateAction(activityUpdate.ActivityId, activityUpdate.Progress));
+                try
+                {
+                    var activityUpdate = System.Text.Json.JsonSerializer.Deserialize<ActivityUpdateEvent>(activityUpdateJson);
+                    if (activityUpdate != null)
+                    {
+                        dispatcher.Dispatch(new ActivityProgressUpdateAction(activityUpdate.ActivityId, activityUpdate.Progress));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to process activity update");
+                }
             };
 
-            _signalRService.OnNotification += (notification) =>
+            _signalRService.OnNotification += async (notificationJson) =>
             {
-                dispatcher.Dispatch(new ShowNotificationAction(notification));
+                try
+                {
+                    var notification = System.Text.Json.JsonSerializer.Deserialize<NotificationMessage>(notificationJson);
+                    if (notification != null)
+                    {
+                        dispatcher.Dispatch(new ShowNotificationAction(notification));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to process notification");
+                }
             };
         }
         catch (Exception ex)

@@ -81,6 +81,14 @@ public interface ISignalRService
     Task LeaveGameAsync();
     Task SendCharacterActionAsync(Guid characterId, string action, object data);
     
+    // 群组管理方法
+    Task JoinCharacterGroupAsync(Guid characterId);
+    Task LeaveCharacterGroupAsync(Guid characterId);
+    Task JoinBattleGroupAsync(Guid battleId);
+    Task LeaveBattleGroupAsync(Guid battleId);
+    Task JoinGroupAsync(string groupName);
+    Task LeaveGroupAsync(string groupName);
+    
     // 事件处理器
     event Func<string, Task>? OnCharacterUpdate;
     event Func<string, Task>? OnActivityUpdate;
