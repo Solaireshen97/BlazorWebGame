@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using BlazorWebGame.Shared.DTOs;
+using BlazorWebGame.Shared.Events;
 using BlazorWebGame.Shared.Interfaces;
 using Microsoft.Extensions.Logging;
 
