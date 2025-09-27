@@ -159,6 +159,7 @@ namespace BlazorWebGame.Shared.Events
         public const ushort SYSTEM_TICK = 900;
         public const ushort STATE_CHANGED = 901;
         public const ushort SYSTEM_ERROR = 902;
+        public const ushort OFFLINE_SETTLEMENT_COMPLETED = 903;
     }
 
     /// <summary>
