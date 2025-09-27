@@ -32,10 +32,10 @@
     <PackageReference Include="Blazored.LocalStorage" Version="4.5.0" />
     
     <!-- Caching -->
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.20" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.0" />
     
     <!-- JSON Serialization -->
-    <PackageReference Include="System.Text.Json" Version="8.0.11" />
+    <PackageReference Include="System.Text.Json" Version="9.0.0" />
     
     <!-- Logging -->
     <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0" />

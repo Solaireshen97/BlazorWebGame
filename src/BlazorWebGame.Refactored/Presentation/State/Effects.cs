@@ -471,6 +471,7 @@ public class SignalREffects
                 {
                     _logger.LogError(ex, "Failed to process character update");  
                 }
+                await Task.CompletedTask;
             };
 
             _signalRService.OnBattleUpdate += async (battleUpdateJson) =>
@@ -487,6 +488,7 @@ public class SignalREffects
                 {
                     _logger.LogError(ex, "Failed to process battle update");
                 }
+                await Task.CompletedTask;
             };
 
             _signalRService.OnActivityUpdate += async (activityUpdateJson) =>
@@ -503,6 +505,7 @@ public class SignalREffects
                 {
                     _logger.LogError(ex, "Failed to process activity update");
                 }
+                await Task.CompletedTask;
             };
 
             _signalRService.OnNotification += async (notificationJson) =>
@@ -519,6 +522,7 @@ public class SignalREffects
                 {
                     _logger.LogError(ex, "Failed to process notification");
                 }
+                await Task.CompletedTask;
             };
         }
         catch (Exception ex)

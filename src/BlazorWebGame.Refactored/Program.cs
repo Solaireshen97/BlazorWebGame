@@ -94,6 +94,9 @@ builder.Services.AddScoped<ITimeSyncService, TimeSyncService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IPerformanceService, PerformanceService>();
 
+// 注册示例数据服务（开发调试用）
+builder.Services.AddScoped<SampleDataService>();
+
 // 配置游戏常量和选项 - 简化配置
 // builder.Services.Configure<GameOptions>(options => { });
 // builder.Services.Configure<SignalROptions>(options => { });

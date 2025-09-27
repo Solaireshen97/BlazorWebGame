@@ -512,6 +512,21 @@ public static class CacheReducers
     }
 }
 
+// ======================
+// 全局数据管理 Reducers
+// ======================
+
+public static class GlobalDataReducers
+{
+    [ReducerMethod(typeof(ClearAllDataAction))]
+    public static AppState ReduceClearAllData(AppState state) =>
+        new AppState(); // 重置为初始状态
+    
+    [ReducerMethod(typeof(ResetApplicationStateAction))]
+    public static AppState ReduceResetApplicationState(AppState state) =>
+        new AppState(); // 重置为初始状态
+}
+
 /// <summary>
 /// 状态映射工具类
 /// </summary>
