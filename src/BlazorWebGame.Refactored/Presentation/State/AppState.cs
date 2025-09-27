@@ -133,7 +133,7 @@ public record CharacterData
     public DateTime LastLogin { get; init; }
     public DateTime CreatedAt { get; init; }
     public bool IsOnline { get; init; }
-    public Vector3 Position { get; init; }
+    public Vector3 Position { get; init; } = new();
     public Dictionary<string, object> Metadata { get; init; } = new();
 }
 
@@ -145,7 +145,7 @@ public record ActivitySummary
     public Guid Id { get; init; }
     public Guid CharacterId { get; init; }
     public ActivityType Type { get; init; }
-    public ActivityState State { get; init; }
+    public ActivityDisplayState State { get; init; } = ActivityDisplayState.Active;
     public DateTime StartTime { get; init; }
     public DateTime? EndTime { get; init; }
     public double Progress { get; init; }
@@ -276,4 +276,16 @@ public enum NotificationType
     Warning,
     Error,
     Achievement
+}
+
+/// <summary>
+/// 活动状态枚举 (Presentation layer)
+/// </summary>
+public enum ActivityDisplayState
+{
+    Active,
+    Paused,
+    Completed,
+    Cancelled,
+    Failed
 }

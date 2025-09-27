@@ -6,12 +6,12 @@ namespace BlazorWebGame.Refactored.Infrastructure.Services;
 /// <summary>
 /// 本地存储服务实现
 /// </summary>
-public class LocalStorageService : ILocalStorageService
+public class LocalStorageService : Application.Interfaces.ILocalStorageService
 {
-    private readonly ILocalStorageService _localStorage;
+    private readonly Blazored.LocalStorage.ILocalStorageService _localStorage;
     private readonly ILogger<LocalStorageService> _logger;
 
-    public LocalStorageService(ILocalStorageService localStorage, ILogger<LocalStorageService> logger)
+    public LocalStorageService(Blazored.LocalStorage.ILocalStorageService localStorage, ILogger<LocalStorageService> logger)
     {
         _localStorage = localStorage;
         _logger = logger;

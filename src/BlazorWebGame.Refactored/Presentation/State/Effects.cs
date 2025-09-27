@@ -1,6 +1,7 @@
 using Fluxor;
 using BlazorWebGame.Refactored.Infrastructure.Services;
 using BlazorWebGame.Refactored.Application.Interfaces;
+using BlazorWebGame.Refactored.Domain.ValueObjects;
 
 namespace BlazorWebGame.Refactored.Presentation.State;
 
@@ -279,9 +280,24 @@ public class ActivityEffects
 
             var result = await _activityService.StartActivityAsync(action.CharacterId, action.Request);
             
-            if (result.IsSuccess)
+            if (result.Success)
             {
-                dispatcher.Dispatch(new StartActivitySuccessAction(action.CharacterId, result.Activity!));
+                // Create a mock ActivitySummary for the success case
+                var activitySummary = new ActivitySummary
+                {
+                    Id = Guid.NewGuid(),
+                    CharacterId = action.CharacterId,
+                    Type = action.Request.Type,
+                    State = ActivityDisplayState.Active,
+                    StartTime = DateTime.UtcNow,
+                    Progress = 0.0,
+                    Priority = action.Request.Priority,
+                    DisplayName = GetActivityName(action.Request.Type),
+                    Description = $"{GetActivityName(action.Request.Type)} in progress",
+                    CanInterrupt = action.Request.AllowInterrupt
+                };
+                
+                dispatcher.Dispatch(new StartActivitySuccessAction(action.CharacterId, activitySummary));
                 
                 dispatcher.Dispatch(new ShowNotificationAction(new NotificationMessage
                 {
@@ -292,7 +308,7 @@ public class ActivityEffects
             }
             else
             {
-                dispatcher.Dispatch(new StartActivityFailureAction(result.ErrorMessage!));
+                dispatcher.Dispatch(new StartActivityFailureAction(result.ErrorMessage ?? "Unknown error"));
             }
         }
         catch (Exception ex)

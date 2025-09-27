@@ -1,4 +1,5 @@
 using System.Numerics;
+using BlazorWebGame.Refactored.Domain.Entities;
 
 namespace BlazorWebGame.Refactored.Domain.ValueObjects;
 
@@ -15,6 +16,8 @@ public readonly struct BigNumber : IComparable<BigNumber>, IEquatable<BigNumber>
     public BigNumber(long value) => _value = new BigInteger(value);
     public BigNumber(double value) => _value = new BigInteger(value);
     public BigNumber(BigInteger value) => _value = value;
+    
+    public long ToLong() => (long)_value;
 
     public static BigNumber operator +(BigNumber left, BigNumber right) => new(left._value + right._value);
     public static BigNumber operator -(BigNumber left, BigNumber right) => new(left._value - right._value);
@@ -36,10 +39,10 @@ public readonly struct BigNumber : IComparable<BigNumber>, IEquatable<BigNumber>
     public override string ToString()
     {
         if (_value < 1000) return _value.ToString();
-        if (_value < 1000000) return $"{_value / 1000.0:F1}K";
-        if (_value < 1000000000) return $"{_value / 1000000.0:F1}M";
-        if (_value < 1000000000000) return $"{_value / 1000000000.0:F1}B";
-        return $"{_value / 1000000000000.0:F1}T";
+        if (_value < 1000000) return $"{(double)_value / 1000.0:F1}K";
+        if (_value < 1000000000) return $"{(double)_value / 1000000.0:F1}M";
+        if (_value < new BigInteger(1000000000000)) return $"{(double)_value / 1000000000.0:F1}B";
+        return $"{(double)_value / 1000000000000.0:F1}T";
     }
 }
 
