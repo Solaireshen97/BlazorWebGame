@@ -7,20 +7,20 @@ using Microsoft.AspNetCore.SignalR.Client;
 namespace BlazorWebGame.Client.Services;
 
 /// <summary>
-/// 混合生产服务 - 支持逐步从客户端迁移到服务端
+/// 纯服务端生产服务 - 移除混合模式，只支持服务端处理
 /// </summary>
 public class HybridProductionService : IAsyncDisposable
 {
     private readonly ProductionApiService _productionApi;
-    private readonly ProfessionService _legacyProfessionService;
-    private readonly GameStateService _gameState;
     private readonly ILogger<HybridProductionService> _logger;
     
     // SignalR 连接用于接收服务端生产事件
     private HubConnection? _hubConnection;
     
-    // 配置标志 - 是否使用服务端生产系统
-    private bool _useServerProduction = true; // 默认使用服务端
+    // 移除客户端回退逻辑 - 只使用服务端
+    // private readonly ProfessionService _legacyProfessionService; // 已移除
+    // private readonly GameStateService _gameState; // 已移除
+    // private bool _useServerProduction = true; // 已移除，始终使用服务端
     
     // 当前采集状态
     private GatheringStateDto? _currentGatheringState;
@@ -37,17 +37,13 @@ public class HybridProductionService : IAsyncDisposable
 
     public HybridProductionService(
         ProductionApiService productionApi,
-        ProfessionService legacyProfessionService,
-        GameStateService gameState,
         ILogger<HybridProductionService> logger)
     {
         _productionApi = productionApi;
-        _legacyProfessionService = legacyProfessionService;
-        _gameState = gameState;
         _logger = logger;
         
-        // 订阅旧服务的状态变更事件
-        _legacyProfessionService.OnStateChanged += () => OnStateChanged?.Invoke();
+        // 移除旧服务订阅 - 不再支持客户端回退
+        // _legacyProfessionService.OnStateChanged += () => OnStateChanged?.Invoke(); // 已移除
     }
 
     /// <summary>
@@ -55,10 +51,8 @@ public class HybridProductionService : IAsyncDisposable
     /// </summary>
     public async Task InitializeAsync()
     {
-        if (_useServerProduction)
-        {
-            await InitializeSignalRConnection();
-        }
+        // 始终使用服务端生产 - 移除条件判断
+        await InitializeSignalRConnection();
     }
 
     /// <summary>
@@ -91,82 +85,65 @@ public class HybridProductionService : IAsyncDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to initialize production SignalR connection");
-            // 如果 SignalR 连接失败，可以回退到客户端模式
-            _useServerProduction = false;
+            // 移除客户端回退逻辑 - 纯在线游戏必须有服务端连接
+            throw new InvalidOperationException("无法连接到服务端，游戏无法继续", ex);
         }
     }
 
     /// <summary>
-    /// 获取可用的采集节点
+    /// 获取可用的采集节点 - 纯服务端
     /// </summary>
     public async Task<List<GatheringNode>> GetAvailableNodesAsync(GatheringProfession profession)
     {
-        if (_useServerProduction)
+        try
         {
-            try
-            {
-                var serverNodes = await _productionApi.GetAvailableNodesAsync(profession.ToString());
-                return serverNodes.Select(ConvertFromDto).ToList();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to get nodes from server, falling back to client");
-                _useServerProduction = false;
-            }
+            var serverNodes = await _productionApi.GetAvailableNodesAsync(profession.ToString());
+            return serverNodes.Select(ConvertFromDto).ToList();
         }
-        
-        // 回退到客户端逻辑
-        return GatheringData.GetNodesByProfession(profession);
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get nodes from server");
+            // 移除客户端回退 - 纯在线游戏
+            throw new InvalidOperationException("无法从服务端获取采集节点", ex);
+        }
     }
 
     /// <summary>
-    /// 开始采集
+    /// 开始采集 - 纯服务端
     /// </summary>
     public async Task<bool> StartGatheringAsync(string characterId, GatheringNode node)
     {
-        if (_useServerProduction)
+        try
         {
-            try
+            var (success, message, state) = await _productionApi.StartGatheringAsync(characterId, node.Id);
+            
+            if (success && state != null)
             {
-                var (success, message, state) = await _productionApi.StartGatheringAsync(characterId, node.Id);
-                
-                if (success && state != null)
-                {
-                    _currentGatheringState = state;
-                    _logger.LogInformation("Started server-side gathering: {Message}", message);
-                    OnStateChanged?.Invoke();
-                    return true;
-                }
-                else
-                {
-                    _logger.LogWarning("Failed to start server-side gathering: {Message}", message);
-                    return false;
-                }
+                _currentGatheringState = state;
+                _logger.LogInformation("Started server-side gathering: {Message}", message);
+                OnStateChanged?.Invoke();
+                return true;
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogError(ex, "Error starting server-side gathering, falling back to client");
-                _useServerProduction = false;
+                _logger.LogWarning("Failed to start server-side gathering: {Message}", message);
+                return false;
             }
         }
-        
-        // 回退到客户端逻辑
-        var character = _gameState.ActiveCharacter;
-        if (character != null)
+        catch (Exception ex)
         {
-            _legacyProfessionService.StartGathering(character, node);
-            return true;
+            _logger.LogError(ex, "Error starting server-side gathering");
+            // 移除客户端回退 - 纯在线游戏
+            throw new InvalidOperationException("无法开始服务端采集", ex);
         }
-        
-        return false;
     }
 
     /// <summary>
-    /// 停止采集
+    /// 停止采集 - 纯服务端
     /// </summary>
     public async Task<bool> StopGatheringAsync(string characterId)
     {
-        if (_useServerProduction && _currentGatheringState != null)
+        if (_currentGatheringState != null)
         {
             try
             {
@@ -192,14 +169,7 @@ public class HybridProductionService : IAsyncDisposable
             }
         }
         
-        // 回退到客户端逻辑
-        var character = _gameState.ActiveCharacter;
-        if (character != null)
-        {
-            _legacyProfessionService.StopCurrentAction(character);
-            return true;
-        }
-        
+        // 没有活跃的采集状态
         return false;
     }
 
@@ -212,18 +182,12 @@ public class HybridProductionService : IAsyncDisposable
     }
 
     /// <summary>
-    /// 检查玩家是否正在采集
+    /// 检查玩家是否正在采集 - 纯服务端状态
     /// </summary>
     public bool IsGathering()
     {
-        if (_useServerProduction)
-        {
-            return _currentGatheringState?.IsGathering ?? false;
-        }
-        
-        // 检查客户端状态
-        var character = _gameState.ActiveCharacter;
-        return character?.CurrentGatheringNode != null;
+        // 只检查服务端状态 - 移除客户端回退
+        return _currentGatheringState?.IsGathering ?? false;
     }
 
     // SignalR 事件处理器
