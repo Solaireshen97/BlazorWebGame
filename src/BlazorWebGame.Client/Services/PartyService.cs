@@ -6,21 +6,21 @@ using System.Linq;
 namespace BlazorWebGame.Services
 {
     /// <summary>
-    /// ¸ºÔğ¹ÜÀíÓÎÏ·ÖĞµÄ¶ÓÎéÏµÍ³
+    /// ç®€åŒ–çš„é˜Ÿä¼æœåŠ¡ - ä»…ä¿ç•™UIçŠ¶æ€ç®¡ç†ï¼Œæ‰€æœ‰é˜Ÿä¼é€»è¾‘ç”±æœåŠ¡å™¨å¤„ç†
     /// </summary>
     public class PartyService
     {
         /// <summary>
-        /// ÓÎÏ·ÖĞ´æÔÚµÄËùÓĞ¶ÓÎéÁĞ±í
+        /// æ¸¸æˆä¸­å­˜åœ¨çš„æ‰€æœ‰é˜Ÿä¼åˆ—è¡¨ - UIå±•ç¤ºç”¨
         /// </summary>
         public List<Party> Parties { get; private set; } = new();
 
         /// <summary>
-        /// ×´Ì¬±ä¸üÊÂ¼ş
+        /// çŠ¶æ€æ”¹å˜äº‹ä»¶
         /// </summary>
         public event Action? OnStateChanged;
 
-        // ËùÓĞÍæ¼ÒÒıÓÃ - ÓÉGameStateServiceÌá¹©
+        // æ‰€æœ‰è§’è‰²å¼•ç”¨ - ç”±GameStateServiceæä¾›
         private List<Player> _allCharacters;
 
         public PartyService(List<Player> allCharacters)
@@ -28,139 +28,105 @@ namespace BlazorWebGame.Services
             _allCharacters = allCharacters;
         }
 
+        #region é˜Ÿä¼æŸ¥è¯¢ - ä¿ç•™åŸºç¡€UIæ”¯æŒ
+
         /// <summary>
-        /// ¸ù¾İ½ÇÉ«ID²éÕÒËûËùÔÚµÄ¶ÓÎé¡£
-        /// Èç¹û½ÇÉ«²»ÔÚÈÎºÎ¶ÓÎéÖĞ£¬Ôò·µ»Ø null¡£
+        /// æ ¹æ®è§’è‰²IDæŸ¥æ‰¾å…¶æ‰€åœ¨çš„é˜Ÿä¼ã€‚
+        /// å¦‚æœè§’è‰²ä¸åœ¨ä»»ä½•é˜Ÿä¼ä¸­ï¼Œåˆ™è¿”å› nullã€‚
         /// </summary>
-        /// <param name="characterId">Òª²éÕÒµÄ½ÇÉ«ID</param>
-        /// <returns>½ÇÉ«ËùÔÚµÄ¶ÓÎé¶ÔÏó£¬»ò null</returns>
+        /// <param name="characterId">è¦æŸ¥æ‰¾çš„è§’è‰²ID</param>
+        /// <returns>è§’è‰²æ‰€åœ¨çš„é˜Ÿä¼å¯¹è±¡ï¼Œæˆ– null</returns>
         public Party? GetPartyForCharacter(string characterId)
         {
             return Parties.FirstOrDefault(p => p.MemberIds.Contains(characterId));
         }
 
+        #endregion
+
+        #region é˜Ÿä¼ç®¡ç† - å·²ç§»é™¤æœ¬åœ°å®ç°
+
         /// <summary>
-        /// ´´½¨ĞÂ¶ÓÎé£¬Ö¸¶¨½ÇÉ«½«³ÉÎª¶Ó³¤
+        /// åˆ›å»ºæ–°é˜Ÿä¼ - å·²ç§»é™¤æœ¬åœ°å®ç°
         /// </summary>
-        /// <param name="character">Òª´´½¨¶ÓÎéµÄ½ÇÉ«</param>
-        /// <returns>³É¹¦´´½¨·µ»Øtrue£¬·ñÔò·µ»Øfalse</returns>
+        [Obsolete("æœ¬åœ°é˜Ÿä¼ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
         public bool CreateParty(Player character)
         {
-            // °²È«¼ì²é£ºÈ·±£½ÇÉ«´æÔÚÇÒ²»ÔÚÈÎºÎ¶ÓÎéÖĞ
-            if (character == null || GetPartyForCharacter(character.Id) != null)
-            {
-                return false;
-            }
-
-            // ´´½¨Ò»¸öĞÂµÄ¶ÓÎéÊµÀı
-            var newParty = new Party
-            {
-                CaptainId = character.Id,
-                MemberIds = new List<string> { character.Id } // ¶Ó³¤×Ô¼ºÒ²ÊÇ¶ÓÎéµÄµÚÒ»¸ö³ÉÔ±
-            };
-
-            // ½«ĞÂ¶ÓÎéÌí¼Óµ½¶ÓÎéÁĞ±íÖĞ
-            Parties.Add(newParty);
-            
-            // Í¨Öª×´Ì¬±ä»¯
-            NotifyStateChanged();
-            return true;
+            // æœ¬åœ°é˜Ÿä¼ç³»ç»Ÿå·²ç§»é™¤
+            return false;
         }
 
         /// <summary>
-        /// ÈÃÖ¸¶¨½ÇÉ«¼ÓÈëÒ»¸ö¶ÓÎé
+        /// åŠ å…¥é˜Ÿä¼ - å·²ç§»é™¤æœ¬åœ°å®ç°
         /// </summary>
-        /// <param name="character">Òª¼ÓÈë¶ÓÎéµÄ½ÇÉ«</param>
-        /// <param name="partyId">Ä¿±ê¶ÓÎéµÄID</param>
-        /// <returns>³É¹¦¼ÓÈë·µ»Øtrue£¬·ñÔò·µ»Øfalse</returns>
+        [Obsolete("æœ¬åœ°é˜Ÿä¼ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
         public bool JoinParty(Player character, Guid partyId)
         {
-            // °²È«¼ì²é£º½ÇÉ«²»ÄÜÎª¿ÕÇÒ²»ÄÜÒÑ¾­ÔÚ¶ÓÎéÖĞ
-            if (character == null || GetPartyForCharacter(character.Id) != null)
-            {
-                return false;
-            }
-
-            // ²éÕÒÄ¿±ê¶ÓÎé
-            var partyToJoin = Parties.FirstOrDefault(p => p.Id == partyId);
-            if (partyToJoin == null)
-            {
-                return false; // ¶ÓÎé²»´æÔÚ
-            }
-
-            // ¼ì²é¶ÓÎéÊÇ·ñÒÑÂú
-            if (partyToJoin.MemberIds.Count >= Party.MaxMembers)
-            {
-                return false; // ¶ÓÎéÒÑÂú£¬ÎŞ·¨¼ÓÈë
-            }
-
-            // Ö´ĞĞ¼ÓÈë²Ù×÷
-            partyToJoin.MemberIds.Add(character.Id);
-            
-            // Í¨Öª×´Ì¬±ä»¯
-            NotifyStateChanged();
-            return true;
+            // æœ¬åœ°é˜Ÿä¼ç³»ç»Ÿå·²ç§»é™¤
+            return false;
         }
 
         /// <summary>
-        /// ÈÃÖ¸¶¨½ÇÉ«Àë¿ªËûËùÔÚµÄ¶ÓÎé
+        /// ç¦»å¼€é˜Ÿä¼ - å·²ç§»é™¤æœ¬åœ°å®ç°
         /// </summary>
-        /// <param name="character">ÒªÀë¿ª¶ÓÎéµÄ½ÇÉ«</param>
-        /// <returns>³É¹¦Àë¿ª·µ»Øtrue£¬·ñÔò·µ»Øfalse</returns>
+        [Obsolete("æœ¬åœ°é˜Ÿä¼ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
         public bool LeaveParty(Player character)
         {
-            // °²È«¼ì²é£º½ÇÉ«²»ÄÜÎª¿Õ
-            if (character == null) return false;
-            
-            // ²éÕÒ½ÇÉ«ËùÔÚµÄ¶ÓÎé
-            var party = GetPartyForCharacter(character.Id);
-            if (party == null)
-            {
-                return false; // ½ÇÉ«²»ÔÚÈÎºÎ¶ÓÎéÖĞ
-            }
-
-            // ÅĞ¶ÏÊÇ¶Ó³¤Àë¿ª»¹ÊÇ³ÉÔ±Àë¿ª
-            if (party.CaptainId == character.Id)
-            {
-                // Èç¹ûÊÇ¶Ó³¤Àë¿ª£¬Ôò½âÉ¢Õû¸ö¶ÓÎé
-                Parties.Remove(party);
-            }
-            else
-            {
-                // Èç¹ûÖ»ÊÇÆÕÍ¨³ÉÔ±Àë¿ª£¬Ôò´Ó³ÉÔ±ÁĞ±íÖĞÒÆ³ı×Ô¼º
-                party.MemberIds.Remove(character.Id);
-            }
-            
-            // Í¨Öª×´Ì¬±ä»¯
-            NotifyStateChanged();
-            return true;
+            // æœ¬åœ°é˜Ÿä¼ç³»ç»Ÿå·²ç§»é™¤
+            return false;
         }
-        
+
         /// <summary>
-        /// Í£Ö¹¶ÓÎéÖĞËùÓĞ³ÉÔ±µÄµ±Ç°Õ½¶·×´Ì¬
+        /// è¸¢å‡ºé˜Ÿå‘˜ - å·²ç§»é™¤æœ¬åœ°å®ç°
         /// </summary>
-        public void StopPartyAction(Party party)
+        [Obsolete("æœ¬åœ°é˜Ÿä¼ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
+        public bool KickFromParty(string kickerId, string targetId)
         {
-            if (party == null) return;
-            
-            // Çå³ı¶ÓÎéµÄÕ½¶·Ä¿±ê
-            party.CurrentEnemy = null;
+            // æœ¬åœ°é˜Ÿä¼ç³»ç»Ÿå·²ç§»é™¤
+            return false;
         }
 
         /// <summary>
-        /// ÉèÖÃËùÓĞ½ÇÉ«ÁĞ±í
+        /// è½¬è®©é˜Ÿé•¿ - å·²ç§»é™¤æœ¬åœ°å®ç°
         /// </summary>
+        [Obsolete("æœ¬åœ°é˜Ÿä¼ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
+        public bool TransferLeadership(string currentLeaderId, string newLeaderId)
+        {
+            // æœ¬åœ°é˜Ÿä¼ç³»ç»Ÿå·²ç§»é™¤
+            return false;
+        }
+
+        /// <summary>
+        /// è§£æ•£é˜Ÿä¼ - å·²ç§»é™¤æœ¬åœ°å®ç°
+        /// </summary>
+        [Obsolete("æœ¬åœ°é˜Ÿä¼ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
+        public bool DisbandParty(string leaderId, Party party)
+        {
+            // æœ¬åœ°é˜Ÿä¼ç³»ç»Ÿå·²ç§»é™¤
+            return false;
+        }
+
+        /// <summary>
+        /// è®¾ç½®æ‰€æœ‰è§’è‰² - å·²ç§»é™¤æœ¬åœ°å®ç°
+        /// </summary>
+        [Obsolete("æœ¬åœ°é˜Ÿä¼ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
         public void SetAllCharacters(List<Player> characters)
         {
-            if (characters == null)
-                throw new ArgumentNullException(nameof(characters));
-            
+            // æœ¬åœ°é˜Ÿä¼ç³»ç»Ÿå·²ç§»é™¤
             _allCharacters = characters;
         }
 
+        #endregion
+
+        #region çŠ¶æ€ç®¡ç†
+
         /// <summary>
-        /// ´¥·¢×´Ì¬±ä¸üÊÂ¼ş
+        /// è§¦å‘çŠ¶æ€æ”¹å˜äº‹ä»¶
         /// </summary>
-        private void NotifyStateChanged() => OnStateChanged?.Invoke();
+        public void NotifyStateChanged()
+        {
+            OnStateChanged?.Invoke();
+        }
+
+        #endregion
     }
 }
