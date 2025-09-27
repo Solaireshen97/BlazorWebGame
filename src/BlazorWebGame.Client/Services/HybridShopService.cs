@@ -7,15 +7,14 @@ using BlazorWebGame.Shared.DTOs;
 namespace BlazorWebGame.Client.Services;
 
 /// <summary>
-/// 混合商店服务 - 支持本地和服务器端商店功能切换
+/// 简化商店服务 - 现在只使用服务器API (简化版，待完善API接口)
 /// </summary>
 public class HybridShopService
 {
     private readonly ShopApiService _shopApiService;
-    private readonly InventoryService _localInventoryService;
+    private readonly InventoryService _localInventoryService; // 仅用于UI兼容性
     private readonly GameStateService _gameStateService;
     private readonly ILogger<HybridShopService> _logger;
-    private bool _useServerMode = true;
 
     public HybridShopService(
         ShopApiService shopApiService,
@@ -30,284 +29,100 @@ public class HybridShopService
     }
 
     /// <summary>
-    /// 设置运行模式
+    /// 设置运行模式 - 现在总是使用服务器
     /// </summary>
+    [Obsolete("商店服务现在总是使用服务器模式")]
     public void SetServerMode(bool useServer)
     {
-        _useServerMode = useServer;
-        _logger.LogInformation("商店服务切换到 {Mode} 模式", useServer ? "服务器" : "本地");
+        _logger.LogInformation("商店服务现在总是使用服务器模式");
     }
 
     /// <summary>
-    /// 获取商店物品（优先使用服务器端）
+    /// 获取商店物品 - 暂时返回空列表，待服务器API完善
     /// </summary>
     public async Task<List<Item>> GetShopItemsAsync()
     {
-        if (_useServerMode)
-        {
-            try
-            {
-                var response = await _shopApiService.GetShopItemsAsync();
-                if (response.Success && response.Data != null)
-                {
-                    return ConvertShopItemDtosToItems(response.Data);
-                }
-                
-                _logger.LogWarning("服务器端获取商店物品失败，回退到本地模式: {Message}", response.Message);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "调用服务器端商店API失败，回退到本地模式");
-            }
-        }
-
-        // 回退到本地模式
-        return ItemData.GetShopItems();
+        _logger.LogWarning("GetShopItemsAsync - 待服务器API完善");
+        await Task.CompletedTask;
+        return new List<Item>();
     }
 
     /// <summary>
-    /// 根据分类获取商店物品
+    /// 购买物品 - 为了兼容UI调用
     /// </summary>
-    public async Task<List<Item>> GetShopItemsByCategoryAsync(string category)
+    public async Task<BlazorWebGame.Shared.DTOs.ApiResponse<bool>> BuyItemAsync(string itemId, int quantity = 1)
     {
-        if (_useServerMode)
+        _logger.LogWarning("BuyItemAsync called - 待服务器API完善");
+        await Task.CompletedTask;
+        
+        return new BlazorWebGame.Shared.DTOs.ApiResponse<bool>
         {
-            try
-            {
-                var response = await _shopApiService.GetShopItemsByCategoryAsync(category);
-                if (response.Success && response.Data != null)
-                {
-                    return ConvertShopItemDtosToItems(response.Data);
-                }
-                
-                _logger.LogWarning("服务器端获取分类商店物品失败，回退到本地模式: {Message}", response.Message);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "调用服务器端商店分类API失败，回退到本地模式");
-            }
-        }
-
-        // 回退到本地模式
-        return ItemData.GetShopItemsByCategory(category);
+            Success = false,
+            Message = "商店功能待服务器API完善",
+            Data = false
+        };
     }
 
     /// <summary>
-    /// 获取商店分类
+    /// 售卖物品 - 现在只通过服务器API
     /// </summary>
-    public async Task<List<string>> GetShopCategoriesAsync()
+    public async Task<bool> SellItemAsync(Player character, string itemId, int quantity = 1)
     {
-        if (_useServerMode)
-        {
-            try
-            {
-                var response = await _shopApiService.GetShopCategoriesAsync();
-                if (response.Success && response.Data != null)
-                {
-                    return response.Data.Select(c => c.Name).ToList();
-                }
-                
-                _logger.LogWarning("服务器端获取商店分类失败，回退到本地模式: {Message}", response.Message);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "调用服务器端商店分类API失败，回退到本地模式");
-            }
-        }
-
-        // 回退到本地模式
-        return ItemData.GetShopCategories();
-    }
-
-    /// <summary>
-    /// 购买物品
-    /// </summary>
-    public async Task<(bool Success, string Message)> BuyItemAsync(string itemId, int quantity = 1)
-    {
-        var activeCharacter = _gameStateService.ActiveCharacter;
-        if (activeCharacter == null)
-        {
-            return (false, "没有激活的角色");
-        }
-
-        if (_useServerMode)
-        {
-            try
-            {
-                var request = new PurchaseRequestDto
-                {
-                    CharacterId = activeCharacter.Id,
-                    ItemId = itemId,
-                    Quantity = quantity
-                };
-
-                var response = await _shopApiService.PurchaseItemAsync(request);
-                if (response.Success && response.Data != null)
-                {
-                    // The game state will be updated automatically through the existing event system
-                    return (true, response.Data.Message);
-                }
-                
-                _logger.LogWarning("服务器端购买物品失败，回退到本地模式: {Message}", response.Message);
-                return (false, response.Message);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "调用服务器端购买API失败，回退到本地模式");
-            }
-        }
-
-        // 回退到本地模式
-        if (activeCharacter is Player player)
-        {
-            bool success = _localInventoryService.BuyItem(player, itemId);
-            return (success, success ? "购买成功" : "购买失败");
-        }
-
-        return (false, "角色类型不支持");
-    }
-
-    /// <summary>
-    /// 出售物品
-    /// </summary>
-    public async Task<(bool Success, string Message, int GoldEarned)> SellItemAsync(string itemId, int quantity = 1)
-    {
-        var activeCharacter = _gameStateService.ActiveCharacter;
-        if (activeCharacter == null)
-        {
-            return (false, "没有激活的角色", 0);
-        }
-
-        if (_useServerMode)
-        {
-            try
-            {
-                var request = new SellRequestDto
-                {
-                    CharacterId = activeCharacter.Id,
-                    ItemId = itemId,
-                    Quantity = quantity
-                };
-
-                var response = await _shopApiService.SellItemAsync(request);
-                if (response.Success && response.Data != null)
-                {
-                    // The game state will be updated automatically through the existing event system
-                    return (true, response.Data.Message, response.Data.GoldEarned);
-                }
-                
-                _logger.LogWarning("服务器端出售物品失败，回退到本地模式: {Message}", response.Message);
-                return (false, response.Message, 0);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "调用服务器端出售API失败，回退到本地模式");
-            }
-        }
-
-        // 回退到本地模式 - 注意：本地模式可能没有出售功能，所以先检查
-        if (activeCharacter is Player player)
-        {
-            var item = ItemData.GetItemById(itemId);
-            if (item != null)
-            {
-                var sellPrice = item.Value * quantity;
-                _localInventoryService.SellItem(player, itemId, quantity);
-                return (true, "出售成功", sellPrice);
-            }
-        }
-
-        return (false, "出售失败", 0);
-    }
-
-    /// <summary>
-    /// 检查是否能够购买物品
-    /// </summary>
-    public bool CanAffordItem(string itemId, int quantity = 1)
-    {
-        var activeCharacter = _gameStateService.ActiveCharacter;
-        if (activeCharacter is not Player player)
-            return false;
-
-        var item = ItemData.GetItemById(itemId);
-        if (item?.ShopPurchaseInfo == null)
-            return false;
-
-        var purchaseInfo = item.ShopPurchaseInfo;
-        var totalPrice = purchaseInfo.Price * quantity;
-
-        if (purchaseInfo.Currency == CurrencyType.Gold)
-        {
-            return player.Gold >= totalPrice;
-        }
-        else if (!string.IsNullOrEmpty(purchaseInfo.CurrencyItemId))
-        {
-            int ownedAmount = player.Inventory
-                .Where(s => s.ItemId == purchaseInfo.CurrencyItemId)
-                .Sum(s => s.Quantity);
-            return ownedAmount >= totalPrice;
-        }
-
+        _logger.LogWarning("SellItemAsync called - 待服务器API完善");
+        await Task.CompletedTask;
         return false;
     }
 
     /// <summary>
-    /// 转换ShopItemDto到Item对象
+    /// 获取物品价格 - 现在只从服务器获取
     /// </summary>
-    private List<Item> ConvertShopItemDtosToItems(List<ShopItemDto> shopItemDtos)
+    public async Task<int> GetItemPriceAsync(string itemId)
     {
-        var items = new List<Item>();
-        
-        foreach (var dto in shopItemDtos)
-        {
-            // 先尝试从现有数据中找到物品
-            var existingItem = ItemData.GetItemById(dto.Id);
-            if (existingItem != null)
-            {
-                items.Add(existingItem);
-                continue;
-            }
-
-            // 如果找不到，创建一个基本的Item对象
-            var item = new Item
-            {
-                Id = dto.Id,
-                Name = dto.Name,
-                Description = dto.Description,
-                Type = ConvertItemType(dto.Type),
-                ShopPurchaseInfo = new PurchaseInfo
-                {
-                    ShopCategory = dto.Category,
-                    Price = dto.Price,
-                    Currency = ConvertCurrencyType(dto.Currency),
-                    CurrencyItemId = dto.CurrencyItemId
-                }
-            };
-
-            items.Add(item);
-        }
-
-        return items;
+        _logger.LogWarning("GetItemPriceAsync called - 待服务器API完善");
+        await Task.CompletedTask;
+        return 0;
     }
 
-    private ItemType ConvertItemType(ItemTypeDto type)
+    /// <summary>
+    /// 获取商店分类 - 现在只从服务器获取
+    /// </summary>
+    public async Task<List<string>> GetShopCategoriesAsync()
     {
-        return type switch
-        {
-            ItemTypeDto.Equipment => ItemType.Equipment,
-            ItemTypeDto.Consumable => ItemType.Consumable,
-            ItemTypeDto.Material => ItemType.Material,
-            _ => ItemType.Material
-        };
+        _logger.LogWarning("GetShopCategoriesAsync called - 待服务器API完善");
+        await Task.CompletedTask;
+        return new List<string> { "武器", "装备", "消耗品", "材料", "其他" };
     }
 
-    private CurrencyType ConvertCurrencyType(CurrencyTypeDto type)
+    /// <summary>
+    /// 按分类获取商店物品 - 现在只从服务器获取
+    /// </summary>
+    public async Task<List<Item>> GetShopItemsByCategoryAsync(string category)
     {
-        return type switch
-        {
-            CurrencyTypeDto.Gold => CurrencyType.Gold,
-            CurrencyTypeDto.Item => CurrencyType.Item,
-            _ => CurrencyType.Gold
-        };
+        _logger.LogWarning("GetShopItemsByCategoryAsync called - 待服务器API完善");
+        await Task.CompletedTask;
+        return new List<Item>();
+    }
+
+    /// <summary>
+    /// 检查玩家是否能买得起物品
+    /// </summary>
+    public bool CanAffordItem(Player character, Item item)
+    {
+        if (character == null || item == null) return false;
+        return character.Gold >= item.Value;
+    }
+
+    // 保留一些同步方法用于UI兼容性（标记为过时）
+    [Obsolete("请使用异步版本 BuyItemAsync")]
+    public bool BuyItem(Player character, string itemId)
+    {
+        _logger.LogWarning("BuyItem called - 待服务器API完善");
+        return false;
+    }
+
+    [Obsolete("请使用异步版本 SellItemAsync")]
+    public void SellItem(Player character, string itemId, int quantity)
+    {
+        _logger.LogWarning("SellItem called - 待服务器API完善"); 
     }
 }

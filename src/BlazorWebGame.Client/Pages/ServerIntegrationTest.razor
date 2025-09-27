@@ -267,7 +267,7 @@
     private void TriggerTestEvent()
     {
         HybridEventService.RaiseEvent(BlazorWebGame.Shared.Events.GameEventType.GenericStateChanged, 
-            HybridCharacterService.ActiveCharacter?.Id, "测试事件数据");
+            "测试事件数据");
         SetStatusMessage("触发了通用状态变化事件", false);
     }
 
@@ -276,7 +276,7 @@
         if (HybridCharacterService.ActiveCharacter != null)
         {
             HybridEventService.RaiseEvent(BlazorWebGame.Shared.Events.GameEventType.CharacterStatChanged, 
-                HybridCharacterService.ActiveCharacter.Id, "角色状态测试");
+                "角色状态测试");
             SetStatusMessage("触发了角色状态变化事件", false);
         }
         else
