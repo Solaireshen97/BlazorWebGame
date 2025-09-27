@@ -6,6 +6,7 @@
 @inject ShopApiService ShopApi
 @inject ReputationApiService ReputationApi
 @inject ProductionApiService ProductionApi
+@inject EnhancedOfflineSettlementApiService EnhancedOfflineApi
 
 <PageTitle>API 测试页面</PageTitle>
 
@@ -309,6 +310,70 @@
         </div>
     </div>
     
+    <!-- Enhanced Offline Settlement Testing Section -->
+    <div class="row mt-3">
+        <div class="col-md-12">
+            <div class="card border-success">
+                <div class="card-header bg-success text-white">
+                    <h5>🌙 增强离线结算系统测试</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <h6>🎯 基础离线结算测试</h6>
+                            <button class="btn btn-success btn-sm mb-2 w-100" @onclick="TestEnhancedOfflineSettlement">增强离线结算</button>
+                            <button class="btn btn-info btn-sm mb-2 w-100" @onclick="TestLegacyOfflineSettlement">传统离线结算</button>
+                            <button class="btn btn-warning btn-sm mb-2 w-100" @onclick="TestOfflineRevenueEstimate">收益预估</button>
+                            <div class="alert alert-info small">
+                                <strong>结算状态:</strong> @_offlineSettlementStatus
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <h6>⚡ 批量处理测试</h6>
+                            <button class="btn btn-primary btn-sm mb-2 w-100" @onclick="TestSmartBatchSettlement">智能批量结算</button>
+                            <button class="btn btn-secondary btn-sm mb-2 w-100" @onclick="TestOfflineActivityProgress">活动进度查询</button>
+                            <button class="btn btn-outline-primary btn-sm mb-2 w-100" @onclick="TestOfflineSettlementMetrics">性能指标查询</button>
+                            <div class="alert alert-success small">
+                                <strong>批量结果:</strong> @_batchSettlementResult
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <h6>🔧 高级功能测试</h6>
+                            <button class="btn btn-outline-warning btn-sm mb-2 w-100" @onclick="TestTimeDecayMechanism">时间衰减机制</button>
+                            <button class="btn btn-outline-info btn-sm mb-2 w-100" @onclick="TestEventDrivenMode">事件驱动模式</button>
+                            <button class="btn btn-outline-success btn-sm mb-2 w-100" @onclick="TestSecurityMechanisms">安全机制验证</button>
+                            <div class="alert alert-warning small">
+                                <strong>高级功能:</strong> @_advancedFeatureStatus
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <h6>📊 测试结果统计</h6>
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="alert alert-success small">
+                                        <strong>成功:</strong> @_offlineTestSuccessCount
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="alert alert-danger small">
+                                        <strong>失败:</strong> @_offlineTestFailureCount
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="alert alert-info small">
+                                <strong>最后测试:</strong> @_lastOfflineTestMessage
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary w-100" @onclick="RunAllOfflineTests">运行所有离线测试</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <div class="row mt-3">
         <div class="col-12">
             <div class="card">
@@ -372,6 +437,14 @@
     private string _lastReputationTestMessage = "尚未进行测试";
     private int _reputationTestSuccessCount = 0;
     private int _reputationTestFailureCount = 0;
+    
+    // Enhanced Offline Settlement test status variables
+    private string _offlineSettlementStatus = "未测试";
+    private string _batchSettlementResult = "未执行";
+    private string _advancedFeatureStatus = "未测试";
+    private string _lastOfflineTestMessage = "尚未进行测试";
+    private int _offlineTestSuccessCount = 0;
+    private int _offlineTestFailureCount = 0;
 
     private void AddLog(string message)
     {
@@ -2008,6 +2081,334 @@
             _reputationTestFailureCount++;
             AddLog($"❌ 声望奖励测试异常: {ex.Message}");
         }
+    }
+    
+    // Enhanced Offline Settlement Test Methods
+    private async Task TestEnhancedOfflineSettlement()
+    {
+        try
+        {
+            AddLog("🌙 测试增强离线结算...");
+            
+            var testPlayerId = "test-player-" + Guid.NewGuid().ToString("N")[..8];
+            var result = await EnhancedOfflineApi.ProcessEnhancedOfflineSettlementAsync(
+                testPlayerId, 
+                useEventDriven: true, 
+                enableTimeDecay: true);
+            
+            if (result.Success && result.Data != null)
+            {
+                _offlineSettlementStatus = "结算成功";
+                _lastOfflineTestMessage = $"获得经验 {result.Data.TotalExperience}，金币 {result.Data.TotalGold}";
+                _offlineTestSuccessCount++;
+                
+                AddLog($"✅ 增强离线结算成功");
+                AddLog($"   - 玩家ID: {result.Data.PlayerId}");
+                AddLog($"   - 处理时间: {result.Data.ProcessingTimeMs:F2}ms");
+                AddLog($"   - 离线时长: {result.Data.EffectiveOfflineTime}");
+                AddLog($"   - 获得经验: {result.Data.TotalExperience}");
+                AddLog($"   - 获得金币: {result.Data.TotalGold}");
+                AddLog($"   - 等级提升: {result.Data.LevelUps}");
+                AddLog($"   - 活动类型: {result.Data.ActivityType}");
+                AddLog($"   - 处理模式: {result.Data.ProcessingMode}");
+                
+                if (result.Data.DecayApplied)
+                {
+                    AddLog($"   - 应用了时间衰减: {result.Data.DecayFactor:P2}");
+                }
+                
+                if (result.Data.Warnings.Any())
+                {
+                    AddLog($"   - 警告: {string.Join(", ", result.Data.Warnings)}");
+                }
+            }
+            else
+            {
+                _offlineSettlementStatus = "结算失败";
+                _lastOfflineTestMessage = result.Message;
+                _offlineTestFailureCount++;
+                AddLog($"⚠️ 增强离线结算失败: {result.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _offlineSettlementStatus = "测试异常";
+            _lastOfflineTestMessage = $"异常: {ex.Message}";
+            _offlineTestFailureCount++;
+            AddLog($"❌ 增强离线结算测试异常: {ex.Message}");
+        }
+    }
+    
+    private async Task TestLegacyOfflineSettlement()
+    {
+        try
+        {
+            AddLog("🔙 测试传统离线结算...");
+            
+            var testPlayerId = "legacy-player-" + Guid.NewGuid().ToString("N")[..8];
+            var result = await EnhancedOfflineApi.ProcessLegacyOfflineSettlementAsync(testPlayerId);
+            
+            if (result.Success && result.Data != null)
+            {
+                _offlineSettlementStatus = "传统结算成功";
+                _lastOfflineTestMessage = $"传统模式获得经验 {result.Data.TotalExperience}，金币 {result.Data.TotalGold}";
+                _offlineTestSuccessCount++;
+                
+                AddLog($"✅ 传统离线结算成功");
+                AddLog($"   - 玩家ID: {result.Data.PlayerId}");
+                AddLog($"   - 离线时长: {result.Data.OfflineTime}");
+                AddLog($"   - 获得经验: {result.Data.TotalExperience}");
+                AddLog($"   - 获得金币: {result.Data.TotalGold}");
+                AddLog($"   - 战斗次数: {result.Data.BattleResults.Count}");
+                AddLog($"   - 奖励类型: {result.Data.Rewards.Count} 种");
+            }
+            else
+            {
+                _offlineSettlementStatus = "传统结算失败";
+                _lastOfflineTestMessage = result.Message;
+                _offlineTestFailureCount++;
+                AddLog($"⚠️ 传统离线结算失败: {result.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _offlineSettlementStatus = "传统测试异常";
+            _lastOfflineTestMessage = $"异常: {ex.Message}";
+            _offlineTestFailureCount++;
+            AddLog($"❌ 传统离线结算测试异常: {ex.Message}");
+        }
+    }
+    
+    private async Task TestSmartBatchSettlement()
+    {
+        try
+        {
+            AddLog("⚡ 测试智能批量离线结算...");
+            
+            var playerIds = Enumerable.Range(1, 5)
+                .Select(i => $"batch-player-{i}-{Guid.NewGuid().ToString("N")[..6]}")
+                .ToList();
+            
+            var result = await EnhancedOfflineApi.ProcessSmartBatchOfflineSettlementAsync(
+                playerIds, 
+                maxConcurrency: 3,
+                useEventDriven: true,
+                enableTimeDecay: true);
+            
+            _batchSettlementResult = $"成功 {result.SuccessCount}/{result.TotalProcessed}";
+            
+            if (result.SuccessCount > 0)
+            {
+                _offlineTestSuccessCount++;
+                AddLog($"✅ 智能批量结算完成");
+                AddLog($"   - 总处理数: {result.TotalProcessed}");
+                AddLog($"   - 成功数: {result.SuccessCount}");
+                AddLog($"   - 失败数: {result.ErrorCount}");
+            }
+            else
+            {
+                _offlineTestFailureCount++;
+                AddLog($"⚠️ 智能批量结算失败");
+            }
+        }
+        catch (Exception ex)
+        {
+            _batchSettlementResult = "批量测试异常";
+            _offlineTestFailureCount++;
+            AddLog($"❌ 智能批量结算测试异常: {ex.Message}");
+        }
+    }
+    
+    private async Task TestOfflineRevenueEstimate()
+    {
+        try
+        {
+            AddLog("💰 测试离线收益预估...");
+            
+            var testPlayerId = "estimate-player-" + Guid.NewGuid().ToString("N")[..8];
+            var result = await EnhancedOfflineApi.EstimateOfflineRevenueAsync(testPlayerId, 2.5);
+            
+            if (result.Success && result.Data != null)
+            {
+                _offlineSettlementStatus = "预估成功";
+                _lastOfflineTestMessage = $"预估经验 {result.Data.EstimatedExperience}";
+                _offlineTestSuccessCount++;
+                AddLog($"✅ 离线收益预估成功");
+            }
+            else
+            {
+                _offlineTestFailureCount++;
+                AddLog($"⚠️ 离线收益预估失败: {result.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _offlineTestFailureCount++;
+            AddLog($"❌ 离线收益预估异常: {ex.Message}");
+        }
+    }
+    
+    private async Task TestOfflineActivityProgress()
+    {
+        try
+        {
+            AddLog("📊 测试离线活动进度...");
+            var testPlayerId = "progress-player-" + Guid.NewGuid().ToString("N")[..8];
+            var result = await EnhancedOfflineApi.GetOfflineActivityProgressAsync(testPlayerId);
+            
+            if (result.Success)
+            {
+                _offlineTestSuccessCount++;
+                AddLog($"✅ 离线活动进度查询成功");
+            }
+            else
+            {
+                _offlineTestFailureCount++;
+                AddLog($"⚠️ 查询失败: {result.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _offlineTestFailureCount++;
+            AddLog($"❌ 查询异常: {ex.Message}");
+        }
+    }
+    
+    private async Task TestOfflineSettlementMetrics()
+    {
+        try
+        {
+            AddLog("📈 测试性能指标...");
+            var result = await EnhancedOfflineApi.GetOfflineSettlementMetricsAsync();
+            
+            if (result.Success)
+            {
+                _offlineTestSuccessCount++;
+                AddLog($"✅ 性能指标获取成功");
+            }
+            else
+            {
+                _offlineTestFailureCount++;
+                AddLog($"⚠️ 获取失败: {result.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _offlineTestFailureCount++;
+            AddLog($"❌ 获取异常: {ex.Message}");
+        }
+    }
+    
+    private async Task TestTimeDecayMechanism()
+    {
+        try
+        {
+            AddLog("⏰ 测试时间衰减机制...");
+            var testPlayerId = "decay-player-" + Guid.NewGuid().ToString("N")[..8];
+            var result = await EnhancedOfflineApi.EstimateOfflineRevenueAsync(testPlayerId, 50.0);
+            
+            if (result.Success && result.Data != null)
+            {
+                _advancedFeatureStatus = result.Data.DecayApplied ? "衰减生效" : "无需衰减";
+                _offlineTestSuccessCount++;
+                AddLog($"✅ 时间衰减测试完成，衰减应用: {result.Data.DecayApplied}");
+            }
+            else
+            {
+                _offlineTestFailureCount++;
+                AddLog($"⚠️ 衰减测试失败");
+            }
+        }
+        catch (Exception ex)
+        {
+            _offlineTestFailureCount++;
+            AddLog($"❌ 衰减测试异常: {ex.Message}");
+        }
+    }
+    
+    private async Task TestEventDrivenMode()
+    {
+        try
+        {
+            AddLog("🔄 测试事件驱动模式...");
+            var testPlayerId = "event-player-" + Guid.NewGuid().ToString("N")[..8];
+            var result = await EnhancedOfflineApi.ProcessEnhancedOfflineSettlementAsync(testPlayerId, true, false);
+            
+            if (result.Success)
+            {
+                _advancedFeatureStatus = "事件驱动正常";
+                _offlineTestSuccessCount++;
+                AddLog($"✅ 事件驱动模式测试成功");
+            }
+            else
+            {
+                _offlineTestFailureCount++;
+                AddLog($"⚠️ 事件驱动测试失败");
+            }
+        }
+        catch (Exception ex)
+        {
+            _offlineTestFailureCount++;
+            AddLog($"❌ 事件驱动测试异常: {ex.Message}");
+        }
+    }
+    
+    private async Task TestSecurityMechanisms()
+    {
+        try
+        {
+            AddLog("🔒 测试安全机制...");
+            var result = await EnhancedOfflineApi.ProcessEnhancedOfflineSettlementAsync("", true, true);
+            
+            if (!result.Success)
+            {
+                _advancedFeatureStatus = "安全检查正常";
+                _offlineTestSuccessCount++;
+                AddLog($"✅ 安全机制正确处理了无效输入");
+            }
+            else
+            {
+                _offlineTestFailureCount++;
+                AddLog($"⚠️ 安全机制可能存在问题");
+            }
+        }
+        catch (Exception ex)
+        {
+            _offlineTestSuccessCount++;
+            AddLog($"✅ 安全机制正确抛出异常: {ex.Message}");
+        }
+    }
+    
+    private async Task RunAllOfflineTests()
+    {
+        AddLog("🌙 开始运行所有离线结算测试...");
+        _offlineTestSuccessCount = 0;
+        _offlineTestFailureCount = 0;
+        
+        await TestEnhancedOfflineSettlement();
+        await Task.Delay(200);
+        await TestLegacyOfflineSettlement();
+        await Task.Delay(200);
+        await TestOfflineRevenueEstimate();
+        await Task.Delay(200);
+        await TestSmartBatchSettlement();
+        await Task.Delay(200);
+        await TestOfflineActivityProgress();
+        await Task.Delay(200);
+        await TestOfflineSettlementMetrics();
+        await Task.Delay(200);
+        await TestTimeDecayMechanism();
+        await Task.Delay(200);
+        await TestEventDrivenMode();
+        await Task.Delay(200);
+        await TestSecurityMechanisms();
+        
+        var successRate = _offlineTestSuccessCount + _offlineTestFailureCount > 0 
+            ? (double)_offlineTestSuccessCount / (_offlineTestSuccessCount + _offlineTestFailureCount) * 100 
+            : 0;
+        
+        _lastOfflineTestMessage = $"批量测试完成 - 成功率 {successRate:F1}%";
+        AddLog($"🎯 离线结算测试完成，成功率: {successRate:F1}%");
     }
 }
 </div>

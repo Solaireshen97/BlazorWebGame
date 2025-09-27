@@ -43,6 +43,7 @@ builder.Services.AddSingleton<ShopApiService>();  // 添加商店API服务
 builder.Services.AddSingleton<ReputationApiService>();  // 添加声望API服务
 builder.Services.AddSingleton<AuthApiService>();
 builder.Services.AddSingleton<OfflineSettlementApiService>();
+builder.Services.AddSingleton<EnhancedOfflineSettlementApiService>();  // 添加增强离线结算API服务
 builder.Services.AddSingleton<MonitoringApiService>();
 
 // 注册统一的API客户端（暂时使用构造器直接注入实现类）
