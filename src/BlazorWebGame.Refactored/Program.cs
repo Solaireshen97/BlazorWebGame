@@ -129,10 +129,6 @@ if (signalRService is GameHubClient hubClient)
     }
 }
 
-// 初始化Fluxor
-var store = app.Services.GetRequiredService<IStore>();
-await store.InitializeAsync();
-
 // 分发应用程序初始化事件
 var dispatcher = app.Services.GetRequiredService<IDispatcher>();
 dispatcher.Dispatch(new InitializeApplicationAction());
