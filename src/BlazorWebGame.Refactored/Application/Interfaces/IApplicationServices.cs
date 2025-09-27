@@ -30,6 +30,12 @@ public interface ICharacterService
     Task DeleteCharacterAsync(Guid characterId);
     Task<ResourcePool> GetCharacterResourcesAsync(Guid characterId);
     Task<IEnumerable<ItemReward>> GetCharacterInventoryAsync(Guid characterId);
+    
+    // Additional methods for CQRS
+    Task<Character?> GetCharacterAsync(Guid characterId);
+    Task<Character?> GetCharacterByNameAsync(string name);
+    Task<Character> CreateCharacterAsync(Character character);
+    Task<List<Character>> GetUserCharactersAsync(string userId);
 }
 
 /// <summary>
@@ -43,6 +49,11 @@ public interface IActivityService
     Task<ActivitySummary?> GetActivityStatusAsync(Guid activityId);
     Task<ActivityResult> CompleteActivityAsync(Guid activityId);
     Task UpdateActivityProgressAsync(Guid activityId, double progress);
+    
+    // Additional methods for CQRS
+    Task<Activity> StartActivityAsync(Guid characterId, ActivityType activityType, ActivityParameters parameters);
+    Task<List<Activity>> GetCharacterActivitiesAsync(Guid characterId);
+    Task<Activity?> GetActivityAsync(Guid activityId);
 }
 
 /// <summary>
@@ -66,19 +77,16 @@ public interface ISignalRService
     Task StopAsync();
     bool IsConnected { get; }
     
-    Task JoinGroupAsync(string groupName);
-    Task LeaveGroupAsync(string groupName);
-    Task JoinCharacterGroupAsync(Guid characterId);
-    Task LeaveCharacterGroupAsync(Guid characterId);
-    Task JoinBattleGroupAsync(Guid battleId);
-    Task LeaveBattleGroupAsync(Guid battleId);
+    Task JoinGameAsync(string userId);
+    Task LeaveGameAsync();
+    Task SendCharacterActionAsync(Guid characterId, string action, object data);
     
     // 事件处理器
-    event Action<CharacterUpdateEvent>? OnCharacterUpdate;
-    event Action<BattleUpdateEvent>? OnBattleUpdate;
-    event Action<ActivityUpdateEvent>? OnActivityUpdate;
-    event Action<NotificationMessage>? OnNotification;
-    event Action<RealtimeEvent>? OnRealtimeEvent;
+    event Func<string, Task>? OnCharacterUpdate;
+    event Func<string, Task>? OnActivityUpdate;
+    event Func<string, Task>? OnBattleUpdate;
+    event Func<string, Task>? OnNotification;
+    event Func<string, object, Task>? OnRealtimeEvent;
 }
 
 /// <summary>
@@ -100,13 +108,20 @@ public interface ICacheService
 /// </summary>
 public interface IHttpClientService
 {
-    Task<ApiResponse<T>> GetAsync<T>(string endpoint) where T : class;
-    Task<ApiResponse<T>> PostAsync<T>(string endpoint, object data) where T : class;
-    Task<ApiResponse<T>> PutAsync<T>(string endpoint, object data) where T : class;
-    Task<ApiResponse<T>> DeleteAsync<T>(string endpoint) where T : class;
-    Task<ApiResponse> PostAsync(string endpoint, object data);
-    Task<ApiResponse> PutAsync(string endpoint, object data);
-    Task<ApiResponse> DeleteAsync(string endpoint);
+    Task<T?> GetAsync<T>(string endpoint);
+    Task<TResponse?> PostAsync<TRequest, TResponse>(string endpoint, TRequest data);
+    Task<TResponse?> PutAsync<TRequest, TResponse>(string endpoint, TRequest data);
+    Task<bool> DeleteAsync(string endpoint);
+    
+    // Game-specific API methods
+    Task<List<BlazorWebGame.Refactored.Application.DTOs.CharacterDto>> GetCharactersAsync(string userId);
+    Task<BlazorWebGame.Refactored.Application.DTOs.CharacterDto?> GetCharacterAsync(Guid characterId);
+    Task<BlazorWebGame.Refactored.Application.DTOs.CharacterDto?> CreateCharacterAsync(BlazorWebGame.Refactored.Infrastructure.Http.CreateCharacterRequest request);
+    Task<bool> DeleteCharacterAsync(Guid characterId);
+    Task<List<BlazorWebGame.Refactored.Application.DTOs.ActivityDto>> GetCharacterActivitiesAsync(Guid characterId);
+    Task<BlazorWebGame.Refactored.Application.DTOs.ActivityDto?> StartActivityAsync(BlazorWebGame.Refactored.Infrastructure.Http.StartActivityRequest request);
+    Task<bool> CancelActivityAsync(Guid activityId);
+    Task<BlazorWebGame.Refactored.Application.DTOs.ActivityDto?> GetActivityAsync(Guid activityId);
 }
 
 /// <summary>
