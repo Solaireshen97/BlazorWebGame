@@ -2,11 +2,13 @@ using BlazorWebGame.Client.Services.Api;
 using BlazorWebGame.Models;
 using BlazorWebGame.Services;
 using BlazorWebGame.Shared.DTOs;
+using BlazorWebGame.Shared.Events;
+using Microsoft.AspNetCore.SignalR.Client;
 
 namespace BlazorWebGame.Client.Services
 {
     /// <summary>
-    /// 简化角色服务 - 现在只使用服务器API，保留本地UI状态缓存
+    /// 简化角色服务 - 现在只使用服务器API，保留本地UI状态
     /// </summary>
     public class HybridCharacterService : IAsyncDisposable
     {
@@ -128,29 +130,110 @@ namespace BlazorWebGame.Client.Services
         }
 
         /// <summary>
-        /// 添加战斗经验值 - 现在由服务器自动处理，不需要客户端调用
+        /// 添加战斗经验值
         /// </summary>
-        [Obsolete("经验值更新应由服务器自动处理，客户端不应直接调用")]
         public async Task AddBattleXPAsync(Player player, BattleProfession profession, int amount)
         {
-            // 经验值更新现在完全由服务器处理，客户端不应直接调用
-            _logger.LogWarning("AddBattleXPAsync called - this should be handled by server automatically");
-            await Task.CompletedTask;
+            if (UseServerMode)
+            {
+                try
+                {
+                    var request = new AddExperienceRequest
+                    {
+                        ProfessionType = "Battle",
+                        Profession = profession.ToString(),
+                        Amount = amount
+                    };
+                    
+                    var response = await _serverApiService.AddExperienceAsync(player.Id, request);
+                    if (response.Success)
+                    {
+                        // 同时更新本地状态以保持同步
+                        _localCharacterService.AddBattleXP(player, profession, amount);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Failed to add battle XP on server: {Message}", response.Message);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to add battle XP via server API");
+                    // 回退到本地处理
+                    _localCharacterService.AddBattleXP(player, profession, amount);
+                }
+            }
+            else
+            {
+                _localCharacterService.AddBattleXP(player, profession, amount);
+            }
         }
 
         /// <summary>
-        /// 添加采集经验值 - 现在由服务器自动处理，不需要客户端调用
+        /// 添加采集经验值
         /// </summary>
-        [Obsolete("经验值更新应由服务器自动处理，客户端不应直接调用")]
         public async Task AddGatheringXPAsync(Player player, GatheringProfession profession, int amount)
         {
-            // 经验值更新现在完全由服务器处理，客户端不应直接调用
-            _logger.LogWarning("AddGatheringXPAsync called - this should be handled by server automatically");
-            await Task.CompletedTask;
+            if (UseServerMode)
+            {
+                try
+                {
+                    var request = new AddExperienceRequest
+                    {
+                        ProfessionType = "Gathering",
+                        Profession = profession.ToString(),
+                        Amount = amount
+                    };
+                    
+                    var response = await _serverApiService.AddExperienceAsync(player.Id, request);
+                    if (response.Success)
+                    {
+                        _localCharacterService.AddGatheringXP(player, profession, amount);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Failed to add gathering XP on server: {Message}", response.Message);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to add gathering XP via server API");
+                    _localCharacterService.AddGatheringXP(player, profession, amount);
+                }
+            }
+            else
+            {
+                _localCharacterService.AddGatheringXP(player, profession, amount);
+            }
         }
 
         /// <summary>
-        /// 从服务器同步角色数据
+        /// 初始化与服务器的连接
+        /// </summary>
+        private async Task InitializeServerConnectionAsync()
+        {
+            try
+            {
+                _hubConnection = new HubConnectionBuilder()
+                    .WithUrl($"{_serverConfig.CurrentServerUrl}/gamehub")
+                    .Build();
+
+                // 订阅服务器事件
+                _hubConnection.On<object>("GameEvent", OnServerGameEvent);
+                _hubConnection.On("RefreshState", OnServerRefreshState);
+
+                await _hubConnection.StartAsync();
+                _logger.LogInformation("Connected to game hub");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to connect to game hub");
+                _hubConnection = null;
+            }
+        }
+
+        /// <summary>
+        /// 与服务器同步角色数据
         /// </summary>
         private async Task SyncWithServerAsync()
         {
@@ -159,19 +242,19 @@ namespace BlazorWebGame.Client.Services
                 var response = await _serverApiService.GetCharactersAsync();
                 if (response.Success && response.Data != null)
                 {
-                    // 清除本地角色列表并用服务器数据重新填充
+                    // 清除本地角色并从服务器重新加载
                     _localCharacterService.AllCharacters.Clear();
                     
-                    foreach (var serverCharacter in response.Data)
+                    foreach (var serverChar in response.Data)
                     {
                         var localPlayer = new Player
                         {
-                            Id = serverCharacter.Id,
-                            Name = serverCharacter.Name,
-                            Health = serverCharacter.Health,
-                            MaxHealth = serverCharacter.MaxHealth,
-                            Gold = serverCharacter.Gold,
-                            IsDead = serverCharacter.IsDead
+                            Id = serverChar.Id,
+                            Name = serverChar.Name,
+                            Health = serverChar.Health,
+                            MaxHealth = serverChar.MaxHealth,
+                            Gold = serverChar.Gold,
+                            IsDead = serverChar.IsDead
                         };
                         
                         _localCharacterService.AllCharacters.Add(localPlayer);
@@ -183,7 +266,6 @@ namespace BlazorWebGame.Client.Services
                     }
 
                     _logger.LogInformation($"Synced {response.Data.Count} characters from server");
-                    OnStateChanged?.Invoke();
                 }
             }
             catch (Exception ex)
@@ -192,7 +274,25 @@ namespace BlazorWebGame.Client.Services
             }
         }
 
-        // 转发本地服务的方法（用于UI兼容性）
+        /// <summary>
+        /// 处理服务器游戏事件
+        /// </summary>
+        private void OnServerGameEvent(object eventData)
+        {
+            _logger.LogDebug("Received game event from server: {EventData}", eventData);
+            OnStateChanged?.Invoke();
+        }
+
+        /// <summary>
+        /// 处理服务器刷新状态通知
+        /// </summary>
+        private void OnServerRefreshState()
+        {
+            _logger.LogDebug("Received refresh state from server");
+            OnStateChanged?.Invoke();
+        }
+
+        // 转发本地服务的方法
         public void UpdateBuffs(Player character, double elapsedSeconds) => _localCharacterService.UpdateBuffs(character, elapsedSeconds);
         public void InitializePlayerState(Player character) => _localCharacterService.InitializePlayerState(character);
         public int GetLevel(Player player, BattleProfession profession) => _localCharacterService.GetLevel(player, profession);
@@ -201,8 +301,10 @@ namespace BlazorWebGame.Client.Services
 
         public async ValueTask DisposeAsync()
         {
-            // 清理资源
-            await Task.CompletedTask;
+            if (_hubConnection != null)
+            {
+                await _hubConnection.DisposeAsync();
+            }
         }
     }
 }
