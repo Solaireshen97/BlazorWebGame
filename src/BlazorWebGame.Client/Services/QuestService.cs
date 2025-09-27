@@ -1,5 +1,4 @@
 using BlazorWebGame.Models;
-using BlazorWebGame.Models.Quests;
 using BlazorWebGame.Models.Items;
 using System;
 using System.Collections.Generic;
@@ -7,337 +6,150 @@ using System.Linq;
 
 namespace BlazorWebGame.Services
 {
+    /// <summary>
+    /// ç®€åŒ–çš„ä»»åŠ¡æœåŠ¡ - ä»…ä¿ç•™UIçŠ¶æ€ç®¡ç†ï¼Œæ‰€æœ‰ä»»åŠ¡é€»è¾‘ç”±æœåŠ¡å™¨å¤„ç†
+    /// </summary>
     public class QuestService
     {
         private readonly InventoryService _inventoryService;
-        
+
         /// <summary>
-        /// µ±Ç°»îÔ¾µÄÈÕ³£ÈÎÎñ
-        /// </summary>
-        public List<Quest> DailyQuests { get; private set; } = new();
-        
-        /// <summary>
-        /// µ±Ç°»îÔ¾µÄÖÜ³£ÈÎÎñ
-        /// </summary>
-        public List<Quest> WeeklyQuests { get; private set; } = new();
-        
-        /// <summary>
-        /// ÉÏ´ÎÈÕ³£ÈÎÎñÖØÖÃÊ±¼ä
-        /// </summary>
-        public DateTime LastDailyReset { get; private set; } = DateTime.UtcNow;
-        
-        /// <summary>
-        /// ÉÏ´ÎÖÜ³£ÈÎÎñÖØÖÃÊ±¼ä
-        /// </summary>
-        public DateTime LastWeeklyReset { get; private set; } = DateTime.UtcNow;
-        
-        /// <summary>
-        /// ×´Ì¬±ä¸üÊÂ¼ş
+        /// çŠ¶æ€æ”¹å˜äº‹ä»¶
         /// </summary>
         public event Action? OnStateChanged;
+
+        /// <summary>
+        /// æ¯æ—¥ä»»åŠ¡åˆ—è¡¨ - UIå±•ç¤ºç”¨
+        /// </summary>
+        public List<Quest> DailyQuests { get; private set; } = new();
+
+        /// <summary>
+        /// æ¯å‘¨ä»»åŠ¡åˆ—è¡¨ - UIå±•ç¤ºç”¨
+        /// </summary>
+        public List<Quest> WeeklyQuests { get; private set; } = new();
+
+        /// <summary>
+        /// ä¸Šæ¬¡æ¯æ—¥é‡ç½®æ—¶é—´ - UIå±•ç¤ºç”¨
+        /// </summary>
+        public DateTime LastDailyReset { get; private set; } = DateTime.Today;
+
+        /// <summary>
+        /// ä¸Šæ¬¡æ¯å‘¨é‡ç½®æ—¶é—´ - UIå±•ç¤ºç”¨
+        /// </summary>
+        public DateTime LastWeeklyReset { get; private set; } = DateTime.Today;
 
         public QuestService(InventoryService inventoryService)
         {
             _inventoryService = inventoryService;
-            // ³õÊ¼»¯ÈÎÎñ
-            RefreshDailyQuests();
-            RefreshWeeklyQuests();
+        }
+
+        #region ä»»åŠ¡ç®¡ç† - å·²ç§»é™¤æœ¬åœ°å®ç°
+
+        /// <summary>
+        /// æ£€æŸ¥å’Œé‡ç½®æ¯æ—¥ä»»åŠ¡ - å·²ç§»é™¤æœ¬åœ°å®ç°
+        /// </summary>
+        [Obsolete("æœ¬åœ°ä»»åŠ¡ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
+        public void CheckAndResetDailyQuests()
+        {
+            // æœ¬åœ°ä»»åŠ¡ç³»ç»Ÿå·²ç§»é™¤
         }
 
         /// <summary>
-        /// »ñÈ¡µ±Ç°ÈÕ³£ÈÎÎñÁĞ±í
+        /// æ£€æŸ¥å’Œé‡ç½®æ¯å‘¨ä»»åŠ¡ - å·²ç§»é™¤æœ¬åœ°å®ç°
         /// </summary>
+        [Obsolete("æœ¬åœ°ä»»åŠ¡ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
+        public void CheckAndResetWeeklyQuests()
+        {
+            // æœ¬åœ°ä»»åŠ¡ç³»ç»Ÿå·²ç§»é™¤
+        }
+
+        /// <summary>
+        /// å°è¯•å®Œæˆä»»åŠ¡ - å·²ç§»é™¤æœ¬åœ°å®ç°
+        /// </summary>
+        [Obsolete("æœ¬åœ°ä»»åŠ¡ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
+        public void TryCompleteQuest(Player character, string questId)
+        {
+            // æœ¬åœ°ä»»åŠ¡ç³»ç»Ÿå·²ç§»é™¤
+        }
+
+        /// <summary>
+        /// æ›´æ–°ä»»åŠ¡è¿›åº¦ - å·²ç§»é™¤æœ¬åœ°å®ç°
+        /// </summary>
+        [Obsolete("æœ¬åœ°ä»»åŠ¡ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
+        public void UpdateQuestProgress(Player character, QuestType questType, string objectiveId, int amount)
+        {
+            // æœ¬åœ°ä»»åŠ¡ç³»ç»Ÿå·²ç§»é™¤
+        }
+
+        /// <summary>
+        /// å®Œæˆä»»åŠ¡ - å·²ç§»é™¤æœ¬åœ°å®ç°
+        /// </summary>
+        [Obsolete("æœ¬åœ°ä»»åŠ¡ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
+        public void CompleteQuest(Player character, Quest quest)
+        {
+            // æœ¬åœ°ä»»åŠ¡ç³»ç»Ÿå·²ç§»é™¤
+        }
+
+        /// <summary>
+        /// ç”Ÿæˆæ¯æ—¥ä»»åŠ¡ - å·²ç§»é™¤æœ¬åœ°å®ç°
+        /// </summary>
+        [Obsolete("æœ¬åœ°ä»»åŠ¡ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
+        public void GenerateDailyQuests()
+        {
+            // æœ¬åœ°ä»»åŠ¡ç³»ç»Ÿå·²ç§»é™¤
+        }
+
+        /// <summary>
+        /// ç”Ÿæˆæ¯å‘¨ä»»åŠ¡ - å·²ç§»é™¤æœ¬åœ°å®ç°
+        /// </summary>
+        [Obsolete("æœ¬åœ°ä»»åŠ¡ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
+        public void GenerateWeeklyQuests()
+        {
+            // æœ¬åœ°ä»»åŠ¡ç³»ç»Ÿå·²ç§»é™¤
+        }
+
+        /// <summary>
+        /// æ£€æŸ¥ä»»åŠ¡æ˜¯å¦å¯ä»¥å®Œæˆ - å·²ç§»é™¤æœ¬åœ°å®ç°
+        /// </summary>
+        [Obsolete("æœ¬åœ°ä»»åŠ¡ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
+        public bool CanCompleteQuest(Player character, Quest quest)
+        {
+            // æœ¬åœ°ä»»åŠ¡ç³»ç»Ÿå·²ç§»é™¤
+            return false;
+        }
+
+        /// <summary>
+        /// è·å–æ¯æ—¥ä»»åŠ¡ - å·²ç§»é™¤æœ¬åœ°å®ç°
+        /// </summary>
+        [Obsolete("æœ¬åœ°ä»»åŠ¡ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
         public List<Quest> GetDailyQuests()
         {
-            // ¼ì²éÊÇ·ñĞèÒªË¢ĞÂÈÕ³£ÈÎÎñ
-            CheckAndResetDailyQuests();
+            // æœ¬åœ°ä»»åŠ¡ç³»ç»Ÿå·²ç§»é™¤
             return DailyQuests;
         }
 
         /// <summary>
-        /// »ñÈ¡µ±Ç°ÖÜ³£ÈÎÎñÁĞ±í
+        /// è·å–æ¯å‘¨ä»»åŠ¡ - å·²ç§»é™¤æœ¬åœ°å®ç°
         /// </summary>
+        [Obsolete("æœ¬åœ°ä»»åŠ¡ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
         public List<Quest> GetWeeklyQuests()
         {
-            // ¼ì²éÊÇ·ñĞèÒªË¢ĞÂÖÜ³£ÈÎÎñ
-            CheckAndResetWeeklyQuests();
+            // æœ¬åœ°ä»»åŠ¡ç³»ç»Ÿå·²ç§»é™¤
             return WeeklyQuests;
         }
 
-        /// <summary>
-        /// ¼ì²é²¢ÖØÖÃÈÕ³£ÈÎÎñ£¨Èç¹ûĞèÒª£©
-        /// </summary>
-        public void CheckAndResetDailyQuests()
-        {
-            // ¼ì²éÊÇ·ñÒÑ¹ıÒ»Ìì£¨·şÎñÆ÷Ê±¼ä£©
-            var now = DateTime.UtcNow;
-            var nextResetTime = LastDailyReset.Date.AddDays(1);
+        #endregion
 
-            if (now >= nextResetTime)
-            {
-                RefreshDailyQuests();
-                LastDailyReset = now;
-                NotifyStateChanged();
-            }
-        }
+        #region çŠ¶æ€ç®¡ç†
 
         /// <summary>
-        /// ¼ì²é²¢ÖØÖÃÖÜ³£ÈÎÎñ£¨Èç¹ûĞèÒª£©
+        /// è§¦å‘çŠ¶æ€æ”¹å˜äº‹ä»¶
         /// </summary>
-        public void CheckAndResetWeeklyQuests()
+        public void NotifyStateChanged()
         {
-            // ¼ì²éÊÇ·ñÒÑ¹ıÒ»ÖÜ£¨ÒÔÖÜÒ»ÎªÆğµã£©
-            var now = DateTime.UtcNow;
-            var daysSinceMonday = ((int)now.DayOfWeek - 1 + 7) % 7; // ×ª»»ÎªÖÜÒ»Îª0
-            var lastMonday = now.Date.AddDays(-daysSinceMonday);
-            var nextMonday = lastMonday.AddDays(7);
-            
-            if (now >= nextMonday && LastWeeklyReset < lastMonday)
-            {
-                RefreshWeeklyQuests();
-                LastWeeklyReset = now;
-                NotifyStateChanged();
-            }
+            OnStateChanged?.Invoke();
         }
 
-        /// <summary>
-        /// Ë¢ĞÂÈÕ³£ÈÎÎñ
-        /// </summary>
-        public void RefreshDailyQuests()
-        {
-            var random = new Random();
-            DailyQuests = QuestData.DailyQuestPool
-                .GroupBy(q => q.Faction) // °´ÅÉÏµ·Ö×é
-                .SelectMany(g => g.OrderBy(_ => random.Next()).Take(2)) // Ã¿¸öÅÉÏµÑ¡È¡2¸öÈÎÎñ
-                .Select(q => q.Clone()) // ¸´ÖÆÈÎÎñÊµÀı
-                .ToList();
-        }
-
-        /// <summary>
-        /// Ë¢ĞÂÖÜ³£ÈÎÎñ
-        /// </summary>
-        public void RefreshWeeklyQuests()
-        {
-            WeeklyQuests = QuestData.WeeklyQuestPool
-                .Select(q => q.Clone()) // ¸´ÖÆÈÎÎñÊµÀı
-                .ToList();
-        }
-
-        /// <summary>
-        /// ¸üĞÂÍæ¼ÒµÄÈÎÎñ½ø¶È
-        /// </summary>
-        public void UpdateQuestProgress(Player character, QuestType type, string targetId, int amount)
-        {
-            if (character == null || amount <= 0)
-                return;
-
-            // »ñÈ¡ËùÓĞ»î¶¯ÈÎÎñ
-            var allQuests = DailyQuests.Concat(WeeklyQuests);
-
-            foreach (var quest in allQuests)
-            {
-                // Ìø¹ıÒÑÍê³ÉµÄÈÎÎñ
-                if (character.CompletedQuestIds.Contains(quest.Id))
-                    continue;
-                
-                // Æ¥ÅäÈÎÎñÀàĞÍ£¬ÇÒÄ¿±êIDÆ¥Åä»òÎª"any"
-                if (quest.Type == type && (quest.TargetId == targetId || quest.TargetId == "any"))
-                {
-                    // »ñÈ¡µ±Ç°½ø¶È£¬Èç¹û²»´æÔÚÔòÎª0
-                    var currentProgress = character.QuestProgress.GetValueOrDefault(quest.Id, 0);
-                    
-                    // ¸üĞÂ½ø¶È£¬µ«²»³¬¹ıÈÎÎñÒªÇó
-                    character.QuestProgress[quest.Id] = Math.Min(currentProgress + amount, quest.RequiredAmount);
-                    
-                    // ¼ì²éÈÎÎñÊÇ·ñ¿ÉÒÔ×Ô¶¯Íê³É
-                    if (quest.AutoComplete && character.QuestProgress[quest.Id] >= quest.RequiredAmount)
-                    {
-                        TryCompleteQuest(character, quest.Id);
-                    }
-                }
-            }
-        }
-        
-        /// <summary>
-        /// ³¢ÊÔÍê³ÉÈÎÎñ
-        /// </summary>
-        public void TryCompleteQuest(Player character, string questId)
-        {
-            if (character == null) return;
-            
-            var quest = DailyQuests.Concat(WeeklyQuests).FirstOrDefault(q => q.Id == questId);
-            if (quest == null || character.CompletedQuestIds.Contains(questId)) return;
-
-            if (character.QuestProgress.GetValueOrDefault(questId, 0) >= quest.RequiredAmount)
-            {
-                // ·¢·Å½ğ±Ò½±Àø
-                character.Gold += quest.GoldReward;
-                
-                // ·¢·ÅÉùÍû½±Àø
-                if (quest.ReputationReward > 0)
-                {
-                    character.Reputation[quest.Faction] = character.Reputation.GetValueOrDefault(quest.Faction, 0) + quest.ReputationReward;
-                }
-
-                // ·¢·ÅÎïÆ·½±Àø
-                foreach (var itemReward in quest.ItemRewards)
-                {
-                    _inventoryService.AddItemToInventory(character, itemReward.Key, itemReward.Value);
-                }
-
-                // ·¢·Å¾­Ñé½±Àø
-                if (quest.ExperienceReward > 0)
-                {
-                    switch (quest.Type)
-                    {
-                        case QuestType.KillMonster:
-                            character.AddBattleXP(character.SelectedBattleProfession, quest.ExperienceReward);
-                            break;
-                        case QuestType.GatherItem:
-                            // ¸ù¾İÈÎÎñÑ¡ÔñºÏÊÊµÄ²É¼¯Ö°Òµ
-                            var gatheringProfession = GetGatheringProfessionFromQuestTarget(quest.TargetId);
-                            character.AddGatheringXP(gatheringProfession, quest.ExperienceReward);
-                            break;
-                        case QuestType.CraftItem:
-                            // ¸ù¾İÈÎÎñÑ¡ÔñºÏÊÊµÄÖÆ×÷Ö°Òµ
-                            var productionProfession = GetProductionProfessionFromQuestTarget(quest.TargetId);
-                            character.AddProductionXP(productionProfession, quest.ExperienceReward);
-                            break;
-                    }
-                }
-
-                // ±ê¼ÇÈÎÎñÎªÒÑÍê³É
-                character.CompletedQuestIds.Add(questId);
-                character.QuestProgress.Remove(questId);
-                
-                // ¼ì²éÊÇ·ñÓĞºóĞøÈÎÎñ
-                if (!string.IsNullOrEmpty(quest.NextQuestId))
-                {
-                    // TODO: Ìí¼ÓºóĞøÈÎÎñÂß¼­
-                }
-                
-                NotifyStateChanged();
-            }
-        }
-
-        /// <summary>
-        /// »ñÈ¡Íæ¼ÒµÄ¿ÉÓÃÈÎÎñÁĞ±í£¨°üÀ¨½øĞĞÖĞºÍ¿É½ÓÈ¡µÄ£©
-        /// </summary>
-        public List<Quest> GetAvailableQuestsForCharacter(Player character)
-        {
-            if (character == null) return new List<Quest>();
-            
-            var allQuests = DailyQuests.Concat(WeeklyQuests);
-            return allQuests
-                .Where(q => !character.CompletedQuestIds.Contains(q.Id))
-                .Where(q => MeetsQuestRequirements(character, q))
-                .ToList();
-        }
-        
-        /// <summary>
-        /// ¼ì²éÍæ¼ÒÊÇ·ñÂú×ã½ÓÈ¡ÈÎÎñµÄÒªÇó
-        /// </summary>
-        private bool MeetsQuestRequirements(Player character, Quest quest)
-        {
-            // ¼ì²éÇ°ÖÃÈÎÎñÊÇ·ñÍê³É
-            if (!string.IsNullOrEmpty(quest.PrerequisiteQuestId) && 
-                !character.CompletedQuestIds.Contains(quest.PrerequisiteQuestId))
-                return false;
-                
-            // ¼ì²éÉùÍûÒªÇó
-            if (quest.RequiredReputation > 0 && 
-                character.Reputation.GetValueOrDefault(quest.Faction, 0) < quest.RequiredReputation)
-                return false;
-                
-            // ¼ì²éµÈ¼¶ÒªÇó
-            if (quest.RequiredLevel > 0)
-            {
-                switch (quest.Type)
-                {
-                    case QuestType.KillMonster:
-                        if (character.GetLevel(character.SelectedBattleProfession) < quest.RequiredLevel)
-                            return false;
-                        break;
-                    case QuestType.GatherItem:
-                        var gatheringProfession = GetGatheringProfessionFromQuestTarget(quest.TargetId);
-                        if (character.GetLevel(gatheringProfession) < quest.RequiredLevel)
-                            return false;
-                        break;
-                    case QuestType.CraftItem:
-                        var productionProfession = GetProductionProfessionFromQuestTarget(quest.TargetId);
-                        if (character.GetLevel(productionProfession) < quest.RequiredLevel)
-                            return false;
-                        break;
-                }
-            }
-            
-            return true;
-        }
-        
-        /// <summary>
-        /// ¸ù¾İÈÎÎñÄ¿±ê»ñÈ¡ÏàÓ¦µÄ²É¼¯Ö°Òµ
-        /// </summary>
-        private GatheringProfession GetGatheringProfessionFromQuestTarget(string targetId)
-        {
-            // »ùÓÚÄ¿±êIDÇ°×º»òÆäËûÂß¼­È·¶¨Ö°Òµ
-            if (targetId.StartsWith("ORE_"))
-                return GatheringProfession.Miner;
-            else if (targetId.StartsWith("HERB_"))
-                return GatheringProfession.Herbalist;
-            else if (targetId.StartsWith("SKIN_"))
-                return GatheringProfession.Fishing;
-                
-            return GatheringProfession.Miner; // Ä¬ÈÏÖµ
-        }
-        
-        /// <summary>
-        /// ¸ù¾İÈÎÎñÄ¿±ê»ñÈ¡ÏàÓ¦µÄÖÆ×÷Ö°Òµ
-        /// </summary>
-        private ProductionProfession GetProductionProfessionFromQuestTarget(string targetId)
-        {
-            // »ùÓÚÄ¿±êIDÇ°×º»òÆäËûÂß¼­È·¶¨Ö°Òµ
-            if (targetId.StartsWith("EQ_WEP_") || targetId.StartsWith("EQ_ARMOR_"))
-                return ProductionProfession.Blacksmithing;
-            else if (targetId.StartsWith("POTION_") || targetId.StartsWith("ELIXIR_"))
-                return ProductionProfession.Alchemy;
-            else if (targetId.StartsWith("FOOD_"))
-                return ProductionProfession.Cooking;
-                
-            return ProductionProfession.Blacksmithing; // Ä¬ÈÏÖµ
-        }
-        
-        /// <summary>
-        /// »ñÈ¡Íæ¼ÒÕıÔÚ½øĞĞÖĞµÄÈÎÎñÁĞ±í
-        /// </summary>
-        public List<Quest> GetInProgressQuestsForCharacter(Player character)
-        {
-            if (character == null) return new List<Quest>();
-            
-            var allQuests = DailyQuests.Concat(WeeklyQuests);
-            return allQuests
-                .Where(q => !character.CompletedQuestIds.Contains(q.Id))
-                .Where(q => character.QuestProgress.ContainsKey(q.Id))
-                .ToList();
-        }
-        
-        /// <summary>
-        /// Ìí¼Ó×Ô¶¨ÒåÈÎÎñµ½ÓÎÏ·ÖĞ
-        /// </summary>
-        public void AddCustomQuest(Quest quest)
-        {
-            if (quest == null) return;
-            
-            if (quest.IsWeekly)
-                WeeklyQuests.Add(quest);
-            else
-                DailyQuests.Add(quest);
-                
-            NotifyStateChanged();
-        }
-        
-        /// <summary>
-        /// ´¥·¢×´Ì¬±ä¸üÊÂ¼ş
-        /// </summary>
-        private void NotifyStateChanged() => OnStateChanged?.Invoke();
+        #endregion
     }
 }
