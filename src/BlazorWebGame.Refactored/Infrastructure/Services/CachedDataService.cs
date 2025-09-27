@@ -59,22 +59,22 @@ public class CachedDataService : ICachedDataService
         }
     }
     
-    public async Task<List<Recipe>> GetRecipesAsync(string profession)
+    public async Task<List<BlazorWebGame.Refactored.Domain.ValueObjects.Recipe>> GetRecipesAsync(string profession)
     {
         return await GetOrCreateAsync(
             $"recipes_{profession}",
             async () => await LoadRecipesAsync(profession),
             TimeSpan.FromHours(1)
-        ) ?? new List<Recipe>();
+        ) ?? new List<BlazorWebGame.Refactored.Domain.ValueObjects.Recipe>();
     }
     
-    public async Task<List<Recipe>> GetRecipesByLevelAsync(string profession, int level)
+    public async Task<List<BlazorWebGame.Refactored.Domain.ValueObjects.Recipe>> GetRecipesByLevelAsync(string profession, int level)
     {
         return await GetOrCreateAsync(
             $"recipes_{profession}_{level}",
             async () => await LoadRecipesByLevelAsync(profession, level),
             TimeSpan.FromMinutes(30)
-        ) ?? new List<Recipe>();
+        ) ?? new List<BlazorWebGame.Refactored.Domain.ValueObjects.Recipe>();
     }
     
     public async Task<Dictionary<string, int>> GetMaterialPricesAsync()
@@ -195,14 +195,14 @@ public class CachedDataService : ICachedDataService
         };
     }
     
-    private async Task<List<Recipe>> LoadRecipesAsync(string profession)
+    private async Task<List<BlazorWebGame.Refactored.Domain.ValueObjects.Recipe>> LoadRecipesAsync(string profession)
     {
         // 模拟加载配方数据
         await Task.Delay(100);
         
-        return new List<Recipe>
+        return new List<BlazorWebGame.Refactored.Domain.ValueObjects.Recipe>
         {
-            new Recipe
+            new BlazorWebGame.Refactored.Domain.ValueObjects.Recipe
             {
                 RecipeId = $"{profession}_basic",
                 Name = $"基础{profession}配方",
@@ -218,7 +218,7 @@ public class CachedDataService : ICachedDataService
         };
     }
     
-    private async Task<List<Recipe>> LoadRecipesByLevelAsync(string profession, int level)
+    private async Task<List<BlazorWebGame.Refactored.Domain.ValueObjects.Recipe>> LoadRecipesByLevelAsync(string profession, int level)
     {
         var allRecipes = await LoadRecipesAsync(profession);
         return allRecipes.Where(r => r.RequiredLevel <= level).ToList();
@@ -272,8 +272,8 @@ public class CachedDataService : ICachedDataService
 public interface ICachedDataService
 {
     Task<T?> GetOrCreateAsync<T>(string key, Func<Task<T>> factory, TimeSpan? expiration = null) where T : class;
-    Task<List<Recipe>> GetRecipesAsync(string profession);
-    Task<List<Recipe>> GetRecipesByLevelAsync(string profession, int level);
+    Task<List<BlazorWebGame.Refactored.Domain.ValueObjects.Recipe>> GetRecipesAsync(string profession);
+    Task<List<BlazorWebGame.Refactored.Domain.ValueObjects.Recipe>> GetRecipesByLevelAsync(string profession, int level);
     Task<Dictionary<string, int>> GetMaterialPricesAsync();
     Task<List<ItemReward>> GetLootTableAsync(string source);
     void InvalidateCache(string key);

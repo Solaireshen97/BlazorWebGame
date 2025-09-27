@@ -31,7 +31,7 @@
                     </button>
                     @if (ShowDetails != null)
                     {
-                        <button class="btn btn-secondary" @onclick="() => ShowDetails.InvokeAsync(recipe)">
+                        <button class="btn btn-secondary" @onclick="@(async () => await ShowDetails.Value.InvokeAsync(recipe))">
                             详情
                         </button>
                     }
@@ -208,7 +208,7 @@
         width: 40%;
     }
     
-    @keyframes shimmer {
+    @@keyframes shimmer {
         0% { background-position: 200% 0; }
         100% { background-position: -200% 0; }
     }

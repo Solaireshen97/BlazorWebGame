@@ -13,7 +13,7 @@
             <div class="profession-stats">
                 <span>等级: @GetProfessionLevel()</span>
                 <span>经验: @GetProfessionExperience()</span>
-                <span>制作速度加成: +@(GetCraftingSpeedBonus():P0)</span>
+                <span>制作速度加成: +@((GetCraftingSpeedBonus()).ToString("P0"))</span>
             </div>
         </div>
         
@@ -23,7 +23,7 @@
             @for (int i = 0; i < 5; i++)
             {
                 var slotIndex = i;
-                <button class="quick-slot" @onclick="() => OpenQuickSlotPicker('tools', slotIndex, 'production')">
+                <button class="quick-slot" @onclick="@(() => OpenQuickSlotPicker("tools", slotIndex, "production"))">
                     [空]
                 </button>
             }
@@ -40,8 +40,8 @@
                     <div class="progress-fill" style="width: @(GetCraftingProgress())%"></div>
                 </div>
                 <div class="progress-info">
-                    <span>进度: @(GetCraftingProgress():F1)%</span>
-                    <span>剩余时间: @(GetCurrentCraftingTime():F1)秒</span>
+                    <span>进度: @(GetCraftingProgress().ToString("F1"))%</span>
+                    <span>剩余时间: @(GetCurrentCraftingTime().ToString("F1"))秒</span>
                 </div>
                 <button class="btn btn-warning" @onclick="StopCrafting">停止制作</button>
             </div>
@@ -81,7 +81,7 @@
                             <strong>产出:</strong> @recipe.OutputItem.ItemId x@recipe.OutputItem.Quantity
                         </div>
                         <div class="recipe-time">
-                            <strong>制作时间:</strong> @recipe.CraftTime秒
+                            <strong>制作时间:</strong> @recipe.CraftTime 秒
                         </div>
                         <div class="recipe-exp">
                             <strong>经验奖励:</strong> @recipe.ExperienceReward
