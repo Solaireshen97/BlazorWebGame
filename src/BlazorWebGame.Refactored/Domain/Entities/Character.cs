@@ -1,4 +1,5 @@
 using BlazorWebGame.Refactored.Domain.ValueObjects;
+using BlazorWebGame.Refactored.Domain.Events;
 
 namespace BlazorWebGame.Refactored.Domain.Entities;
 

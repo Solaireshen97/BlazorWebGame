@@ -14,7 +14,7 @@ public abstract class Activity : Entity
     public DateTime StartTimeUtc { get; protected set; }
     public DateTime? EndTimeUtc { get; protected set; }
     public int Priority { get; protected set; }
-    public ActivityMetadata Metadata { get; protected set; }
+    public ActivityMetadata Metadata { get; protected set; } = new(new ActivityParameters());
 
     protected Activity() { } // For serialization
 
@@ -77,7 +77,7 @@ public abstract class Activity : Entity
 public class BattleActivity : Activity
 {
     public Guid EnemyId { get; private set; }
-    public BattleConfiguration Configuration { get; private set; }
+    public BattleConfiguration Configuration { get; private set; } = new();
 
     private BattleActivity() { } // For serialization
 
@@ -87,6 +87,8 @@ public class BattleActivity : Activity
         EnemyId = enemyId;
         Configuration = parameters.GetValue<BattleConfiguration>("Configuration") ?? new BattleConfiguration();
     }
+
+    protected override object GetId() => Id;
 
     public override double GetProgress(DateTime currentTimeUtc)
     {
@@ -135,7 +137,7 @@ public class BattleActivity : Activity
 public class GatheringActivity : Activity
 {
     public GatheringType GatheringType { get; private set; }
-    public ResourceNode TargetNode { get; private set; }
+    public ResourceNode TargetNode { get; private set; } = new();
 
     private GatheringActivity() { } // For serialization
 
@@ -148,6 +150,8 @@ public class GatheringActivity : Activity
         // 设置预计完成时间
         EndTimeUtc = StartTimeUtc.AddSeconds(TargetNode.HarvestTime);
     }
+
+    protected override object GetId() => Id;
 
     public override double GetProgress(DateTime currentTimeUtc)
     {
@@ -170,9 +174,9 @@ public class GatheringActivity : Activity
         var result = new ActivityResult
         {
             Success = true,
-            Experience = TargetNode.ExperienceReward,
+            Experience = new BigNumber(TargetNode.ExperienceReward.ToLong()),
             Items = TargetNode.GenerateRewards().ToList(),
-            Gold = 0
+            Gold = BigNumber.Zero
         };
         
         return result;
@@ -194,7 +198,7 @@ public class GatheringActivity : Activity
 /// </summary>
 public class CraftingActivity : Activity
 {
-    public Recipe Recipe { get; private set; }
+    public Recipe Recipe { get; private set; } = new();
     public int Quantity { get; private set; }
 
     private CraftingActivity() { } // For serialization
@@ -209,6 +213,8 @@ public class CraftingActivity : Activity
         var totalTime = recipe.CraftTime * quantity;
         EndTimeUtc = StartTimeUtc.AddSeconds(totalTime);
     }
+
+    protected override object GetId() => Id;
 
     public override double GetProgress(DateTime currentTimeUtc)
     {
@@ -232,9 +238,9 @@ public class CraftingActivity : Activity
         var result = new ActivityResult
         {
             Success = true,
-            Experience = Recipe.ExperienceReward * Quantity,
+            Experience = Recipe.ExperienceReward * new BigNumber(Quantity),
             Items = Enumerable.Repeat(Recipe.OutputItem, Quantity).ToList(),
-            Gold = 0
+            Gold = BigNumber.Zero
         };
         
         return result;

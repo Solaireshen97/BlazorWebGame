@@ -252,7 +252,7 @@ public record ActivityUpdateEvent
 {
     public Guid ActivityId { get; init; }
     public double Progress { get; init; }
-    public ActivityState? State { get; init; }
+    public Domain.ValueObjects.ActivityState? State { get; init; }
     public Dictionary<string, object>? Metadata { get; init; }
 }
 

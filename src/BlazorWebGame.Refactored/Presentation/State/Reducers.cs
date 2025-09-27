@@ -224,7 +224,7 @@ public static class ActivityReducers
 
         var updatedActivity = activity with 
         { 
-            State = action.State,
+            State = StateMappers.MapDomainToDisplayState(action.State),
             Metadata = action.Data != null ? 
                 new Dictionary<string, object>(activity.Metadata.Concat(action.Data)) : 
                 activity.Metadata
@@ -509,5 +509,24 @@ public static class CacheReducers
     {
         // 简单的大小估算，实际项目中可能需要更精确的计算
         return System.Text.Json.JsonSerializer.Serialize(data).Length * 2; // 粗略估算
+    }
+}
+
+/// <summary>
+/// 状态映射工具类
+/// </summary>
+public static class StateMappers
+{
+    public static ActivityDisplayState MapDomainToDisplayState(Domain.ValueObjects.ActivityState domainState)
+    {
+        return domainState switch
+        {
+            Domain.ValueObjects.ActivityState.Active => ActivityDisplayState.Active,
+            Domain.ValueObjects.ActivityState.Paused => ActivityDisplayState.Paused,
+            Domain.ValueObjects.ActivityState.Completed => ActivityDisplayState.Completed,
+            Domain.ValueObjects.ActivityState.Cancelled => ActivityDisplayState.Cancelled,
+            Domain.ValueObjects.ActivityState.Failed => ActivityDisplayState.Failed,
+            _ => ActivityDisplayState.Active
+        };
     }
 }

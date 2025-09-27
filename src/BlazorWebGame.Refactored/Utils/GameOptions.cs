@@ -69,9 +69,7 @@ public static class RetryPolicyFactory
                 sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
                 onRetry: (outcome, timespan, retryCount, context) =>
                 {
-                    var logger = context.Values.ContainsKey("Logger") ? 
-                        context.Values["Logger"] as ILogger : null;
-                    logger?.LogWarning("Retry {RetryCount} after {Delay}ms", retryCount, timespan.TotalMilliseconds);
+                    // Can add logging here if needed
                 });
     }
 

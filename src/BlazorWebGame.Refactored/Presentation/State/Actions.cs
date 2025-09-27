@@ -1,4 +1,5 @@
 using BlazorWebGame.Refactored.Domain.ValueObjects;
+using BlazorWebGame.Refactored.Domain.Entities;
 
 namespace BlazorWebGame.Refactored.Presentation.State;
 
@@ -55,7 +56,7 @@ public record CancelActivityFailureAction(string Error);
 
 public record ActivityProgressUpdateAction(Guid ActivityId, double Progress);
 public record ActivityCompletedAction(Guid ActivityId, ActivityResult Result);
-public record ActivityStateUpdateAction(Guid ActivityId, ActivityState State, Dictionary<string, object>? Data = null);
+public record ActivityStateUpdateAction(Guid ActivityId, Domain.ValueObjects.ActivityState State, Dictionary<string, object>? Data = null);
 
 // ======================
 // 战斗相关 Actions
