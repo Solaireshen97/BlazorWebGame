@@ -25,13 +25,13 @@ namespace BlazorWebGame.Services
             InventoryService inventoryService,
             List<Player> allCharacters)
         {
-            // 简化构造函数，移除所有本地战斗逻辑
+            // 简化构造函数，本地战斗逻辑已移除
         }
 
-        #region 战斗状态查询接口 - 移除本地实现，需要时可调用服务器API
+        #region 战斗状态查询接口 - 本地实现已移除，需要时调用服务器API
 
         /// <summary>
-        /// 获取活跃战斗上下文 - 已移除本地实现
+        /// 获取活跃战斗上下文 - 本地实现已移除
         /// </summary>
         public BattleContext? GetBattleContextForPlayer(string playerId)
         {
@@ -41,7 +41,7 @@ namespace BlazorWebGame.Services
         }
 
         /// <summary>
-        /// 获取活跃战斗上下文 - 已移除本地实现
+        /// 获取活跃战斗上下文 - 本地实现已移除
         /// </summary>
         public BattleContext? GetBattleContextForParty(Guid partyId)
         {
@@ -51,7 +51,7 @@ namespace BlazorWebGame.Services
         }
 
         /// <summary>
-        /// 检查玩家是否在战斗刷新状态 - 已移除本地实现
+        /// 检查玩家是否在战斗刷新状态 - 本地实现已移除
         /// </summary>
         public bool IsPlayerInBattleRefresh(string playerId)
         {
@@ -60,7 +60,7 @@ namespace BlazorWebGame.Services
         }
 
         /// <summary>
-        /// 获取玩家战斗刷新剩余时间 - 已移除本地实现
+        /// 获取玩家战斗刷新剩余时间 - 本地实现已移除
         /// </summary>
         public double GetPlayerBattleRefreshTime(string playerId)
         {
@@ -70,10 +70,10 @@ namespace BlazorWebGame.Services
 
         #endregion
 
-        #region 战斗处理 - 已移除本地实现
+        #region 战斗处理 - 本地实现已移除，全部由服务器处理
 
         /// <summary>
-        /// 处理所有活跃战斗 - 已移除本地实现
+        /// 处理所有活跃战斗 - 本地实现已移除
         /// </summary>
         public void ProcessAllBattles(double elapsedSeconds)
         {
@@ -81,7 +81,7 @@ namespace BlazorWebGame.Services
         }
 
         /// <summary>
-        /// 处理角色的战斗（旧方法） - 已移除本地实现
+        /// 处理角色的战斗（旧方法） - 本地实现已移除
         /// </summary>
         [Obsolete("本地战斗系统已移除，请使用服务器API")]
         public void ProcessCombat(Player character, double elapsedSeconds, Party? party)
@@ -91,10 +91,18 @@ namespace BlazorWebGame.Services
 
         #endregion
 
-        #region 战斗控制 - 已移除本地实现
+        #region 向后兼容的方法 - 保留以避免编译错误
 
         /// <summary>
-        /// 智能开始战斗 - 已移除本地实现
+        /// 为兼容性保留的方法，设置角色列表引用
+        /// </summary>
+        public void SetAllCharacters(List<Player> characters)
+        {
+            // 保留方法签名以避免编译错误
+        }
+
+        /// <summary>
+        /// 智能开始战斗 - 本地实现已移除
         /// </summary>
         [Obsolete("本地战斗系统已移除，请使用服务器API")]
         public bool SmartStartBattle(Player character, Enemy enemyTemplate, Party? party = null, bool ignoreRefreshCheck = false)
@@ -104,16 +112,7 @@ namespace BlazorWebGame.Services
         }
 
         /// <summary>
-        /// 开始战斗（旧方法） - 已移除本地实现
-        /// </summary>
-        [Obsolete("本地战斗系统已移除，请使用服务器API")]
-        public void StartCombat(Player character, Enemy enemyTemplate, Party? party)
-        {
-            // 本地战斗系统已移除
-        }
-
-        /// <summary>
-        /// 开始副本战斗 - 已移除本地实现
+        /// 开始副本战斗 - 本地实现已移除
         /// </summary>
         [Obsolete("本地战斗系统已移除，请使用服务器API")]
         public bool StartDungeon(Party party, string dungeonId)
@@ -123,57 +122,7 @@ namespace BlazorWebGame.Services
         }
 
         /// <summary>
-        /// 开始多敌人通关战斗 - 已移除本地实现
-        /// </summary>
-        [Obsolete("本地战斗系统已移除，请使用服务器API")]
-        public bool StartMultiEnemyBattle(Player character, List<Enemy> enemies, Party? party = null)
-        {
-            // 本地战斗系统已移除
-            return false;
-        }
-
-        /// <summary>
-        /// 停止战斗 - 已移除本地实现
-        /// </summary>
-        [Obsolete("本地战斗系统已移除，请使用服务器API")]
-        public void StopBattle(BattleContext battleContext)
-        {
-            // 本地战斗系统已移除
-        }
-
-        /// <summary>
-        /// 停止玩家的战斗 - 已移除本地实现
-        /// </summary>
-        [Obsolete("本地战斗系统已移除，请使用服务器API")]
-        public void StopPlayerBattle(string playerId)
-        {
-            // 本地战斗系统已移除
-        }
-
-        /// <summary>
-        /// 停止队伍战斗 - 已移除本地实现
-        /// </summary>
-        [Obsolete("本地战斗系统已移除，请使用服务器API")]
-        public void StopPartyBattle(Guid partyId)
-        {
-            // 本地战斗系统已移除
-        }
-
-        #endregion
-
-        #region 角色技能和职业方法 - 已移除本地实现
-
-        /// <summary>
-        /// 设置战斗职业 - 已移除本地实现
-        /// </summary>
-        [Obsolete("本地战斗系统已移除，请使用服务器API")]
-        public void SetBattleProfession(Player? character, BattleProfession profession)
-        {
-            // 本地战斗系统已移除
-        }
-
-        /// <summary>
-        /// 装备技能 - 已移除本地实现
+        /// 装备技能 - 本地实现已移除
         /// </summary>
         [Obsolete("本地战斗系统已移除，请使用服务器API")]
         public void EquipSkill(Player? character, string skillId, int maxEquippedSkills)
@@ -182,7 +131,7 @@ namespace BlazorWebGame.Services
         }
 
         /// <summary>
-        /// 卸下技能 - 已移除本地实现
+        /// 卸下技能 - 本地实现已移除
         /// </summary>
         [Obsolete("本地战斗系统已移除，请使用服务器API")]
         public void UnequipSkill(Player? character, string skillId)
@@ -191,25 +140,7 @@ namespace BlazorWebGame.Services
         }
 
         /// <summary>
-        /// 取消玩家战斗刷新 - 已移除本地实现
-        /// </summary>
-        [Obsolete("本地战斗系统已移除，请使用服务器API")]
-        public void CancelPlayerBattleRefresh(string playerId)
-        {
-            // 本地战斗系统已移除
-        }
-
-        /// <summary>
-        /// 设置所有角色 - 已移除本地实现
-        /// </summary>
-        [Obsolete("本地战斗系统已移除，请使用服务器API")]
-        public void SetAllCharacters(List<Player> characters)
-        {
-            // 本地战斗系统已移除
-        }
-
-        /// <summary>
-        /// 复活角色 - 已移除本地实现
+        /// 复活角色 - 本地实现已移除
         /// </summary>
         [Obsolete("本地战斗系统已移除，请使用服务器API")]
         public void ReviveCharacter(Player character)
@@ -218,44 +149,20 @@ namespace BlazorWebGame.Services
         }
 
         /// <summary>
-        /// 检查新技能解锁 - 已移除本地实现
+        /// 通知状态变更
         /// </summary>
-        [Obsolete("本地战斗系统已移除，请使用服务器API")]
-        public void CheckForNewSkillUnlocks(Player character)
-        {
-            // 本地战斗系统已移除
-        }
-
-        /// <summary>
-        /// 检查新技能解锁（重载方法） - 已移除本地实现
-        /// </summary>
-        [Obsolete("本地战斗系统已移除，请使用服务器API")]
-        public void CheckForNewSkillUnlocks(Player character, BattleProfession profession, int level, bool isLevelUp)
-        {
-            // 本地战斗系统已移除
-        }
-
-        /// <summary>
-        /// 重置玩家技能冷却 - 已移除本地实现
-        /// </summary>
-        [Obsolete("本地战斗系统已移除，请使用服务器API")]
-        public void ResetPlayerSkillCooldowns(Player character)
-        {
-            // 本地战斗系统已移除
-        }
-
-        #endregion
-
-        #region 角色状态管理 - 已移除本地实现
-
-        /// <summary>
-        /// 触发状态改变事件
-        /// </summary>
-        public void NotifyStateChanged()
+        private void NotifyStateChanged()
         {
             OnStateChanged?.Invoke();
         }
 
         #endregion
+
+        // 所有其他本地战斗逻辑已移除
+        // 如需战斗功能，请使用服务器API：
+        // - GameApiService.StartBattleAsync()
+        // - GameApiService.GetBattleStateAsync()
+        // - GameApiService.StopBattleAsync()
+        // - ClientGameStateService.StartBattleAsync()
     }
 }

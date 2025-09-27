@@ -29,13 +29,7 @@ public class GameStateService : IAsyncDisposable
     private readonly CharacterService _characterService;
     private readonly ClientPartyService? _clientPartyService; // 新的服务端组队服务
     private readonly System.IServiceProvider _serviceProvider;
-    // 移除本地游戏循环相关字段 - 所有游戏逻辑由服务端处理
-    // private System.Timers.Timer? _gameLoopTimer; // 已移除
-    // private const int GameLoopIntervalMs = 100; // 已移除
-    // private const double RevivalDuration = 2; // 已移除
-
-    // 移除性能监控相关字段 - 服务端负责性能监控
-    // private readonly Stopwatch _gameLoopStopwatch = new(); // 已移除
+    // 本地游戏循环和性能监控已移除 - 全部由服务端处理
 
     // 新增事件管理器
     private readonly GameEventManager _eventManager = new();
@@ -198,74 +192,7 @@ public class GameStateService : IAsyncDisposable
         // 复活逻辑由服务端处理
     }
     
-    /// <summary>
-    /// 本地活跃角色处理已移除 - 由服务端处理
-    /// </summary>
-    [Obsolete("本地活跃角色处理已移除，由服务端处理")]
-    private void ProcessActiveCharacter(Player character, double elapsedSeconds)
-    {
-        // 本地角色状态处理已移除
-        // 采集、制作、战斗等逻辑由服务端处理
-    }
-
-    /// <summary>
-    /// 本地战斗状态处理已移除 - 由服务端处理
-    /// </summary>
-    [Obsolete("本地战斗状态处理已移除，由服务端处理")]
-    private void ProcessCombatState(Player character, double elapsedSeconds)
-    {
-        // 本地战斗状态处理已移除
-        // 所有战斗逻辑由服务端处理
-    }
-
-    /// <summary>
-    /// 性能监控已移除 - 由服务端负责
-    /// </summary>
-    [Obsolete("性能监控已移除，由服务端负责")]
-    private void RecordPerformanceMetrics()
-    {
-        // 本地性能监控已移除
-        // 服务端负责性能监控和日志记录
-    }
-    
-    /// <summary>
-    /// 本地错误记录已移除 - 使用标准日志系统
-    /// </summary>
-    [Obsolete("本地错误记录已移除，使用标准日志系统")]
-    private void LogError(Exception ex, string? context = null)
-    {
-        // 本地日志记录已移除
-        // 使用标准的ILogger接口和服务端日志系统
-    }
-    
-    /// <summary>
-    /// 本地警告记录已移除 - 使用标准日志系统
-    /// </summary>
-    [Obsolete("本地警告记录已移除，使用标准日志系统")]
-    private void LogWarning(string message)
-    {
-        Console.WriteLine($"游戏循环警告: {message}");
-    }
-    
-    /// <summary>
-    /// 本地游戏循环启动已移除 - 所有游戏逻辑由服务端处理
-    /// </summary>
-    [Obsolete("本地游戏循环已移除，所有游戏逻辑由服务端处理")]
-    private void StartGameLoop()
-    {
-        // 本地游戏循环已移除
-        // 所有游戏逻辑（定时器、状态更新）由服务端处理
-        // 客户端只负责UI展示和用户交互
-    }
-    
-    /// <summary>
-    /// 本地游戏循环停止已移除 - 不再需要
-    /// </summary>
-    [Obsolete("本地游戏循环已移除，不再需要停止")]
-    private void StopGameLoop()
-    {
-        // 本地游戏循环已移除，无需停止
-    }
+    // 所有本地游戏逻辑处理方法已移除 - 全部由服务端处理
 
 
     /// <summary>
@@ -408,69 +335,40 @@ public class GameStateService : IAsyncDisposable
         // 同步版本，向后兼容
         _ = Task.Run(async () => await StartCombatAsync(enemyTemplate));
     }
-    // 本地业务逻辑已移除 - 所有操作应通过服务器API执行
-    [Obsolete("本地生产系统已移除，请使用服务器生产API")]
-    public void StartGathering(GatheringNode node) 
-    { 
-        // 本地采集逻辑已移除，请使用服务器API
-    }
-
-    [Obsolete("本地生产系统已移除，请使用服务器生产API")]
-    public void StartCrafting(Recipe recipe) 
-    { 
-        // 本地制作逻辑已移除，请使用服务器API
-    }
+    // 所有本地业务逻辑已移除 - 客户端只负责UI，业务逻辑通过服务器API执行
     
+    /// <summary>
+    /// 停止角色当前动作 - 简化版本，仅更新UI状态
+    /// </summary>
     public void StopCurrentAction() => StopCurrentAction(ActiveCharacter);
-    
-    [Obsolete("本地库存系统已移除，请使用服务器库存API")]
-    public void EquipItem(string itemId) 
-    { 
-        // 本地装备逻辑已移除，请使用服务器API
-    }
-    
-    [Obsolete("本地库存系统已移除，请使用服务器库存API")]
-    public void UnequipItem(EquipmentSlot slot) 
-    { 
-        // 本地装备逻辑已移除，请使用服务器API
-    }
-    
-    [Obsolete("本地库存系统已移除，请使用服务器库存API")]
-    public void SellItem(string itemId, int quantity = 1) 
-    { 
-        // 本地商店逻辑已移除，请使用服务器API
-    }
-    
-    [Obsolete("本地库存系统已移除，请使用服务器库存API")]
-    public void UseItem(string itemId) 
-    { 
-        // 本地物品使用逻辑已移除，请使用服务器API
-    }
-    
-    [Obsolete("本地库存系统已移除，请使用服务器库存API")]
-    public bool BuyItem(string itemId) 
-    { 
-        // 本地购买逻辑已移除，请使用服务器API
-        return false;
-    }
-    
-    [Obsolete("本地库存系统已移除，请使用服务器库存API")]
+
+    /// <summary>
+    /// 设置快捷栏物品 - 本地实现已移除
+    /// </summary>
+    [Obsolete("本地快捷栏系统已移除，请使用服务器API")]
     public void SetQuickSlotItem(ConsumableCategory category, int slotId, string itemId) 
     { 
         // 本地快捷栏逻辑已移除，请使用服务器API
     }
     
-    [Obsolete("本地库存系统已移除，请使用服务器库存API")]
+    /// <summary>
+    /// 清除快捷栏物品 - 本地实现已移除
+    /// </summary>
+    [Obsolete("本地快捷栏系统已移除，请使用服务器API")]
     public void ClearQuickSlotItem(ConsumableCategory category, int slotId, FoodType foodType = FoodType.None) 
     { 
         // 本地快捷栏逻辑已移除，请使用服务器API
     }
     
-    [Obsolete("本地库存系统已移除，请使用服务器库存API")]
+    /// <summary>
+    /// 切换自动售卖物品 - 本地实现已移除
+    /// </summary>
+    [Obsolete("本地商店系统已移除，请使用服务器API")]
     public void ToggleAutoSellItem(string itemId) 
     { 
         // 本地自动售卖逻辑已移除，请使用服务器API
     }
+    
     // 战斗相关方法已移除 - 请使用服务器API
     [Obsolete("本地战斗系统已移除，请使用服务器API")]
     public void SetBattleProfession(BattleProfession profession) { /* 本地战斗系统已移除 */ }
