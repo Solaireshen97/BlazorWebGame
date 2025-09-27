@@ -5,7 +5,6 @@ using BlazorWebGame.Models.Dungeons;
 using BlazorWebGame.Models.Items;
 using BlazorWebGame.Models.Monsters;
 using BlazorWebGame.Models.Skills;
-using BlazorWebGame.Services.Combat;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,19 +12,12 @@ using System.Linq;
 namespace BlazorWebGame.Services
 {
     /// <summary>
-    /// ս��ϵͳ�������棬Э������ս����ϵͳ
+    /// 简化的战斗服务 - 仅保留UI状态管理，所有战斗逻辑由服务器处理
     /// </summary>
     public class CombatService
     {
-        private readonly BattleManager _battleManager;
-        private readonly BattleFlowService _battleFlowService;
-        private readonly CombatEngine _combatEngine;
-        private readonly SkillSystem _skillSystem;
-        private readonly LootService _lootService;
-        private readonly CharacterCombatService _characterCombatService;
-
         /// <summary>
-        /// ״̬����¼�
+        /// 状态改变事件
         /// </summary>
         public event Action? OnStateChanged;
 
@@ -33,317 +25,235 @@ namespace BlazorWebGame.Services
             InventoryService inventoryService,
             List<Player> allCharacters)
         {
-            // ��ʼ�������ӷ���
-            _skillSystem = new SkillSystem();
-            _characterCombatService = new CharacterCombatService();
-            _lootService = new LootService(inventoryService, _skillSystem, allCharacters);
-            _battleFlowService = new BattleFlowService(allCharacters);
-
-            // ��ʼ��ս����������ע����������
-            _battleManager = new BattleManager(
-                allCharacters,
-                null!, // CombatEngine ���������ʼ��������
-                _battleFlowService,
-                _characterCombatService,
-                _skillSystem,
-                _lootService
-            );
-
-            // ��ʼ��ս������
-            _combatEngine = new CombatEngine(
-                _skillSystem,
-                _lootService,
-                _characterCombatService,
-                _battleManager
-            );
-
-            // ͨ���������� BattleManager �� CombatEngine������ѭ��������
-            var field = typeof(BattleManager).GetField("_combatEngine",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            field?.SetValue(_battleManager, _combatEngine);
-
-            // �����ӷ����״̬����¼�
-            _battleManager.OnStateChanged += () => OnStateChanged?.Invoke();
+            // 简化构造函数，移除所有本地战斗逻辑
         }
 
-        #region ս����ѯ�ӿ�
+        #region 战斗状态查询接口 - 移除本地实现，需要时可调用服务器API
 
         /// <summary>
-        /// ��ȡ��Ծս��������
+        /// 获取活跃战斗上下文 - 已移除本地实现
         /// </summary>
         public BattleContext? GetBattleContextForPlayer(string playerId)
         {
-            return _battleManager.GetBattleContextForPlayer(playerId);
+            // 本地战斗系统已移除，返回null
+            // 如需战斗状态，请使用服务器API
+            return null;
         }
 
         /// <summary>
-        /// ��ȡ��Ծս��������
+        /// 获取活跃战斗上下文 - 已移除本地实现
         /// </summary>
         public BattleContext? GetBattleContextForParty(Guid partyId)
         {
-            return _battleManager.GetBattleContextForParty(partyId);
+            // 本地战斗系统已移除，返回null
+            // 如需战斗状态，请使用服务器API
+            return null;
         }
 
         /// <summary>
-        /// �������Ƿ���ս��ˢ��״̬
+        /// 检查玩家是否在战斗刷新状态 - 已移除本地实现
         /// </summary>
         public bool IsPlayerInBattleRefresh(string playerId)
         {
-            return _battleFlowService.IsPlayerInBattleRefresh(playerId);
+            // 本地战斗系统已移除
+            return false;
         }
 
         /// <summary>
-        /// ��ȡ���ս��ˢ��ʣ��ʱ��
+        /// 获取玩家战斗刷新剩余时间 - 已移除本地实现
         /// </summary>
         public double GetPlayerBattleRefreshTime(string playerId)
         {
-            return _battleFlowService.GetPlayerBattleRefreshTime(playerId);
+            // 本地战斗系统已移除
+            return 0;
         }
 
         #endregion
 
-        #region ս������
+        #region 战斗处理 - 已移除本地实现
 
         /// <summary>
-        /// �������л�Ծս��
+        /// 处理所有活跃战斗 - 已移除本地实现
         /// </summary>
         public void ProcessAllBattles(double elapsedSeconds)
         {
-            _battleManager.ProcessAllBattles(elapsedSeconds);
+            // 本地战斗处理已移除，所有战斗逻辑由服务器处理
         }
 
         /// <summary>
-        /// ������ɫ��ս�����ѷ��� - ��ʹ���µ�ս��ϵͳ��
+        /// 处理角色的战斗（旧方法） - 已移除本地实现
         /// </summary>
-        [Obsolete("ʹ���µ�ս��ϵͳ���˷�����Ϊ�����Ա���")]
+        [Obsolete("本地战斗系统已移除，请使用服务器API")]
         public void ProcessCombat(Player character, double elapsedSeconds, Party? party)
         {
-            // ����ִ���κ��߼�
-            return;
+            // 本地战斗处理已移除
         }
 
         #endregion
 
-        #region ս������
+        #region 战斗控制 - 已移除本地实现
 
         /// <summary>
-        /// ���ܿ�ʼս��
+        /// 智能开始战斗 - 已移除本地实现
         /// </summary>
+        [Obsolete("本地战斗系统已移除，请使用服务器API")]
         public bool SmartStartBattle(Player character, Enemy enemyTemplate, Party? party = null, bool ignoreRefreshCheck = false)
         {
-            return _battleManager.SmartStartBattle(character, enemyTemplate, party, ignoreRefreshCheck);
+            // 本地战斗系统已移除
+            return false;
         }
 
         /// <summary>
-        /// ��ʼս�����ѷ��� - ��ʹ�� SmartStartBattle��
+        /// 开始战斗（旧方法） - 已移除本地实现
         /// </summary>
-        [Obsolete("ʹ�� SmartStartBattle ����")]
+        [Obsolete("本地战斗系统已移除，请使用服务器API")]
         public void StartCombat(Player character, Enemy enemyTemplate, Party? party)
         {
-            // ֱ�ӵ�����ϵͳ
-            SmartStartBattle(character, enemyTemplate, party);
+            // 本地战斗系统已移除
         }
 
-
         /// <summary>
-        /// ��ʼ����ս��
+        /// 开始副本战斗 - 已移除本地实现
         /// </summary>
+        [Obsolete("本地战斗系统已移除，请使用服务器API")]
         public bool StartDungeon(Party party, string dungeonId)
         {
-            return _battleManager.StartDungeon(party, dungeonId);
+            // 本地战斗系统已移除
+            return false;
         }
 
         /// <summary>
-        /// ��ʼ��Զ���ͨս��
+        /// 开始多敌人通关战斗 - 已移除本地实现
         /// </summary>
+        [Obsolete("本地战斗系统已移除，请使用服务器API")]
         public bool StartMultiEnemyBattle(Player character, List<Enemy> enemies, Party? party = null)
         {
-            return _battleManager.StartMultiEnemyBattle(character, enemies, party);
+            // 本地战斗系统已移除
+            return false;
         }
 
         /// <summary>
-        /// ֹͣս��
+        /// 停止战斗 - 已移除本地实现
         /// </summary>
+        [Obsolete("本地战斗系统已移除，请使用服务器API")]
         public void StopBattle(BattleContext battleContext)
         {
-            if (battleContext == null) return;
-
-            _battleManager.StopBattle(battleContext);
+            // 本地战斗系统已移除
         }
 
         /// <summary>
-        /// ֹͣ��ҵ�ս��
+        /// 停止玩家的战斗 - 已移除本地实现
         /// </summary>
+        [Obsolete("本地战斗系统已移除，请使用服务器API")]
         public void StopPlayerBattle(string playerId)
         {
-            var battleContext = GetBattleContextForPlayer(playerId);
-            if (battleContext != null)
-            {
-                StopBattle(battleContext);
-            }
+            // 本地战斗系统已移除
         }
 
         /// <summary>
-        /// ֹͣ�����ս��
+        /// 停止队伍战斗 - 已移除本地实现
         /// </summary>
+        [Obsolete("本地战斗系统已移除，请使用服务器API")]
         public void StopPartyBattle(Guid partyId)
         {
-            var battleContext = GetBattleContextForParty(partyId);
-            if (battleContext != null)
-            {   
-                StopBattle(battleContext);
-            }
+            // 本地战斗系统已移除
         }
 
         #endregion
 
-        #region ��ɫ״̬����
+        #region 角色技能和职业方法 - 已移除本地实现
 
         /// <summary>
-        /// ��ҹ�������
+        /// 设置战斗职业 - 已移除本地实现
         /// </summary>
-        public void PlayerAttackEnemy(Player character, Enemy enemy, Party? party)
+        [Obsolete("本地战斗系统已移除，请使用服务器API")]
+        public void SetBattleProfession(Player? character, BattleProfession profession)
         {
-            _combatEngine.PlayerAttackEnemy(character, enemy, party);
+            // 本地战斗系统已移除
         }
 
         /// <summary>
-        /// ���˹������
+        /// 装备技能 - 已移除本地实现
         /// </summary>
-        public void EnemyAttackPlayer(Enemy enemy, Player character)
+        [Obsolete("本地战斗系统已移除，请使用服务器API")]
+        public void EquipSkill(Player? character, string skillId, int maxEquippedSkills)
         {
-            _combatEngine.EnemyAttackPlayer(enemy, character);
+            // 本地战斗系统已移除
         }
 
         /// <summary>
-        /// ������ɫ����
+        /// 卸下技能 - 已移除本地实现
         /// </summary>
-        public void HandleCharacterDeath(Player character)
+        [Obsolete("本地战斗系统已移除，请使用服务器API")]
+        public void UnequipSkill(Player? character, string skillId)
         {
-            var battle = _battleManager.GetBattleContextForPlayer(character.Id);
-            _characterCombatService.HandleCharacterDeath(character, battle);
-            OnStateChanged?.Invoke();
+            // 本地战斗系统已移除
         }
 
         /// <summary>
-        /// ��ɫ����
+        /// 取消玩家战斗刷新 - 已移除本地实现
         /// </summary>
-        public void ReviveCharacter(Player character)
-        {
-            _characterCombatService.ReviveCharacter(character);
-            OnStateChanged?.Invoke();
-        }
-
-
-        /// <summary>
-        /// ȡ����ҵ�ս��ˢ��״̬
-        /// </summary>
+        [Obsolete("本地战斗系统已移除，请使用服务器API")]
         public void CancelPlayerBattleRefresh(string playerId)
         {
-            _battleFlowService.CancelPlayerBattleRefresh(playerId);
-        }
-        /// <summary>
-        /// Ϊ��ɫ�����µĵ���ʵ�����ѷ�����
-        /// </summary>
-        [Obsolete("��ս��ϵͳ���Զ�������������")]
-        public void SpawnNewEnemyForCharacter(Player character, Enemy enemyTemplate)
-        {
-            // ������Ҫ
-            return;
-        }
-
-        #endregion
-
-        #region ����ϵͳ
-
-        /// <summary>
-        /// Ӧ�ý�ɫ����Ч��
-        /// </summary>
-        public void ApplyCharacterSkills(Player character, Enemy enemy)
-        {
-            _skillSystem.ApplyCharacterSkills(character, enemy);
+            // 本地战斗系统已移除
         }
 
         /// <summary>
-        /// Ӧ�õ��˼���Ч��
+        /// 设置所有角色 - 已移除本地实现
         /// </summary>
-        public void ApplyEnemySkills(Enemy enemy, Player character)
-        {
-            _skillSystem.ApplyEnemySkills(enemy, character);
-        }
-
-        /// <summary>
-        /// װ������
-        /// </summary>
-        public void EquipSkill(Player character, string skillId, int maxEquippedSkills)
-        {
-            if (_skillSystem.EquipSkill(character, skillId, maxEquippedSkills))
-            {
-                OnStateChanged?.Invoke();
-            }
-        }
-
-        /// <summary>
-        /// ж�¼���
-        /// </summary>
-        public void UnequipSkill(Player character, string skillId)
-        {
-            if (_skillSystem.UnequipSkill(character, skillId))
-            {
-                OnStateChanged?.Invoke();
-            }
-        }
-
-        /// <summary>
-        /// ����Ƿ����¼��ܽ���
-        /// </summary>
-        public void CheckForNewSkillUnlocks(Player character, BattleProfession profession, int level, bool checkAllLevels = false)
-        {
-            _skillSystem.CheckForNewSkillUnlocks(character, profession, level, checkAllLevels);
-            OnStateChanged?.Invoke();
-        }
-
-        /// <summary>
-        /// ������Ҽ�����ȴ
-        /// </summary>
-        public void ResetPlayerSkillCooldowns(Player character)
-        {
-            _skillSystem.ResetPlayerSkillCooldowns(character);
-        }
-
-        /// <summary>
-        /// ����ս��ְҵ
-        /// </summary>
-        public void SetBattleProfession(Player character, BattleProfession profession)
-        {
-            _characterCombatService.SetBattleProfession(character, profession);
-            OnStateChanged?.Invoke();
-        }
-
-        #endregion
-
-        #region ��������
-
-        /// <summary>
-        /// �������н�ɫ�б������ڸ����ڲ�״̬��
-        /// </summary>
+        [Obsolete("本地战斗系统已移除，请使用服务器API")]
         public void SetAllCharacters(List<Player> characters)
         {
-            if (characters == null)
-                throw new ArgumentNullException(nameof(characters));
+            // 本地战斗系统已移除
+        }
 
-            // ���������ӷ���Ľ�ɫ�б�
-            var allCharactersField = typeof(BattleFlowService).GetField("_allCharacters",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            allCharactersField?.SetValue(_battleFlowService, characters);
+        /// <summary>
+        /// 复活角色 - 已移除本地实现
+        /// </summary>
+        [Obsolete("本地战斗系统已移除，请使用服务器API")]
+        public void ReviveCharacter(Player character)
+        {
+            // 本地战斗系统已移除
+        }
 
-            var lootAllCharactersField = typeof(LootService).GetField("_allCharacters",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            lootAllCharactersField?.SetValue(_lootService, characters);
+        /// <summary>
+        /// 检查新技能解锁 - 已移除本地实现
+        /// </summary>
+        [Obsolete("本地战斗系统已移除，请使用服务器API")]
+        public void CheckForNewSkillUnlocks(Player character)
+        {
+            // 本地战斗系统已移除
+        }
 
-            var battleAllCharactersField = typeof(BattleManager).GetField("_allCharacters",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            battleAllCharactersField?.SetValue(_battleManager, characters);
+        /// <summary>
+        /// 检查新技能解锁（重载方法） - 已移除本地实现
+        /// </summary>
+        [Obsolete("本地战斗系统已移除，请使用服务器API")]
+        public void CheckForNewSkillUnlocks(Player character, BattleProfession profession, int level, bool isLevelUp)
+        {
+            // 本地战斗系统已移除
+        }
+
+        /// <summary>
+        /// 重置玩家技能冷却 - 已移除本地实现
+        /// </summary>
+        [Obsolete("本地战斗系统已移除，请使用服务器API")]
+        public void ResetPlayerSkillCooldowns(Player character)
+        {
+            // 本地战斗系统已移除
+        }
+
+        #endregion
+
+        #region 角色状态管理 - 已移除本地实现
+
+        /// <summary>
+        /// 触发状态改变事件
+        /// </summary>
+        public void NotifyStateChanged()
+        {
+            OnStateChanged?.Invoke();
         }
 
         #endregion
