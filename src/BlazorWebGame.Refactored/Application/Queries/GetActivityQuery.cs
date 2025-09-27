@@ -17,7 +17,7 @@ public class GetCharacterActivitiesQueryHandler : IRequestHandler<GetCharacterAc
 
     public async Task<List<Activity>> Handle(GetCharacterActivitiesQuery request, CancellationToken cancellationToken)
     {
-        return await _activityService.GetCharacterActivitiesAsync(request.CharacterId);
+        return await _activityService.GetCharacterActivitiesListAsync(request.CharacterId);
     }
 }
 

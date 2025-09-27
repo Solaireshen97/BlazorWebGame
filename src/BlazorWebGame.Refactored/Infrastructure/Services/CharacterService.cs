@@ -65,4 +65,29 @@ public class CharacterService : ICharacterService
         await Task.Delay(100);
         return new List<ItemReward>();
     }
+
+    // Additional methods for CQRS
+    public async Task<Character?> GetCharacterAsync(Guid characterId)
+    {
+        await Task.Delay(100);
+        return null;
+    }
+
+    public async Task<Character?> GetCharacterByNameAsync(string name)
+    {
+        await Task.Delay(100);
+        return null;
+    }
+
+    public async Task<Character> CreateCharacterAsync(Character character)
+    {
+        await Task.Delay(100);
+        return character;
+    }
+
+    public async Task<List<Character>> GetUserCharactersAsync(string userId)
+    {
+        await Task.Delay(100);
+        return new List<Character>();
+    }
 }

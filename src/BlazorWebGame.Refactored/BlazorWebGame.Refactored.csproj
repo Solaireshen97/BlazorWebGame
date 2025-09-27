@@ -30,6 +30,9 @@
     <!-- Local Storage -->
     <PackageReference Include="Blazored.LocalStorage" Version="4.5.0" />
     
+    <!-- Caching -->
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.20" />
+    
     <!-- JSON Serialization -->
     <PackageReference Include="System.Text.Json" Version="8.0.11" />
     

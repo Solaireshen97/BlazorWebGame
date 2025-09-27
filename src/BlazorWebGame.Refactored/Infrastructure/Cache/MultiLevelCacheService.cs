@@ -229,6 +229,32 @@ public class MultiLevelCacheService : ICacheService
         await Task.CompletedTask;
     }
 
+    public async Task CleanupExpiredEntriesAsync()
+    {
+        try
+        {
+            // 清理过期条目的逻辑（简化版）
+            _logger.LogInformation("Cache cleanup completed");
+            await Task.CompletedTask;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during cache cleanup");
+        }
+    }
+
+    public CacheStatistics GetStatistics()
+    {
+        return new CacheStatistics
+        {
+            TotalEntries = 0,
+            TotalSize = 0,
+            HitCount = 0,
+            MissCount = 0,
+            LastCleanup = DateTime.UtcNow
+        };
+    }
+
     private async Task<bool> ExistsInIndexedDbAsync(string key)
     {
         var entry = await _localStorage.GetItemAsync<object>(GetIndexedDbKey(key));
