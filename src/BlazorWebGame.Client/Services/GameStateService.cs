@@ -11,8 +11,10 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
-using System.Timers;
-using System.Diagnostics; // 添加用于性能监控
+// 移除 System.Timers 导入 - 不再使用定时器
+// using System.Timers; // 已移除
+// 移除 System.Diagnostics 导入 - 不再进行本地性能监控
+// using System.Diagnostics; // 已移除
 
 namespace BlazorWebGame.Services;
 
@@ -27,16 +29,13 @@ public class GameStateService : IAsyncDisposable
     private readonly CharacterService _characterService;
     private readonly ClientPartyService? _clientPartyService; // 新的服务端组队服务
     private readonly System.IServiceProvider _serviceProvider;
-    private System.Timers.Timer? _gameLoopTimer;
-    private const int GameLoopIntervalMs = 100;
-    private const double RevivalDuration = 2;
+    // 移除本地游戏循环相关字段 - 所有游戏逻辑由服务端处理
+    // private System.Timers.Timer? _gameLoopTimer; // 已移除
+    // private const int GameLoopIntervalMs = 100; // 已移除
+    // private const double RevivalDuration = 2; // 已移除
 
-    // 性能监控相关字段
-    private readonly Stopwatch _gameLoopStopwatch = new();
-    private long _maxLoopTime = 0;
-    private long _totalLoopTime = 0;
-    private int _loopCount = 0;
-    private DateTime _lastPerformanceLog = DateTime.UtcNow;
+    // 移除性能监控相关字段 - 服务端负责性能监控
+    // private readonly Stopwatch _gameLoopStopwatch = new(); // 已移除
 
     // 新增事件管理器
     private readonly GameEventManager _eventManager = new();
@@ -130,8 +129,8 @@ public class GameStateService : IAsyncDisposable
         // 初始化组队服务
         await InitializePartyServiceAsync();
 
-        // 启动游戏循环
-        StartGameLoop();
+        // 移除本地游戏循环启动 - 所有游戏逻辑由服务端处理
+        // StartGameLoop(); // 已移除
         
         // 触发游戏初始化完成事件
         RaiseEvent(GameEventType.GameInitialized);
@@ -152,231 +151,112 @@ public class GameStateService : IAsyncDisposable
     }
 
     /// <summary>
-    /// 游戏循环主入口点
+    /// 本地游戏循环已移除 - 所有游戏逻辑由服务端处理
     /// </summary>
-    private void GameLoopTick(object? sender, ElapsedEventArgs e)
+    [Obsolete("本地游戏循环已移除，所有游戏逻辑由服务端处理")]
+    private void GameLoopTick()
     {
-        try
-        {
-            // 启动性能监控
-            _gameLoopStopwatch.Restart();
-
-            // 计算上次循环后经过的时间
-            double elapsedSeconds = GameLoopIntervalMs / 1000.0;
-
-            // 更新全局游戏状态
-            UpdateGlobalGameState(elapsedSeconds);
-
-            // 处理所有活跃战斗 - 添加这一行
-            _combatService.ProcessAllBattles(elapsedSeconds);
-
-            // 更新所有角色
-            foreach (var character in AllCharacters)
-            {
-                UpdateCharacter(character, elapsedSeconds);
-            }
-
-            // 触发UI更新
-            NotifyStateChanged();
-
-            // 停止性能监控并记录数据
-            _gameLoopStopwatch.Stop();
-            RecordPerformanceMetrics();
-        }
-        catch (Exception ex)
-        {
-            // 记录错误但不中断游戏循环
-            LogError(ex);
-        }
+        // 本地游戏循环已移除，所有游戏逻辑处理由服务端负责
+        // 客户端只负责UI展示和用户交互
     }
 
     /// <summary>
-    /// 更新全局游戏状态
+    /// 本地游戏状态更新已移除 - 所有状态由服务端管理
     /// </summary>
+    [Obsolete("本地游戏状态更新已移除，所有状态由服务端管理")]
     private void UpdateGlobalGameState(double elapsedSeconds)
     {
-        // 检查任务重置
-        _questService.CheckAndResetDailyQuests();
-        _questService.CheckAndResetWeeklyQuests();
-        
-        // 这里可以添加其他全局状态更新，如游戏时间、世界事件等
+        // 本地状态更新已移除
+        // 任务重置等逻辑由服务端处理
     }
     
     /// <summary>
-    /// 更新单个角色的状态
+    /// 本地角色状态更新已移除 - 所有角色状态由服务端管理
     /// </summary>
+    [Obsolete("本地角色状态更新已移除，所有角色状态由服务端管理")]
     private void UpdateCharacter(Player character, double elapsedSeconds)
     {
-        if (character == null) return;
-        
-        try
-        {
-            // 更新buff和消耗品冷却
-            _characterService.UpdateBuffs(character, elapsedSeconds);
-            _inventoryService.UpdateConsumableCooldowns(character, elapsedSeconds);
-            
-            // 处理死亡状态
-            if (character.IsDead)
-            {
-                ProcessDeadCharacter(character, elapsedSeconds);
-                return;
-            }
-            
-            // 处理活跃状态
-            ProcessActiveCharacter(character, elapsedSeconds);
-            
-            // 处理自动消耗品
-            _inventoryService.ProcessAutoConsumables(character);
-        }
-        catch (Exception ex)
-        {
-            // 记录单个角色处理错误，但继续处理其他角色
-            LogError(ex, $"处理角色 {character.Name} 时发生错误");
-        }
+        // 本地角色状态更新已移除
+        // Buff更新、冷却时间、死亡复活等逻辑由服务端处理
     }
     
     /// <summary>
-    /// 处理死亡角色的逻辑
+    /// 本地死亡角色处理已移除 - 由服务端处理
     /// </summary>
+    [Obsolete("本地死亡角色处理已移除，由服务端处理")]
     private void ProcessDeadCharacter(Player character, double elapsedSeconds)
     {
-        // 更新复活倒计时
-        character.RevivalTimeRemaining -= elapsedSeconds;
-        
-        // 检查是否可以复活
-        if (character.RevivalTimeRemaining <= 0)
-        {
-            _combatService.ReviveCharacter(character);
-        }
+        // 本地死亡处理已移除
+        // 复活逻辑由服务端处理
     }
     
     /// <summary>
-    /// 处理活跃角色的逻辑
+    /// 本地活跃角色处理已移除 - 由服务端处理
     /// </summary>
+    [Obsolete("本地活跃角色处理已移除，由服务端处理")]
     private void ProcessActiveCharacter(Player character, double elapsedSeconds)
     {
-        var actionState = character.CurrentAction.ToString();
-        
-        if (character.CurrentAction == PlayerActionState.Combat)
-        {
-            ProcessCombatState(character, elapsedSeconds);
-        }
-        else if (actionState.StartsWith("Gathering"))
-        {
-            _professionService.ProcessGathering(character, elapsedSeconds);
-        }
-        else if (actionState.StartsWith("Crafting"))
-        {
-            _professionService.ProcessCrafting(character, elapsedSeconds);
-        }
-        else if (character.CurrentAction == PlayerActionState.Idle)
-        {
-            // 空闲状态无需特殊处理
-        }
-        else
-        {
-            LogWarning($"未处理的角色状态: {character.CurrentAction} 用于角色 {character.Name}");
-        }
+        // 本地角色状态处理已移除
+        // 采集、制作、战斗等逻辑由服务端处理
     }
 
     /// <summary>
-    /// 处理战斗状态
+    /// 本地战斗状态处理已移除 - 由服务端处理
     /// </summary>
+    [Obsolete("本地战斗状态处理已移除，由服务端处理")]
     private void ProcessCombatState(Player character, double elapsedSeconds)
     {
-        // 无需再检查角色是否在新战斗系统中
-        // 所有战斗都会由CombatService.ProcessAllBattles统一处理
-        
-        // 只处理那些不在新战斗系统中的角色
-        var combatService = ServiceLocator.GetService<CombatService>();
-        var battleContext = combatService?.GetBattleContextForPlayer(character.Id);
-        
-        if (battleContext == null && character.CurrentAction == PlayerActionState.Combat)
-        {
-            var party = GetPartyForCharacter(character.Id);
-            _combatService.ProcessCombat(character, elapsedSeconds, party);
-        }
-        // 新战斗系统的处理在CombatService.ProcessAllBattles中完成
+        // 本地战斗状态处理已移除
+        // 所有战斗逻辑由服务端处理
     }
 
     /// <summary>
-    /// 记录性能指标
+    /// 性能监控已移除 - 由服务端负责
     /// </summary>
+    [Obsolete("性能监控已移除，由服务端负责")]
     private void RecordPerformanceMetrics()
     {
-        long elapsedMs = _gameLoopStopwatch.ElapsedMilliseconds;
-        
-        // 更新统计信息
-        _maxLoopTime = Math.Max(_maxLoopTime, elapsedMs);
-        _totalLoopTime += elapsedMs;
-        _loopCount++;
-        
-        // 每分钟记录一次性能日志
-        if ((DateTime.UtcNow - _lastPerformanceLog).TotalMinutes >= 1)
-        {
-            double avgLoopTime = (double)_totalLoopTime / Math.Max(1, _loopCount);
-            
-            // 记录性能统计
-            Console.WriteLine($"游戏循环性能统计: 平均={avgLoopTime:F2}ms, 最大={_maxLoopTime}ms, 目标={GameLoopIntervalMs}ms");
-            
-            // 如果平均执行时间接近或超过循环间隔，发出警告
-            if (avgLoopTime > GameLoopIntervalMs * 0.8)
-            {
-                LogWarning($"游戏循环执行时间接近或超过目标间隔: {avgLoopTime:F2}ms > {GameLoopIntervalMs * 0.8:F2}ms");
-            }
-            
-            // 重置统计
-            _maxLoopTime = 0;
-            _totalLoopTime = 0;
-            _loopCount = 0;
-            _lastPerformanceLog = DateTime.UtcNow;
-        }
+        // 本地性能监控已移除
+        // 服务端负责性能监控和日志记录
     }
     
     /// <summary>
-    /// 记录错误信息
+    /// 本地错误记录已移除 - 使用标准日志系统
     /// </summary>
+    [Obsolete("本地错误记录已移除，使用标准日志系统")]
     private void LogError(Exception ex, string? context = null)
     {
-        string message = context != null ? $"{context}: {ex.Message}" : ex.Message;
-        Console.WriteLine($"游戏循环错误: {message}");
-        Console.WriteLine(ex.StackTrace);
-        
-        // 这里可以添加更复杂的日志记录，如保存到文件或发送到服务器
+        // 本地日志记录已移除
+        // 使用标准的ILogger接口和服务端日志系统
     }
     
     /// <summary>
-    /// 记录警告信息
+    /// 本地警告记录已移除 - 使用标准日志系统
     /// </summary>
+    [Obsolete("本地警告记录已移除，使用标准日志系统")]
     private void LogWarning(string message)
     {
         Console.WriteLine($"游戏循环警告: {message}");
     }
     
     /// <summary>
-    /// 启动游戏循环
+    /// 本地游戏循环启动已移除 - 所有游戏逻辑由服务端处理
     /// </summary>
+    [Obsolete("本地游戏循环已移除，所有游戏逻辑由服务端处理")]
     private void StartGameLoop()
     {
-        _gameLoopTimer = new System.Timers.Timer(GameLoopIntervalMs);
-        _gameLoopTimer.Elapsed += GameLoopTick;
-        _gameLoopTimer.AutoReset = true;
-        _gameLoopTimer.Start();
-        
-        Console.WriteLine($"游戏循环已启动，间隔: {GameLoopIntervalMs}ms");
+        // 本地游戏循环已移除
+        // 所有游戏逻辑（定时器、状态更新）由服务端处理
+        // 客户端只负责UI展示和用户交互
     }
     
     /// <summary>
-    /// 停止游戏循环
+    /// 本地游戏循环停止已移除 - 不再需要
     /// </summary>
+    [Obsolete("本地游戏循环已移除，不再需要停止")]
     private void StopGameLoop()
     {
-        if (_gameLoopTimer != null)
-        {
-            _gameLoopTimer.Stop();
-            _gameLoopTimer.Elapsed -= GameLoopTick;
-            Console.WriteLine("游戏循环已停止");
-        }
+        // 本地游戏循环已移除，无需停止
     }
 
 
@@ -602,11 +482,12 @@ public class GameStateService : IAsyncDisposable
     public async Task SaveStateAsync(Player character) =>await _characterService.SaveStateAsync(character);
     public async ValueTask DisposeAsync() 
     { 
-        StopGameLoop(); 
-        if (_gameLoopTimer != null) 
-        { 
-            _gameLoopTimer.Dispose(); 
-        }
+        // 移除本地游戏循环停止和清理 - 已无需处理
+        // StopGameLoop(); // 已移除
+        // if (_gameLoopTimer != null) // 已移除
+        // { 
+        //     _gameLoopTimer.Dispose(); // 已移除
+        // }
         
         // 清理客户端组队服务
         if (_clientPartyService != null)
