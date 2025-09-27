@@ -9,27 +9,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlazorWebGame.Server", "src
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlazorWebGame.Shared", "src\BlazorWebGame.Shared\BlazorWebGame.Shared.csproj", "{C5D8E9F0-1A2B-3C4D-8E7F-6A9B5C4D3E2F}"
 EndProject
-Project("{E24C65DC-7377-472B-9ABA-BC803B73C61A}") = "react-client", "react-client\", "{CC4AD229-F09F-7348-56A8-DA75B24E5055}"
-	ProjectSection(WebsiteProperties) = preProject
-		TargetFrameworkMoniker = ".NETFramework,Version%3Dv4.8.1"
-		Debug.AspNetCompiler.VirtualPath = "/localhost_11170"
-		Debug.AspNetCompiler.PhysicalPath = "react-client\"
-		Debug.AspNetCompiler.TargetPath = "PrecompiledWeb\localhost_11170\"
-		Debug.AspNetCompiler.Updateable = "true"
-		Debug.AspNetCompiler.ForceOverwrite = "true"
-		Debug.AspNetCompiler.FixedNames = "false"
-		Debug.AspNetCompiler.Debug = "True"
-		Release.AspNetCompiler.VirtualPath = "/localhost_11170"
-		Release.AspNetCompiler.PhysicalPath = "react-client\"
-		Release.AspNetCompiler.TargetPath = "PrecompiledWeb\localhost_11170\"
-		Release.AspNetCompiler.Updateable = "true"
-		Release.AspNetCompiler.ForceOverwrite = "true"
-		Release.AspNetCompiler.FixedNames = "false"
-		Release.AspNetCompiler.Debug = "False"
-		VWDPort = "11170"
-		SlnRelativePath = "react-client\"
-	EndProjectSection
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -62,14 +41,6 @@ Global
 		{C5D8E9F0-1A2B-3C4D-8E7F-6A9B5C4D3E2F}.Release|Any CPU.Build.0 = Release|Any CPU
 		{C5D8E9F0-1A2B-3C4D-8E7F-6A9B5C4D3E2F}.Release|x64.ActiveCfg = Release|x64
 		{C5D8E9F0-1A2B-3C4D-8E7F-6A9B5C4D3E2F}.Release|x64.Build.0 = Release|x64
-		{CC4AD229-F09F-7348-56A8-DA75B24E5055}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{CC4AD229-F09F-7348-56A8-DA75B24E5055}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{CC4AD229-F09F-7348-56A8-DA75B24E5055}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{CC4AD229-F09F-7348-56A8-DA75B24E5055}.Debug|x64.Build.0 = Debug|Any CPU
-		{CC4AD229-F09F-7348-56A8-DA75B24E5055}.Release|Any CPU.ActiveCfg = Debug|Any CPU
-		{CC4AD229-F09F-7348-56A8-DA75B24E5055}.Release|Any CPU.Build.0 = Debug|Any CPU
-		{CC4AD229-F09F-7348-56A8-DA75B24E5055}.Release|x64.ActiveCfg = Debug|Any CPU
-		{CC4AD229-F09F-7348-56A8-DA75B24E5055}.Release|x64.Build.0 = Debug|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
