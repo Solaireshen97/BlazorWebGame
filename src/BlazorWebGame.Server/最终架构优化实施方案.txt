@@ -1,0 +1,1109 @@
+﻿BlazorWebGame 最终架构优化实施方案
+📌 执行概要
+基于事件驱动架构的全新实现，完全解耦所有服务依赖，实现清晰的职责分离和高度可扩展性。
+🏗️ 核心架构设计
+graph TB
+    subgraph "Presentation Layer"
+        Pages[Blazor Pages]
+        Components[UI Components]
+    end
+    
+    subgraph "Application Layer"
+        EventBus[Event Bus]
+        Commands[Command Handlers]
+        Queries[Query Handlers]
+    end
+    
+    subgraph "Domain Layer"
+        GameEngine[Game Engine]
+        Systems[Game Systems]
+        Managers[Domain Managers]
+    end
+    
+    subgraph "Infrastructure Layer"
+        Storage[Storage Service]
+        Cache[Cache Service]
+        SignalR[SignalR Hub]
+    end
+    
+    Pages --> Commands
+    Pages --> Queries
+    Components --> EventBus
+    Commands --> EventBus
+    EventBus --> Systems
+    EventBus --> Managers
+    Systems --> EventBus
+    Managers --> Storage
+    Managers --> Cache
+🚀 实施步骤
+Step 1: 创建核心事件系统
+namespace BlazorWebGame.Refactored.Infrastructure.Events.Core;
+
+/// <summary>
+/// 事件总线接口
+/// </summary>
+public interface IEventBus
+{
+    Task PublishAsync<TEvent>(TEvent @event, CancellationToken cancellationToken = default) 
+        where TEvent : IGameEvent;
+    
+    void Subscribe<TEvent>(Func<TEvent, CancellationToken, Task> handler) 
+        where TEvent : IGameEvent;
+    
+    void Unsubscribe<TEvent>(Func<TEvent, CancellationToken, Task> handler) 
+        where TEvent : IGameEvent;
+    
+    void SubscribeSync<TEvent>(Action<TEvent> handler) 
+        where TEvent : IGameEvent;
+    
+    void UnsubscribeSync<TEvent>(Action<TEvent> handler) 
+        where TEvent : IGameEvent;
+}
+
+/// <summary>
+/// 游戏事件基接口
+/// </summary>
+public interface IGameEvent
+{
+    Guid Id { get; }
+    DateTime OccurredAt { get; }
+    string Type { get; }
+    Dictionary<string, object> Metadata { get; }
+}
+
+/// <summary>
+/// 领域事件基类
+/// </summary>
+public abstract class DomainEvent : IGameEvent
+{
+    public Guid Id { get; } = Guid.NewGuid();
+    public DateTime OccurredAt { get; } = DateTime.UtcNow;
+    public abstract string Type { get; }
+    public Dictionary<string, object> Metadata { get; } = new();
+    
+    protected DomainEvent()
+    {
+        Metadata["EventVersion"] = "1.0";
+    }
+}
+
+using System.Collections.Concurrent;
+using System.Threading.Channels;
+using Microsoft.Extensions.Logging;
+
+namespace BlazorWebGame.Refactored.Infrastructure.Events.Core;
+
+/// <summary>
+/// 高性能事件总线实现
+/// </summary>
+public sealed class EventBus : IEventBus, IDisposable
+{
+    private readonly ConcurrentDictionary<Type, List<Delegate>> _handlers = new();
+    private readonly Channel<(IGameEvent Event, TaskCompletionSource<bool> Completion)> _eventChannel;
+    private readonly ILogger<EventBus> _logger;
+    private readonly CancellationTokenSource _cancellationTokenSource = new();
+    private readonly Task _processingTask;
+    private readonly SemaphoreSlim _handlerLock = new(1, 1);
+
+    public EventBus(ILogger<EventBus> logger)
+    {
+        _logger = logger;
+        
+        // 创建无界通道以获得最佳性能
+        _eventChannel = Channel.CreateUnbounded<(IGameEvent, TaskCompletionSource<bool>)>(
+            new UnboundedChannelOptions
+            {
+                SingleReader = true,
+                SingleWriter = false
+            });
+        
+        // 启动后台处理任务
+        _processingTask = ProcessEventsAsync(_cancellationTokenSource.Token);
+    }
+
+    public async Task PublishAsync<TEvent>(TEvent @event, CancellationToken cancellationToken = default) 
+        where TEvent : IGameEvent
+    {
+        if (@event == null) throw new ArgumentNullException(nameof(@event));
+        
+        var tcs = new TaskCompletionSource<bool>();
+        
+        await _eventChannel.Writer.WriteAsync((@event, tcs), cancellationToken);
+        
+        await tcs.Task;
+        
+        _logger.LogDebug("Event {EventType} with ID {EventId} published successfully", 
+            @event.Type, @event.Id);
+    }
+
+    public void Subscribe<TEvent>(Func<TEvent, CancellationToken, Task> handler) 
+        where TEvent : IGameEvent
+    {
+        if (handler == null) throw new ArgumentNullException(nameof(handler));
+        
+        _handlerLock.Wait();
+        try
+        {
+            var eventType = typeof(TEvent);
+            if (!_handlers.TryGetValue(eventType, out var handlers))
+            {
+                handlers = new List<Delegate>();
+                _handlers[eventType] = handlers;
+            }
+            
+            handlers.Add(handler);
+            _logger.LogDebug("Handler subscribed for event type {EventType}", eventType.Name);
+        }
+        finally
+        {
+            _handlerLock.Release();
+        }
+    }
+
+    public void SubscribeSync<TEvent>(Action<TEvent> handler) where TEvent : IGameEvent
+    {
+        if (handler == null) throw new ArgumentNullException(nameof(handler));
+        
+        // 将同步处理器包装为异步
+        Func<TEvent, CancellationToken, Task> asyncHandler = (evt, ct) =>
+        {
+            handler(evt);
+            return Task.CompletedTask;
+        };
+        
+        Subscribe(asyncHandler);
+    }
+
+    public void Unsubscribe<TEvent>(Func<TEvent, CancellationToken, Task> handler) 
+        where TEvent : IGameEvent
+    {
+        if (handler == null) throw new ArgumentNullException(nameof(handler));
+        
+        _handlerLock.Wait();
+        try
+        {
+            var eventType = typeof(TEvent);
+            if (_handlers.TryGetValue(eventType, out var handlers))
+            {
+                handlers.Remove(handler);
+                if (handlers.Count == 0)
+                {
+                    _handlers.TryRemove(eventType, out _);
+                }
+            }
+        }
+        finally
+        {
+            _handlerLock.Release();
+        }
+    }
+
+    public void UnsubscribeSync<TEvent>(Action<TEvent> handler) where TEvent : IGameEvent
+    {
+        // 实现略，与Subscribe类似
+    }
+
+    private async Task ProcessEventsAsync(CancellationToken cancellationToken)
+    {
+        await foreach (var (gameEvent, completion) in _eventChannel.Reader.ReadAllAsync(cancellationToken))
+        {
+            try
+            {
+                await ProcessSingleEventAsync(gameEvent, cancellationToken);
+                completion.SetResult(true);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing event {EventType}", gameEvent.Type);
+                completion.SetException(ex);
+            }
+        }
+    }
+
+    private async Task ProcessSingleEventAsync(IGameEvent gameEvent, CancellationToken cancellationToken)
+    {
+        var eventType = gameEvent.GetType();
+        var handlers = GetHandlersForEvent(eventType);
+        
+        if (!handlers.Any())
+        {
+            _logger.LogDebug("No handlers found for event type {EventType}", eventType.Name);
+            return;
+        }
+        
+        var tasks = handlers.Select(handler => InvokeHandlerAsync(handler, gameEvent, cancellationToken));
+        await Task.WhenAll(tasks);
+    }
+
+    private List<Delegate> GetHandlersForEvent(Type eventType)
+    {
+        var handlers = new List<Delegate>();
+        
+        // 获取直接订阅的处理器
+        if (_handlers.TryGetValue(eventType, out var directHandlers))
+        {
+            handlers.AddRange(directHandlers);
+        }
+        
+        // 获取基类和接口的处理器
+        foreach (var kvp in _handlers)
+        {
+            if (kvp.Key.IsAssignableFrom(eventType) && kvp.Key != eventType)
+            {
+                handlers.AddRange(kvp.Value);
+            }
+        }
+        
+        return handlers;
+    }
+
+    private async Task InvokeHandlerAsync(Delegate handler, IGameEvent gameEvent, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var handlerType = handler.GetType();
+            var genericArgs = handlerType.GetGenericArguments();
+            
+            if (genericArgs.Length > 0 && genericArgs[0].IsAssignableFrom(gameEvent.GetType()))
+            {
+                await (Task)handler.DynamicInvoke(gameEvent, cancellationToken)!;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error invoking handler for event {EventType}", gameEvent.Type);
+        }
+    }
+
+    public void Dispose()
+    {
+        _cancellationTokenSource.Cancel();
+        _eventChannel.Writer.Complete();
+        _processingTask.Wait(TimeSpan.FromSeconds(5));
+        _cancellationTokenSource.Dispose();
+        _handlerLock.Dispose();
+    }
+}
+
+Step 2: 定义领域事件
+namespace BlazorWebGame.Refactored.Domain.Events;
+
+// ========== 游戏生命周期事件 ==========
+public sealed class GameInitializedEvent : DomainEvent
+{
+    public override string Type => "Game.Initialized";
+    public string Version { get; init; } = "1.0.0";
+}
+
+public sealed class GameTickEvent : DomainEvent
+{
+    public override string Type => "Game.Tick";
+    public double DeltaTime { get; init; }
+    public long TickNumber { get; init; }
+}
+
+// ========== 角色事件 ==========
+public sealed class CharacterCreatedEvent : DomainEvent
+{
+    public override string Type => "Character.Created";
+    public required string CharacterId { get; init; }
+    public required string Name { get; init; }
+}
+
+public sealed class CharacterLeveledUpEvent : DomainEvent
+{
+    public override string Type => "Character.LeveledUp";
+    public required string CharacterId { get; init; }
+    public int OldLevel { get; init; }
+    public int NewLevel { get; init; }
+    public int AttributePoints { get; init; }
+}
+
+public sealed class CharacterDiedEvent : DomainEvent
+{
+    public override string Type => "Character.Died";
+    public required string CharacterId { get; init; }
+    public string? KilledBy { get; init; }
+}
+
+// ========== 战斗事件 ==========
+public sealed class BattleStartedEvent : DomainEvent
+{
+    public override string Type => "Battle.Started";
+    public required Guid BattleId { get; init; }
+    public required string CharacterId { get; init; }
+    public required string EnemyId { get; init; }
+}
+
+public sealed class BattleEndedEvent : DomainEvent
+{
+    public override string Type => "Battle.Ended";
+    public required Guid BattleId { get; init; }
+    public required BattleResult Result { get; init; }
+    public List<Reward> Rewards { get; init; } = new();
+}
+
+public sealed class DamageDealtEvent : DomainEvent
+{
+    public override string Type => "Battle.DamageDealt";
+    public required string AttackerId { get; init; }
+    public required string TargetId { get; init; }
+    public int Damage { get; init; }
+    public bool IsCritical { get; init; }
+}
+
+// ========== 活动事件 ==========
+public sealed class ActivityStartedEvent : DomainEvent
+{
+    public override string Type => "Activity.Started";
+    public required Guid ActivityId { get; init; }
+    public required string CharacterId { get; init; }
+    public required ActivityType ActivityType { get; init; }
+    public TimeSpan Duration { get; init; }
+}
+
+public sealed class ActivityCompletedEvent : DomainEvent
+{
+    public override string Type => "Activity.Completed";
+    public required Guid ActivityId { get; init; }
+    public required string CharacterId { get; init; }
+    public List<Reward> Rewards { get; init; } = new();
+}
+
+// ========== 物品事件 ==========
+public sealed class ItemAcquiredEvent : DomainEvent
+{
+    public override string Type => "Item.Acquired";
+    public required string CharacterId { get; init; }
+    public required string ItemId { get; init; }
+    public int Quantity { get; init; }
+    public string? Source { get; init; }
+}
+
+public sealed class ItemEquippedEvent : DomainEvent
+{
+    public override string Type => "Item.Equipped";
+    public required string CharacterId { get; init; }
+    public required string ItemId { get; init; }
+    public required EquipmentSlot Slot { get; init; }
+}
+
+// ========== 值对象 ==========
+public record BattleResult(bool Victory, int ExperienceGained, int GoldGained);
+public record Reward(string Type, string Id, int Quantity);
+public enum ActivityType { Mining, Fishing, Crafting, Gathering }
+public enum EquipmentSlot { Head, Chest, Legs, Feet, MainHand, OffHand }
+
+Step 3: 实现游戏引擎
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using System.Diagnostics;
+
+namespace BlazorWebGame.Refactored.Application;
+
+/// <summary>
+/// 游戏引擎 - 管理游戏循环和系统协调
+/// </summary>
+public sealed class GameEngine : BackgroundService
+{
+    private readonly IEventBus _eventBus;
+    private readonly IEnumerable<IGameSystem> _systems;
+    private readonly ILogger<GameEngine> _logger;
+    private readonly GameEngineOptions _options;
+    
+    private readonly PeriodicTimer _timer;
+    private readonly Stopwatch _stopwatch = new();
+    private long _tickNumber;
+    
+    public GameEngine(
+        IEventBus eventBus,
+        IEnumerable<IGameSystem> systems,
+        ILogger<GameEngine> logger,
+        IOptions<GameEngineOptions> options)
+    {
+        _eventBus = eventBus;
+        _systems = systems.OrderBy(s => s.Priority).ToList();
+        _logger = logger;
+        _options = options.Value;
+        _timer = new PeriodicTimer(TimeSpan.FromMilliseconds(_options.TickIntervalMs));
+    }
+    
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        _logger.LogInformation("Game Engine starting with {SystemCount} systems", _systems.Count());
+        
+        // 初始化所有系统
+        foreach (var system in _systems)
+        {
+            await system.InitializeAsync(stoppingToken);
+            _logger.LogDebug("Initialized system: {SystemName}", system.Name);
+        }
+        
+        // 发布游戏初始化事件
+        await _eventBus.PublishAsync(new GameInitializedEvent(), stoppingToken);
+        
+        _stopwatch.Start();
+        var lastTickTime = _stopwatch.Elapsed;
+        
+        // 游戏主循环
+        while (!stoppingToken.IsCancellationRequested && await _timer.WaitForNextTickAsync(stoppingToken))
+        {
+            var currentTime = _stopwatch.Elapsed;
+            var deltaTime = (currentTime - lastTickTime).TotalSeconds;
+            lastTickTime = currentTime;
+            
+            await ProcessGameTickAsync(deltaTime, stoppingToken);
+        }
+        
+        _logger.LogInformation("Game Engine stopped");
+    }
+    
+    private async Task ProcessGameTickAsync(double deltaTime, CancellationToken cancellationToken)
+    {
+        _tickNumber++;
+        
+        var tickEvent = new GameTickEvent
+        {
+            DeltaTime = deltaTime,
+            TickNumber = _tickNumber
+        };
+        
+        // 发布tick事件
+        await _eventBus.PublishAsync(tickEvent, cancellationToken);
+        
+        // 并行处理所有系统
+        var tasks = _systems
+            .Where(s => s.ShouldProcess(deltaTime))
+            .Select(s => ProcessSystemAsync(s, deltaTime, cancellationToken));
+        
+        await Task.WhenAll(tasks);
+    }
+    
+    private async Task ProcessSystemAsync(IGameSystem system, double deltaTime, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var activity = Activity.StartActivity($"GameSystem.{system.Name}");
+            await system.ProcessAsync(deltaTime, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing system {SystemName}", system.Name);
+        }
+    }
+}
+
+/// <summary>
+/// 游戏系统接口
+/// </summary>
+public interface IGameSystem
+{
+    string Name { get; }
+    int Priority { get; }
+    Task InitializeAsync(CancellationToken cancellationToken);
+    bool ShouldProcess(double deltaTime);
+    Task ProcessAsync(double deltaTime, CancellationToken cancellationToken);
+}
+
+/// <summary>
+/// 游戏引擎配置
+/// </summary>
+public class GameEngineOptions
+{
+    public int TickIntervalMs { get; set; } = 100;
+    public bool EnableMetrics { get; set; } = true;
+    public bool EnableDiagnostics { get; set; } = false;
+}
+
+Step 4: 实现核心系统
+namespace BlazorWebGame.Refactored.Application.Systems;
+
+/// <summary>
+/// 战斗系统
+/// </summary>
+public sealed class BattleSystem : IGameSystem
+{
+    private readonly IEventBus _eventBus;
+    private readonly IBattleRepository _battleRepository;
+    private readonly ICombatCalculator _combatCalculator;
+    private readonly ILogger<BattleSystem> _logger;
+    
+    private readonly ConcurrentDictionary<Guid, Battle> _activeBattles = new();
+    
+    public string Name => "BattleSystem";
+    public int Priority => 1;
+    
+    public BattleSystem(
+        IEventBus eventBus,
+        IBattleRepository battleRepository,
+        ICombatCalculator combatCalculator,
+        ILogger<BattleSystem> logger)
+    {
+        _eventBus = eventBus;
+        _battleRepository = battleRepository;
+        _combatCalculator = combatCalculator;
+        _logger = logger;
+    }
+    
+    public async Task InitializeAsync(CancellationToken cancellationToken)
+    {
+        // 订阅战斗相关命令
+        _eventBus.Subscribe<StartBattleCommand>(HandleStartBattleAsync);
+        _eventBus.Subscribe<EndBattleCommand>(HandleEndBattleAsync);
+        _eventBus.Subscribe<AttackCommand>(HandleAttackAsync);
+        
+        // 加载未完成的战斗
+        var activeBattles = await _battleRepository.GetActiveBattlesAsync(cancellationToken);
+        foreach (var battle in activeBattles)
+        {
+            _activeBattles[battle.Id] = battle;
+        }
+        
+        _logger.LogInformation("Battle system initialized with {BattleCount} active battles", _activeBattles.Count);
+    }
+    
+    public bool ShouldProcess(double deltaTime) => _activeBattles.Any();
+    
+    public async Task ProcessAsync(double deltaTime, CancellationToken cancellationToken)
+    {
+        var completedBattles = new List<Guid>();
+        
+        // 处理所有活跃战斗
+        await Parallel.ForEachAsync(_activeBattles.Values, cancellationToken, async (battle, ct) =>
+        {
+            battle.Update(deltaTime);
+            
+            // 处理AI行动
+            ProcessAI(battle);
+            
+            // 检查战斗结束
+            if (battle.IsCompleted)
+            {
+                completedBattles.Add(battle.Id);
+            }
+        });
+        
+        // 清理完成的战斗
+        foreach (var battleId in completedBattles)
+        {
+            await EndBattleAsync(battleId, cancellationToken);
+        }
+    }
+    
+    private async Task HandleStartBattleAsync(StartBattleCommand command, CancellationToken cancellationToken)
+    {
+        var battle = new Battle(Guid.NewGuid(), command.CharacterId, command.EnemyId);
+        
+        _activeBattles[battle.Id] = battle;
+        await _battleRepository.SaveBattleAsync(battle, cancellationToken);
+        
+        await _eventBus.PublishAsync(new BattleStartedEvent
+        {
+            BattleId = battle.Id,
+            CharacterId = command.CharacterId,
+            EnemyId = command.EnemyId
+        }, cancellationToken);
+        
+        _logger.LogInformation("Battle {BattleId} started", battle.Id);
+    }
+    
+    private async Task HandleAttackAsync(AttackCommand command, CancellationToken cancellationToken)
+    {
+        if (!_activeBattles.TryGetValue(command.BattleId, out var battle))
+            return;
+        
+        var damage = _combatCalculator.CalculateDamage(
+            battle.GetCombatant(command.AttackerId),
+            battle.GetCombatant(command.TargetId));
+        
+        battle.ApplyDamage(command.TargetId, damage);
+        
+        await _eventBus.PublishAsync(new DamageDealtEvent
+        {
+            AttackerId = command.AttackerId,
+            TargetId = command.TargetId,
+            Damage = damage.Amount,
+            IsCritical = damage.IsCritical
+        }, cancellationToken);
+    }
+    
+    private async Task EndBattleAsync(Guid battleId, CancellationToken cancellationToken)
+    {
+        if (!_activeBattles.TryRemove(battleId, out var battle))
+            return;
+        
+        var result = battle.GetResult();
+        await _battleRepository.CompleteBattleAsync(battleId, result, cancellationToken);
+        
+        await _eventBus.PublishAsync(new BattleEndedEvent
+        {
+            BattleId = battleId,
+            Result = result,
+            Rewards = CalculateRewards(battle, result)
+        }, cancellationToken);
+        
+        _logger.LogInformation("Battle {BattleId} ended with result: {Victory}", 
+            battleId, result.Victory);
+    }
+    
+    private void ProcessAI(Battle battle)
+    {
+        // AI逻辑实现
+        foreach (var enemy in battle.GetEnemies())
+        {
+            if (enemy.CanAttack())
+            {
+                var target = SelectTarget(battle, enemy);
+                if (target != null)
+                {
+                    _eventBus.PublishAsync(new AttackCommand
+                    {
+                        BattleId = battle.Id,
+                        AttackerId = enemy.Id,
+                        TargetId = target.Id
+                    });
+                }
+            }
+        }
+    }
+    
+    private List<Reward> CalculateRewards(Battle battle, BattleResult result)
+    {
+        // 奖励计算逻辑
+        var rewards = new List<Reward>();
+        if (result.Victory)
+        {
+            rewards.Add(new Reward("Experience", "", result.ExperienceGained));
+            rewards.Add(new Reward("Gold", "", result.GoldGained));
+        }
+        return rewards;
+    }
+    
+    private ICombatant? SelectTarget(Battle battle, ICombatant attacker)
+    {
+        // 目标选择逻辑
+        return battle.GetPlayers().FirstOrDefault(p => !p.IsDead);
+    }
+}
+
+// 命令定义
+public record StartBattleCommand(string CharacterId, string EnemyId) : IGameEvent
+{
+    public Guid Id { get; } = Guid.NewGuid();
+    public DateTime OccurredAt { get; } = DateTime.UtcNow;
+    public string Type => "Command.StartBattle";
+    public Dictionary<string, object> Metadata { get; } = new();
+}
+
+public record EndBattleCommand(Guid BattleId) : IGameEvent
+{
+    public Guid Id { get; } = Guid.NewGuid();
+    public DateTime OccurredAt { get; } = DateTime.UtcNow;
+    public string Type => "Command.EndBattle";
+    public Dictionary<string, object> Metadata { get; } = new();
+}
+
+public record AttackCommand(Guid BattleId, string AttackerId, string TargetId) : IGameEvent
+{
+    public Guid Id { get; } = Guid.NewGuid();
+    public DateTime OccurredAt { get; } = DateTime.UtcNow;
+    public string Type => "Command.Attack";
+    public Dictionary<string, object> Metadata { get; } = new();
+}
+
+Step 5: 状态管理
+namespace BlazorWebGame.Refactored.Application.Services;
+
+/// <summary>
+/// 游戏状态管理器
+/// </summary>
+public interface IGameStateManager
+{
+    Player? CurrentPlayer { get; }
+    Task LoadPlayerAsync(string playerId, CancellationToken cancellationToken = default);
+    Task SavePlayerAsync(CancellationToken cancellationToken = default);
+    T? GetState<T>(string key) where T : class;
+    void SetState<T>(string key, T value) where T : class;
+}
+
+public sealed class GameStateManager : IGameStateManager, IDisposable
+{
+    private readonly IEventBus _eventBus;
+    private readonly IPlayerRepository _playerRepository;
+    private readonly IMemoryCache _cache;
+    private readonly ILogger<GameStateManager> _logger;
+    
+    private Player? _currentPlayer;
+    private readonly ConcurrentDictionary<string, object> _gameState = new();
+    private readonly Timer _autoSaveTimer;
+    
+    public Player? CurrentPlayer => _currentPlayer;
+    
+    public GameStateManager(
+        IEventBus eventBus,
+        IPlayerRepository playerRepository,
+        IMemoryCache cache,
+        ILogger<GameStateManager> logger)
+    {
+        _eventBus = eventBus;
+        _playerRepository = playerRepository;
+        _cache = cache;
+        _logger = logger;
+        
+        // 订阅需要更新状态的事件
+        _eventBus.Subscribe<CharacterLeveledUpEvent>(HandleCharacterLeveledUp);
+        _eventBus.Subscribe<ItemAcquiredEvent>(HandleItemAcquired);
+        _eventBus.Subscribe<BattleEndedEvent>(HandleBattleEnded);
+        
+        // 设置自动保存
+        _autoSaveTimer = new Timer(async _ => await AutoSaveAsync(), null, 
+            TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+    }
+    
+    public async Task LoadPlayerAsync(string playerId, CancellationToken cancellationToken = default)
+    {
+        // 尝试从缓存加载
+        if (_cache.TryGetValue<Player>($"player_{playerId}", out var cachedPlayer))
+        {
+            _currentPlayer = cachedPlayer;
+            _logger.LogDebug("Player {PlayerId} loaded from cache", playerId);
+            return;
+        }
+        
+        // 从存储加载
+        _currentPlayer = await _playerRepository.GetPlayerAsync(playerId, cancellationToken);
+        
+        if (_currentPlayer == null)
+        {
+            // 创建新玩家
+            _currentPlayer = new Player(playerId);
+            await _playerRepository.CreatePlayerAsync(_currentPlayer, cancellationToken);
+            
+            await _eventBus.PublishAsync(new CharacterCreatedEvent
+            {
+                CharacterId = playerId,
+                Name = _currentPlayer.Name
+            }, cancellationToken);
+        }
+        
+        // 添加到缓存
+        _cache.Set($"player_{playerId}", _currentPlayer, TimeSpan.FromMinutes(30));
+        
+        _logger.LogInformation("Player {PlayerId} loaded", playerId);
+    }
+    
+    public async Task SavePlayerAsync(CancellationToken cancellationToken = default)
+    {
+        if (_currentPlayer == null) return;
+        
+        await _playerRepository.UpdatePlayerAsync(_currentPlayer, cancellationToken);
+        _logger.LogDebug("Player {PlayerId} saved", _currentPlayer.Id);
+    }
+    
+    public T? GetState<T>(string key) where T : class
+    {
+        return _gameState.TryGetValue(key, out var value) ? value as T : null;
+    }
+    
+    public void SetState<T>(string key, T value) where T : class
+    {
+        _gameState[key] = value;
+    }
+    
+    private void HandleCharacterLeveledUp(CharacterLeveledUpEvent evt)
+    {
+        if (_currentPlayer?.Id != evt.CharacterId) return;
+        
+        _currentPlayer.Level = evt.NewLevel;
+        _currentPlayer.AttributePoints += evt.AttributePoints;
+    }
+    
+    private void HandleItemAcquired(ItemAcquiredEvent evt)
+    {
+        if (_currentPlayer?.Id != evt.CharacterId) return;
+        
+        _currentPlayer.Inventory.AddItem(evt.ItemId, evt.Quantity);
+    }
+    
+    private void HandleBattleEnded(BattleEndedEvent evt)
+    {
+        if (_currentPlayer == null) return;
+        
+        if (evt.Result.Victory)
+        {
+            _currentPlayer.Experience += evt.Result.ExperienceGained;
+            _currentPlayer.Gold += evt.Result.GoldGained;
+        }
+    }
+    
+    private async Task AutoSaveAsync()
+    {
+        try
+        {
+            await SavePlayerAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Auto save failed");
+        }
+    }
+    
+    public void Dispose()
+    {
+        _autoSaveTimer?.Dispose();
+        SavePlayerAsync().Wait(TimeSpan.FromSeconds(5));
+    }
+}
+
+Step 6: 依赖注入配置
+using BlazorWebGame.Refactored.Infrastructure.Events.Core;
+using BlazorWebGame.Refactored.Application;
+using BlazorWebGame.Refactored.Application.Systems;
+using BlazorWebGame.Refactored.Application.Services;
+using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+
+var builder = WebAssemblyHostBuilder.CreateDefault(args);
+builder.RootComponents.Add<App>("#app");
+
+// ========== 配置选项 ==========
+builder.Services.Configure<GameEngineOptions>(
+    builder.Configuration.GetSection("GameEngine"));
+builder.Services.Configure<GameOptions>(
+    builder.Configuration.GetSection("Game"));
+
+// ========== 基础设施 ==========
+builder.Services.AddSingleton<IEventBus, EventBus>();
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient();
+
+// ========== 存储层 ==========
+builder.Services.AddScoped<IPlayerRepository, PlayerRepository>();
+builder.Services.AddScoped<IBattleRepository, BattleRepository>();
+builder.Services.AddScoped<IStorageService, LocalStorageService>();
+
+// ========== 领域服务 ==========
+builder.Services.AddSingleton<ICombatCalculator, CombatCalculator>();
+builder.Services.AddSingleton<IRewardCalculator, RewardCalculator>();
+builder.Services.AddSingleton<IActivityProcessor, ActivityProcessor>();
+
+// ========== 游戏系统 ==========
+builder.Services.AddSingleton<IGameSystem, BattleSystem>();
+builder.Services.AddSingleton<IGameSystem, ActivitySystem>();
+builder.Services.AddSingleton<IGameSystem, InventorySystem>();
+builder.Services.AddSingleton<IGameSystem, QuestSystem>();
+
+// ========== 应用服务 ==========
+builder.Services.AddSingleton<IGameStateManager, GameStateManager>();
+builder.Services.AddHostedService<GameEngine>();
+
+// ========== UI服务 ==========
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IDialogService, DialogService>();
+
+// ========== 日志 ==========
+builder.Logging.SetMinimumLevel(LogLevel.Information);
+builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
+
+var app = builder.Build();
+
+// 初始化游戏
+await InitializeGameAsync(app.Services);
+
+await app.RunAsync();
+
+static async Task InitializeGameAsync(IServiceProvider services)
+{
+    var eventBus = services.GetRequiredService<IEventBus>();
+    var stateManager = services.GetRequiredService<IGameStateManager>();
+    
+    // 加载玩家数据
+    var playerId = await GetOrCreatePlayerIdAsync();
+    await stateManager.LoadPlayerAsync(playerId);
+    
+    // 发布游戏就绪事件
+    await eventBus.PublishAsync(new GameReadyEvent());
+}
+
+static async Task<string> GetOrCreatePlayerIdAsync()
+{
+    // 从本地存储获取或创建新的玩家ID
+    var localStorage = new Blazored.LocalStorage.LocalStorageService();
+    var playerId = await localStorage.GetItemAsync<string>("PlayerId");
+    
+    if (string.IsNullOrEmpty(playerId))
+    {
+        playerId = Guid.NewGuid().ToString();
+        await localStorage.SetItemAsync("PlayerId", playerId);
+    }
+    
+    return playerId;
+}
+
+Step 7: UI集成
+@page "/battle"
+@using BlazorWebGame.Refactored.Application
+@using BlazorWebGame.Refactored.Domain.Events
+@inject IEventBus EventBus
+@inject IGameStateManager StateManager
+@inject ILogger<Battle> Logger
+@implements IDisposable
+
+<PageTitle>战斗</PageTitle>
+
+<div class="battle-container">
+    @if (_currentBattle != null)
+    {
+        <div class="battle-arena">
+            <PlayerCard Player="@StateManager.CurrentPlayer" />
+            <BattleActions OnAttack="@HandleAttack" OnUseSkill="@HandleUseSkill" />
+            <EnemyCard Enemy="@_currentEnemy" />
+        </div>
+        
+        <BattleLog Events="@_battleLog" />
+    }
+    else
+    {
+        <div class="battle-selection">
+            <h3>选择敌人</h3>
+            @foreach (var enemy in _availableEnemies)
+            {
+                <button @onclick="() => StartBattle(enemy.Id)">
+                    战斗: @enemy.Name (等级 @enemy.Level)
+                </button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private BattleInfo? _currentBattle;
+    private Enemy? _currentEnemy;
+    private List<BattleLogEntry> _battleLog = new();
+    private List<Enemy> _availableEnemies = new();
+    
+    protected override async Task OnInitializedAsync()
+    {
+        // 订阅战斗事件
+        EventBus.Subscribe<BattleStartedEvent>(OnBattleStarted);
+        EventBus.Subscribe<BattleEndedEvent>(OnBattleEnded);
+        EventBus.Subscribe<DamageDealtEvent>(OnDamageDealt);
+        
+        // 加载可用敌人列表
+        _availableEnemies = await LoadAvailableEnemies();
+    }
+    
+    private async Task StartBattle(string enemyId)
+    {
+        await EventBus.PublishAsync(new StartBattleCommand(
+            StateManager.CurrentPlayer!.Id, 
+            enemyId));
+    }
+    
+    private async Task HandleAttack()
+    {
+        if (_currentBattle == null || _currentEnemy == null) return;
+        
+        await EventBus.PublishAsync(new AttackCommand(
+            _currentBattle.Id,
+            StateManager.CurrentPlayer!.Id,
+            _currentEnemy.Id));
+    }
+    
+    private async Task HandleUseSkill(string skillId)
+    {
+        if (_currentBattle == null || _currentEnemy == null) return;
+        
+        await EventBus.PublishAsync(new UseSkillCommand(
+            _currentBattle.Id,
+            StateManager.CurrentPlayer!.Id,
+            _currentEnemy.Id,
+            skillId));
+    }
+    
+    private void OnBattleStarted(BattleStartedEvent evt)
+    {
+        _currentBattle = new BattleInfo { Id = evt.BattleId };
+        _currentEnemy = _availableEnemies.First(e => e.Id == evt.EnemyId);
+        _battleLog.Clear();
+        _battleLog.Add(new BattleLogEntry($"战斗开始！"));
+        
+        InvokeAsync(StateHasChanged);
+    }
+    
+    private void OnBattleEnded(BattleEndedEvent evt)
+    {
+        var result = evt.Result.Victory ? "胜利" : "失败";
+        _battleLog.Add(new BattleLogEntry($"战斗{result}！"));
+        
+        if (evt.Result.Victory)
+        {
+            _battleLog.Add(new BattleLogEntry($"获得经验: {evt.Result.ExperienceGained}"));
+            _battleLog.Add(new BattleLogEntry($"获得金币: {evt.Result.GoldGained}"));
+        }
+        
+        _currentBattle = null;
+        _currentEnemy = null;
+        
+        InvokeAsync(StateHasChanged);
+    }
+    
+    private void OnDamageDealt(DamageDealtEvent evt)
+    {
+        var critical = evt.IsCritical ? "暴击！" : "";
+        _battleLog.Add(new BattleLogEntry(
+            $"{evt.AttackerId} 对 {evt.TargetId} 造成 {evt.Damage} 点伤害 {critical}"));
+        
+        InvokeAsync(StateHasChanged);
+    }
+    
+    public void Dispose()
+    {
+        EventBus.Unsubscribe<BattleStartedEvent>(OnBattleStarted);
+        EventBus.Unsubscribe<BattleEndedEvent>(OnBattleEnded);
+        EventBus.Unsubscribe<DamageDealtEvent>(OnDamageDealt);
+    }
+}
+
+📊 架构优势
+1.	完全解耦 - 所有服务通过事件总线通信，无直接依赖
+2.	高性能 - 使用Channel和并行处理，支持高并发
+3.	可扩展 - 新增功能只需订阅/发布事件
+4.	可测试 - 每个组件独立可测，易于单元测试
+5.	可维护 - 清晰的职责分离，代码组织良好
+🚀 部署建议
+{
+  "GameEngine": {
+    "TickIntervalMs": 100,
+    "EnableMetrics": true,
+    "EnableDiagnostics": false
+  },
+  "Game": {
+    "MaxCharactersPerAccount": 5,
+    "AutoSaveIntervalMinutes": 1,
+    "DefaultPollingInterval": "00:00:05"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "BlazorWebGame": "Debug",
+      "Microsoft": "Warning"
+    }
+  }
+}
+
+✅ 实施检查清单
+第一周
+•	[ ] 实现事件总线系统
+•	[ ] 定义所有领域事件
+•	[ ] 实现游戏引擎
+•	[ ] 创建战斗系统
+第二周
+•	[ ] 实现状态管理器
+•	[ ] 创建其他游戏系统
+•	[ ] 配置依赖注入
+•	[ ] 集成UI组件
+第三周
+•	[ ] 编写单元测试
+•	[ ] 性能优化
+•	[ ] 文档编写
+•	[ ] 部署上线
