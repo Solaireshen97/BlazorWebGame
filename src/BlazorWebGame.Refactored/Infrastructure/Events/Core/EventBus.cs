@@ -52,8 +52,8 @@ public sealed class EventBus : IEventBus, IDisposable
     {
         if (handler == null) throw new ArgumentNullException(nameof(handler));
         
-        _handlerLock.Wait();
-        try
+        // Use simple locking for browser compatibility
+        lock (_handlers)
         {
             var eventType = typeof(TEvent);
             if (!_handlers.TryGetValue(eventType, out var handlers))
@@ -64,10 +64,6 @@ public sealed class EventBus : IEventBus, IDisposable
             
             handlers.Add(handler);
             _logger.LogDebug("Handler subscribed for event type {EventType}", eventType.Name);
-        }
-        finally
-        {
-            _handlerLock.Release();
         }
     }
 
@@ -90,8 +86,7 @@ public sealed class EventBus : IEventBus, IDisposable
     {
         if (handler == null) throw new ArgumentNullException(nameof(handler));
         
-        _handlerLock.Wait();
-        try
+        lock (_handlers)
         {
             var eventType = typeof(TEvent);
             if (_handlers.TryGetValue(eventType, out var handlers))
@@ -102,10 +97,6 @@ public sealed class EventBus : IEventBus, IDisposable
                     _handlers.TryRemove(eventType, out _);
                 }
             }
-        }
-        finally
-        {
-            _handlerLock.Release();
         }
     }
 

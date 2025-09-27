@@ -1,4 +1,5 @@
 using BlazorWebGame.Refactored.Application.Interfaces;
+using Blazored.LocalStorage;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
@@ -10,12 +11,12 @@ namespace BlazorWebGame.Refactored.Infrastructure.Persistence;
 /// </summary>
 public class IndexedDbRepository : IDataPersistenceService
 {
-    private readonly ILocalStorageService _localStorage;
+    private readonly Blazored.LocalStorage.ILocalStorageService _localStorage;
     private readonly ILogger<IndexedDbRepository> _logger;
     private readonly JsonSerializerOptions _jsonOptions;
     private const string DB_PREFIX = "gamedb_";
 
-    public IndexedDbRepository(ILocalStorageService localStorage, ILogger<IndexedDbRepository> logger)
+    public IndexedDbRepository(Blazored.LocalStorage.ILocalStorageService localStorage, ILogger<IndexedDbRepository> logger)
     {
         _localStorage = localStorage;
         _logger = logger;
