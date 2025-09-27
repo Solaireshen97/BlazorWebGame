@@ -47,6 +47,14 @@ public record CharacterState
     public bool IsLoading { get; init; }
     public string? Error { get; init; }
     public DateTime LastUpdated { get; init; }
+
+    // Convenience properties for UI
+    public CharacterData? CurrentCharacter => 
+        CurrentCharacterId.HasValue && Characters.ContainsKey(CurrentCharacterId.Value) 
+            ? Characters[CurrentCharacterId.Value] 
+            : null;
+    
+    public IEnumerable<CharacterData> AllCharacters => Characters.Values;
 }
 
 /// <summary>

@@ -61,7 +61,7 @@
                                     <div class="col-6">
                                         <strong>活动槽位</strong><br>
                                         <span class="@(GetActivitySlotClass(character))">
-                                            @(character.Activities?.ActiveSlots?.Count ?? 0) / @(character.Activities?.MaxSlots ?? 0)
+                                            @(GetActiveActivitiesCount(character.Id)) / 3
                                         </span>
                                     </div>
                                     <div class="col-6">
@@ -72,21 +72,25 @@
                                     </div>
                                 </div>
 
-                                @if (character.Activities?.ActiveSlots?.Any() == true)
+                                @if (GetActiveActivitiesCount(character.Id) > 0)
                                 {
                                     <div class="active-activities">
                                         <strong>进行中的活动:</strong>
-                                        @foreach (var activity in character.Activities.ActiveSlots.Values.Take(3))
+                                        @{
+                                            var characterActivities = AppState.Value.Characters.ActiveActivities.Values
+                                                .Where(a => a.CharacterId == character.Id).Take(3);
+                                        }
+                                        @foreach (var activity in characterActivities)
                                         {
                                             <div class="activity-item mt-1">
                                                 <i class="bi bi-clock me-1"></i>
                                                 <small>@activity.Type.ToString()</small>
-                                                <span class="badge bg-info ms-1">@(GetActivityProgress(activity):F0)%</span>
+                                                <span class="badge bg-info ms-1">@(GetActivityProgress(activity).ToString("F0"))%</span>
                                             </div>
                                         }
-                                        @if (character.Activities.ActiveSlots.Count > 3)
+                                        @if (GetActiveActivitiesCount(character.Id) > 3)
                                         {
-                                            <small class="text-muted">还有 @(character.Activities.ActiveSlots.Count - 3) 个活动...</small>
+                                            <small class="text-muted">还有 @(GetActiveActivitiesCount(character.Id) - 3) 个活动...</small>
                                         }
                                     </div>
                                 }
@@ -179,8 +183,8 @@
     [Inject] private IState<AppState> AppState { get; set; } = default!;
     [Inject] private IDispatcher Dispatcher { get; set; } = default!;
 
-    private Domain.Entities.Character? CurrentCharacter => AppState.Value.Characters?.CurrentCharacter;
-    private IEnumerable<Domain.Entities.Character>? AllCharacters => AppState.Value.Characters?.AllCharacters;
+    private CharacterData? CurrentCharacter => AppState.Value.Characters.CurrentCharacter;
+    private IEnumerable<CharacterData> AllCharacters => AppState.Value.Characters.AllCharacters;
 
     private bool ShowCreateModal = false;
     private string NewCharacterName = "";
@@ -236,42 +240,46 @@
         }
     }
 
-    private double GetExpPercentage(Domain.Entities.Character character)
+    private double GetExpPercentage(CharacterData character)
     {
         // This would normally calculate based on level progression
         // For now, return a mock value
         return (character.Level % 10) * 10;
     }
 
-    private string GetActivitySlotClass(Domain.Entities.Character character)
+    private int GetActiveActivitiesCount(Guid characterId)
     {
-        var active = character.Activities?.ActiveSlots?.Count ?? 0;
-        var max = character.Activities?.MaxSlots ?? 0;
+        return AppState.Value.Characters.ActiveActivities.Values
+            .Count(a => a.CharacterId == characterId);
+    }
+
+    private string GetActivitySlotClass(CharacterData character)
+    {
+        var active = GetActiveActivitiesCount(character.Id);
+        const int max = 3; // Hardcoded for now
         
         if (active == max) return "text-danger fw-bold";
         if (active > max * 0.7) return "text-warning fw-bold";
         return "text-success";
     }
 
-    private string GetStatusBadgeClass(Domain.Entities.Character character)
+    private string GetStatusBadgeClass(CharacterData character)
     {
-        var activeCount = character.Activities?.ActiveSlots?.Count ?? 0;
+        var activeCount = GetActiveActivitiesCount(character.Id);
         if (activeCount > 0) return "bg-success";
         return "bg-secondary";
     }
 
-    private string GetCharacterStatus(Domain.Entities.Character character)
+    private string GetCharacterStatus(CharacterData character)
     {
-        var activeCount = character.Activities?.ActiveSlots?.Count ?? 0;
+        var activeCount = GetActiveActivitiesCount(character.Id);
         if (activeCount > 0) return "活跃";
         return "空闲";
     }
 
-    private double GetActivityProgress(Domain.Entities.Activity activity)
+    private double GetActivityProgress(ActivitySummary activity)
     {
-        if (activity.Duration.TotalSeconds == 0) return 0;
-        var elapsed = DateTime.UtcNow - activity.StartTime;
-        return Math.Min(100, (elapsed.TotalSeconds / activity.Duration.TotalSeconds) * 100);
+        return activity.Progress * 100;
     }
 
     private bool confirm(string message)
