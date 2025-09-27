@@ -1,12 +1,10 @@
 ﻿@page "/"
-@using BlazorWebGame.Refactored.Presentation.State
-@using BlazorWebGame.Refactored.Presentation.Components
-@using BlazorWebGame.Refactored.Infrastructure.Services
-@using Microsoft.AspNetCore.SignalR.Client
-@using Fluxor
-@inherits FluxorComponent
+@using BlazorWebGame.Refactored.Application.Services
+@using BlazorWebGame.Refactored.Domain.Events
+@using BlazorWebGame.Refactored.Infrastructure.Events.Core
+@implements IDisposable
 
-<PageTitle>BlazorWebGame - 主页</PageTitle>
+<PageTitle>BlazorWebGame - 事件驱动架构演示</PageTitle>
 
 <div class="game-dashboard">
     <div class="row">
@@ -14,7 +12,7 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">
-                        <i class="bi bi-activity me-2"></i>当前活动
+                        <i class="bi bi-activity me-2"></i>事件驱动架构演示
                     </h5>
                     @if (CurrentCharacter != null)
                     {
@@ -22,30 +20,66 @@
                     }
                 </div>
                 <div class="card-body">
-                    @if (CurrentCharacterActivities?.Any() == true)
+                    @if (CurrentCharacter != null)
                     {
-                        @foreach (var activity in CurrentCharacterActivities)
+                        <div class="alert alert-success">
+                            <h6><i class="bi bi-check-circle me-2"></i>游戏引擎已启动！</h6>
+                            <p class="mb-0">基于事件驱动的新架构正在运行，所有操作都通过事件总线进行通信。</p>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <button class="btn btn-primary w-100" @onclick="StartMiningActivity" disabled="@_isProcessing">
+                                    <i class="bi bi-pickaxe me-2"></i>开始挖矿
+                                </button>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <button class="btn btn-success w-100" @onclick="StartFishingActivity" disabled="@_isProcessing">
+                                    <i class="bi bi-fish me-2"></i>开始钓鱼
+                                </button>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <button class="btn btn-info w-100" @onclick="StartCraftingActivity" disabled="@_isProcessing">
+                                    <i class="bi bi-hammer me-2"></i>开始制作
+                                </button>
+                            </div>
+                        </div>
+
+                        @if (_activeActivities.Any())
                         {
-                            <ActivityProgressBar 
-                                ActivityName="@activity.DisplayName"
-                                ActivityDescription="@activity.Description"
-                                ProgressPercentage="@(activity.Progress * 100)"
-                                RemainingTime="@GetRemainingTime(activity)"
-                                TotalTime="@GetTotalTime(activity)"
-                                IsCompleted="@IsActivityCompleted(activity)"
-                                IsPaused="@IsActivityPaused(activity)"
-                                Rewards="@GetActivityRewards(activity)"
-                                OnPause="@(() => PauseActivity(activity.Id))"
-                                OnResume="@(() => ResumeActivity(activity.Id))"
-                                OnCancel="@(() => CancelActivity(activity.Id))" />
+                            <h6 class="mt-4">当前活动</h6>
+                            @foreach (var activity in _activeActivities.Values)
+                            {
+                                <div class="card mb-2">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <strong>@GetActivityTypeDisplayName(activity.Type)</strong>
+                                                <div class="progress mt-2" style="height: 20px;">
+                                                    <div class="progress-bar" role="progressbar" 
+                                                         style="width: @(activity.Progress * 100)%">
+                                                        @((activity.Progress * 100).ToString("F1"))%
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="text-end">
+                                                <small class="text-muted">剩余: @activity.RemainingTime.ToString(@"mm\:ss")</small>
+                                                <br>
+                                                <button class="btn btn-sm btn-outline-danger" @onclick="() => StopActivity(activity.Id)">
+                                                    停止
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
                         }
                     }
                     else
                     {
                         <div class="text-center py-4">
-                            <i class="bi bi-clock text-muted" style="font-size: 2rem;"></i>
-                            <p class="text-muted mt-2">当前没有进行中的活动</p>
-                            <a href="/activities" class="btn btn-primary">开始新活动</a>
+                            <i class="bi bi-person-x text-muted" style="font-size: 2rem;"></i>
+                            <p class="text-muted mt-2">正在加载角色...</p>
                         </div>
                     }
                 </div>
@@ -62,50 +96,50 @@
                     {
                         <div class="character-stats">
                             <div class="d-flex justify-content-between mb-2">
+                                <span>角色ID:</span>
+                                <small class="text-muted">@CurrentCharacter.Id.ToString()[..8]...</small>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>姓名:</span>
+                                <strong>@CurrentCharacter.Name</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
                                 <span>等级:</span>
                                 <strong>@CurrentCharacter.Level</strong>
                             </div>
                             <div class="d-flex justify-content-between mb-2">
-                                <span>经验:</span>
-                                <strong>@CurrentCharacter.Experience.ToString()</strong>
-                            </div>
-                            <div class="d-flex justify-content-between mb-2">
-                                <span>职业:</span>
-                                <strong>@CurrentCharacter.Class</strong>
-                            </div>
-                            <div class="d-flex justify-content-between mb-2">
                                 <span>活跃活动:</span>
-                                <strong>@GetActiveActivitiesCount()</strong>
+                                <strong>@_activeActivities.Count</strong>
                             </div>
                         </div>
                     }
                     else
                     {
-                        <p class="text-muted">请先选择或创建角色</p>
-                        <a href="/characters" class="btn btn-outline-primary btn-sm">管理角色</a>
+                        <p class="text-muted">加载中...</p>
                     }
                 </div>
             </div>
             
             <div class="card">
                 <div class="card-header">
-                    <h6 class="mb-0"><i class="bi bi-bell me-2"></i>系统通知</h6>
+                    <h6 class="mb-0"><i class="bi bi-activity me-2"></i>事件日志</h6>
                 </div>
                 <div class="card-body">
-                    <div class="notifications">
-                        @if (Notifications?.Any() == true)
+                    <div class="notifications" style="max-height: 300px; overflow-y: auto;">
+                        @if (_eventLog.Any())
                         {
-                            @foreach (var notification in Notifications.Take(5))
+                            @foreach (var eventEntry in _eventLog.TakeLast(10).Reverse())
                             {
                                 <div class="notification-item mb-2 p-2 border-start border-primary border-3">
-                                    <small class="text-muted">@notification.CreatedAt.ToString("HH:mm")</small>
-                                    <div>@notification.Message</div>
+                                    <small class="text-muted">@eventEntry.Timestamp.ToString("HH:mm:ss")</small>
+                                    <div><strong>@eventEntry.EventType</strong></div>
+                                    <small class="text-muted">@eventEntry.Description</small>
                                 </div>
                             }
                         }
                         else
                         {
-                            <p class="text-muted">暂无新通知</p>
+                            <p class="text-muted">暂无事件记录</p>
                         }
                     </div>
                 </div>
@@ -115,99 +149,39 @@
     
     <div class="row mt-4">
         <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h6 class="mb-0"><i class="bi bi-graph-up me-2"></i>快速操作</h6>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-3 col-sm-6 mb-3">
-                            <a href="/battle" class="btn btn-outline-danger w-100">
-                                <i class="bi bi-sword me-2"></i>开始战斗
-                            </a>
-                        </div>
-                        <div class="col-md-3 col-sm-6 mb-3">
-                            <a href="/activities" class="btn btn-outline-success w-100">
-                                <i class="bi bi-tree me-2"></i>采集资源
-                            </a>
-                        </div>
-                        <div class="col-md-3 col-sm-6 mb-3">
-                            <a href="/inventory" class="btn btn-outline-info w-100">
-                                <i class="bi bi-box me-2"></i>查看背包
-                            </a>
-                        </div>
-                        <div class="col-md-3 col-sm-6 mb-3">
-                            <a href="/characters" class="btn btn-outline-warning w-100">
-                                <i class="bi bi-person-gear me-2"></i>角色管理
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- 开发者调试面板 -->
-    <div class="row mt-4">
-        <div class="col-12">
             <div class="card border-info">
                 <div class="card-header bg-light">
                     <h6 class="mb-0 text-info">
-                        <i class="bi bi-tools me-2"></i>开发者工具
-                        <small class="text-muted">(仅开发环境可见)</small>
+                        <i class="bi bi-cpu me-2"></i>系统状态
                     </h6>
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <button class="btn btn-info w-100" @onclick="GenerateSampleData" disabled="@IsGeneratingData">
-                                @if (IsGeneratingData)
-                                {
-                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                                    <text>生成中...</text>
-                                }
-                                else
-                                {
-                                    <i class="bi bi-database-add me-2"></i>
-                                    <text>生成示例数据</text>
-                                }
-                            </button>
-                            <small class="text-muted d-block mt-1">创建演示角色和活动</small>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="h4 mb-0 text-success">@_totalEventsProcessed</div>
+                                <small class="text-muted">已处理事件</small>
+                            </div>
                         </div>
-                        <div class="col-md-4 mb-3">
-                            <button class="btn btn-warning w-100" @onclick="ClearAllData">
-                                <i class="bi bi-trash me-2"></i>清除所有数据
-                            </button>
-                            <small class="text-muted d-block mt-1">重置应用状态</small>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="h4 mb-0 text-info">@_activeActivities.Count</div>
+                                <small class="text-muted">活跃活动</small>
+                            </div>
                         </div>
-                        <div class="col-md-4 mb-3">
-                            <button class="btn btn-secondary w-100" @onclick="ShowDebugInfo">
-                                <i class="bi bi-info-circle me-2"></i>调试信息
-                            </button>
-                            <small class="text-muted d-block mt-1">显示当前状态详情</small>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="h4 mb-0 text-warning">@(_gameTickCount)</div>
+                                <small class="text-muted">游戏Tick</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="h4 mb-0 text-primary">运行中</div>
+                                <small class="text-muted">引擎状态</small>
+                            </div>
                         </div>
                     </div>
-                    
-                    @if (!string.IsNullOrEmpty(StatusMessage))
-                    {
-                        <div class="alert alert-@StatusMessageType mt-3" role="alert">
-                            <i class="bi bi-check-circle me-2"></i>@StatusMessage
-                        </div>
-                    }
-                    
-                    @if (ShowDebugDetails)
-                    {
-                        <div class="mt-3">
-                            <h6>当前状态统计:</h6>
-                            <ul class="list-unstyled">
-                                <li><strong>角色数量:</strong> @AllCharacters.Count()</li>
-                                <li><strong>活跃活动:</strong> @ActiveActivities.Count()</li>
-                                <li><strong>通知数量:</strong> @Notifications?.Count() ?? 0</li>
-                                <li><strong>是否已认证:</strong> @(AppState.Value.Auth.IsAuthenticated ? "是" : "否")</li>
-                                <li><strong>SignalR连接:</strong> @(AppState.Value.Realtime.ConnectionState == Microsoft.AspNetCore.SignalR.Client.HubConnectionState.Connected ? "已连接" : "未连接")</li>
-                            </ul>
-                        </div>
-                    }
                 </div>
             </div>
         </div>
@@ -215,156 +189,199 @@
 </div>
 
 @code {
-    [Inject] private IState<AppState> AppState { get; set; } = default!;
-    [Inject] private IDispatcher Dispatcher { get; set; } = default!;
-    [Inject] private SampleDataService SampleDataService { get; set; } = default!;
+    [Inject] private IGameStateManager GameStateManager { get; set; } = default!;
+    [Inject] private IEventBus EventBus { get; set; } = default!;
+    [Inject] private ILogger<Home> Logger { get; set; } = default!;
 
-    private CharacterData? CurrentCharacter => AppState.Value.Characters.CurrentCharacter;
-    private IEnumerable<NotificationMessage>? Notifications => AppState.Value.UI.Notifications;
-    private IEnumerable<CharacterData> AllCharacters => AppState.Value.Characters.AllCharacters;
-    private IEnumerable<ActivitySummary> ActiveActivities => AppState.Value.Characters.ActiveActivities.Values;
-    
-    private IEnumerable<ActivitySummary>? CurrentCharacterActivities => 
-        CurrentCharacter != null 
-            ? AppState.Value.Characters.ActiveActivities.Values
-                .Where(a => a.CharacterId == CurrentCharacter.Id)
-            : null;
+    private Domain.Entities.Character? CurrentCharacter => GameStateManager.CurrentCharacter;
+    private readonly Dictionary<Guid, ActivityInstance> _activeActivities = new();
+    private readonly List<EventLogEntry> _eventLog = new();
+    private bool _isProcessing = false;
+    private int _totalEventsProcessed = 0;
+    private long _gameTickCount = 0;
 
-    // 开发者工具相关状态
-    private bool IsGeneratingData = false;
-    private string StatusMessage = "";
-    private string StatusMessageType = "success";
-    private bool ShowDebugDetails = false;
-
-    private int GetActiveActivitiesCount()
+    protected override async Task OnInitializedAsync()
     {
-        return CurrentCharacterActivities?.Count() ?? 0;
+        // 订阅相关事件
+        EventBus.Subscribe<GameTickEvent>(OnGameTick);
+        EventBus.Subscribe<NewActivityStartedEvent>(OnActivityStarted);
+        EventBus.Subscribe<NewActivityCompletedEvent>(OnActivityCompleted);
+        EventBus.Subscribe<ActivityProgressEvent>(OnActivityProgress);
+        EventBus.Subscribe<ItemAcquiredEvent>(OnItemAcquired);
+        EventBus.Subscribe<GameInitializedEvent>(OnGameInitialized);
+        EventBus.Subscribe<GameReadyEvent>(OnGameReady);
+
+        await base.OnInitializedAsync();
     }
 
-    private string GetActivityDescription(ActivitySummary activity)
+    private async Task OnGameTick(GameTickEvent evt, CancellationToken cancellationToken)
     {
-        return !string.IsNullOrEmpty(activity.Description) ? activity.Description : activity.Type switch
+        _gameTickCount = evt.TickNumber;
+        
+        // 每10个tick更新一次UI，避免过于频繁的重绘
+        if (evt.TickNumber % 10 == 0)
         {
-            Domain.ValueObjects.ActivityType.Gathering => "采集资源中...",
-            Domain.ValueObjects.ActivityType.Crafting => "制作物品中...",
-            Domain.ValueObjects.ActivityType.Battle => "战斗中...",
-            Domain.ValueObjects.ActivityType.Training => "训练中...",
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task OnActivityStarted(NewActivityStartedEvent evt, CancellationToken cancellationToken)
+    {
+        _totalEventsProcessed++;
+        LogEvent("ActivityStarted", $"{GetActivityTypeDisplayName(evt.ActivityType)} 已开始");
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnActivityCompleted(NewActivityCompletedEvent evt, CancellationToken cancellationToken)
+    {
+        _totalEventsProcessed++;
+        _activeActivities.Remove(evt.ActivityId);
+        
+        var rewardsText = evt.Rewards.Any() ? 
+            $"获得奖励: {string.Join(", ", evt.Rewards.Select(r => $"{r.Id} x{r.Quantity}"))}" : 
+            "活动完成";
+        
+        LogEvent("ActivityCompleted", rewardsText);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnActivityProgress(ActivityProgressEvent evt, CancellationToken cancellationToken)
+    {
+        if (_activeActivities.ContainsKey(evt.ActivityId))
+        {
+            var activity = _activeActivities[evt.ActivityId];
+            // 更新活动实例，但不需要每次都重绘UI
+        }
+    }
+
+    private async Task OnItemAcquired(ItemAcquiredEvent evt, CancellationToken cancellationToken)
+    {
+        _totalEventsProcessed++;
+        LogEvent("ItemAcquired", $"获得物品: {evt.ItemId} x{evt.Quantity}");
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnGameInitialized(GameInitializedEvent evt, CancellationToken cancellationToken)
+    {
+        _totalEventsProcessed++;
+        LogEvent("GameInitialized", "游戏引擎已初始化");
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnGameReady(GameReadyEvent evt, CancellationToken cancellationToken)
+    {
+        _totalEventsProcessed++;
+        LogEvent("GameReady", "游戏已准备就绪");
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task StartMiningActivity()
+    {
+        if (CurrentCharacter == null || _isProcessing) return;
+        
+        _isProcessing = true;
+        try
+        {
+            await EventBus.PublishAsync(new StartActivityCommand(CurrentCharacter.Id.ToString(), EventActivityType.Mining));
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+
+    private async Task StartFishingActivity()
+    {
+        if (CurrentCharacter == null || _isProcessing) return;
+        
+        _isProcessing = true;
+        try
+        {
+            await EventBus.PublishAsync(new StartActivityCommand(CurrentCharacter.Id.ToString(), EventActivityType.Fishing));
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+
+    private async Task StartCraftingActivity()
+    {
+        if (CurrentCharacter == null || _isProcessing) return;
+        
+        _isProcessing = true;
+        try
+        {
+            await EventBus.PublishAsync(new StartActivityCommand(CurrentCharacter.Id.ToString(), EventActivityType.Crafting));
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+
+    private async Task StopActivity(Guid activityId)
+    {
+        if (CurrentCharacter == null) return;
+        
+        await EventBus.PublishAsync(new StopActivityCommand(activityId, CurrentCharacter.Id.ToString()));
+        _activeActivities.Remove(activityId);
+    }
+
+    private string GetActivityTypeDisplayName(EventActivityType type)
+    {
+        return type switch
+        {
+            EventActivityType.Mining => "挖矿",
+            EventActivityType.Fishing => "钓鱼",
+            EventActivityType.Crafting => "制作",
+            EventActivityType.Gathering => "采集",
+            EventActivityType.Battle => "战斗",
+            EventActivityType.Quest => "任务",
             _ => "未知活动"
         };
     }
 
-    private TimeSpan GetRemainingTime(ActivitySummary activity)
+    private void LogEvent(string eventType, string description)
     {
-        if (activity.EndTime.HasValue)
+        _eventLog.Add(new EventLogEntry
         {
-            var remaining = activity.EndTime.Value - DateTime.UtcNow;
-            return remaining.TotalSeconds > 0 ? remaining : TimeSpan.Zero;
-        }
-        return TimeSpan.Zero;
-    }
+            Timestamp = DateTime.Now,
+            EventType = eventType,
+            Description = description
+        });
 
-    private TimeSpan GetTotalTime(ActivitySummary activity)
-    {
-        if (activity.EndTime.HasValue)
+        // 只保留最新的20条记录
+        if (_eventLog.Count > 20)
         {
-            return activity.EndTime.Value - activity.StartTime;
-        }
-        return TimeSpan.FromHours(1); // Default
-    }
-
-    private bool IsActivityCompleted(ActivitySummary activity)
-    {
-        return activity.Progress >= 1.0 || GetRemainingTime(activity) <= TimeSpan.Zero;
-    }
-
-    private bool IsActivityPaused(ActivitySummary activity)
-    {
-        return activity.State == ActivityDisplayState.Paused;
-    }
-
-    private IEnumerable<string> GetActivityRewards(ActivitySummary activity)
-    {
-        // This would normally come from the activity configuration
-        return activity.Type switch
-        {
-            Domain.ValueObjects.ActivityType.Gathering => new[] { "木材", "石材", "经验值" },
-            Domain.ValueObjects.ActivityType.Crafting => new[] { "制作物品", "熟练度", "经验值" },
-            Domain.ValueObjects.ActivityType.Battle => new[] { "经验值", "金币", "装备" },
-            Domain.ValueObjects.ActivityType.Training => new[] { "属性提升", "经验值" },
-            _ => Array.Empty<string>()
-        };
-    }
-
-    private void PauseActivity(Guid activityId)
-    {
-        Dispatcher.Dispatch(new PauseActivityAction(activityId));
-    }
-
-    private void ResumeActivity(Guid activityId)
-    {
-        Dispatcher.Dispatch(new ResumeActivityAction(activityId));
-    }
-
-    private void CancelActivity(Guid activityId)
-    {
-        Dispatcher.Dispatch(new CancelActivityAction(activityId));
-    }
-
-    // ======================
-    // 开发者工具方法
-    // ======================
-
-    private async Task GenerateSampleData()
-    {
-        IsGeneratingData = true;
-        try
-        {
-            await SampleDataService.GenerateFullDemoDataAsync();
-            StatusMessage = "示例数据生成成功！已创建3个角色和相关活动。";
-            StatusMessageType = "success";
-            
-            // 自动清除消息
-            _ = Task.Delay(3000).ContinueWith(_ => 
-            {
-                StatusMessage = "";
-                InvokeAsync(StateHasChanged);
-            });
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"生成示例数据失败: {ex.Message}";
-            StatusMessageType = "danger";
-        }
-        finally
-        {
-            IsGeneratingData = false;
+            _eventLog.RemoveAt(0);
         }
     }
 
-    private void ClearAllData()
+    public void Dispose()
     {
-        try
-        {
-            SampleDataService.ResetAllData();
-            StatusMessage = "所有数据已清除！";
-            StatusMessageType = "warning";
-            
-            _ = Task.Delay(3000).ContinueWith(_ => 
-            {
-                StatusMessage = "";
-                InvokeAsync(StateHasChanged);
-            });
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"清除数据失败: {ex.Message}";
-            StatusMessageType = "danger";
-        }
+        // 取消事件订阅
+        // 注意：在实际实现中，EventBus应该提供取消订阅的方法
     }
 
-    private void ShowDebugInfo()
+    private class EventLogEntry
     {
-        ShowDebugDetails = !ShowDebugDetails;
+        public DateTime Timestamp { get; set; }
+        public string EventType { get; set; } = "";
+        public string Description { get; set; } = "";
+    }
+
+    // 简化的ActivityInstance类（用于UI显示）
+    private class ActivityInstance
+    {
+        public Guid Id { get; set; }
+        public string CharacterId { get; set; } = "";
+        public EventActivityType Type { get; set; }
+        public DateTime StartTime { get; set; }
+        public TimeSpan Duration { get; set; }
+        public double Progress => Math.Min(1.0, (DateTime.UtcNow - StartTime).TotalSeconds / Duration.TotalSeconds);
+        public TimeSpan RemainingTime => Duration - (DateTime.UtcNow - StartTime);
+        public bool IsCompleted => Progress >= 1.0;
     }
 }
 
