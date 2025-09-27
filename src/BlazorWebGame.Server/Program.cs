@@ -4,11 +4,15 @@ using BlazorWebGame.Server.Security;
 using BlazorWebGame.Server.Middleware;
 using BlazorWebGame.Server;
 using BlazorWebGame.Server.Configuration;
+using BlazorWebGame.Server.Data;
+using BlazorWebGame.Server.Data.Repositories;
 using BlazorWebGame.Shared.Models;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using System.Text;
 using Serilog;
 using Microsoft.Extensions.Options;
@@ -139,6 +143,40 @@ else
 
 builder.Services.AddSingleton(rateLimitOptions);
 
+// 配置数据库上下文
+var gameServerOptions = builder.Configuration.GetSection(GameServerOptions.SectionName).Get<GameServerOptions>();
+var databaseProvider = gameServerOptions?.DatabaseProvider ?? "InMemory";
+
+switch (databaseProvider.ToLowerInvariant())
+{
+    case "sqlserver":
+        builder.Services.AddDbContext<GameDbContext>(options =>
+            options.UseSqlServer(builder.Configuration.GetConnectionString("SqlServerConnection"),
+                sqlOptions => sqlOptions.EnableRetryOnFailure()));
+        break;
+    case "localdb":
+        builder.Services.AddDbContext<GameDbContext>(options =>
+            options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
+                sqlOptions => sqlOptions.EnableRetryOnFailure()));
+        break;
+    case "inmemory":
+    default:
+        builder.Services.AddDbContext<GameDbContext>(options =>
+            options.UseInMemoryDatabase("BlazorWebGameDb"));
+        break;
+}
+
+// 注册仓储模式
+builder.Services.AddScoped<IPlayerRepository, PlayerRepository>();
+builder.Services.AddScoped<ICharacterRepository, CharacterRepository>();
+builder.Services.AddScoped<IBattleRecordRepository, BattleRecordRepository>();
+builder.Services.AddScoped<ITeamRepository, TeamRepository>();
+builder.Services.AddScoped<IInventoryItemRepository, InventoryItemRepository>();
+builder.Services.AddScoped<IEquipmentRepository, EquipmentRepository>();
+builder.Services.AddScoped<IQuestRepository, QuestRepository>();
+builder.Services.AddScoped<IOfflineDataRepository, OfflineDataRepository>();
+builder.Services.AddScoped<IGameEventRepository, GameEventRepository>();
+
 // 注册统一服务
 builder.Services.AddSingleton<ErrorHandlingService>();
 builder.Services.AddSingleton<PerformanceMonitoringService>();
@@ -226,16 +264,41 @@ builder.Services.AddHostedService<ServerOptimizationService>();
 
 var app = builder.Build();
 
+// 初始化数据库
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<GameDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var gameOptions = scope.ServiceProvider.GetRequiredService<IOptions<GameServerOptions>>().Value;
+
+    if (gameOptions.EnableDatabaseMigration)
+    {
+        try
+        {
+            await DbInitializer.InitializeAsync(context, logger, gameOptions.EnableDatabaseSeeding);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to initialize database");
+            // 在开发环境中，我们继续运行，但在生产环境中可能需要停止
+            if (!app.Environment.IsDevelopment())
+            {
+                throw;
+            }
+        }
+    }
+}
+
 // 初始化服务定位器
 ServerServiceLocator.Initialize(app.Services);
 
 // 在开发环境中运行战斗系统测试（基于配置）
 if (app.Environment.IsDevelopment())
 {
-    var logger = app.Services.GetRequiredService<ILogger<Program>>();
-    var gameServerOptions = app.Services.GetRequiredService<IOptions<GameServerOptions>>().Value;
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();  
+    var gameOptions = app.Services.GetRequiredService<IOptions<GameServerOptions>>().Value;
     
-    if (gameServerOptions.EnableDevelopmentTests)
+    if (gameOptions.EnableDevelopmentTests)
     {
         // 运行战斗系统测试
         try
