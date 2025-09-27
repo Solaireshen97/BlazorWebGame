@@ -99,24 +99,26 @@ public class GameStateService : IAsyncDisposable
         // 为兼容性，订阅GenericStateChanged事件到旧的OnStateChanged
         _eventManager.Subscribe(GameEventType.GenericStateChanged, _ => OnStateChanged?.Invoke());
 
-        // 注册所有服务到服务定位器
-        RegisterServices();
+        // 注册所有服务到服务定位器 (已弃用 - 现在使用DI容器)
+        // RegisterServices(); // 已弃用，服务现在通过DI容器注册
     }
 
     /// <summary>
-    /// 注册所有服务到服务定位器
+    /// 注册所有服务到服务定位器 (已弃用 - 现在使用DI容器)
     /// </summary>
+    [Obsolete("服务定位器模式已弃用，现在使用依赖注入容器")]
     private void RegisterServices()
     {
-        ServiceLocator.Initialize();
-        ServiceLocator.RegisterService(_gameStorage);
-        ServiceLocator.RegisterService(_questService);
-        ServiceLocator.RegisterService(_partyService);
-        ServiceLocator.RegisterService(_inventoryService);
-        ServiceLocator.RegisterService(_combatService);
-        ServiceLocator.RegisterService(_professionService);
-        ServiceLocator.RegisterService(_characterService);
-        ServiceLocator.RegisterService(this); // 注册GameStateService自身
+        // ServiceLocator已弃用，所有服务现在通过DI容器注册
+        // ServiceLocator.Initialize();
+        // ServiceLocator.RegisterService(_gameStorage);
+        // ServiceLocator.RegisterService(_questService);
+        // ServiceLocator.RegisterService(_partyService);
+        // ServiceLocator.RegisterService(_inventoryService);
+        // ServiceLocator.RegisterService(_combatService);
+        // ServiceLocator.RegisterService(_professionService);
+        // ServiceLocator.RegisterService(_characterService);
+        // ServiceLocator.RegisterService(this); // 注册GameStateService自身
     }
 
     public async Task InitializeAsync()
