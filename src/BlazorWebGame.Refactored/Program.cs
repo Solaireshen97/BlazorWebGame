@@ -4,13 +4,23 @@ using BlazorWebGame.Refactored;
 using Fluxor;
 using BlazorWebGame.Refactored.Application.Interfaces;
 using BlazorWebGame.Refactored.Infrastructure.Services;
+using BlazorWebGame.Refactored.Infrastructure.SignalR;
+using BlazorWebGame.Refactored.Infrastructure.Http;
+using BlazorWebGame.Refactored.Infrastructure.Cache;
+using BlazorWebGame.Refactored.Infrastructure.Persistence;
+using BlazorWebGame.Refactored.Application.Behaviors;
 using BlazorWebGame.Refactored.Presentation.State;
 using BlazorWebGame.Refactored.Utils;
 using Blazored.LocalStorage;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
 using System.Reflection;
 using Serilog;
 using Serilog.Core;
+using MediatR;
+using FluentValidation;
+using Polly;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -24,12 +34,17 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Logging.AddSerilog(Log.Logger);
 
-// 配置HTTP客户端
+// 配置HTTP客户端（带Polly重试策略）
 var serverBaseUrl = builder.Configuration.GetValue<string>("ServerBaseUrl") ?? "https://localhost:7000";
 builder.Services.AddHttpClient("ServerApi", client =>
 {
     client.BaseAddress = new Uri(serverBaseUrl);
     client.Timeout = TimeSpan.FromSeconds(30);
+})
+.AddPolicyHandler((services, request) => 
+{
+    var logger = services.GetRequiredService<ILogger<Program>>();
+    return RetryPolicies.GetCombinedPolicy(logger);
 });
 
 builder.Services.AddScoped(sp => 
@@ -48,18 +63,32 @@ builder.Services.AddFluxor(options =>
 // 注册LocalStorage
 builder.Services.AddBlazoredLocalStorage();
 
-// 注册MediatR
-builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
+// 注册内存缓存
+builder.Services.AddMemoryCache();
+
+// 注册MediatR with Pipeline Behaviors
+builder.Services.AddMediatR(cfg =>
+{
+    cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
+    cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+    cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+});
+
+// 注册FluentValidation
+builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
+
+// 注册基础设施服务
+builder.Services.AddScoped<BlazorWebGame.Refactored.Application.Interfaces.ILocalStorageService, LocalStorageService>();
+builder.Services.AddScoped<IDataPersistenceService, IndexedDbRepository>();
+builder.Services.AddScoped<ICacheService, MultiLevelCacheService>();
+builder.Services.AddScoped<IHttpClientService, GameApiClient>();
+builder.Services.AddScoped<ISignalRService, GameHubClient>();
 
 // 注册应用服务
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<BlazorWebGame.Refactored.Application.Interfaces.ILocalStorageService, LocalStorageService>();
 builder.Services.AddScoped<ICharacterService, CharacterService>();
 builder.Services.AddScoped<IActivityService, ActivityService>();
 builder.Services.AddScoped<IBattleService, BattleService>();
-builder.Services.AddScoped<ISignalRService, SignalRService>();
-builder.Services.AddScoped<ICacheService, CacheService>();
-builder.Services.AddScoped<IHttpClientService, HttpClientService>();
 builder.Services.AddScoped<ITimeSyncService, TimeSyncService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IPerformanceService, PerformanceService>();
@@ -70,11 +99,30 @@ builder.Services.AddScoped<IPerformanceService, PerformanceService>();
 
 var app = builder.Build();
 
+// 初始化数据持久化服务
+var persistenceService = app.Services.GetRequiredService<IDataPersistenceService>();
+await persistenceService.InitializeAsync();
+
 // 初始化认证服务
 var authService = app.Services.GetRequiredService<IAuthService>();
 if (authService is AuthService auth)
 {
     await auth.InitializeAsync();
+}
+
+// 初始化SignalR连接
+var signalRService = app.Services.GetRequiredService<ISignalRService>();
+if (signalRService is GameHubClient hubClient)
+{
+    try
+    {
+        await hubClient.StartAsync();
+        Log.Information("SignalR connection established successfully");
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "Failed to establish SignalR connection - continuing in offline mode");
+    }
 }
 
 // 初始化Fluxor
@@ -87,5 +135,6 @@ dispatcher.Dispatch(new InitializeApplicationAction());
 
 Log.Information("BlazorWebGame.Refactored application started");
 Log.Information("Server API base URL: {ServerBaseUrl}", serverBaseUrl);
+Log.Information("Architecture: Clean Architecture with CQRS, SignalR, and Multi-level Caching");
 
 await app.RunAsync();
