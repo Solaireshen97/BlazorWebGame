@@ -182,7 +182,7 @@
 
             // 初始化服务
             await HybridCharacterService.InitializeAsync();
-            UseServerMode = HybridCharacterService.UseServerMode;
+            UseServerMode = true; // 现在总是使用服务器模式
 
             await HybridEventService.InitializeAsync("https://localhost:7000", UseServerMode);
 
@@ -197,11 +197,11 @@
 
     private void OnServerModeChanged(ChangeEventArgs e)
     {
-        UseServerMode = (bool)e.Value!;
-        HybridCharacterService.UseServerMode = UseServerMode;
+        // 现在总是使用服务器模式，不允许切换
+        UseServerMode = true;
         HybridEventService.UseServerMode = UseServerMode;
 
-        SetStatusMessage($"切换到{(UseServerMode ? "服务端" : "本地")}模式", false);
+        SetStatusMessage("现在总是使用服务器模式", false);
         StateHasChanged();
     }
 
@@ -267,7 +267,7 @@
     private void TriggerTestEvent()
     {
         HybridEventService.RaiseEvent(BlazorWebGame.Shared.Events.GameEventType.GenericStateChanged, 
-            HybridCharacterService.ActiveCharacter?.Id, "测试事件数据");
+            "测试事件数据");
         SetStatusMessage("触发了通用状态变化事件", false);
     }
 
@@ -276,7 +276,7 @@
         if (HybridCharacterService.ActiveCharacter != null)
         {
             HybridEventService.RaiseEvent(BlazorWebGame.Shared.Events.GameEventType.CharacterStatChanged, 
-                HybridCharacterService.ActiveCharacter.Id, "角色状态测试");
+                "角色状态测试");
             SetStatusMessage("触发了角色状态变化事件", false);
         }
         else

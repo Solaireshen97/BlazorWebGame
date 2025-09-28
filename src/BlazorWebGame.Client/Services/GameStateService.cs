@@ -11,8 +11,10 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
-using System.Timers;
-using System.Diagnostics; // 添加用于性能监控
+// 移除 System.Timers 导入 - 不再使用定时器
+// using System.Timers; // 已移除
+// 移除 System.Diagnostics 导入 - 不再进行本地性能监控
+// using System.Diagnostics; // 已移除
 
 namespace BlazorWebGame.Services;
 
@@ -27,29 +29,28 @@ public class GameStateService : IAsyncDisposable
     private readonly CharacterService _characterService;
     private readonly ClientPartyService? _clientPartyService; // 新的服务端组队服务
     private readonly System.IServiceProvider _serviceProvider;
-    private System.Timers.Timer? _gameLoopTimer;
-    private const int GameLoopIntervalMs = 100;
-    private const double RevivalDuration = 2;
-
-    // 性能监控相关字段
-    private readonly Stopwatch _gameLoopStopwatch = new();
-    private long _maxLoopTime = 0;
-    private long _totalLoopTime = 0;
-    private int _loopCount = 0;
-    private DateTime _lastPerformanceLog = DateTime.UtcNow;
+    // 本地游戏循环和性能监控已移除 - 全部由服务端处理
 
     // 新增事件管理器
     private readonly GameEventManager _eventManager = new();
 
+    // 保留UI展示需要的数据访问，但标记为需要迁移
     public List<Player> AllCharacters => _characterService.AllCharacters;
     public Player? ActiveCharacter => _characterService.ActiveCharacter;
 
-    public List<Party> Parties => _partyService.Parties;
+    [Obsolete("本地组队数据已移除，请使用服务器组队API获取")]
+    public List<Party> Parties => new List<Party>(); // 返回空列表，应使用服务器API
+    
+    // 静态数据保留，用于UI展示
     public List<Enemy> AvailableMonsters => MonsterTemplates.All;
     public List<GatheringNode> AvailableGatheringNodes => GatheringData.AllNodes;
     public const int MaxEquippedSkills = 4;
-    public List<Quest> DailyQuests => _questService.DailyQuests;
-    public List<Quest> WeeklyQuests => _questService.WeeklyQuests;
+    
+    [Obsolete("本地任务数据已移除，请使用服务器任务API获取")]
+    public List<Quest> DailyQuests => new List<Quest>(); // 返回空列表，应使用服务器API
+    
+    [Obsolete("本地任务数据已移除，请使用服务器任务API获取")]
+    public List<Quest> WeeklyQuests => new List<Quest>(); // 返回空列表，应使用服务器API
 
     // 保留老的事件机制，但在内部用新系统实现
     public event Action? OnStateChanged;
@@ -98,24 +99,26 @@ public class GameStateService : IAsyncDisposable
         // 为兼容性，订阅GenericStateChanged事件到旧的OnStateChanged
         _eventManager.Subscribe(GameEventType.GenericStateChanged, _ => OnStateChanged?.Invoke());
 
-        // 注册所有服务到服务定位器
-        RegisterServices();
+        // 注册所有服务到服务定位器 (已弃用 - 现在使用DI容器)
+        // RegisterServices(); // 已弃用，服务现在通过DI容器注册
     }
 
     /// <summary>
-    /// 注册所有服务到服务定位器
+    /// 注册所有服务到服务定位器 (已弃用 - 现在使用DI容器)
     /// </summary>
+    [Obsolete("服务定位器模式已弃用，现在使用依赖注入容器")]
     private void RegisterServices()
     {
-        ServiceLocator.Initialize();
-        ServiceLocator.RegisterService(_gameStorage);
-        ServiceLocator.RegisterService(_questService);
-        ServiceLocator.RegisterService(_partyService);
-        ServiceLocator.RegisterService(_inventoryService);
-        ServiceLocator.RegisterService(_combatService);
-        ServiceLocator.RegisterService(_professionService);
-        ServiceLocator.RegisterService(_characterService);
-        ServiceLocator.RegisterService(this); // 注册GameStateService自身
+        // ServiceLocator已弃用，所有服务现在通过DI容器注册
+        // ServiceLocator.Initialize();
+        // ServiceLocator.RegisterService(_gameStorage);
+        // ServiceLocator.RegisterService(_questService);
+        // ServiceLocator.RegisterService(_partyService);
+        // ServiceLocator.RegisterService(_inventoryService);
+        // ServiceLocator.RegisterService(_combatService);
+        // ServiceLocator.RegisterService(_professionService);
+        // ServiceLocator.RegisterService(_characterService);
+        // ServiceLocator.RegisterService(this); // 注册GameStateService自身
     }
 
     public async Task InitializeAsync()
@@ -130,8 +133,8 @@ public class GameStateService : IAsyncDisposable
         // 初始化组队服务
         await InitializePartyServiceAsync();
 
-        // 启动游戏循环
-        StartGameLoop();
+        // 移除本地游戏循环启动 - 所有游戏逻辑由服务端处理
+        // StartGameLoop(); // 已移除
         
         // 触发游戏初始化完成事件
         RaiseEvent(GameEventType.GameInitialized);
@@ -152,316 +155,149 @@ public class GameStateService : IAsyncDisposable
     }
 
     /// <summary>
-    /// 游戏循环主入口点
+    /// 本地游戏循环已移除 - 所有游戏逻辑由服务端处理
     /// </summary>
-    private void GameLoopTick(object? sender, ElapsedEventArgs e)
+    [Obsolete("本地游戏循环已移除，所有游戏逻辑由服务端处理")]
+    private void GameLoopTick()
     {
-        try
-        {
-            // 启动性能监控
-            _gameLoopStopwatch.Restart();
-
-            // 计算上次循环后经过的时间
-            double elapsedSeconds = GameLoopIntervalMs / 1000.0;
-
-            // 更新全局游戏状态
-            UpdateGlobalGameState(elapsedSeconds);
-
-            // 处理所有活跃战斗 - 添加这一行
-            _combatService.ProcessAllBattles(elapsedSeconds);
-
-            // 更新所有角色
-            foreach (var character in AllCharacters)
-            {
-                UpdateCharacter(character, elapsedSeconds);
-            }
-
-            // 触发UI更新
-            NotifyStateChanged();
-
-            // 停止性能监控并记录数据
-            _gameLoopStopwatch.Stop();
-            RecordPerformanceMetrics();
-        }
-        catch (Exception ex)
-        {
-            // 记录错误但不中断游戏循环
-            LogError(ex);
-        }
+        // 本地游戏循环已移除，所有游戏逻辑处理由服务端负责
+        // 客户端只负责UI展示和用户交互
     }
 
     /// <summary>
-    /// 更新全局游戏状态
+    /// 本地游戏状态更新已移除 - 所有状态由服务端管理
     /// </summary>
+    [Obsolete("本地游戏状态更新已移除，所有状态由服务端管理")]
     private void UpdateGlobalGameState(double elapsedSeconds)
     {
-        // 检查任务重置
-        _questService.CheckAndResetDailyQuests();
-        _questService.CheckAndResetWeeklyQuests();
-        
-        // 这里可以添加其他全局状态更新，如游戏时间、世界事件等
+        // 本地状态更新已移除
+        // 任务重置等逻辑由服务端处理
     }
     
     /// <summary>
-    /// 更新单个角色的状态
+    /// 本地角色状态更新已移除 - 所有角色状态由服务端管理
     /// </summary>
+    [Obsolete("本地角色状态更新已移除，所有角色状态由服务端管理")]
     private void UpdateCharacter(Player character, double elapsedSeconds)
     {
-        if (character == null) return;
-        
-        try
-        {
-            // 更新buff和消耗品冷却
-            _characterService.UpdateBuffs(character, elapsedSeconds);
-            _inventoryService.UpdateConsumableCooldowns(character, elapsedSeconds);
-            
-            // 处理死亡状态
-            if (character.IsDead)
-            {
-                ProcessDeadCharacter(character, elapsedSeconds);
-                return;
-            }
-            
-            // 处理活跃状态
-            ProcessActiveCharacter(character, elapsedSeconds);
-            
-            // 处理自动消耗品
-            _inventoryService.ProcessAutoConsumables(character);
-        }
-        catch (Exception ex)
-        {
-            // 记录单个角色处理错误，但继续处理其他角色
-            LogError(ex, $"处理角色 {character.Name} 时发生错误");
-        }
+        // 本地角色状态更新已移除
+        // Buff更新、冷却时间、死亡复活等逻辑由服务端处理
     }
     
     /// <summary>
-    /// 处理死亡角色的逻辑
+    /// 本地死亡角色处理已移除 - 由服务端处理
     /// </summary>
+    [Obsolete("本地死亡角色处理已移除，由服务端处理")]
     private void ProcessDeadCharacter(Player character, double elapsedSeconds)
     {
-        // 更新复活倒计时
-        character.RevivalTimeRemaining -= elapsedSeconds;
-        
-        // 检查是否可以复活
-        if (character.RevivalTimeRemaining <= 0)
-        {
-            _combatService.ReviveCharacter(character);
-        }
+        // 本地死亡处理已移除
+        // 复活逻辑由服务端处理
     }
     
-    /// <summary>
-    /// 处理活跃角色的逻辑
-    /// </summary>
-    private void ProcessActiveCharacter(Player character, double elapsedSeconds)
-    {
-        var actionState = character.CurrentAction.ToString();
-        
-        if (character.CurrentAction == PlayerActionState.Combat)
-        {
-            ProcessCombatState(character, elapsedSeconds);
-        }
-        else if (actionState.StartsWith("Gathering"))
-        {
-            _professionService.ProcessGathering(character, elapsedSeconds);
-        }
-        else if (actionState.StartsWith("Crafting"))
-        {
-            _professionService.ProcessCrafting(character, elapsedSeconds);
-        }
-        else if (character.CurrentAction == PlayerActionState.Idle)
-        {
-            // 空闲状态无需特殊处理
-        }
-        else
-        {
-            LogWarning($"未处理的角色状态: {character.CurrentAction} 用于角色 {character.Name}");
-        }
-    }
-
-    /// <summary>
-    /// 处理战斗状态
-    /// </summary>
-    private void ProcessCombatState(Player character, double elapsedSeconds)
-    {
-        // 无需再检查角色是否在新战斗系统中
-        // 所有战斗都会由CombatService.ProcessAllBattles统一处理
-        
-        // 只处理那些不在新战斗系统中的角色
-        var combatService = ServiceLocator.GetService<CombatService>();
-        var battleContext = combatService?.GetBattleContextForPlayer(character.Id);
-        
-        if (battleContext == null && character.CurrentAction == PlayerActionState.Combat)
-        {
-            var party = GetPartyForCharacter(character.Id);
-            _combatService.ProcessCombat(character, elapsedSeconds, party);
-        }
-        // 新战斗系统的处理在CombatService.ProcessAllBattles中完成
-    }
-
-    /// <summary>
-    /// 记录性能指标
-    /// </summary>
-    private void RecordPerformanceMetrics()
-    {
-        long elapsedMs = _gameLoopStopwatch.ElapsedMilliseconds;
-        
-        // 更新统计信息
-        _maxLoopTime = Math.Max(_maxLoopTime, elapsedMs);
-        _totalLoopTime += elapsedMs;
-        _loopCount++;
-        
-        // 每分钟记录一次性能日志
-        if ((DateTime.UtcNow - _lastPerformanceLog).TotalMinutes >= 1)
-        {
-            double avgLoopTime = (double)_totalLoopTime / Math.Max(1, _loopCount);
-            
-            // 记录性能统计
-            Console.WriteLine($"游戏循环性能统计: 平均={avgLoopTime:F2}ms, 最大={_maxLoopTime}ms, 目标={GameLoopIntervalMs}ms");
-            
-            // 如果平均执行时间接近或超过循环间隔，发出警告
-            if (avgLoopTime > GameLoopIntervalMs * 0.8)
-            {
-                LogWarning($"游戏循环执行时间接近或超过目标间隔: {avgLoopTime:F2}ms > {GameLoopIntervalMs * 0.8:F2}ms");
-            }
-            
-            // 重置统计
-            _maxLoopTime = 0;
-            _totalLoopTime = 0;
-            _loopCount = 0;
-            _lastPerformanceLog = DateTime.UtcNow;
-        }
-    }
-    
-    /// <summary>
-    /// 记录错误信息
-    /// </summary>
-    private void LogError(Exception ex, string? context = null)
-    {
-        string message = context != null ? $"{context}: {ex.Message}" : ex.Message;
-        Console.WriteLine($"游戏循环错误: {message}");
-        Console.WriteLine(ex.StackTrace);
-        
-        // 这里可以添加更复杂的日志记录，如保存到文件或发送到服务器
-    }
-    
-    /// <summary>
-    /// 记录警告信息
-    /// </summary>
-    private void LogWarning(string message)
-    {
-        Console.WriteLine($"游戏循环警告: {message}");
-    }
-    
-    /// <summary>
-    /// 启动游戏循环
-    /// </summary>
-    private void StartGameLoop()
-    {
-        _gameLoopTimer = new System.Timers.Timer(GameLoopIntervalMs);
-        _gameLoopTimer.Elapsed += GameLoopTick;
-        _gameLoopTimer.AutoReset = true;
-        _gameLoopTimer.Start();
-        
-        Console.WriteLine($"游戏循环已启动，间隔: {GameLoopIntervalMs}ms");
-    }
-    
-    /// <summary>
-    /// 停止游戏循环
-    /// </summary>
-    private void StopGameLoop()
-    {
-        if (_gameLoopTimer != null)
-        {
-            _gameLoopTimer.Stop();
-            _gameLoopTimer.Elapsed -= GameLoopTick;
-            Console.WriteLine("游戏循环已停止");
-        }
-    }
+    // 所有本地游戏逻辑处理方法已移除 - 全部由服务端处理
 
 
-    // 删除原来的GetPartyForCharacter方法，改用PartyService的方法
+    /// <summary>
+    /// 获取角色所在的队伍 - 已移除本地实现，请使用服务器API
+    /// </summary>
+    [Obsolete("本地组队系统已移除，请使用服务器组队API")]
     public Party? GetPartyForCharacter(string characterId)
     {
-        return _partyService.GetPartyForCharacter(characterId);
+        // 本地组队系统已移除，请使用服务器API
+        return null;
     }
 
     /// <summary>
     /// 使用当前激活的角色创建一个新队伍，该角色将成为队长。
-    /// 优先使用服务端组队服务，如果不可用则回退到客户端服务
+    /// 现在完全依赖服务器API
     /// </summary>
     public async Task<bool> CreatePartyAsync()
     {
         if (ActiveCharacter == null) return false;
 
-        // 优先使用服务端组队服务
-        if (_clientPartyService != null && await IsServerAvailableAsync())
+        // 只使用服务端组队服务
+        if (_clientPartyService != null)
         {
             return await _clientPartyService.CreatePartyAsync(ActiveCharacter.Id);
         }
-        else
-        {
-            // 回退到客户端组队服务
-            return _partyService.CreateParty(ActiveCharacter);
-        }
+        
+        return false;
     }
 
     /// <summary>
     /// 让当前激活的角色加入一个指定的队伍。
-    /// 优先使用服务端组队服务，如果不可用则回退到客户端服务
+    /// 现在完全依赖服务器API
     /// </summary>
     /// <param name="partyId">要加入的队伍的ID</param>
     public async Task<bool> JoinPartyAsync(Guid partyId)
     {
         if (ActiveCharacter == null) return false;
 
-        // 优先使用服务端组队服务
-        if (_clientPartyService != null && await IsServerAvailableAsync())
+        // 只使用服务端组队服务
+        if (_clientPartyService != null)
         {
             return await _clientPartyService.JoinPartyAsync(ActiveCharacter.Id, partyId);
         }
-        else
-        {
-            // 回退到客户端组队服务
-            return _partyService.JoinParty(ActiveCharacter, partyId);
-        }
+        
+        return false;
     }
 
     /// <summary>
     /// 让当前激活的角色离开他所在的队伍。
-    /// 优先使用服务端组队服务，如果不可用则回退到客户端服务
+    /// 现在完全依赖服务器API
     /// </summary>
     public async Task<bool> LeavePartyAsync()
     {
         if (ActiveCharacter == null) return false;
 
-        // 优先使用服务端组队服务
-        if (_clientPartyService != null && await IsServerAvailableAsync())
+        // 只使用服务端组队服务
+        if (_clientPartyService != null)
         {
             return await _clientPartyService.LeavePartyAsync(ActiveCharacter.Id);
         }
-        else
+        
+        return false;
+    }
+
+    #region 兼容性方法 - 同步版本（向后兼容现有UI代码）
+
+    /// <summary>
+    /// 创建队伍（同步版本，向后兼容）
+    /// </summary>
+    [Obsolete("建议使用异步版本 CreatePartyAsync")]
+    public void CreateParty()
+    {
+        if (ActiveCharacter != null)
         {
-            // 回退到客户端组队服务
-            return _partyService.LeaveParty(ActiveCharacter);
+            _ = Task.Run(async () => await CreatePartyAsync());
         }
     }
 
     /// <summary>
-    /// 检查服务器是否可用
+    /// 加入队伍（同步版本，向后兼容）
     /// </summary>
-    private async Task<bool> IsServerAvailableAsync()
+    [Obsolete("建议使用异步版本 JoinPartyAsync")]
+    public void JoinParty(Guid partyId)
     {
-        try
+        if (ActiveCharacter != null)
         {
-            var gameApiService = _serviceProvider.GetService<GameApiService>();
-            return gameApiService != null && await gameApiService.IsServerAvailableAsync();
-        }
-        catch
-        {
-            return false;
+            _ = Task.Run(async () => await JoinPartyAsync(partyId));
         }
     }
+
+    /// <summary>
+    /// 离开队伍（同步版本，向后兼容）
+    /// </summary>
+    [Obsolete("建议使用异步版本 LeavePartyAsync")]
+    public void LeaveParty()
+    {
+        if (ActiveCharacter != null)
+        {
+            _ = Task.Run(async () => await LeavePartyAsync());
+        }
+    }
+
+    #endregion
 
     /// <summary>
     /// 初始化组队服务（在游戏启动时调用）
@@ -474,75 +310,26 @@ public class GameStateService : IAsyncDisposable
         }
     }
 
-    #region 兼容性方法 - 同步版本
-
-    /// <summary>
-    /// 使用当前激活的角色创建一个新队伍（同步版本，向后兼容）
-    /// </summary>
-    public void CreateParty()
-    {
-        if (ActiveCharacter != null)
-        {
-            // 尝试异步调用，但不等待结果
-            _ = Task.Run(async () => await CreatePartyAsync());
-        }
-    }
-
-    /// <summary>
-    /// 让当前激活的角色加入一个指定的队伍（同步版本，向后兼容）
-    /// </summary>
-    /// <param name="partyId">要加入的队伍的ID</param>
-    public void JoinParty(Guid partyId)
-    {
-        if (ActiveCharacter != null)
-        {
-            // 尝试异步调用，但不等待结果
-            _ = Task.Run(async () => await JoinPartyAsync(partyId));
-        }
-    }
-
-    /// <summary>
-    /// 让当前激活的角色离开他所在的队伍（同步版本，向后兼容）
-    /// </summary>
-    public void LeaveParty()
-    {
-        if (ActiveCharacter != null)
-        {
-            // 尝试异步调用，但不等待结果
-            _ = Task.Run(async () => await LeavePartyAsync());
-        }
-    }
-
-    #endregion
-
     public async Task StartCombatAsync(Enemy enemyTemplate)
     {
         if (ActiveCharacter == null) return;
 
-        // 检查是否可以使用服务端战斗系统
-        if (_clientPartyService != null && await IsServerAvailableAsync())
+        // 只使用服务端战斗系统
+        var gameApiService = _serviceProvider.GetService<GameApiService>();
+        var clientGameStateService = _serviceProvider.GetService<ClientGameStateService>();
+        
+        if (gameApiService != null && clientGameStateService != null)
         {
-            var gameApiService = _serviceProvider.GetService<GameApiService>();
-            var clientGameStateService = _serviceProvider.GetService<ClientGameStateService>();
-            
-            if (gameApiService != null && clientGameStateService != null)
+            // 获取组队信息
+            string? partyId = null;
+            if (_clientPartyService != null && _clientPartyService.IsInParty(ActiveCharacter.Id))
             {
-                // 获取组队信息
-                string? partyId = null;
-                if (_clientPartyService.IsInParty(ActiveCharacter.Id))
-                {
-                    partyId = _clientPartyService.CurrentParty?.Id.ToString();
-                }
-
-                // 启动服务端战斗
-                await clientGameStateService.StartBattleAsync(enemyTemplate.Name, partyId);
-                return;
+                partyId = _clientPartyService.CurrentParty?.Id.ToString();
             }
-        }
 
-        // 回退到客户端战斗系统
-        var party = GetPartyForCharacter(ActiveCharacter.Id);
-        _combatService.SmartStartBattle(ActiveCharacter, enemyTemplate, party);
+            // 启动服务端战斗
+            await clientGameStateService.StartBattleAsync(enemyTemplate.Name, partyId);
+        }
     }
 
     public void StartCombat(Enemy enemyTemplate)
@@ -550,67 +337,85 @@ public class GameStateService : IAsyncDisposable
         // 同步版本，向后兼容
         _ = Task.Run(async () => await StartCombatAsync(enemyTemplate));
     }
-    // 修改委托方法使用ProfessionService
-    public void StartGathering(GatheringNode node) =>_professionService.StartGathering(ActiveCharacter, node);
-
-    public void StartCrafting(Recipe recipe) =>_professionService.StartCrafting(ActiveCharacter, recipe);
+    // 所有本地业务逻辑已移除 - 客户端只负责UI，业务逻辑通过服务器API执行
+    
+    /// <summary>
+    /// 停止角色当前动作 - 简化版本，仅更新UI状态
+    /// </summary>
     public void StopCurrentAction() => StopCurrentAction(ActiveCharacter);
-    public void EquipItem(string itemId) => _inventoryService.EquipItem(ActiveCharacter, itemId);
-    public void UnequipItem(EquipmentSlot slot) => _inventoryService.UnequipItem(ActiveCharacter, slot);
-    public void SellItem(string itemId, int quantity = 1) => _inventoryService.SellItem(ActiveCharacter, itemId, quantity);
-    public void UseItem(string itemId) => _inventoryService.UseItem(ActiveCharacter, itemId);
-    public bool BuyItem(string itemId) => ActiveCharacter != null && _inventoryService.BuyItem(ActiveCharacter, itemId);
-    public void SetQuickSlotItem(ConsumableCategory category, int slotId, string itemId) => _inventoryService.SetQuickSlotItem(ActiveCharacter, category, slotId, itemId);
-    public void ClearQuickSlotItem(ConsumableCategory category, int slotId, FoodType foodType = FoodType.None) => _inventoryService.ClearQuickSlotItem(ActiveCharacter, category, slotId, foodType);
-    public void ToggleAutoSellItem(string itemId) => _inventoryService.ToggleAutoSellItem(ActiveCharacter, itemId);
-    public void SetBattleProfession(BattleProfession profession) =>_combatService.SetBattleProfession(ActiveCharacter, profession);
-    public void EquipSkill(string skillId) =>_combatService.EquipSkill(ActiveCharacter, skillId, MaxEquippedSkills);
-    public void UnequipSkill(string skillId) =>_combatService.UnequipSkill(ActiveCharacter, skillId);
-    // 修改为委托到QuestService
-    public void TryCompleteQuest(string questId) =>_questService.TryCompleteQuest(ActiveCharacter, questId);
+
+    /// <summary>
+    /// 设置快捷栏物品 - 本地实现已移除
+    /// </summary>
+    [Obsolete("本地快捷栏系统已移除，请使用服务器API")]
+    public void SetQuickSlotItem(ConsumableCategory category, int slotId, string itemId) 
+    { 
+        // 本地快捷栏逻辑已移除，请使用服务器API
+    }
+    
+    /// <summary>
+    /// 清除快捷栏物品 - 本地实现已移除
+    /// </summary>
+    [Obsolete("本地快捷栏系统已移除，请使用服务器API")]
+    public void ClearQuickSlotItem(ConsumableCategory category, int slotId, FoodType foodType = FoodType.None) 
+    { 
+        // 本地快捷栏逻辑已移除，请使用服务器API
+    }
+    
+    /// <summary>
+    /// 切换自动售卖物品 - 本地实现已移除
+    /// </summary>
+    [Obsolete("本地商店系统已移除，请使用服务器API")]
+    public void ToggleAutoSellItem(string itemId) 
+    { 
+        // 本地自动售卖逻辑已移除，请使用服务器API
+    }
+    
+    // 添加缺失的方法作为已移除的存根
+    [Obsolete("本地生产系统已移除，请使用服务器生产API")]
+    public void StartCrafting(Recipe recipe) { /* 本地生产系统已移除 */ }
+    
+    [Obsolete("本地采集系统已移除，请使用服务器采集API")]
+    public void StartGathering(GatheringNode node) { /* 本地采集系统已移除 */ }
+    
+    [Obsolete("本地物品系统已移除，请使用服务器物品API")]
+    public void EquipItem(Equipment item) { /* 本地物品系统已移除 */ }
+    
+    [Obsolete("本地物品系统已移除，请使用服务器物品API")]
+    public void EquipItem(string itemId) { /* 本地物品系统已移除 */ }
+    
+    [Obsolete("本地物品系统已移除，请使用服务器物品API")]
+    public void UnequipItem(EquipmentSlot slot) { /* 本地物品系统已移除 */ }
+    
+    [Obsolete("本地物品系统已移除，请使用服务器物品API")]
+    public void UseItem(string itemId) { /* 本地物品系统已移除 */ }
+    
+    [Obsolete("本地物品系统已移除，请使用服务器物品API")]
+    public void SellItem(string itemId, int quantity = 1) { /* 本地物品系统已移除 */ }
+
+    // 战斗相关方法已移除 - 请使用服务器API
+    [Obsolete("本地战斗系统已移除，请使用服务器API")]
+    public void SetBattleProfession(BattleProfession profession) { /* 本地战斗系统已移除 */ }
+    [Obsolete("本地战斗系统已移除，请使用服务器API")]
+    public void EquipSkill(string skillId) { /* 本地战斗系统已移除 */ }
+    [Obsolete("本地战斗系统已移除，请使用服务器API")]
+    public void UnequipSkill(string skillId) { /* 本地战斗系统已移除 */ }
+    // 修改为标记已移除
+    [Obsolete("本地任务系统已移除，请使用服务器任务API")]
+    public void TryCompleteQuest(string questId) 
+    { 
+        // 本地任务系统已移除，请使用服务器API
+    }
 
     private void StopCurrentAction(Player? character, bool keepTarget = false)
     {
         if (character == null) return;
 
-        // 检查是否在新战斗系统中
-        var battleContext = _combatService.GetBattleContextForPlayer(character.Id);
-        if (battleContext != null)
-        {
-            // 停止新战斗系统的战斗
-            _combatService.StopBattle(battleContext);
-            NotifyStateChanged();
-            return;
-        }
-
-        // 新增：检查是否在战斗刷新状态
-        if (_combatService.IsPlayerInBattleRefresh(character.Id))
-        {
-            // 取消玩家的战斗刷新状态
-            _combatService.CancelPlayerBattleRefresh(character.Id);
-
-            // 确保角色状态为空闲
-            character.CurrentAction = PlayerActionState.Idle;
-            character.CurrentEnemy = null;
-            character.AttackCooldown = 0;
-
-            NotifyStateChanged();
-            return;
-        }
-
-        // 获取当前状态的字符串表示
-        var actionState = character.CurrentAction.ToString();
-
-        // 如果不在战斗中，可能在进行专业活动
-        if (actionState.StartsWith("Gathering") || actionState.StartsWith("Crafting"))
-        {
-            _professionService.StopCurrentAction(character);
-        }
-
-        // 确保角色状态为空闲
+        // 本地操作停止逻辑已简化 - 主要由服务器控制
+        // 仅更新UI状态，实际业务逻辑由服务器处理
         character.CurrentAction = PlayerActionState.Idle;
-        character.CurrentEnemy = null;
         character.AttackCooldown = 0;
+        character.CurrentEnemy = null;
 
         NotifyStateChanged();
     }
@@ -618,11 +423,12 @@ public class GameStateService : IAsyncDisposable
     public async Task SaveStateAsync(Player character) =>await _characterService.SaveStateAsync(character);
     public async ValueTask DisposeAsync() 
     { 
-        StopGameLoop(); 
-        if (_gameLoopTimer != null) 
-        { 
-            _gameLoopTimer.Dispose(); 
-        }
+        // 移除本地游戏循环停止和清理 - 已无需处理
+        // StopGameLoop(); // 已移除
+        // if (_gameLoopTimer != null) // 已移除
+        // { 
+        //     _gameLoopTimer.Dispose(); // 已移除
+        // }
         
         // 清理客户端组队服务
         if (_clientPartyService != null)

@@ -9,30 +9,23 @@ using SharedGameEventArgs = BlazorWebGame.Shared.Events.GameEventArgs;
 namespace BlazorWebGame.Client.Services
 {
     /// <summary>
-    /// 混合事件服务 - 可以使用本地事件管理器或通过SignalR与服务器通信
+    /// 简化事件服务 - 现在只使用服务器模式
     /// </summary>
     public class HybridEventService : IAsyncDisposable
     {
-        private readonly SharedGameEventManager _localEventManager;
+        private readonly SharedGameEventManager _localEventManager; // 仅用于UI兼容性
         private readonly ILogger<HybridEventService> _logger;
         private HubConnection? _hubConnection;
-        private bool _useServerMode = false;
         private string? _serverUrl;
 
         /// <summary>
-        /// 是否启用服务器模式
+        /// 是否启用服务器模式 - 现在总是true
         /// </summary>
+        [Obsolete("事件服务现在总是使用服务器模式")]
         public bool UseServerMode 
         { 
-            get => _useServerMode; 
-            set
-            {
-                if (_useServerMode != value)
-                {
-                    _useServerMode = value;
-                    _logger.LogInformation($"Event service switched to {(value ? "server" : "local")} mode");
-                }
-            }
+            get => true; 
+            set => _logger.LogInformation("Event service is now always in server mode");
         }
 
         public HybridEventService(ILogger<HybridEventService> logger)
@@ -42,21 +35,62 @@ namespace BlazorWebGame.Client.Services
         }
 
         /// <summary>
-        /// 初始化事件服务
+        /// 初始化事件服务 - 现在只使用服务器模式
         /// </summary>
-        public async Task InitializeAsync(string? serverUrl = null, bool useServerMode = false)
+        public async Task InitializeAsync(string? serverUrl = null, bool useServerMode = true)
         {
-            _serverUrl = serverUrl;
-            UseServerMode = useServerMode;
+            _serverUrl = serverUrl ?? "https://localhost:7000";
 
-            if (UseServerMode && !string.IsNullOrEmpty(_serverUrl))
+            try
             {
-                await InitializeServerConnectionAsync();
+                await InitializeServerConnection();
+                _logger.LogInformation("Event service initialized in server mode");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to initialize server connection for events");
             }
         }
 
         /// <summary>
-        /// 订阅事件
+        /// 初始化服务器连接
+        /// </summary>
+        private async Task InitializeServerConnection()
+        {
+            if (string.IsNullOrEmpty(_serverUrl))
+            {
+                _logger.LogWarning("Server URL not provided for event service");
+                return;
+            }
+
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl($"{_serverUrl}/gamehub")
+                .Build();
+
+            // 监听服务器事件
+            _hubConnection.On<string, object>("GameEvent", OnServerGameEvent);
+
+            await _hubConnection.StartAsync();
+            _logger.LogInformation("Connected to server event hub");
+        }
+
+        /// <summary>
+        /// 处理服务器游戏事件
+        /// </summary>
+        private void OnServerGameEvent(string eventType, object eventData)
+        {
+            _logger.LogDebug("Received server event: {EventType}", eventType);
+            
+            // 转发到本地事件管理器以保持UI兼容性
+            if (Enum.TryParse<SharedGameEventType>(eventType, out var parsedType))
+            {
+                var args = new SharedGameEventArgs(parsedType, eventData?.ToString());
+                _localEventManager.Raise(args);
+            }
+        }
+
+        /// <summary>
+        /// 订阅事件 - 使用本地事件管理器以保持UI兼容性
         /// </summary>
         public void Subscribe(SharedGameEventType eventType, Action<SharedGameEventArgs> handler)
         {
@@ -66,195 +100,40 @@ namespace BlazorWebGame.Client.Services
         /// <summary>
         /// 取消订阅事件
         /// </summary>
-        public bool Unsubscribe(SharedGameEventType eventType, Action<SharedGameEventArgs> handler)
+        public void Unsubscribe(SharedGameEventType eventType, Action<SharedGameEventArgs> handler)
         {
-            return _localEventManager.Unsubscribe(eventType, handler);
+            _localEventManager.Unsubscribe(eventType, handler);
         }
 
         /// <summary>
-        /// 触发事件
+        /// 触发事件 - 现在只发送到服务器
         /// </summary>
-        public void RaiseEvent(SharedGameEventArgs args)
+        public async Task RaiseEventAsync(SharedGameEventType eventType, object? data = null)
         {
-            // 始终在本地处理事件
-            _localEventManager.Raise(args);
-
-            // 如果启用服务器模式，也发送到服务器
-            if (UseServerMode && _hubConnection?.State == HubConnectionState.Connected)
+            try
             {
-                _ = Task.Run(async () =>
+                if (_hubConnection != null)
                 {
-                    try
-                    {
-                        await _hubConnection.SendAsync("TriggerGameEvent", new
-                        {
-                            EventType = args.EventType.ToString(),
-                            PlayerId = args.PlayerId,
-                            Timestamp = args.Timestamp,
-                            Data = args.Data
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Failed to send event to server: {EventType}", args.EventType);
-                    }
-                });
-            }
-        }
-
-        /// <summary>
-        /// 触发简单游戏事件
-        /// </summary>
-        public void RaiseEvent(SharedGameEventType eventType, string? playerId = null, object? data = null)
-        {
-            RaiseEvent(new SharedGameEventArgs(eventType, playerId, data));
-        }
-
-        /// <summary>
-        /// 兼容性方法：与旧的GameStateService兼容
-        /// </summary>
-        public void RaiseEvent(BlazorWebGame.Events.GameEventArgs args)
-        {
-            // 转换旧的事件参数到新的格式
-            var newEventType = ConvertLegacyEventType(args.EventType);
-            var newArgs = new SharedGameEventArgs(newEventType, args.Player?.Id, args);
-            RaiseEvent(newArgs);
-        }
-
-        /// <summary>
-        /// 兼容性方法：触发简单游戏事件
-        /// </summary>
-        public void RaiseEvent(BlazorWebGame.Events.GameEventType eventType, Player? player = null)
-        {
-            var newEventType = ConvertLegacyEventType(eventType);
-            RaiseEvent(new SharedGameEventArgs(newEventType, player?.Id));
-        }
-
-        /// <summary>
-        /// 清除所有事件订阅
-        /// </summary>
-        public void ClearAllSubscriptions()
-        {
-            _localEventManager.ClearAllSubscriptions();
-        }
-
-        /// <summary>
-        /// 清除特定事件类型的所有订阅
-        /// </summary>
-        public void ClearSubscriptions(SharedGameEventType eventType)
-        {
-            _localEventManager.ClearSubscriptions(eventType);
-        }
-
-        /// <summary>
-        /// 初始化与服务器的连接
-        /// </summary>
-        private async Task InitializeServerConnectionAsync()
-        {
-            try
-            {
-                _hubConnection = new HubConnectionBuilder()
-                    .WithUrl($"{_serverUrl}/gamehub")
-                    .Build();
-
-                // 订阅服务器发送的游戏事件
-                _hubConnection.On<object>("GameEvent", OnServerGameEvent);
-                _hubConnection.On("RefreshState", OnServerRefreshState);
-
-                await _hubConnection.StartAsync();
-                _logger.LogInformation("Connected to event hub");
+                    await _hubConnection.SendAsync("TriggerGameEvent", eventType.ToString(), data);
+                }
+                else
+                {
+                    _logger.LogWarning("Cannot raise event - no server connection");
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to connect to event hub");
-                _hubConnection = null;
-                UseServerMode = false; // 回退到本地模式
+                _logger.LogError(ex, "Error raising event to server");
             }
         }
 
         /// <summary>
-        /// 处理服务器发送的游戏事件
+        /// 本地触发事件（仅用于UI兼容性）
         /// </summary>
-        private void OnServerGameEvent(object eventData)
+        [Obsolete("建议使用异步版本 RaiseEventAsync")]
+        public void RaiseEvent(SharedGameEventType eventType, object? data = null)
         {
-            try
-            {
-                _logger.LogDebug("Received game event from server: {EventData}", eventData);
-                
-                // 触发通用状态变化事件，让UI知道需要刷新
-                _localEventManager.Raise(new SharedGameEventArgs(SharedGameEventType.GenericStateChanged));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to process server game event");
-            }
-        }
-
-        /// <summary>
-        /// 处理服务器刷新状态通知
-        /// </summary>
-        private void OnServerRefreshState()
-        {
-            _logger.LogDebug("Received refresh state from server");
-            _localEventManager.Raise(new SharedGameEventArgs(SharedGameEventType.GenericStateChanged));
-        }
-
-        /// <summary>
-        /// 转换旧的事件类型到新的格式
-        /// </summary>
-        private SharedGameEventType ConvertLegacyEventType(BlazorWebGame.Events.GameEventType legacyType)
-        {
-            return legacyType switch
-            {
-                BlazorWebGame.Events.GameEventType.CharacterCreated => SharedGameEventType.CharacterCreated,
-                BlazorWebGame.Events.GameEventType.CharacterLevelUp => SharedGameEventType.CharacterLevelUp,
-                BlazorWebGame.Events.GameEventType.CharacterDeath => SharedGameEventType.CharacterDeath,
-                BlazorWebGame.Events.GameEventType.CharacterRevived => SharedGameEventType.CharacterRevived,
-                BlazorWebGame.Events.GameEventType.CharacterStatChanged => SharedGameEventType.CharacterStatChanged,
-                BlazorWebGame.Events.GameEventType.ActiveCharacterChanged => SharedGameEventType.ActiveCharacterChanged,
-                BlazorWebGame.Events.GameEventType.LevelUp => SharedGameEventType.LevelUp,
-                BlazorWebGame.Events.GameEventType.ExperienceGained => SharedGameEventType.ExperienceGained,
-                BlazorWebGame.Events.GameEventType.CombatStarted => SharedGameEventType.CombatStarted,
-                BlazorWebGame.Events.GameEventType.CombatEnded => SharedGameEventType.CombatEnded,
-                BlazorWebGame.Events.GameEventType.EnemyDamaged => SharedGameEventType.EnemyDamaged,
-                BlazorWebGame.Events.GameEventType.EnemyKilled => SharedGameEventType.EnemyKilled,
-                BlazorWebGame.Events.GameEventType.PlayerDamaged => SharedGameEventType.PlayerDamaged,
-                BlazorWebGame.Events.GameEventType.SkillUsed => SharedGameEventType.SkillUsed,
-                BlazorWebGame.Events.GameEventType.DungeonWaveStarted => SharedGameEventType.DungeonWaveStarted,
-                BlazorWebGame.Events.GameEventType.BattleCompleted => SharedGameEventType.BattleCompleted,
-                BlazorWebGame.Events.GameEventType.BattleDefeated => SharedGameEventType.BattleDefeated,
-                BlazorWebGame.Events.GameEventType.DungeonCompleted => SharedGameEventType.DungeonCompleted,
-                BlazorWebGame.Events.GameEventType.CombatStatusChanged => SharedGameEventType.CombatStatusChanged,
-                BlazorWebGame.Events.GameEventType.BattleCancelled => SharedGameEventType.BattleCancelled,
-                BlazorWebGame.Events.GameEventType.AttackMissed => SharedGameEventType.AttackMissed,
-                BlazorWebGame.Events.GameEventType.ItemAcquired => SharedGameEventType.ItemAcquired,
-                BlazorWebGame.Events.GameEventType.ItemSold => SharedGameEventType.ItemSold,
-                BlazorWebGame.Events.GameEventType.ItemUsed => SharedGameEventType.ItemUsed,
-                BlazorWebGame.Events.GameEventType.ItemEquipped => SharedGameEventType.ItemEquipped,
-                BlazorWebGame.Events.GameEventType.ItemUnequipped => SharedGameEventType.ItemUnequipped,
-                BlazorWebGame.Events.GameEventType.GoldChanged => SharedGameEventType.GoldChanged,
-                BlazorWebGame.Events.GameEventType.InventoryFull => SharedGameEventType.InventoryFull,
-                BlazorWebGame.Events.GameEventType.PartyCreated => SharedGameEventType.PartyCreated,
-                BlazorWebGame.Events.GameEventType.PartyJoined => SharedGameEventType.PartyJoined,
-                BlazorWebGame.Events.GameEventType.PartyLeft => SharedGameEventType.PartyLeft,
-                BlazorWebGame.Events.GameEventType.PartyDisbanded => SharedGameEventType.PartyDisbanded,
-                BlazorWebGame.Events.GameEventType.GatheringStarted => SharedGameEventType.GatheringStarted,
-                BlazorWebGame.Events.GameEventType.GatheringCompleted => SharedGameEventType.GatheringCompleted,
-                BlazorWebGame.Events.GameEventType.CraftingStarted => SharedGameEventType.CraftingStarted,
-                BlazorWebGame.Events.GameEventType.CraftingCompleted => SharedGameEventType.CraftingCompleted,
-                BlazorWebGame.Events.GameEventType.ProfessionLevelUp => SharedGameEventType.ProfessionLevelUp,
-                BlazorWebGame.Events.GameEventType.QuestAccepted => SharedGameEventType.QuestAccepted,
-                BlazorWebGame.Events.GameEventType.QuestUpdated => SharedGameEventType.QuestUpdated,
-                BlazorWebGame.Events.GameEventType.QuestCompleted => SharedGameEventType.QuestCompleted,
-                BlazorWebGame.Events.GameEventType.DailyQuestsRefreshed => SharedGameEventType.DailyQuestsRefreshed,
-                BlazorWebGame.Events.GameEventType.WeeklyQuestsRefreshed => SharedGameEventType.WeeklyQuestsRefreshed,
-                BlazorWebGame.Events.GameEventType.GameInitialized => SharedGameEventType.GameInitialized,
-                BlazorWebGame.Events.GameEventType.GameStateLoaded => SharedGameEventType.GameStateLoaded,
-                BlazorWebGame.Events.GameEventType.GameStateSaved => SharedGameEventType.GameStateSaved,
-                BlazorWebGame.Events.GameEventType.GameError => SharedGameEventType.GameError,
-                BlazorWebGame.Events.GameEventType.GenericStateChanged => SharedGameEventType.GenericStateChanged,
-                _ => SharedGameEventType.GenericStateChanged
-            };
+            _ = Task.Run(async () => await RaiseEventAsync(eventType, data));
         }
 
         public async ValueTask DisposeAsync()

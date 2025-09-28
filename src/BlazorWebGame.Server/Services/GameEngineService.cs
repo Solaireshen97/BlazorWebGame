@@ -1,5 +1,6 @@
 using BlazorWebGame.Shared.DTOs;
 using BlazorWebGame.Shared.Models;
+using BlazorWebGame.Shared.Events;
 using BlazorWebGame.Server.Hubs;
 using Microsoft.AspNetCore.SignalR;
 
@@ -7,6 +8,7 @@ namespace BlazorWebGame.Server.Services;
 
 /// <summary>
 /// 服务端游戏引擎，处理所有游戏逻辑
+/// 重构为使用统一事件队列系统
 /// </summary>
 public class GameEngineService
 {
@@ -17,15 +19,18 @@ public class GameEngineService
     private readonly ServerPartyService _partyService;
     private readonly ServerBattleFlowService _battleFlowService;
     private readonly IHubContext<GameHub> _hubContext;
+    private readonly UnifiedEventService _eventService;
 
     public GameEngineService(ILogger<GameEngineService> logger, ServerCombatEngine combatEngine, 
-        ServerPartyService partyService, ServerBattleFlowService battleFlowService, IHubContext<GameHub> hubContext)
+        ServerPartyService partyService, ServerBattleFlowService battleFlowService, 
+        IHubContext<GameHub> hubContext, UnifiedEventService eventService)
     {
         _logger = logger;
         _combatEngine = combatEngine;
         _partyService = partyService;
         _battleFlowService = battleFlowService;
         _hubContext = hubContext;
+        _eventService = eventService;
     }
 
     /// <summary>
@@ -42,6 +47,10 @@ public class GameEngineService
         // 创建客户端战斗状态DTO
         var battleState = ConvertToDto(serverContext);
         _activeBattles[battleId] = battleState;
+        
+        // 使用新事件系统触发战斗开始事件
+        _eventService.EnqueueBattleEvent(GameEventTypes.BATTLE_STARTED, (ulong)battleId.GetHashCode(), 
+            actorId: HashString(request.CharacterId));
         
         _logger.LogInformation("Battle started: {BattleId} for character {CharacterId}", 
             battleId, request.CharacterId);
@@ -148,7 +157,7 @@ public class GameEngineService
             PartyId = context.PartyId?.ToString(),
             IsActive = context.IsActive,
             LastUpdated = context.LastUpdate,
-            BattleType = context.BattleType == "Normal" ? BattleType.Normal : BattleType.Dungeon,
+            BattleType = context.BattleType == "Normal" ? BlazorWebGame.Shared.DTOs.BattleType.Normal : BlazorWebGame.Shared.DTOs.BattleType.Dungeon,
             Status = context.Status switch
             {
                 "Active" => BattleStatus.Active,
@@ -248,30 +257,343 @@ public class GameEngineService
     }
 
     /// <summary>
-    /// 处理战斗逻辑更新 - 在游戏循环中调用
+    /// 处理战斗逻辑更新 - 重构为使用事件驱动架构
+    /// 不再直接处理战斗逻辑，而是收集事件并入队
+    /// 优化版本：增强错误处理和性能监控
     /// </summary>
     public async Task ProcessBattleTickAsync(double deltaTime)
     {
-        var contextsToUpdate = _serverBattleContexts.Values.Where(c => c.IsActive).ToList();
+        var activeContexts = _serverBattleContexts.Values.Where(c => c.IsActive).ToList();
+        var events = new List<UnifiedEvent>();
+        var processedBattles = 0;
+        var eventsGenerated = 0;
         
-        foreach (var context in contextsToUpdate)
+        // 收集所有战斗相关事件而非直接处理
+        foreach (var context in activeContexts)
         {
-            ProcessSingleBattle(context, deltaTime);
-            
-            // 更新对应的DTO
-            if (_activeBattles.ContainsKey(context.BattleId))
+            try
             {
-                var previousState = _activeBattles[context.BattleId];
-                var newState = ConvertToDto(context);
-                _activeBattles[context.BattleId] = newState;
-                
-                // 通过SignalR发送实时更新
-                await BroadcastBattleUpdate(newState);
+                var contextEvents = new List<UnifiedEvent>();
+                CollectBattleEvents(context, deltaTime, contextEvents);
+                events.AddRange(contextEvents);
+                eventsGenerated += contextEvents.Count;
+                processedBattles++;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error collecting battle events for battle {BattleId}", context.BattleId);
+                // 继续处理其他战斗，不让单个战斗错误影响整个系统
+            }
+        }
+        
+        // 批量入队事件到统一事件队列
+        if (events.Count > 0)
+        {
+            var eventArray = events.ToArray();
+            var enqueuedCount = _eventService.EnqueueBatch(eventArray, events.Count);
+            
+            if (enqueuedCount != events.Count)
+            {
+                _logger.LogWarning("Failed to enqueue {FailedCount} out of {TotalCount} battle events", 
+                    events.Count - enqueuedCount, events.Count);
+            }
+            else
+            {
+                _logger.LogDebug("Successfully processed {BattleCount} battles and generated {EventCount} events", 
+                    processedBattles, eventsGenerated);
             }
         }
 
         // 处理战斗流程管理（刷新、波次进度等）
-        await _battleFlowService.ProcessBattleRefreshAsync(deltaTime, this);
+        try
+        {
+            await _battleFlowService.ProcessBattleRefreshAsync(deltaTime, this);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing battle refresh flow");
+        }
+    }
+
+    /// <summary>
+    /// 收集单个战斗的事件 - 替代直接处理逻辑
+    /// </summary>
+    private void CollectBattleEvents(ServerBattleContext context, double deltaTime, List<UnifiedEvent> events)
+    {
+        if (!context.IsActive || !context.HasActiveParticipants) 
+        {
+            if (context.Status == "Active")
+            {
+                // 战斗结束事件
+                var battleEndEvent = new UnifiedEvent(GameEventTypes.BATTLE_ENDED, EventPriority.Gameplay)
+                {
+                    ActorId = (ulong)context.BattleId.GetHashCode(),
+                    TargetId = 0
+                };
+                events.Add(battleEndEvent);
+                
+                CompleteBattle(context);
+            }
+            return;
+        }
+
+        context.LastUpdate = DateTime.UtcNow;
+
+        // 系统tick事件
+        var tickEvent = new UnifiedEvent(GameEventTypes.BATTLE_TICK, EventPriority.Gameplay)
+        {
+            ActorId = (ulong)context.BattleId.GetHashCode()
+        };
+        events.Add(tickEvent);
+
+        // 处理复活逻辑并收集相关事件
+        if (context.AllowAutoRevive)
+        {
+            CollectRevivalEvents(context, deltaTime, events);
+        }
+
+        // 收集战斗动作事件
+        var alivePlayers = context.Players.Where(p => p.IsAlive).ToList();
+        var aliveEnemies = context.Enemies.Where(e => e.IsAlive).ToList();
+
+        if (alivePlayers.Any() && aliveEnemies.Any())
+        {
+            foreach (var player in alivePlayers)
+            {
+                CollectPlayerCombatEvents(context, player, deltaTime, events);
+            }
+
+            foreach (var enemy in aliveEnemies)
+            {
+                CollectEnemyCombatEvents(context, enemy, deltaTime, events);
+            }
+        }
+
+        // 检查战斗是否结束
+        if (!context.HasActiveParticipants)
+        {
+            var battleEndEvent = new UnifiedEvent(GameEventTypes.BATTLE_ENDED, EventPriority.Gameplay)
+            {
+                ActorId = (ulong)context.BattleId.GetHashCode()
+            };
+            events.Add(battleEndEvent);
+        }
+    }
+
+    /// <summary>
+    /// 收集复活相关事件
+    /// </summary>
+    private void CollectRevivalEvents(ServerBattleContext context, double deltaTime, List<UnifiedEvent> events)
+    {
+        const double revivalTime = 5.0;
+
+        foreach (var player in context.Players.Where(p => !p.IsAlive))
+        {
+            if (!player.Attributes.ContainsKey("RevivalTimer"))
+            {
+                player.Attributes["RevivalTimer"] = 0;
+            }
+
+            var revivalTimer = player.Attributes["RevivalTimer"] + (int)(deltaTime * 1000);
+            player.Attributes["RevivalTimer"] = revivalTimer;
+
+            if (revivalTimer >= revivalTime * 1000)
+            {
+                // 复活玩家
+                player.Health = player.MaxHealth / 2;
+                player.Attributes.Remove("RevivalTimer");
+
+                // 创建复活事件
+                var revivalEvent = new UnifiedEvent(GameEventTypes.PLAYER_REVIVED, EventPriority.Gameplay)
+                {
+                    ActorId = HashString(player.Id),
+                    TargetId = (ulong)context.BattleId.GetHashCode()
+                };
+                events.Add(revivalEvent);
+                
+                _logger.LogInformation("Player {PlayerName} revival event queued for battle {BattleId}", 
+                    player.Name, context.BattleId);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 收集玩家战斗事件
+    /// </summary>
+    private void CollectPlayerCombatEvents(ServerBattleContext context, ServerBattlePlayer player, 
+        double deltaTime, List<UnifiedEvent> events)
+    {
+        // 更新技能冷却
+        UpdateSkillCooldowns(player, deltaTime);
+
+        // 尝试使用技能
+        if (TryCollectPlayerSkillEvent(context, player, events))
+        {
+            return; // 使用了技能，跳过普通攻击
+        }
+
+        // 收集普通攻击事件
+        CollectPlayerAttackEvent(context, player, deltaTime, events);
+    }
+
+    /// <summary>
+    /// 收集玩家技能使用事件
+    /// </summary>
+    private bool TryCollectPlayerSkillEvent(ServerBattleContext context, ServerBattlePlayer player, 
+        List<UnifiedEvent> events)
+    {
+        if (Random.Shared.NextDouble() > 0.3)
+            return false;
+
+        var availableSkills = player.EquippedSkills.Where(skillId => 
+            !player.SkillCooldowns.ContainsKey(skillId) || player.SkillCooldowns[skillId] <= 0).ToList();
+
+        if (!availableSkills.Any())
+            return false;
+
+        var selectedSkill = availableSkills[Random.Shared.Next(availableSkills.Count)];
+        var target = context.Enemies.FirstOrDefault(e => e.IsAlive);
+        if (target == null)
+            return false;
+
+        // 创建技能使用事件
+        var skillEvent = new UnifiedEvent(GameEventTypes.SKILL_USED, EventPriority.Gameplay)
+        {
+            ActorId = HashString(player.Id),
+            TargetId = HashString(target.Id)
+        };
+        events.Add(skillEvent);
+
+        return true;
+    }
+
+    /// <summary>
+    /// 收集玩家攻击事件
+    /// </summary>
+    private void CollectPlayerAttackEvent(ServerBattleContext context, ServerBattlePlayer player, 
+        double deltaTime, List<UnifiedEvent> events)
+    {
+        if (player.AttackCooldown > 0)
+        {
+            player.AttackCooldown -= deltaTime;
+            return;
+        }
+
+        var target = context.Enemies.FirstOrDefault(e => e.IsAlive);
+        if (target == null)
+            return;
+
+        // 计算伤害
+        var damage = CalculatePlayerDamage(player, target);
+        var actualDamage = Math.Min(damage, target.Health);
+        
+        // 应用伤害（立即更新状态，但通过事件通知）
+        target.Health -= actualDamage;
+        player.AttackCooldown = 1.0 / player.AttacksPerSecond;
+
+        // 创建伤害事件
+        var damageData = new DamageEventData
+        {
+            Damage = damage,
+            ActualDamage = actualDamage,
+            IsCritical = 0, // 简化，实际应该计算
+            DamageType = 1 // 物理伤害
+        };
+
+        var damageEvent = new UnifiedEvent(GameEventTypes.DAMAGE_DEALT, EventPriority.Gameplay)
+        {
+            ActorId = HashString(player.Id),
+            TargetId = HashString(target.Id)
+        };
+        damageEvent.SetData(damageData);
+        events.Add(damageEvent);
+
+        // 如果敌人死亡，创建死亡事件
+        if (target.Health <= 0)
+        {
+            var deathEvent = new UnifiedEvent(GameEventTypes.ENEMY_KILLED, EventPriority.Gameplay)
+            {
+                ActorId = HashString(player.Id),
+                TargetId = HashString(target.Id)
+            };
+            events.Add(deathEvent);
+        }
+    }
+
+    /// <summary>
+    /// 收集敌人战斗事件
+    /// </summary>
+    private void CollectEnemyCombatEvents(ServerBattleContext context, ServerBattleEnemy enemy, 
+        double deltaTime, List<UnifiedEvent> events)
+    {
+        // 简化敌人AI - 类似玩家逻辑但更简单
+        if (enemy.AttackCooldown > 0)
+        {
+            enemy.AttackCooldown -= deltaTime;
+            return;
+        }
+
+        var target = context.Players.FirstOrDefault(p => p.IsAlive);
+        if (target == null)
+            return;
+
+        var damage = CalculateEnemyDamage(enemy, target);
+        var actualDamage = Math.Min(damage, target.Health);
+        
+        target.Health -= actualDamage;
+        enemy.AttackCooldown = 1.0 / enemy.AttacksPerSecond;
+
+        var damageData = new DamageEventData
+        {
+            Damage = damage,
+            ActualDamage = actualDamage,
+            IsCritical = 0,
+            DamageType = 1
+        };
+
+        var damageEvent = new UnifiedEvent(GameEventTypes.DAMAGE_DEALT, EventPriority.Gameplay)
+        {
+            ActorId = HashString(enemy.Id),
+            TargetId = HashString(target.Id)
+        };
+        damageEvent.SetData(damageData);
+        events.Add(damageEvent);
+    }
+
+    /// <summary>
+    /// 计算玩家伤害
+    /// </summary>
+    private int CalculatePlayerDamage(ServerBattlePlayer player, ServerBattleEnemy enemy)
+    {
+        return player.BaseAttackPower + Random.Shared.Next(-2, 3);
+    }
+
+    /// <summary>
+    /// 计算敌人伤害
+    /// </summary>
+    private int CalculateEnemyDamage(ServerBattleEnemy enemy, ServerBattlePlayer player)
+    {
+        return enemy.BaseAttackPower + Random.Shared.Next(-2, 3);
+    }
+
+    /// <summary>
+    /// 字符串哈希函数
+    /// </summary>
+    private static ulong HashString(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+            return 0;
+
+        const ulong FnvPrime = 1099511628211UL;
+        const ulong FnvOffsetBasis = 14695981039346656037UL;
+
+        var hash = FnvOffsetBasis;
+        foreach (var c in input)
+        {
+            hash ^= c;
+            hash *= FnvPrime;
+        }
+        return hash;
     }
 
     /// <summary>

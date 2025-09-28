@@ -6,16 +6,13 @@ using BlazorWebGame.Shared.DTOs;
 namespace BlazorWebGame.Client.Services;
 
 /// <summary>
-/// 混合物品系统服务 - 支持逐步从客户端迁移到服务端
+/// 简化库存服务 - 现在只使用服务器API
 /// </summary>
 public class HybridInventoryService
 {
     private readonly ClientInventoryApiService _inventoryApi;
-    private readonly InventoryService _legacyInventoryService;
+    private readonly InventoryService _legacyInventoryService; // 仅用于UI兼容性
     private readonly ILogger<HybridInventoryService> _logger;
-    
-    // 配置标志 - 是否使用服务端物品系统
-    private bool _useServerInventory = true; // 默认使用服务端
     
     public event Action? OnInventoryChanged;
 
@@ -28,268 +25,201 @@ public class HybridInventoryService
         _legacyInventoryService = legacyInventoryService;
         _logger = logger;
         
-        // 订阅客户端服务事件
+        // 订阅客户端服务事件（用于UI兼容性）
         _legacyInventoryService.OnStateChanged += () => OnInventoryChanged?.Invoke();
     }
 
     /// <summary>
-    /// 设置是否使用服务端物品系统
+    /// 设置库存系统模式 - 现在总是使用服务端
     /// </summary>
+    [Obsolete("库存系统现在总是使用服务器模式")]
     public void SetUseServerInventory(bool useServer)
     {
-        _useServerInventory = useServer;
-        _logger.LogInformation("Inventory system switched to {Mode}", useServer ? "Server" : "Client");
+        _logger.LogInformation("Inventory system is now always in server mode");
     }
 
     /// <summary>
-    /// 获取角色库存
+    /// 获取角色库存 - 现在只从服务器获取
     /// </summary>
     public async Task<InventoryDto?> GetInventoryAsync(string characterId)
     {
-        if (_useServerInventory)
+        try
         {
-            try
+            var response = await _inventoryApi.GetInventoryAsync(characterId);
+            if (response.Success && response.Data != null)
             {
-                var response = await _inventoryApi.GetInventoryAsync(characterId);
-                if (response.Success && response.Data != null)
-                {
-                    return response.Data;
-                }
-                else
-                {
-                    _logger.LogWarning("Failed to get inventory from server: {Message}", response.Message);
-                    // 降级到客户端模式
-                    return await GetClientInventoryAsync(characterId);
-                }
+                return response.Data;
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogError(ex, "Error getting inventory from server, falling back to client");
-                return await GetClientInventoryAsync(characterId);
+                _logger.LogWarning("Failed to get inventory from server: {Message}", response.Message);
+                return null;
             }
         }
-        else
+        catch (Exception ex)
         {
-            return await GetClientInventoryAsync(characterId);
+            _logger.LogError(ex, "Error getting inventory from server");
+            return null;
         }
     }
 
     /// <summary>
-    /// 添加物品到库存
+    /// 添加物品到库存 - 现在只通过服务器API
     /// </summary>
     public async Task<bool> AddItemAsync(Player character, string itemId, int quantity)
     {
-        if (_useServerInventory)
-        {
-            try
-            {
-                var response = await _inventoryApi.AddItemAsync(character.Id, itemId, quantity);
-                if (response.Success)
-                {
-                    OnInventoryChanged?.Invoke();
-                    return response.Data;
-                }
-                else
-                {
-                    _logger.LogWarning("Failed to add item via server: {Message}", response.Message);
-                    // 降级到客户端模式
-                    _legacyInventoryService.AddItemToInventory(character, itemId, quantity);
-                    return true;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error adding item via server, falling back to client");
-                _legacyInventoryService.AddItemToInventory(character, itemId, quantity);
-                return true;
-            }
-        }
-        else
-        {
-            _legacyInventoryService.AddItemToInventory(character, itemId, quantity);
-            return true;
-        }
-    }
-
-    /// <summary>
-    /// 使用物品
-    /// </summary>
-    public async Task<bool> UseItemAsync(Player character, string itemId, int slotIndex = -1)
-    {
-        if (_useServerInventory)
-        {
-            try
-            {
-                var response = await _inventoryApi.UseItemAsync(character.Id, itemId, slotIndex);
-                if (response.Success)
-                {
-                    OnInventoryChanged?.Invoke();
-                    return response.Data;
-                }
-                else
-                {
-                    _logger.LogWarning("Failed to use item via server: {Message}", response.Message);
-                    // 降级到客户端模式
-                    _legacyInventoryService.UseItem(character, itemId);
-                    return true;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error using item via server, falling back to client");
-                _legacyInventoryService.UseItem(character, itemId);
-                return true;
-            }
-        }
-        else
-        {
-            _legacyInventoryService.UseItem(character, itemId);
-            return true;
-        }
-    }
-
-    /// <summary>
-    /// 装备物品
-    /// </summary>
-    public async Task<bool> EquipItemAsync(Player character, string itemId, string equipmentSlot)
-    {
-        if (_useServerInventory)
-        {
-            try
-            {
-                var response = await _inventoryApi.EquipItemAsync(character.Id, itemId, equipmentSlot);
-                if (response.Success)
-                {
-                    OnInventoryChanged?.Invoke();
-                    return response.Data;
-                }
-                else
-                {
-                    _logger.LogWarning("Failed to equip item via server: {Message}", response.Message);
-                    // 降级到客户端模式
-                    _legacyInventoryService.EquipItem(character, itemId);
-                    return true;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error equipping item via server, falling back to client");
-                _legacyInventoryService.EquipItem(character, itemId);
-                return true;
-            }
-        }
-        else
-        {
-            _legacyInventoryService.EquipItem(character, itemId);
-            return true;
-        }
-    }
-
-    /// <summary>
-    /// 出售物品
-    /// </summary>
-    public async Task<int> SellItemAsync(Player character, string itemId, int quantity)
-    {
-        if (_useServerInventory)
-        {
-            try
-            {
-                var response = await _inventoryApi.SellItemAsync(character.Id, itemId, quantity);
-                if (response.Success)
-                {
-                    OnInventoryChanged?.Invoke();
-                    return response.Data;
-                }
-                else
-                {
-                    _logger.LogWarning("Failed to sell item via server: {Message}", response.Message);
-                    // 降级到客户端模式
-                    _legacyInventoryService.SellItem(character, itemId, quantity);
-                    return 0; // 客户端版本不返回实际价值
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error selling item via server, falling back to client");
-                _legacyInventoryService.SellItem(character, itemId, quantity);
-                return 0;
-            }
-        }
-        else
-        {
-            _legacyInventoryService.SellItem(character, itemId, quantity);
-            return 0;
-        }
-    }
-
-    /// <summary>
-    /// 同步客户端库存到服务端
-    /// </summary>
-    public async Task<bool> SyncToServerAsync(Player character)
-    {
-        if (!_useServerInventory) return false;
-
         try
         {
-            // 将客户端库存转换为DTO
-            var inventoryDto = ConvertToInventoryDto(character);
-            var response = await _inventoryApi.SyncInventoryAsync(inventoryDto);
-            
+            var response = await _inventoryApi.AddItemAsync(character.Id, itemId, quantity);
             if (response.Success)
             {
-                _logger.LogInformation("Successfully synced inventory to server for character {CharacterId}", character.Id);
-                return true;
+                OnInventoryChanged?.Invoke();
+                return response.Data;
             }
             else
             {
-                _logger.LogWarning("Failed to sync inventory to server: {Message}", response.Message);
+                _logger.LogWarning("Failed to add item via server: {Message}", response.Message);
                 return false;
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error syncing inventory to server");
+            _logger.LogError(ex, "Error adding item via server");
             return false;
         }
     }
 
     /// <summary>
-    /// 从服务端同步库存到客户端
+    /// 移除物品 - 现在通过服务器售卖API实现
     /// </summary>
-    public async Task<bool> SyncFromServerAsync(Player character)
+    public async Task<bool> RemoveItemAsync(Player character, string itemId, int quantity)
     {
-        if (!_useServerInventory) return false;
-
         try
         {
-            var response = await _inventoryApi.GetInventoryAsync(character.Id);
-            if (response.Success && response.Data != null)
+            // 由于没有直接的移除API，使用售卖API（设置价格为0）
+            var response = await _inventoryApi.SellItemAsync(character.Id, itemId, quantity);
+            if (response.Success)
             {
-                ApplyInventoryDto(character, response.Data);
                 OnInventoryChanged?.Invoke();
-                _logger.LogInformation("Successfully synced inventory from server for character {CharacterId}", character.Id);
-                return true;
+                return response.Data > 0;
             }
             else
             {
-                _logger.LogWarning("Failed to sync inventory from server: {Message}", response.Message);
+                _logger.LogWarning("Failed to remove item via server: {Message}", response.Message);
                 return false;
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error syncing inventory from server");
+            _logger.LogError(ex, "Error removing item via server");
             return false;
         }
     }
 
     /// <summary>
-    /// 获取客户端库存
+    /// 使用物品 - 现在只通过服务器API
     /// </summary>
-    private async Task<InventoryDto> GetClientInventoryAsync(string characterId)
+    public async Task<bool> UseItemAsync(Player character, string itemId)
     {
-        // 这里应该从客户端数据中创建库存DTO
-        // 暂时返回空库存
+        try
+        {
+            var response = await _inventoryApi.UseItemAsync(character.Id, itemId);
+            if (response.Success)
+            {
+                OnInventoryChanged?.Invoke();
+                return response.Data;
+            }
+            else
+            {
+                _logger.LogWarning("Failed to use item via server: {Message}", response.Message);
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error using item via server");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 装备物品 - 现在只通过服务器API
+    /// </summary>
+    public async Task<bool> EquipItemAsync(Player character, string itemId)
+    {
+        try
+        {
+            // 需要指定装备槽位，这里使用默认值
+            var response = await _inventoryApi.EquipItemAsync(character.Id, itemId, "auto");
+            if (response.Success)
+            {
+                OnInventoryChanged?.Invoke();
+                return response.Data;
+            }
+            else
+            {
+                _logger.LogWarning("Failed to equip item via server: {Message}", response.Message);
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error equipping item via server");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 卸下装备 - 现在暂不支持，标记为过时
+    /// </summary>
+    [Obsolete("卸下装备功能需要服务器API支持")]
+    public async Task<bool> UnequipItemAsync(Player character, EquipmentSlot slot)
+    {
+        _logger.LogWarning("UnequipItemAsync not implemented - server API needed");
+        await Task.CompletedTask;
+        return false;
+    }
+
+    // 保留一些同步方法用于UI兼容性（标记为过时）
+    [Obsolete("请使用异步版本 AddItemAsync")]
+    public void AddItem(Player character, string itemId, int quantity)
+    {
+        _ = Task.Run(async () => await AddItemAsync(character, itemId, quantity));
+    }
+
+    [Obsolete("请使用异步版本 RemoveItemAsync")]
+    public bool RemoveItem(Player character, string itemId, int quantity)
+    {
+        var task = Task.Run(async () => await RemoveItemAsync(character, itemId, quantity));
+        return task.Result;
+    }
+
+    [Obsolete("请使用异步版本 UseItemAsync")]
+    public void UseItem(Player character, string itemId)
+    {
+        _ = Task.Run(async () => await UseItemAsync(character, itemId));
+    }
+
+    [Obsolete("请使用异步版本 EquipItemAsync")]
+    public void EquipItem(Player character, string itemId)
+    {
+        _ = Task.Run(async () => await EquipItemAsync(character, itemId));
+    }
+
+    [Obsolete("请使用异步版本 UnequipItemAsync")]
+    public void UnequipItem(Player character, EquipmentSlot slot)
+    {
+        _ = Task.Run(async () => await UnequipItemAsync(character, slot));
+    }
+
+    /// <summary>
+    /// 获取客户端库存（仅用于UI兼容性）
+    /// </summary>
+    [Obsolete("本地库存已移除，请使用 GetInventoryAsync")]
+    private async Task<InventoryDto?> GetClientInventoryAsync(string characterId)
+    {
+        // 返回空的库存DTO
+        await Task.CompletedTask;
         return new InventoryDto
         {
             CharacterId = characterId,
@@ -297,68 +227,5 @@ public class HybridInventoryService
             Equipment = new Dictionary<string, InventorySlotDto>(),
             QuickSlots = new Dictionary<string, List<InventorySlotDto>>()
         };
-    }
-
-    /// <summary>
-    /// 将Player库存转换为InventoryDto
-    /// </summary>
-    private InventoryDto ConvertToInventoryDto(Player character)
-    {
-        var dto = new InventoryDto
-        {
-            CharacterId = character.Id
-        };
-
-        // 转换库存槽
-        for (int i = 0; i < character.Inventory.Count; i++)
-        {
-            var slot = character.Inventory[i];
-            dto.Slots.Add(new InventorySlotDto
-            {
-                SlotIndex = i,
-                ItemId = slot.ItemId ?? string.Empty,
-                Quantity = slot.Quantity
-            });
-        }
-
-        // 转换装备槽
-        foreach (var kvp in character.EquippedItems)
-        {
-            if (!string.IsNullOrEmpty(kvp.Value))
-            {
-                dto.Equipment[kvp.Key.ToString()] = new InventorySlotDto
-                {
-                    ItemId = kvp.Value,
-                    Quantity = 1
-                };
-            }
-        }
-
-        return dto;
-    }
-
-    /// <summary>
-    /// 将InventoryDto应用到Player
-    /// </summary>
-    private void ApplyInventoryDto(Player character, InventoryDto dto)
-    {
-        // 应用库存槽
-        for (int i = 0; i < dto.Slots.Count && i < character.Inventory.Count; i++)
-        {
-            var dtoSlot = dto.Slots[i];
-            var playerSlot = character.Inventory[i];
-            
-            playerSlot.ItemId = dtoSlot.ItemId;
-            playerSlot.Quantity = dtoSlot.Quantity;
-        }
-
-        // 应用装备
-        foreach (var kvp in dto.Equipment)
-        {
-            if (Enum.TryParse<EquipmentSlot>(kvp.Key, out var slot))
-            {
-                character.EquippedItems[slot] = kvp.Value.ItemId;
-            }
-        }
     }
 }

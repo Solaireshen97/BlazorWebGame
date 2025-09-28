@@ -106,6 +106,79 @@ public class ServerInventoryService
     }
 
     /// <summary>
+    /// 移除指定数量的物品
+    /// </summary>
+    public async Task<ApiResponse<bool>> RemoveItemAsync(string characterId, string itemId, int quantity)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(characterId) || string.IsNullOrEmpty(itemId) || quantity <= 0)
+            {
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "参数无效"
+                };
+            }
+
+            var inventory = GetCharacterInventory(characterId);
+            var remainingToRemove = quantity;
+
+            // 检查是否有足够的物品可以移除
+            var totalOwned = inventory.Slots
+                .Where(s => s.ItemId == itemId)
+                .Sum(s => s.Quantity);
+
+            if (totalOwned < quantity)
+            {
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "库存中物品数量不足"
+                };
+            }
+
+            // 移除物品
+            for (int i = 0; i < inventory.Slots.Count && remainingToRemove > 0; i++)
+            {
+                var slot = inventory.Slots[i];
+                if (slot.ItemId == itemId && slot.Quantity > 0)
+                {
+                    var removeAmount = Math.Min(slot.Quantity, remainingToRemove);
+                    slot.Quantity -= removeAmount;
+                    remainingToRemove -= removeAmount;
+
+                    // 如果槽位为空，清空物品ID
+                    if (slot.Quantity == 0)
+                    {
+                        slot.ItemId = string.Empty;
+                    }
+                }
+            }
+
+            OnInventoryChanged?.Invoke(characterId);
+            _logger.LogInformation("Removed {Quantity} {ItemId} from character {CharacterId}", 
+                quantity - remainingToRemove, itemId, characterId);
+
+            return new ApiResponse<bool>
+            {
+                Success = true,
+                Data = true,
+                Message = $"成功移除 {quantity - remainingToRemove} 个物品"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing item {ItemId} from character {CharacterId}", itemId, characterId);
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "移除物品时发生错误"
+            };
+        }
+    }
+
+    /// <summary>
     /// 使用物品
     /// </summary>
     public async Task<ApiResponse<bool>> UseItemAsync(string characterId, string itemId, int slotIndex = -1)
@@ -338,6 +411,91 @@ public class ServerInventoryService
                 Success = false,
                 Message = "同步库存时发生错误"
             };
+        }
+    }
+
+    /// <summary>
+    /// 检查角色是否有足够的材料制作配方
+    /// </summary>
+    public bool CanAffordRecipe(string characterId, Dictionary<string, int> materials)
+    {
+        if (string.IsNullOrEmpty(characterId) || materials == null || materials.Count == 0)
+            return false;
+
+        try
+        {
+            var inventory = GetCharacterInventory(characterId);
+            
+            foreach (var material in materials)
+            {
+                var itemId = material.Key;
+                var requiredQuantity = material.Value;
+                
+                // 计算角色拥有的该物品总数量
+                var ownedQuantity = inventory.Slots
+                    .Where(slot => !string.IsNullOrEmpty(slot.ItemId) && slot.ItemId == itemId)
+                    .Sum(slot => slot.Quantity);
+                
+                if (ownedQuantity < requiredQuantity)
+                {
+                    return false;
+                }
+            }
+            
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking recipe affordability for character {CharacterId}", characterId);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 消耗制作材料
+    /// </summary>
+    public async Task<bool> ConsumeCraftingMaterialsAsync(string characterId, Dictionary<string, int> materials)
+    {
+        if (!CanAffordRecipe(characterId, materials))
+            return false;
+
+        try
+        {
+            var inventory = GetCharacterInventory(characterId);
+            
+            foreach (var material in materials)
+            {
+                var itemId = material.Key;
+                var requiredQuantity = material.Value;
+                var remainingToRemove = requiredQuantity;
+                
+                // 从背包中移除材料
+                for (int i = 0; i < inventory.Slots.Count && remainingToRemove > 0; i++)
+                {
+                    var slot = inventory.Slots[i];
+                    if (!string.IsNullOrEmpty(slot.ItemId) && slot.ItemId == itemId && slot.Quantity > 0)
+                    {
+                        var removeAmount = Math.Min(slot.Quantity, remainingToRemove);
+                        slot.Quantity -= removeAmount;
+                        remainingToRemove -= removeAmount;
+                        
+                        // 如果物品数量为0，清空物品槽
+                        if (slot.Quantity <= 0)
+                        {
+                            slot.ItemId = "";
+                            slot.Quantity = 0;
+                        }
+                    }
+                }
+            }
+            
+            OnInventoryChanged?.Invoke(characterId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error consuming crafting materials for character {CharacterId}", characterId);
+            return false;
         }
     }
 }

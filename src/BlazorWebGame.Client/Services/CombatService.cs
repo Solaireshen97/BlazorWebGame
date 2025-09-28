@@ -5,7 +5,6 @@ using BlazorWebGame.Models.Dungeons;
 using BlazorWebGame.Models.Items;
 using BlazorWebGame.Models.Monsters;
 using BlazorWebGame.Models.Skills;
-using BlazorWebGame.Services.Combat;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,19 +12,12 @@ using System.Linq;
 namespace BlazorWebGame.Services
 {
     /// <summary>
-    /// Õ½¶·ÏµÍ³·şÎñÃÅÃæ£¬Ğ­µ÷¸÷¸öÕ½¶·×ÓÏµÍ³
+    /// ç®€åŒ–çš„æˆ˜æ–—æœåŠ¡ - ä»…ä¿ç•™UIçŠ¶æ€ç®¡ç†ï¼Œæ‰€æœ‰æˆ˜æ–—é€»è¾‘ç”±æœåŠ¡å™¨å¤„ç†
     /// </summary>
     public class CombatService
     {
-        private readonly BattleManager _battleManager;
-        private readonly BattleFlowService _battleFlowService;
-        private readonly CombatEngine _combatEngine;
-        private readonly SkillSystem _skillSystem;
-        private readonly LootService _lootService;
-        private readonly CharacterCombatService _characterCombatService;
-
         /// <summary>
-        /// ×´Ì¬±ä¸üÊÂ¼ş
+        /// çŠ¶æ€æ”¹å˜äº‹ä»¶
         /// </summary>
         public event Action? OnStateChanged;
 
@@ -33,319 +25,160 @@ namespace BlazorWebGame.Services
             InventoryService inventoryService,
             List<Player> allCharacters)
         {
-            // ³õÊ¼»¯¸÷¸ö×Ó·şÎñ
-            _skillSystem = new SkillSystem();
-            _characterCombatService = new CharacterCombatService();
-            _lootService = new LootService(inventoryService, _skillSystem, allCharacters);
-            _battleFlowService = new BattleFlowService(allCharacters);
-
-            // ³õÊ¼»¯Õ½¶·¹ÜÀíÆ÷£¬×¢ÈëËùÓĞÒÀÀµ
-            _battleManager = new BattleManager(
-                allCharacters,
-                null!, // CombatEngine »áÔÚÏÂÃæ³õÊ¼»¯ºóÉèÖÃ
-                _battleFlowService,
-                _characterCombatService,
-                _skillSystem,
-                _lootService
-            );
-
-            // ³õÊ¼»¯Õ½¶·ÒıÇæ
-            _combatEngine = new CombatEngine(
-                _skillSystem,
-                _lootService,
-                _characterCombatService,
-                _battleManager
-            );
-
-            // Í¨¹ı·´ÉäÉèÖÃ BattleManager µÄ CombatEngine£¨±ÜÃâÑ­»·ÒÀÀµ£©
-            var field = typeof(BattleManager).GetField("_combatEngine",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            field?.SetValue(_battleManager, _combatEngine);
-
-            // ¶©ÔÄ×Ó·şÎñµÄ×´Ì¬±ä¸üÊÂ¼ş
-            _battleManager.OnStateChanged += () => OnStateChanged?.Invoke();
+            // ç®€åŒ–æ„é€ å‡½æ•°ï¼Œæœ¬åœ°æˆ˜æ–—é€»è¾‘å·²ç§»é™¤
         }
 
-        #region Õ½¶·²éÑ¯½Ó¿Ú
+        #region æˆ˜æ–—çŠ¶æ€æŸ¥è¯¢æ¥å£ - æœ¬åœ°å®ç°å·²ç§»é™¤ï¼Œéœ€è¦æ—¶è°ƒç”¨æœåŠ¡å™¨API
 
         /// <summary>
-        /// »ñÈ¡»îÔ¾Õ½¶·ÉÏÏÂÎÄ
+        /// è·å–æ´»è·ƒæˆ˜æ–—ä¸Šä¸‹æ–‡ - æœ¬åœ°å®ç°å·²ç§»é™¤
         /// </summary>
         public BattleContext? GetBattleContextForPlayer(string playerId)
         {
-            return _battleManager.GetBattleContextForPlayer(playerId);
+            // æœ¬åœ°æˆ˜æ–—ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¿”å›null
+            // å¦‚éœ€æˆ˜æ–—çŠ¶æ€ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API
+            return null;
         }
 
         /// <summary>
-        /// »ñÈ¡»îÔ¾Õ½¶·ÉÏÏÂÎÄ
+        /// è·å–æ´»è·ƒæˆ˜æ–—ä¸Šä¸‹æ–‡ - æœ¬åœ°å®ç°å·²ç§»é™¤
         /// </summary>
         public BattleContext? GetBattleContextForParty(Guid partyId)
         {
-            return _battleManager.GetBattleContextForParty(partyId);
+            // æœ¬åœ°æˆ˜æ–—ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¿”å›null
+            // å¦‚éœ€æˆ˜æ–—çŠ¶æ€ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API
+            return null;
         }
 
         /// <summary>
-        /// ¼ì²éÍæ¼ÒÊÇ·ñ´¦ÓÚÕ½¶·Ë¢ĞÂ×´Ì¬
+        /// æ£€æŸ¥ç©å®¶æ˜¯å¦åœ¨æˆ˜æ–—åˆ·æ–°çŠ¶æ€ - æœ¬åœ°å®ç°å·²ç§»é™¤
         /// </summary>
         public bool IsPlayerInBattleRefresh(string playerId)
         {
-            return _battleFlowService.IsPlayerInBattleRefresh(playerId);
+            // æœ¬åœ°æˆ˜æ–—ç³»ç»Ÿå·²ç§»é™¤
+            return false;
         }
 
         /// <summary>
-        /// »ñÈ¡Íæ¼ÒÕ½¶·Ë¢ĞÂÊ£ÓàÊ±¼ä
+        /// è·å–ç©å®¶æˆ˜æ–—åˆ·æ–°å‰©ä½™æ—¶é—´ - æœ¬åœ°å®ç°å·²ç§»é™¤
         /// </summary>
         public double GetPlayerBattleRefreshTime(string playerId)
         {
-            return _battleFlowService.GetPlayerBattleRefreshTime(playerId);
+            // æœ¬åœ°æˆ˜æ–—ç³»ç»Ÿå·²ç§»é™¤
+            return 0;
+        }
+
+        /// <summary>
+        /// æ£€æŸ¥æ–°æŠ€èƒ½è§£é” - æœ¬åœ°å®ç°å·²ç§»é™¤
+        /// </summary>
+        public void CheckForNewSkillUnlocks(Player player, BattleProfession profession, int level, bool forceCheck)
+        {
+            // æœ¬åœ°æˆ˜æ–—ç³»ç»Ÿå·²ç§»é™¤ï¼ŒæŠ€èƒ½è§£é”ç”±æœåŠ¡å™¨å¤„ç†
+        }
+
+        /// <summary>
+        /// é‡ç½®ç©å®¶æŠ€èƒ½å†·å´ - æœ¬åœ°å®ç°å·²ç§»é™¤
+        /// </summary>
+        public void ResetPlayerSkillCooldowns(Player player)
+        {
+            // æœ¬åœ°æˆ˜æ–—ç³»ç»Ÿå·²ç§»é™¤ï¼ŒæŠ€èƒ½å†·å´ç”±æœåŠ¡å™¨å¤„ç†
         }
 
         #endregion
 
-        #region Õ½¶·´¦Àí
+        #region æˆ˜æ–—å¤„ç† - æœ¬åœ°å®ç°å·²ç§»é™¤ï¼Œå…¨éƒ¨ç”±æœåŠ¡å™¨å¤„ç†
 
         /// <summary>
-        /// ´¦ÀíËùÓĞ»îÔ¾Õ½¶·
+        /// å¤„ç†æ‰€æœ‰æ´»è·ƒæˆ˜æ–— - æœ¬åœ°å®ç°å·²ç§»é™¤
         /// </summary>
         public void ProcessAllBattles(double elapsedSeconds)
         {
-            _battleManager.ProcessAllBattles(elapsedSeconds);
+            // æœ¬åœ°æˆ˜æ–—å¤„ç†å·²ç§»é™¤ï¼Œæ‰€æœ‰æˆ˜æ–—é€»è¾‘ç”±æœåŠ¡å™¨å¤„ç†
         }
 
         /// <summary>
-        /// ´¦Àí½ÇÉ«µÄÕ½¶·£¨ÒÑ·ÏÆú - ÇëÊ¹ÓÃĞÂµÄÕ½¶·ÏµÍ³£©
+        /// å¤„ç†è§’è‰²çš„æˆ˜æ–—ï¼ˆæ—§æ–¹æ³•ï¼‰ - æœ¬åœ°å®ç°å·²ç§»é™¤
         /// </summary>
-        [Obsolete("Ê¹ÓÃĞÂµÄÕ½¶·ÏµÍ³£¬´Ë·½·¨½öÎª¼æÈİĞÔ±£Áô")]
+        [Obsolete("æœ¬åœ°æˆ˜æ–—ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
         public void ProcessCombat(Player character, double elapsedSeconds, Party? party)
         {
-            // ²»ÔÙÖ´ĞĞÈÎºÎÂß¼­
-            return;
+            // æœ¬åœ°æˆ˜æ–—å¤„ç†å·²ç§»é™¤
         }
 
         #endregion
 
-        #region Õ½¶·¿ØÖÆ
+        #region å‘åå…¼å®¹çš„æ–¹æ³• - ä¿ç•™ä»¥é¿å…ç¼–è¯‘é”™è¯¯
 
         /// <summary>
-        /// ÖÇÄÜ¿ªÊ¼Õ½¶·
-        /// </summary>
-        public bool SmartStartBattle(Player character, Enemy enemyTemplate, Party? party = null, bool ignoreRefreshCheck = false)
-        {
-            return _battleManager.SmartStartBattle(character, enemyTemplate, party, ignoreRefreshCheck);
-        }
-
-        /// <summary>
-        /// ¿ªÊ¼Õ½¶·£¨ÒÑ·ÏÆú - ÇëÊ¹ÓÃ SmartStartBattle£©
-        /// </summary>
-        [Obsolete("Ê¹ÓÃ SmartStartBattle ·½·¨")]
-        public void StartCombat(Player character, Enemy enemyTemplate, Party? party)
-        {
-            // Ö±½Óµ÷ÓÃĞÂÏµÍ³
-            SmartStartBattle(character, enemyTemplate, party);
-        }
-
-
-        /// <summary>
-        /// ¿ªÊ¼¸±±¾Õ½¶·
-        /// </summary>
-        public bool StartDungeon(Party party, string dungeonId)
-        {
-            return _battleManager.StartDungeon(party, dungeonId);
-        }
-
-        /// <summary>
-        /// ¿ªÊ¼¶à¶Ô¶àÆÕÍ¨Õ½¶·
-        /// </summary>
-        public bool StartMultiEnemyBattle(Player character, List<Enemy> enemies, Party? party = null)
-        {
-            return _battleManager.StartMultiEnemyBattle(character, enemies, party);
-        }
-
-        /// <summary>
-        /// Í£Ö¹Õ½¶·
-        /// </summary>
-        public void StopBattle(BattleContext battleContext)
-        {
-            if (battleContext == null) return;
-
-            _battleManager.StopBattle(battleContext);
-        }
-
-        /// <summary>
-        /// Í£Ö¹Íæ¼ÒµÄÕ½¶·
-        /// </summary>
-        public void StopPlayerBattle(string playerId)
-        {
-            var battleContext = GetBattleContextForPlayer(playerId);
-            if (battleContext != null)
-            {
-                StopBattle(battleContext);
-            }
-        }
-
-        /// <summary>
-        /// Í£Ö¹¶ÓÎéµÄÕ½¶·
-        /// </summary>
-        public void StopPartyBattle(Guid partyId)
-        {
-            var battleContext = GetBattleContextForParty(partyId);
-            if (battleContext != null)
-            {   
-                StopBattle(battleContext);
-            }
-        }
-
-        #endregion
-
-        #region ½ÇÉ«×´Ì¬¹ÜÀí
-
-        /// <summary>
-        /// Íæ¼Ò¹¥»÷µĞÈË
-        /// </summary>
-        public void PlayerAttackEnemy(Player character, Enemy enemy, Party? party)
-        {
-            _combatEngine.PlayerAttackEnemy(character, enemy, party);
-        }
-
-        /// <summary>
-        /// µĞÈË¹¥»÷Íæ¼Ò
-        /// </summary>
-        public void EnemyAttackPlayer(Enemy enemy, Player character)
-        {
-            _combatEngine.EnemyAttackPlayer(enemy, character);
-        }
-
-        /// <summary>
-        /// ´¦Àí½ÇÉ«ËÀÍö
-        /// </summary>
-        public void HandleCharacterDeath(Player character)
-        {
-            var battle = _battleManager.GetBattleContextForPlayer(character.Id);
-            _characterCombatService.HandleCharacterDeath(character, battle);
-            OnStateChanged?.Invoke();
-        }
-
-        /// <summary>
-        /// ½ÇÉ«¸´»î
-        /// </summary>
-        public void ReviveCharacter(Player character)
-        {
-            _characterCombatService.ReviveCharacter(character);
-            OnStateChanged?.Invoke();
-        }
-
-
-        /// <summary>
-        /// È¡ÏûÍæ¼ÒµÄÕ½¶·Ë¢ĞÂ×´Ì¬
-        /// </summary>
-        public void CancelPlayerBattleRefresh(string playerId)
-        {
-            _battleFlowService.CancelPlayerBattleRefresh(playerId);
-        }
-        /// <summary>
-        /// Îª½ÇÉ«Éú³ÉĞÂµÄµĞÈËÊµÀı£¨ÒÑ·ÏÆú£©
-        /// </summary>
-        [Obsolete("ĞÂÕ½¶·ÏµÍ³»á×Ô¶¯´¦ÀíµĞÈËÉú³É")]
-        public void SpawnNewEnemyForCharacter(Player character, Enemy enemyTemplate)
-        {
-            // ²»ÔÙĞèÒª
-            return;
-        }
-
-        #endregion
-
-        #region ¼¼ÄÜÏµÍ³
-
-        /// <summary>
-        /// Ó¦ÓÃ½ÇÉ«¼¼ÄÜĞ§¹û
-        /// </summary>
-        public void ApplyCharacterSkills(Player character, Enemy enemy)
-        {
-            _skillSystem.ApplyCharacterSkills(character, enemy);
-        }
-
-        /// <summary>
-        /// Ó¦ÓÃµĞÈË¼¼ÄÜĞ§¹û
-        /// </summary>
-        public void ApplyEnemySkills(Enemy enemy, Player character)
-        {
-            _skillSystem.ApplyEnemySkills(enemy, character);
-        }
-
-        /// <summary>
-        /// ×°±¸¼¼ÄÜ
-        /// </summary>
-        public void EquipSkill(Player character, string skillId, int maxEquippedSkills)
-        {
-            if (_skillSystem.EquipSkill(character, skillId, maxEquippedSkills))
-            {
-                OnStateChanged?.Invoke();
-            }
-        }
-
-        /// <summary>
-        /// Ğ¶ÏÂ¼¼ÄÜ
-        /// </summary>
-        public void UnequipSkill(Player character, string skillId)
-        {
-            if (_skillSystem.UnequipSkill(character, skillId))
-            {
-                OnStateChanged?.Invoke();
-            }
-        }
-
-        /// <summary>
-        /// ¼ì²éÊÇ·ñÓĞĞÂ¼¼ÄÜ½âËø
-        /// </summary>
-        public void CheckForNewSkillUnlocks(Player character, BattleProfession profession, int level, bool checkAllLevels = false)
-        {
-            _skillSystem.CheckForNewSkillUnlocks(character, profession, level, checkAllLevels);
-            OnStateChanged?.Invoke();
-        }
-
-        /// <summary>
-        /// ÖØÖÃÍæ¼Ò¼¼ÄÜÀäÈ´
-        /// </summary>
-        public void ResetPlayerSkillCooldowns(Player character)
-        {
-            _skillSystem.ResetPlayerSkillCooldowns(character);
-        }
-
-        /// <summary>
-        /// ÉèÖÃÕ½¶·Ö°Òµ
-        /// </summary>
-        public void SetBattleProfession(Player character, BattleProfession profession)
-        {
-            _characterCombatService.SetBattleProfession(character, profession);
-            OnStateChanged?.Invoke();
-        }
-
-        #endregion
-
-        #region ¸¨Öú·½·¨
-
-        /// <summary>
-        /// ÉèÖÃËùÓĞ½ÇÉ«ÁĞ±í£¨ÓÃÓÚ¸üĞÂÄÚ²¿×´Ì¬£©
+        /// ä¸ºå…¼å®¹æ€§ä¿ç•™çš„æ–¹æ³•ï¼Œè®¾ç½®è§’è‰²åˆ—è¡¨å¼•ç”¨
         /// </summary>
         public void SetAllCharacters(List<Player> characters)
         {
-            if (characters == null)
-                throw new ArgumentNullException(nameof(characters));
+            // ä¿ç•™æ–¹æ³•ç­¾åä»¥é¿å…ç¼–è¯‘é”™è¯¯
+        }
 
-            // ¸üĞÂËùÓĞ×Ó·şÎñµÄ½ÇÉ«ÁĞ±í
-            var allCharactersField = typeof(BattleFlowService).GetField("_allCharacters",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            allCharactersField?.SetValue(_battleFlowService, characters);
+        /// <summary>
+        /// æ™ºèƒ½å¼€å§‹æˆ˜æ–— - æœ¬åœ°å®ç°å·²ç§»é™¤
+        /// </summary>
+        [Obsolete("æœ¬åœ°æˆ˜æ–—ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
+        public bool SmartStartBattle(Player character, Enemy enemyTemplate, Party? party = null, bool ignoreRefreshCheck = false)
+        {
+            // æœ¬åœ°æˆ˜æ–—ç³»ç»Ÿå·²ç§»é™¤
+            return false;
+        }
 
-            var lootAllCharactersField = typeof(LootService).GetField("_allCharacters",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            lootAllCharactersField?.SetValue(_lootService, characters);
+        /// <summary>
+        /// å¼€å§‹å‰¯æœ¬æˆ˜æ–— - æœ¬åœ°å®ç°å·²ç§»é™¤
+        /// </summary>
+        [Obsolete("æœ¬åœ°æˆ˜æ–—ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
+        public bool StartDungeon(Party party, string dungeonId)
+        {
+            // æœ¬åœ°æˆ˜æ–—ç³»ç»Ÿå·²ç§»é™¤
+            return false;
+        }
 
-            var battleAllCharactersField = typeof(BattleManager).GetField("_allCharacters",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            battleAllCharactersField?.SetValue(_battleManager, characters);
+        /// <summary>
+        /// è£…å¤‡æŠ€èƒ½ - æœ¬åœ°å®ç°å·²ç§»é™¤
+        /// </summary>
+        [Obsolete("æœ¬åœ°æˆ˜æ–—ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
+        public void EquipSkill(Player? character, string skillId, int maxEquippedSkills)
+        {
+            // æœ¬åœ°æˆ˜æ–—ç³»ç»Ÿå·²ç§»é™¤
+        }
+
+        /// <summary>
+        /// å¸ä¸‹æŠ€èƒ½ - æœ¬åœ°å®ç°å·²ç§»é™¤
+        /// </summary>
+        [Obsolete("æœ¬åœ°æˆ˜æ–—ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
+        public void UnequipSkill(Player? character, string skillId)
+        {
+            // æœ¬åœ°æˆ˜æ–—ç³»ç»Ÿå·²ç§»é™¤
+        }
+
+        /// <summary>
+        /// å¤æ´»è§’è‰² - æœ¬åœ°å®ç°å·²ç§»é™¤
+        /// </summary>
+        [Obsolete("æœ¬åœ°æˆ˜æ–—ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
+        public void ReviveCharacter(Player character)
+        {
+            // æœ¬åœ°æˆ˜æ–—ç³»ç»Ÿå·²ç§»é™¤
+        }
+
+        /// <summary>
+        /// é€šçŸ¥çŠ¶æ€å˜æ›´
+        /// </summary>
+        private void NotifyStateChanged()
+        {
+            OnStateChanged?.Invoke();
         }
 
         #endregion
+
+        // æ‰€æœ‰å…¶ä»–æœ¬åœ°æˆ˜æ–—é€»è¾‘å·²ç§»é™¤
+        // å¦‚éœ€æˆ˜æ–—åŠŸèƒ½ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨APIï¼š
+        // - GameApiService.StartBattleAsync()
+        // - GameApiService.GetBattleStateAsync()
+        // - GameApiService.StopBattleAsync()
+        // - ClientGameStateService.StartBattleAsync()
     }
 }
