@@ -4,11 +4,15 @@ using BlazorWebGame.Server.Security;
 using BlazorWebGame.Server.Middleware;
 using BlazorWebGame.Server;
 using BlazorWebGame.Server.Configuration;
+using BlazorWebGame.Server.Data;
 using BlazorWebGame.Shared.Models;
+using BlazorWebGame.Shared.Interfaces;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
 using System.Text;
 using Serilog;
 using Microsoft.Extensions.Options;
@@ -45,7 +49,53 @@ builder.Host.UseSerilog();
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Title = "BlazorWebGame 数据存储服务 API",
+        Version = "v1.0.0",
+        Description = "BlazorWebGame 项目的数据存储服务API，支持玩家数据、队伍管理、战斗记录等功能",
+        Contact = new Microsoft.OpenApi.Models.OpenApiContact
+        {
+            Name = "BlazorWebGame Team",
+            Email = "support@blazorwebgame.com"
+        }
+    });
+
+    // 添加 JWT 认证到 Swagger
+    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
+        Name = "Authorization",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+
+    // 包含 XML 注释文件（如果存在）
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        c.IncludeXmlComments(xmlPath);
+    }
+});
 
 // 添加 SignalR
 builder.Services.AddSignalR();
@@ -164,8 +214,25 @@ builder.Services.AddSingleton<UnifiedEventService>();
 // 注册服务定位器（单例模式）
 builder.Services.AddSingleton<ServerServiceLocator>();
 
-// 注册数据存储服务
-builder.Services.AddSingleton<BlazorWebGame.Shared.Interfaces.IDataStorageService, DataStorageService>();
+// 配置数据库 - SQLite
+builder.Services.AddDbContext<GameDbContext>(options =>
+{
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    options.UseSqlite(connectionString);
+});
+
+// 注册数据存储服务 - 根据配置选择实现
+var dataStorageType = builder.Configuration.GetSection(GameServerOptions.SectionName).Get<GameServerOptions>()?.DataStorageType;
+if (dataStorageType?.ToLower() == "sqlite")
+{
+    builder.Services.AddScoped<IDataStorageService, SqliteDataStorageService>();
+}
+else
+{
+    // 默认使用内存存储
+    builder.Services.AddSingleton<IDataStorageService, DataStorageService>();
+}
+
 builder.Services.AddSingleton<DataStorageIntegrationService>();
 
 // 注册离线结算服务
@@ -226,6 +293,29 @@ builder.Services.AddHostedService<ServerOptimizationService>();
 
 var app = builder.Build();
 
+// 初始化数据库（如果使用SQLite）
+if (dataStorageType?.ToLower() == "sqlite")
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var context = scope.ServiceProvider.GetRequiredService<GameDbContext>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        
+        try
+        {
+            await DatabaseMigrationHelper.InitializeDatabaseAsync(context, logger);
+            
+            // 记录数据库统计信息
+            var stats = await DatabaseMigrationHelper.GetDatabaseStatsAsync(context, logger);
+            logger.LogInformation("Database initialization completed. Stats: {@Stats}", stats);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to initialize SQLite database");
+        }
+    }
+}
+
 // 初始化服务定位器
 ServerServiceLocator.Initialize(app.Services);
 
@@ -266,6 +356,22 @@ if (app.Environment.IsDevelopment())
         catch (Exception ex)
         {
             logger.LogError(ex, "Unified event system test failed");
+        }
+
+        // 运行SQLite数据存储测试（如果启用了SQLite）
+        if (dataStorageType?.ToLower() == "sqlite")
+        {
+            try
+            {
+                await BlazorWebGame.Server.Tests.SqliteDataStorageServiceTests.RunBasicTests(app.Services, logger);
+                
+                // 清理测试数据
+                await BlazorWebGame.Server.Tests.SqliteDataStorageServiceTests.CleanupTestData(app.Services, logger);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "SQLite data storage test failed");
+            }
         }
     }
     else
