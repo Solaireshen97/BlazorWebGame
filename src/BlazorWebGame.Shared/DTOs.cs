@@ -16,6 +16,77 @@ public class ApiResponse<T>
 }
 
 /// <summary>
+/// 服务操作结果包装器
+/// </summary>
+/// <typeparam name="T">数据类型</typeparam>
+public class ServiceResult<T>
+{
+    /// <summary>
+    /// 操作是否成功
+    /// </summary>
+    public bool Success { get; set; }
+
+    /// <summary>
+    /// 返回的数据
+    /// </summary>
+    public T? Data { get; set; }
+
+    /// <summary>
+    /// 错误或信息消息
+    /// </summary>
+    public string? Message { get; set; }
+
+    /// <summary>
+    /// 错误代码
+    /// </summary>
+    public string? ErrorCode { get; set; }
+
+    /// <summary>
+    /// 时间戳
+    /// </summary>
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// 创建成功结果
+    /// </summary>
+    public static ServiceResult<T> Success(T data, string? message = null)
+    {
+        return new ServiceResult<T>
+        {
+            Success = true,
+            Data = data,
+            Message = message
+        };
+    }
+
+    /// <summary>
+    /// 创建失败结果
+    /// </summary>
+    public static ServiceResult<T> Failure(string message, string? errorCode = null)
+    {
+        return new ServiceResult<T>
+        {
+            Success = false,
+            Message = message,
+            ErrorCode = errorCode
+        };
+    }
+
+    /// <summary>
+    /// 创建失败结果（带异常信息）
+    /// </summary>
+    public static ServiceResult<T> Failure(Exception exception)
+    {
+        return new ServiceResult<T>
+        {
+            Success = false,
+            Message = exception.Message,
+            ErrorCode = exception.GetType().Name
+        };
+    }
+}
+
+/// <summary>
 /// 战斗状态传输对象
 /// </summary>
 public class BattleStateDto

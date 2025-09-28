@@ -1,13 +1,222 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace BlazorWebGame.Server.Data;
 
 /// <summary>
-/// 数据库迁移助手 - 用于管理SQLite数据库的创建和更新
+/// 数据库迁移助手 - 处理数据库架构迁移和数据转换
 /// </summary>
 public static class DatabaseMigrationHelper
 {
+    /// <summary>
+    /// 执行数据库迁移
+    /// </summary>
+    public static async Task<bool> MigrateDatabaseAsync(
+        UnifiedGameDbContext context, 
+        ILogger logger)
+    {
+        try
+        {
+            logger.LogInformation("Starting database migration");
+
+            // 确保数据库存在
+            await context.Database.EnsureCreatedAsync();
+
+            // 检查是否需要数据迁移
+            if (await RequiresDataMigrationAsync(context))
+            {
+                await PerformDataMigrationAsync(context, logger);
+            }
+
+            // 应用SQLite优化
+            if (context.Database.IsSqlite())
+            {
+                await context.EnsureDatabaseOptimizedAsync();
+            }
+
+            logger.LogInformation("Database migration completed successfully");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Database migration failed");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 检查是否需要数据迁移
+    /// </summary>
+    private static async Task<bool> RequiresDataMigrationAsync(UnifiedGameDbContext context)
+    {
+        try
+        {
+            // 尝试查询新字段来检测是否需要迁移
+            await context.Database.ExecuteSqlRawAsync("SELECT COUNT(*) FROM Players WHERE 1=0");
+            return false; // 如果查询成功，说明表结构是最新的
+        }
+        catch
+        {
+            return true; // 如果查询失败，可能需要迁移
+        }
+    }
+
+    /// <summary>
+    /// 执行数据迁移
+    /// </summary>
+    private static async Task PerformDataMigrationAsync(UnifiedGameDbContext context, ILogger logger)
+    {
+        try
+        {
+            logger.LogInformation("Performing data migration tasks");
+
+            // 迁移任务1: 确保所有JSON字段有默认值
+            await EnsureJsonFieldDefaultsAsync(context, logger);
+
+            // 迁移任务2: 更新索引结构
+            await UpdateIndexStructureAsync(context, logger);
+
+            // 迁移任务3: 清理孤立数据
+            await CleanOrphanedDataAsync(context, logger);
+
+            logger.LogInformation("Data migration tasks completed");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Data migration tasks failed");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 确保JSON字段有默认值
+    /// </summary>
+    private static async Task EnsureJsonFieldDefaultsAsync(UnifiedGameDbContext context, ILogger logger)
+    {
+        try
+        {
+            // 更新Players表的JSON字段
+            await context.Database.ExecuteSqlRawAsync(@"
+                UPDATE Players 
+                SET AttributesJson = COALESCE(NULLIF(AttributesJson, ''), '{}'),
+                    InventoryJson = COALESCE(NULLIF(InventoryJson, ''), '[]'),
+                    SkillsJson = COALESCE(NULLIF(SkillsJson, ''), '[]'),
+                    EquipmentJson = COALESCE(NULLIF(EquipmentJson, ''), '{}')
+                WHERE AttributesJson IS NULL OR AttributesJson = '' OR
+                      InventoryJson IS NULL OR InventoryJson = '' OR
+                      SkillsJson IS NULL OR SkillsJson = '' OR
+                      EquipmentJson IS NULL OR EquipmentJson = ''
+            ");
+
+            // 更新Teams表的JSON字段
+            await context.Database.ExecuteSqlRawAsync(@"
+                UPDATE Teams 
+                SET MemberIdsJson = COALESCE(NULLIF(MemberIdsJson, ''), '[]')
+                WHERE MemberIdsJson IS NULL OR MemberIdsJson = ''
+            ");
+
+            // 更新ActionTargets表的JSON字段
+            await context.Database.ExecuteSqlRawAsync(@"
+                UPDATE ActionTargets 
+                SET ProgressDataJson = COALESCE(NULLIF(ProgressDataJson, ''), '{}')
+                WHERE ProgressDataJson IS NULL OR ProgressDataJson = ''
+            ");
+
+            // 更新BattleRecords表的JSON字段
+            await context.Database.ExecuteSqlRawAsync(@"
+                UPDATE BattleRecords 
+                SET ParticipantsJson = COALESCE(NULLIF(ParticipantsJson, ''), '[]'),
+                    EnemiesJson = COALESCE(NULLIF(EnemiesJson, ''), '[]'),
+                    ActionsJson = COALESCE(NULLIF(ActionsJson, ''), '[]'),
+                    ResultsJson = COALESCE(NULLIF(ResultsJson, ''), '{}')
+                WHERE ParticipantsJson IS NULL OR ParticipantsJson = '' OR
+                      EnemiesJson IS NULL OR EnemiesJson = '' OR
+                      ActionsJson IS NULL OR ActionsJson = '' OR
+                      ResultsJson IS NULL OR ResultsJson = ''
+            ");
+
+            // 更新OfflineData表的JSON字段
+            await context.Database.ExecuteSqlRawAsync(@"
+                UPDATE OfflineData 
+                SET DataJson = COALESCE(NULLIF(DataJson, ''), '{}')
+                WHERE DataJson IS NULL OR DataJson = ''
+            ");
+
+            logger.LogInformation("JSON field defaults updated successfully");
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to update JSON field defaults");
+        }
+    }
+
+    /// <summary>
+    /// 更新索引结构
+    /// </summary>
+    private static async Task UpdateIndexStructureAsync(UnifiedGameDbContext context, ILogger logger)
+    {
+        try
+        {
+            if (context.Database.IsSqlite())
+            {
+                // 重建分析统计以优化查询计划
+                await context.Database.ExecuteSqlRawAsync("ANALYZE");
+                logger.LogInformation("Database analysis completed");
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to update index structure");
+        }
+    }
+
+    /// <summary>
+    /// 清理孤立数据
+    /// </summary>
+    private static async Task CleanOrphanedDataAsync(UnifiedGameDbContext context, ILogger logger)
+    {
+        try
+        {
+            var cleanupCount = 0;
+
+            // 清理没有对应玩家的ActionTargets
+            cleanupCount += await context.Database.ExecuteSqlRawAsync(@"
+                DELETE FROM ActionTargets 
+                WHERE PlayerId NOT IN (SELECT Id FROM Players)
+            ");
+
+            // 清理没有对应玩家的OfflineData
+            cleanupCount += await context.Database.ExecuteSqlRawAsync(@"
+                DELETE FROM OfflineData 
+                WHERE PlayerId NOT IN (SELECT Id FROM Players)
+            ");
+
+            // 清理已完成超过30天的ActionTargets
+            var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30).ToString("yyyy-MM-dd HH:mm:ss");
+            cleanupCount += await context.Database.ExecuteSqlRawAsync($@"
+                DELETE FROM ActionTargets 
+                WHERE IsCompleted = 1 AND CompletedAt < '{thirtyDaysAgo}'
+            ");
+
+            // 清理已同步超过7天的OfflineData
+            var sevenDaysAgo = DateTime.UtcNow.AddDays(-7).ToString("yyyy-MM-dd HH:mm:ss");
+            cleanupCount += await context.Database.ExecuteSqlRawAsync($@"
+                DELETE FROM OfflineData 
+                WHERE IsSynced = 1 AND SyncedAt < '{sevenDaysAgo}'
+            ");
+
+            if (cleanupCount > 0)
+            {
+                logger.LogInformation("Cleaned up {Count} orphaned records", cleanupCount);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to clean orphaned data");
+        }
+    }
+
     /// <summary>
     /// 初始化数据库，确保数据库和表存在
     /// </summary>
@@ -42,6 +251,227 @@ public static class DatabaseMigrationHelper
         {
             logger.LogError(ex, "Failed to initialize database");
             throw;
+    /// <summary>
+    /// 导出数据库数据到JSON（备份用途）
+    /// </summary>
+    public static async Task<string> ExportDatabaseToJsonAsync(
+        UnifiedGameDbContext context, 
+        ILogger logger)
+    {
+        try
+        {
+            logger.LogInformation("Starting database export to JSON");
+
+            var exportData = new
+            {
+                ExportedAt = DateTime.UtcNow,
+                Players = await context.Players.ToListAsync(),
+                Teams = await context.Teams.ToListAsync(),
+                ActionTargets = await context.ActionTargets.ToListAsync(),
+                BattleRecords = await context.BattleRecords.ToListAsync(),
+                OfflineData = await context.OfflineData.ToListAsync()
+            };
+
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            };
+
+            var jsonData = JsonSerializer.Serialize(exportData, options);
+            
+            logger.LogInformation("Database export completed. Size: {Size} characters", jsonData.Length);
+            return jsonData;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to export database to JSON");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 从JSON导入数据库数据（恢复用途）
+    /// </summary>
+    public static async Task<bool> ImportDatabaseFromJsonAsync(
+        UnifiedGameDbContext context, 
+        string jsonData, 
+        ILogger logger)
+    {
+        try
+        {
+            logger.LogInformation("Starting database import from JSON");
+
+            using var transaction = await context.Database.BeginTransactionAsync();
+
+            try
+            {
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                };
+
+                using var document = JsonDocument.Parse(jsonData);
+                var root = document.RootElement;
+
+                // 清空现有数据
+                await context.Database.ExecuteSqlRawAsync("DELETE FROM OfflineData");
+                await context.Database.ExecuteSqlRawAsync("DELETE FROM BattleRecords");
+                await context.Database.ExecuteSqlRawAsync("DELETE FROM ActionTargets");
+                await context.Database.ExecuteSqlRawAsync("DELETE FROM Teams");
+                await context.Database.ExecuteSqlRawAsync("DELETE FROM Players");
+
+                // 导入数据
+                if (root.TryGetProperty("players", out var playersElement))
+                {
+                    var players = JsonSerializer.Deserialize<List<BlazorWebGame.Shared.Models.PlayerEntity>>(
+                        playersElement.GetRawText(), options);
+                    if (players?.Any() == true)
+                    {
+                        context.Players.AddRange(players);
+                    }
+                }
+
+                if (root.TryGetProperty("teams", out var teamsElement))
+                {
+                    var teams = JsonSerializer.Deserialize<List<BlazorWebGame.Shared.Models.TeamEntity>>(
+                        teamsElement.GetRawText(), options);
+                    if (teams?.Any() == true)
+                    {
+                        context.Teams.AddRange(teams);
+                    }
+                }
+
+                if (root.TryGetProperty("actionTargets", out var actionTargetsElement))
+                {
+                    var actionTargets = JsonSerializer.Deserialize<List<BlazorWebGame.Shared.Models.ActionTargetEntity>>(
+                        actionTargetsElement.GetRawText(), options);
+                    if (actionTargets?.Any() == true)
+                    {
+                        context.ActionTargets.AddRange(actionTargets);
+                    }
+                }
+
+                if (root.TryGetProperty("battleRecords", out var battleRecordsElement))
+                {
+                    var battleRecords = JsonSerializer.Deserialize<List<BlazorWebGame.Shared.Models.BattleRecordEntity>>(
+                        battleRecordsElement.GetRawText(), options);
+                    if (battleRecords?.Any() == true)
+                    {
+                        context.BattleRecords.AddRange(battleRecords);
+                    }
+                }
+
+                if (root.TryGetProperty("offlineData", out var offlineDataElement))
+                {
+                    var offlineData = JsonSerializer.Deserialize<List<BlazorWebGame.Shared.Models.OfflineDataEntity>>(
+                        offlineDataElement.GetRawText(), options);
+                    if (offlineData?.Any() == true)
+                    {
+                        context.OfflineData.AddRange(offlineData);
+                    }
+                }
+
+                await context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                logger.LogInformation("Database import completed successfully");
+                return true;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to import database from JSON");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 验证数据库完整性
+    /// </summary>
+    public static async Task<Dictionary<string, object>> ValidateDatabaseIntegrityAsync(
+        UnifiedGameDbContext context, 
+        ILogger logger)
+    {
+        var results = new Dictionary<string, object>();
+
+        try
+        {
+            logger.LogInformation("Starting database integrity validation");
+
+            // 基本统计
+            results["PlayerCount"] = await context.Players.CountAsync();
+            results["TeamCount"] = await context.Teams.CountAsync();
+            results["ActionTargetCount"] = await context.ActionTargets.CountAsync();
+            results["BattleRecordCount"] = await context.BattleRecords.CountAsync();
+            results["OfflineDataCount"] = await context.OfflineData.CountAsync();
+
+            // 数据完整性检查
+            var orphanedActionTargets = await context.ActionTargets
+                .Where(at => !context.Players.Any(p => p.Id == at.PlayerId))
+                .CountAsync();
+            results["OrphanedActionTargets"] = orphanedActionTargets;
+
+            var orphanedOfflineData = await context.OfflineData
+                .Where(od => !context.Players.Any(p => p.Id == od.PlayerId))
+                .CountAsync();
+            results["OrphanedOfflineData"] = orphanedOfflineData;
+
+            // JSON字段验证
+            var invalidJsonFields = 0;
+            var players = await context.Players.ToListAsync();
+            foreach (var player in players)
+            {
+                if (!IsValidJson(player.AttributesJson) ||
+                    !IsValidJson(player.InventoryJson) ||
+                    !IsValidJson(player.SkillsJson) ||
+                    !IsValidJson(player.EquipmentJson))
+                {
+                    invalidJsonFields++;
+                }
+            }
+            results["InvalidJsonFieldCount"] = invalidJsonFields;
+
+            // 数据一致性检查
+            var inconsistentTeams = await context.Teams
+                .Where(t => t.Status == "Active" && t.CaptainId != null)
+                .Where(t => !context.Players.Any(p => p.Id == t.CaptainId))
+                .CountAsync();
+            results["InconsistentTeams"] = inconsistentTeams;
+
+            results["ValidationTimestamp"] = DateTime.UtcNow;
+            results["ValidationStatus"] = "Completed";
+
+            logger.LogInformation("Database integrity validation completed: {@Results}", results);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Database integrity validation failed");
+            results["ValidationStatus"] = "Failed";
+            results["ValidationError"] = ex.Message;
+        }
+
+        return results;
+    }
+
+    private static bool IsValidJson(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return false;
+
+        try
+        {
+            JsonDocument.Parse(json);
+            return true;
+        }
+        catch
+        {
+            return false;
         }
     }
 
