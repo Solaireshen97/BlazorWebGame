@@ -1,0 +1,67 @@
+﻿@page "/"
+@using BlazorIdleGame.Client.Models.Core
+@using BlazorIdleGame.Client.Services.Core
+@inject IGameSyncService GameSync
+
+<PageTitle>BlazorIdleGame</PageTitle>
+
+<div class="game-container">
+    @if (!_isLoaded)
+    {
+        <div class="loading-screen">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">加载中...</span>
+            </div>
+            <p>正在连接服务器...</p>
+        </div>
+    }
+    else
+    {
+        <div class="game-layout">
+            <div class="top-bar">
+                <div class="player-info">
+                    <h3>@_playerInfo.Name</h3>
+                    <span>等级: @_playerInfo.Level</span>
+                </div>
+
+                <div class="resources">
+                    <span>金币: @_resources.Gold</span>
+                    <span>木材: @_resources.Wood</span>
+                    <span>石头: @_resources.Stone</span>
+                </div>
+            </div>
+
+            <div class="main-content">
+                <h4>游戏主界面</h4>
+                <p>活动系统开发中...</p>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool _isLoaded = false;
+    private PlayerInfo _playerInfo = new();
+    private Resources _resources = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // 模拟加载数据
+        //await Task.Delay(1000);
+        await GameSync.InitializeAsync();
+        // 临时使用假数据
+        _playerInfo = new PlayerInfo
+        {
+            Name = "测试玩家",
+            Level = 1
+        };
+        _resources = new Resources
+        {
+            Gold = 100,
+            Wood = 50,
+            Stone = 30
+        };
+
+        _isLoaded = true;
+    }
+}
