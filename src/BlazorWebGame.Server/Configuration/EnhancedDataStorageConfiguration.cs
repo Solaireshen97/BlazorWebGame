@@ -7,6 +7,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using BlazorWebGame.Server.Data;
 using BlazorWebGame.Server.Services;
 using BlazorWebGame.Shared.Interfaces;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace BlazorWebGame.Server.Configuration;
 
