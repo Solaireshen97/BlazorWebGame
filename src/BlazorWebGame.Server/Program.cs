@@ -215,8 +215,8 @@ builder.Services.AddSingleton<UnifiedEventService>();
 // 注册服务定位器（单例模式）
 builder.Services.AddSingleton<ServerServiceLocator>();
 
-// 配置优化的数据存储系统
-builder.Services.AddOptimizedDataStorage(builder.Configuration, builder.Environment);
+// 配置统一的数据存储系统
+builder.Services.AddUnifiedDataStorage(builder.Configuration, builder.Environment);
 
 // 注册离线结算服务
 builder.Services.AddSingleton<OfflineSettlementService>();
@@ -276,21 +276,21 @@ builder.Services.AddHostedService<ServerOptimizationService>();
 
 var app = builder.Build();
 
-// 初始化数据库（如果使用SQLite）
-var dataStorageOptions = builder.Configuration.GetSection(DataStorageOptions.SectionName)
-    .Get<DataStorageOptions>() ?? new DataStorageOptions();
+// 初始化统一数据存储系统
+var unifiedStorageOptions = builder.Configuration.GetSection(UnifiedDataStorageConfiguration.UnifiedDataStorageOptions.SectionName)
+    .Get<UnifiedDataStorageConfiguration.UnifiedDataStorageOptions>() ?? new UnifiedDataStorageConfiguration.UnifiedDataStorageOptions();
 
-if (dataStorageOptions.StorageType.ToLower() is "sqlite" or "optimized")
+if (unifiedStorageOptions.StorageType.ToLower() is "sqlite" or "postgresql" or "sqlserver")
 {
     var logger = app.Services.GetRequiredService<ILogger<Program>>();
     
     try
     {
-        await app.Services.InitializeDataStorageAsync(logger);
+        await app.Services.InitializeUnifiedDataStorageAsync(logger);
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "Failed to initialize data storage system");
+        logger.LogError(ex, "Failed to initialize unified data storage system");
     }
 }
 

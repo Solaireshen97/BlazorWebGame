@@ -98,7 +98,7 @@ public class OfflineDataEntity : BaseEntity
     public string PlayerId { get; set; } = string.Empty;
     public string DataType { get; set; } = string.Empty; // PlayerProgress, BattleState, TeamState
     public string DataJson { get; set; } = "{}";
-    public DateTime SyncedAt { get; set; } = DateTime.MinValue;
     public bool IsSynced { get; set; } = false;
+    public DateTime? SyncedAt { get; set; }
     public int Version { get; set; } = 1;
 }
