@@ -196,7 +196,8 @@ builder.Services.AddSingleton<ServerOptimizationService>();
 
 // 添加健康检查
 builder.Services.AddHealthChecks()
-    .AddCheck<GameHealthCheckService>("game-health");
+    .AddCheck<GameHealthCheckService>("game-health")
+    .AddCheck<DataStorageHealthCheck>("data-storage");
 
 // 注册安全服务
 builder.Services.AddSingleton<GameAuthenticationService>();
@@ -214,29 +215,8 @@ builder.Services.AddSingleton<UnifiedEventService>();
 // 注册服务定位器（单例模式）
 builder.Services.AddSingleton<ServerServiceLocator>();
 
-// 配置数据库 - SQLite
-builder.Services.AddDbContext<GameDbContext>(options =>
-{
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    options.UseSqlite(connectionString);
-});
-
-// 注册数据存储服务 - 根据配置选择实现
-var dataStorageType = builder.Configuration.GetSection(GameServerOptions.SectionName).Get<GameServerOptions>()?.DataStorageType;
-if (dataStorageType?.ToLower() == "sqlite")
-{
-    // 对于SQLite，我们暂时回退到内存存储以避免DI复杂性
-    // 在生产环境中需要重构相关服务的生命周期
-    builder.Services.AddSingleton<IDataStorageService, DataStorageService>();
-    // 注释：SQLite集成已实现，但需要重构现有服务架构以支持EF Core的Scoped生命周期
-}
-else
-{
-    // 默认使用内存存储
-    builder.Services.AddSingleton<IDataStorageService, DataStorageService>();
-}
-
-builder.Services.AddSingleton<DataStorageIntegrationService>();
+// 配置优化的数据存储系统
+builder.Services.AddOptimizedDataStorage(builder.Configuration, builder.Environment);
 
 // 注册离线结算服务
 builder.Services.AddSingleton<OfflineSettlementService>();
@@ -297,25 +277,20 @@ builder.Services.AddHostedService<ServerOptimizationService>();
 var app = builder.Build();
 
 // 初始化数据库（如果使用SQLite）
-if (dataStorageType?.ToLower() == "sqlite")
+var dataStorageOptions = builder.Configuration.GetSection(DataStorageOptions.SectionName)
+    .Get<DataStorageOptions>() ?? new DataStorageOptions();
+
+if (dataStorageOptions.StorageType.ToLower() is "sqlite" or "optimized")
 {
-    using (var scope = app.Services.CreateScope())
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    
+    try
     {
-        var context = scope.ServiceProvider.GetRequiredService<GameDbContext>();
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        
-        try
-        {
-            await DatabaseMigrationHelper.InitializeDatabaseAsync(context, logger);
-            
-            // 记录数据库统计信息
-            var stats = await DatabaseMigrationHelper.GetDatabaseStatsAsync(context, logger);
-            logger.LogInformation("Database initialization completed. Stats: {@Stats}", stats);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to initialize SQLite database");
-        }
+        await app.Services.InitializeDataStorageAsync(logger);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Failed to initialize data storage system");
     }
 }
 
@@ -362,7 +337,7 @@ if (app.Environment.IsDevelopment())
         }
 
         // 运行SQLite数据存储测试（如果启用了SQLite）
-        if (dataStorageType?.ToLower() == "sqlite")
+        if (dataStorageOptions.StorageType.ToLower() is "sqlite" or "optimized")
         {
             try
             {
