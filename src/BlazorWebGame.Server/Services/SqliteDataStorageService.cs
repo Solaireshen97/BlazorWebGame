@@ -14,6 +14,7 @@ namespace BlazorWebGame.Server.Services;
 
 /// <summary>
 /// SQLite数据存储服务实现 - 使用Entity Framework Core
+/// 注意：此实现需要Scoped生命周期，当前项目架构使用Singleton服务，需要架构重构才能完全启用
 /// </summary>
 public class SqliteDataStorageService : IDataStorageService
 {
