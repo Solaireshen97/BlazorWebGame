@@ -331,11 +331,4 @@ namespace BlazorIdleGame.Client.Services.Core
         public DateTime ClientTime { get; set; }
     }
 
-    // API响应模型
-    public class ApiResponse<T>
-    {
-        public bool Success { get; set; }
-        public string Message { get; set; } = "";
-        public T? Data { get; set; }
-    }
 }

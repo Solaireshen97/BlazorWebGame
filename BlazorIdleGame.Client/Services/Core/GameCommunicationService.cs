@@ -1,4 +1,5 @@
 ﻿using System.Net.Http.Json;
+using System.Net.Http.Headers;
 
 namespace BlazorIdleGame.Client.Services.Core
 {
@@ -7,6 +8,8 @@ namespace BlazorIdleGame.Client.Services.Core
         Task<T?> GetAsync<T>(string endpoint);
         Task<TResponse?> PostAsync<TRequest, TResponse>(string endpoint, TRequest data);
         Task<bool> PostAsync(string endpoint, object data);
+        void SetAuthToken(string token);
+        void ClearAuthToken();
     }
 
     public class GameCommunicationService : IGameCommunicationService
@@ -18,6 +21,16 @@ namespace BlazorIdleGame.Client.Services.Core
         {
             _http = http;
             _logger = logger;
+        }
+
+        public void SetAuthToken(string token)
+        {
+            _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+
+        public void ClearAuthToken()
+        {
+            _http.DefaultRequestHeaders.Authorization = null;
         }
 
         public async Task<T?> GetAsync<T>(string endpoint)

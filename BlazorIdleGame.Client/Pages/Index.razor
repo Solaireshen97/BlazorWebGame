@@ -1,12 +1,26 @@
 ﻿@page "/"
 @using BlazorIdleGame.Client.Models.Core
 @using BlazorIdleGame.Client.Services.Core
+@using BlazorIdleGame.Client.Services.Auth
 @inject IGameSyncService GameSync
+@inject IAuthService AuthService
+@inject NavigationManager NavigationManager
 
 <PageTitle>BlazorIdleGame</PageTitle>
 
 <div class="game-container">
-    @if (!_isLoaded)
+    @if (!AuthService.IsAuthenticated)
+    {
+        <div class="welcome-screen">
+            <h2>欢迎来到闲置游戏</h2>
+            <p>请登录或注册以开始游戏</p>
+            <div>
+                <button class="btn btn-primary me-2" @onclick="NavigateToLogin">登录</button>
+                <button class="btn btn-outline-primary" @onclick="NavigateToRegister">注册</button>
+            </div>
+        </div>
+    }
+    else if (!_isLoaded)
     {
         <div class="loading-screen">
             <div class="spinner-border text-primary" role="status">
@@ -46,15 +60,19 @@
 
     protected override async Task OnInitializedAsync()
     {
-        // 模拟加载数据
-        //await Task.Delay(1000);
-        await GameSync.InitializeAsync();
-        // 临时使用假数据
-        _playerInfo = new PlayerInfo
+        // 检查是否已认证
+        if (!AuthService.IsAuthenticated)
         {
-            Name = "测试玩家",
-            Level = 1
-        };
+            return; // 未认证，显示欢迎页面
+        }
+        
+        // 已认证，初始化游戏
+        await GameSync.InitializeAsync();
+        
+        // 使用认证服务中的玩家信息
+        _playerInfo = AuthService.CurrentPlayer;
+        
+        // 临时使用假数据
         _resources = new Resources
         {
             Gold = 100,
@@ -63,5 +81,15 @@
         };
 
         _isLoaded = true;
+    }
+    
+    private void NavigateToLogin()
+    {
+        NavigationManager.NavigateTo("/login");
+    }
+    
+    private void NavigateToRegister()
+    {
+        NavigationManager.NavigateTo("/register");
     }
 }

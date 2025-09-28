@@ -1,0 +1,117 @@
+@page "/register"
+@using BlazorIdleGame.Client.Services.Auth
+@using System.ComponentModel.DataAnnotations
+@inject IAuthService AuthService
+@inject NavigationManager NavigationManager
+
+<div class="login-container">
+    <div class="card">
+        <div class="card-header">
+            <h3>用户注册</h3>
+        </div>
+        <div class="card-body">
+            <EditForm Model="@registerModel" OnValidSubmit="HandleRegister">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="form-group">
+                    <label for="username">用户名</label>
+                    <InputText id="username" class="form-control" @bind-Value="registerModel.Username" />
+                    <small class="form-text text-muted">用户名长度至少3个字符</small>
+                </div>
+
+                <div class="form-group mt-3">
+                    <label for="password">密码</label>
+                    <InputText id="password" type="password" class="form-control" @bind-Value="registerModel.Password" />
+                    <small class="form-text text-muted">密码长度至少6个字符</small>
+                </div>
+
+                <div class="form-group mt-3">
+                    <label for="confirmPassword">确认密码</label>
+                    <InputText id="confirmPassword" type="password" class="form-control" @bind-Value="registerModel.ConfirmPassword" />
+                </div>
+
+                <button type="submit" class="btn btn-primary mt-4" disabled="@isProcessing">
+                    @if (isProcessing)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span> 注册中...</span>
+                    }
+                    else
+                    {
+                        <span>注册</span>
+                    }
+                </button>
+            </EditForm>
+
+            @if (!string.IsNullOrEmpty(message))
+            {
+                <div class="alert @(isSuccess ? "alert-success" : "alert-danger") mt-3">
+                    @message
+                </div>
+            }
+
+            <div class="mt-3">
+                <p>已有账号？ <a href="login">返回登录</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private RegisterModel registerModel = new();
+    private bool isProcessing = false;
+    private string? message;
+    private bool isSuccess = false;
+
+    private async Task HandleRegister()
+    {
+        isProcessing = true;
+        message = null;
+
+        try
+        {
+            var result = await AuthService.RegisterAsync(
+                registerModel.Username,
+                registerModel.Password,
+                registerModel.ConfirmPassword
+            );
+
+            isSuccess = result.Success;
+            message = result.Message;
+
+            if (result.Success)
+            {
+                // 清空表单
+                registerModel = new RegisterModel();
+                // 3秒后跳转到登录页
+                await Task.Delay(3000);
+                NavigationManager.NavigateTo("/login");
+            }
+        }
+        catch (Exception ex)
+        {
+            isSuccess = false;
+            message = $"注册出错: {ex.Message}";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private class RegisterModel
+    {
+        [Required(ErrorMessage = "请输入用户名")]
+        [StringLength(20, MinimumLength = 3, ErrorMessage = "用户名长度必须在3-20个字符之间")]
+        public string Username { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "请输入密码")]
+        [StringLength(50, MinimumLength = 6, ErrorMessage = "密码长度必须至少6个字符")]
+        public string Password { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "请确认密码")]
+        [Compare("Password", ErrorMessage = "两次输入的密码不一致")]
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+}

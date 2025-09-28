@@ -34,6 +34,7 @@ builder.Services.AddFluxor(options => options
 // 注册其他服务
 builder.Services.AddScoped<IGameCommunicationService, GameCommunicationService>();
 builder.Services.AddScoped<IGameSyncService, GameSyncService>();
+builder.Services.AddScoped<LocalStorageService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
 // 设置日志级别（帮助调试）

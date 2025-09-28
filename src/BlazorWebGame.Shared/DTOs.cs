@@ -949,35 +949,6 @@ public class TeamProgressUpdateRequest
     public Dictionary<string, object> ProgressData { get; set; } = new();
 }
 
-// ====== Auth API DTOs ======
-
-/// <summary>
-/// 登录请求DTO
-/// </summary>
-public class LoginRequest
-{
-    public string Username { get; set; } = string.Empty;
-    public string Password { get; set; } = string.Empty;
-}
-
-/// <summary>
-/// 注册请求DTO
-/// </summary>
-public class RegisterRequest
-{
-    public string Username { get; set; } = string.Empty;
-    public string Password { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-}
-
-/// <summary>
-/// 刷新令牌请求DTO
-/// </summary>
-public class RefreshTokenRequest
-{
-    public string RefreshToken { get; set; } = string.Empty;
-}
-
 /// <summary>
 /// 用户信息DTO
 /// </summary>

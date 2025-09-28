@@ -22,4 +22,8 @@
     <Folder Include="Store\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\src\BlazorWebGame.Shared\BlazorWebGame.Shared.csproj" />
+  </ItemGroup>
+
 </Project>
