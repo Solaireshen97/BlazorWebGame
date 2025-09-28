@@ -84,52 +84,91 @@ namespace BlazorIdleGame.Client.Services.Core
 
             try
             {
-                var url = $"api/game/state?v={_state?.Version ?? 0}";
-                if (isInitialSync)
-                    url += "&includeOffline=true";
+                //var url = $"api/game/state?v={_state?.Version ?? 0}";
+                //if (isInitialSync)
+                //    url += "&includeOffline=true";
+                // 使用 api/info 端点替代尚未实现的 api/game/state
+                var url = "api/info";
+                _logger.LogDebug("尝试连接服务器: {Url}", url);
+                // 使用通用响应类型，因为我们只关心连接是否成功
+                var response = await _communication.GetAsync<object>(url);
 
-                var response = await _communication.GetAsync<ApiResponse<GameStateResponse>>(url);
-
-                if (response?.Success == true && response.Data != null)
+                // 连接成功的情况
+                if (response != null)
                 {
-                    var data = response.Data;
-
-                    // 处理离线收益
-                    if (isInitialSync && data.OfflineRewards != null)
-                    {
-                        OfflineRewardsReceived?.Invoke(this, data.OfflineRewards);
-                    }
-
-                    // 更新状态
-                    if (_state == null || _state.Version != data.State.Version)
-                    {
-                        _state = data.State;
-
-                        // 注释掉未实现的功能
-                        // 更新活动队列
-                        // _queueService.UpdateQueues(_state.ActivityQueues);
-
-                        // 更新组队状态
-                        // if (_state.CurrentParty != null)
-                        //     _partyService.UpdatePartyState(_state.CurrentParty);
-
-                        // 调整同步频率
-                        AdjustSyncInterval(_state);
-
-                        StateUpdated?.Invoke(this, _state);
-                    }
-
                     if (!_isConnected)
                     {
                         _isConnected = true;
                         _logger.LogInformation("已连接到服务器");
                     }
+
+                    // 创建一个临时的游戏状态用于测试
+                    if (_state == null)
+                    {
+                        _state = new GameState
+                        {
+                            Player = new PlayerInfo { Name = "测试玩家", Level = 1 },
+                            Resources = new Resources { Gold = 100, Wood = 50, Stone = 30 },
+                            ServerTime = DateTime.UtcNow,
+                            Version = 1
+                        };
+
+                        // 通知状态更新（如果有监听器）
+                        StateUpdated?.Invoke(this, _state);
+                    }
                 }
+
+
+                //var response = await _communication.GetAsync<ApiResponse<GameStateResponse>>(url);
+
+                //if (response?.Success == true && response.Data != null)
+                //{
+                //    var data = response.Data;
+
+                //    // 处理离线收益
+                //    if (isInitialSync && data.OfflineRewards != null)
+                //    {
+                //        OfflineRewardsReceived?.Invoke(this, data.OfflineRewards);
+                //    }
+
+                //    // 更新状态
+                //    if (_state == null || _state.Version != data.State.Version)
+                //    {
+                //        _state = data.State;
+
+                //        // 注释掉未实现的功能
+                //        // 更新活动队列
+                //        // _queueService.UpdateQueues(_state.ActivityQueues);
+
+                //        // 更新组队状态
+                //        // if (_state.CurrentParty != null)
+                //        //     _partyService.UpdatePartyState(_state.CurrentParty);
+
+                //        // 调整同步频率
+                //        AdjustSyncInterval(_state);
+
+                //        StateUpdated?.Invoke(this, _state);
+                //    }
+
+                //    if (!_isConnected)
+                //    {
+                //        _isConnected = true;
+                //        _logger.LogInformation("已连接到服务器");
+                //    }
+                //}
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "同步游戏状态失败");
-                _isConnected = false;
+                _logger.LogWarning("服务器连接测试失败: {Message}", ex.Message);
+
+                if (_isConnected)
+                {
+                    _isConnected = false;
+                    _logger.LogInformation("与服务器的连接已断开");
+                }
+
+                //_logger.LogError(ex, "同步游戏状态失败");
+                //_isConnected = false;
             }
             finally
             {

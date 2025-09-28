@@ -1,11 +1,13 @@
+using BlazorIdleGame.Client;
+using BlazorIdleGame.Client.Services.Auth;
+using BlazorIdleGame.Client.Services.Core;
+using Fluxor;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using BlazorIdleGame.Client;
-using Fluxor;
-using BlazorIdleGame.Client.Services.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.DependencyInjection;
+using BlazorIdleGame.Client.Services.Auth;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -32,6 +34,7 @@ builder.Services.AddFluxor(options => options
 // 注册其他服务
 builder.Services.AddScoped<IGameCommunicationService, GameCommunicationService>();
 builder.Services.AddScoped<IGameSyncService, GameSyncService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 // 设置日志级别（帮助调试）
 builder.Logging.SetMinimumLevel(LogLevel.Debug);
