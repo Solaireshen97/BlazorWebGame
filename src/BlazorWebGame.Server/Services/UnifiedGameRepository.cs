@@ -57,7 +57,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             var cacheKey = $"player:{playerId}";
             if (_cache.TryGetValue(cacheKey, out PlayerEntity? cachedPlayer) && cachedPlayer != null)
             {
-                return ServiceResult<PlayerEntity>.Success(cachedPlayer);
+            return ServiceResult<PlayerEntity>.CreateSuccess(cachedPlayer);
             }
 
             using var context = await _contextFactory.CreateDbContextAsync();

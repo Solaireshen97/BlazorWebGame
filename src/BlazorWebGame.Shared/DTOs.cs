@@ -49,7 +49,7 @@ public class ServiceResult<T>
     /// <summary>
     /// 创建成功结果
     /// </summary>
-    public static ServiceResult<T> Success(T data, string? message = null)
+    public static ServiceResult<T> CreateSuccess(T data, string? message = null)
     {
         return new ServiceResult<T>
         {
@@ -62,7 +62,7 @@ public class ServiceResult<T>
     /// <summary>
     /// 创建失败结果
     /// </summary>
-    public static ServiceResult<T> Failure(string message, string? errorCode = null)
+    public static ServiceResult<T> CreateFailure(string message, string? errorCode = null)
     {
         return new ServiceResult<T>
         {
@@ -75,7 +75,7 @@ public class ServiceResult<T>
     /// <summary>
     /// 创建失败结果（带异常信息）
     /// </summary>
-    public static ServiceResult<T> Failure(Exception exception)
+    public static ServiceResult<T> CreateFailure(Exception exception)
     {
         return new ServiceResult<T>
         {
