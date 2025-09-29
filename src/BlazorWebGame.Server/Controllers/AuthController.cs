@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using BlazorWebGame.Server.Security;
+using BlazorWebGame.Server.Services;
 using BlazorWebGame.Shared.DTOs;
 using Microsoft.AspNetCore.Authorization;
 
@@ -13,12 +14,12 @@ namespace BlazorWebGame.Server.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly GameAuthenticationService _authService;
-    private readonly DemoUserService _userService;
+    private readonly UserService _userService;
     private readonly ILogger<AuthController> _logger;
 
     public AuthController(
         GameAuthenticationService authService, 
-        DemoUserService userService,
+        UserService userService,
         ILogger<AuthController> logger)
     {
         _authService = authService;
@@ -30,7 +31,7 @@ public class AuthController : ControllerBase
     /// 用户登录
     /// </summary>
     [HttpPost("login")]
-    public ActionResult<ApiResponse<AuthenticationResponse>> Login(LoginRequest request)
+    public async Task<ActionResult<ApiResponse<AuthenticationResponse>>> Login(LoginRequest request)
     {
         try
         {
@@ -45,7 +46,7 @@ public class AuthController : ControllerBase
             }
 
             // 验证用户凭据
-            var user = _userService.ValidateUser(request.Username, request.Password);
+            var user = await _userService.ValidateUserAsync(request.Username, request.Password);
             if (user == null)
             {
                 _logger.LogWarning("Login failed for username: {Username} from IP: {ClientIp}", 
@@ -62,6 +63,9 @@ public class AuthController : ControllerBase
             // 生成令牌
             var accessToken = _authService.GenerateAccessToken(user.Id, user.Username, user.Roles);
             var refreshToken = _authService.GenerateRefreshToken();
+
+            // 更新最后登录信息
+            await _userService.UpdateLastLoginAsync(user.Id, GetClientIpAddress());
 
             _logger.LogInformation("User {Username} (ID: {UserId}) logged in successfully from IP: {ClientIp}", 
                 user.Username, user.Id, GetClientIpAddress());
@@ -97,7 +101,7 @@ public class AuthController : ControllerBase
     /// 用户注册（演示功能，生产环境需要更严格的验证）
     /// </summary>
     [HttpPost("register")]
-    public ActionResult<ApiResponse<AuthenticationResponse>> Register(RegisterRequest request)
+    public async Task<ActionResult<ApiResponse<AuthenticationResponse>>> Register(RegisterRequest request)
     {
         try
         {
@@ -124,13 +128,27 @@ public class AuthController : ControllerBase
             _logger.LogInformation("Registration attempt for username: {Username} from IP: {ClientIp}", 
                 request.Username, GetClientIpAddress());
 
-            // 对于演示，直接返回成功，生产环境需要实际创建用户
-            var userId = $"user-{Guid.NewGuid():N}";
-            var accessToken = _authService.GenerateAccessToken(userId, request.Username, new List<string> { "Player" });
+            // 注册用户
+            var registrationResult = await _userService.RegisterUserAsync(request.Username, request.Password, request.Email);
+            if (!registrationResult.Success)
+            {
+                return BadRequest(new ApiResponse<AuthenticationResponse>
+                {
+                    Success = false,
+                    Message = registrationResult.Message,
+                    Timestamp = DateTime.UtcNow
+                });
+            }
+
+            var user = registrationResult.Data!;
+            var accessToken = _authService.GenerateAccessToken(user.Id, user.Username, user.Roles);
             var refreshToken = _authService.GenerateRefreshToken();
 
+            // 更新最后登录信息
+            await _userService.UpdateLastLoginAsync(user.Id, GetClientIpAddress());
+
             _logger.LogInformation("User {Username} (ID: {UserId}) registered successfully from IP: {ClientIp}", 
-                request.Username, userId, GetClientIpAddress());
+                request.Username, user.Id, GetClientIpAddress());
 
             return Ok(new ApiResponse<AuthenticationResponse>
             {
@@ -139,9 +157,9 @@ public class AuthController : ControllerBase
                 {
                     AccessToken = accessToken,
                     RefreshToken = refreshToken,
-                    UserId = userId,
-                    Username = request.Username,
-                    Roles = new List<string> { "Player" }
+                    UserId = user.Id,
+                    Username = user.Username,
+                    Roles = user.Roles
                 },
                 Message = "Registration successful",
                 Timestamp = DateTime.UtcNow
@@ -163,7 +181,7 @@ public class AuthController : ControllerBase
     /// 刷新访问令牌
     /// </summary>
     [HttpPost("refresh")]
-    public ActionResult<ApiResponse<AuthenticationResponse>> RefreshToken(RefreshTokenRequest request)
+    public async Task<ActionResult<ApiResponse<AuthenticationResponse>>> RefreshToken(RefreshTokenRequest request)
     {
         try
         {
@@ -188,7 +206,7 @@ public class AuthController : ControllerBase
                 });
             }
 
-            var user = _userService.GetUserById(request.UserId);
+            var user = await _userService.GetUserByIdAsync(request.UserId);
             if (user == null)
             {
                 return Unauthorized(new ApiResponse<AuthenticationResponse>

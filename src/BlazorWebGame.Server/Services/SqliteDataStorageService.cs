@@ -39,6 +39,365 @@ public class SqliteDataStorageService : IDataStorageService
         return sanitized.Substring(0, Math.Min(8, sanitized.Length)) + (sanitized.Length > 8 ? "..." : "");
     }
 
+    #region 用户账号管理
+
+    public async Task<UserStorageDto?> GetUserByUsernameAsync(string username)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(username))
+                return null;
+
+            using var context = _contextFactory.CreateDbContext();
+            var user = await context.Users
+                .FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower());
+            return user != null ? MapToDto(user) : null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get user by username: {Username}", username);
+            return null;
+        }
+    }
+
+    public async Task<UserStorageDto?> GetUserByIdAsync(string userId)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var user = await context.Users.FindAsync(userId);
+            return user != null ? MapToDto(user) : null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get user with ID: {SafeUserId}", SafeLogId(userId));
+            return null;
+        }
+    }
+
+    public async Task<UserStorageDto?> GetUserByEmailAsync(string email)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(email))
+                return null;
+
+            using var context = _contextFactory.CreateDbContext();
+            var user = await context.Users
+                .FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower());
+            return user != null ? MapToDto(user) : null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get user by email: {Email}", email);
+            return null;
+        }
+    }
+
+    public async Task<ApiResponse<UserStorageDto>> CreateUserAsync(UserStorageDto user, string password)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(user.Username) || string.IsNullOrEmpty(password))
+            {
+                return new ApiResponse<UserStorageDto>
+                {
+                    Success = false,
+                    Message = "用户名和密码不能为空"
+                };
+            }
+
+            using var context = _contextFactory.CreateDbContext();
+            
+            // 检查用户名是否已存在
+            var existingUser = await context.Users
+                .FirstOrDefaultAsync(u => u.Username.ToLower() == user.Username.ToLower());
+            if (existingUser != null)
+            {
+                return new ApiResponse<UserStorageDto>
+                {
+                    Success = false,
+                    Message = "用户名已存在"
+                };
+            }
+
+            // 检查邮箱是否已存在（如果提供了邮箱）
+            if (!string.IsNullOrEmpty(user.Email))
+            {
+                var existingEmail = await context.Users
+                    .FirstOrDefaultAsync(u => u.Email.ToLower() == user.Email.ToLower());
+                if (existingEmail != null)
+                {
+                    return new ApiResponse<UserStorageDto>
+                    {
+                        Success = false,
+                        Message = "邮箱已被使用"
+                    };
+                }
+            }
+
+            var entity = MapToEntity(user);
+            entity.Id = Guid.NewGuid().ToString();
+            entity.Salt = BCrypt.Net.BCrypt.GenerateSalt();
+            entity.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password, entity.Salt);
+            entity.CreatedAt = DateTime.UtcNow;
+            entity.UpdatedAt = DateTime.UtcNow;
+
+            context.Users.Add(entity);
+            await context.SaveChangesAsync();
+
+            _logger.LogInformation("User created successfully: {SafeUserId}, Username: {Username}", 
+                SafeLogId(entity.Id), user.Username);
+
+            return new ApiResponse<UserStorageDto>
+            {
+                Success = true,
+                Data = MapToDto(entity),
+                Message = "用户创建成功"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating user: {Username}", user.Username);
+            return new ApiResponse<UserStorageDto>
+            {
+                Success = false,
+                Message = "用户创建失败"
+            };
+        }
+    }
+
+    public async Task<ApiResponse<UserStorageDto>> UpdateUserAsync(UserStorageDto user)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var existingEntity = await context.Users.FindAsync(user.Id);
+            if (existingEntity == null)
+            {
+                return new ApiResponse<UserStorageDto>
+                {
+                    Success = false,
+                    Message = "用户不存在"
+                };
+            }
+
+            var entity = MapToEntity(user);
+            entity.PasswordHash = existingEntity.PasswordHash; // 不更新密码
+            entity.Salt = existingEntity.Salt;
+            entity.CreatedAt = existingEntity.CreatedAt;
+            entity.UpdatedAt = DateTime.UtcNow;
+
+            context.Entry(existingEntity).CurrentValues.SetValues(entity);
+            await context.SaveChangesAsync();
+
+            _logger.LogDebug("User updated successfully: {SafeUserId}", SafeLogId(user.Id));
+
+            return new ApiResponse<UserStorageDto>
+            {
+                Success = true,
+                Data = MapToDto(entity),
+                Message = "用户更新成功"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating user: {SafeUserId}", SafeLogId(user.Id));
+            return new ApiResponse<UserStorageDto>
+            {
+                Success = false,
+                Message = "用户更新失败"
+            };
+        }
+    }
+
+    public async Task<bool> ValidateUserPasswordAsync(string userId, string password)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var user = await context.Users.FindAsync(userId);
+            if (user != null)
+            {
+                return BCrypt.Net.BCrypt.Verify(password, user.PasswordHash);
+            }
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error validating password for user: {SafeUserId}", SafeLogId(userId));
+            return false;
+        }
+    }
+
+    public async Task<ApiResponse<bool>> UpdateUserPasswordAsync(string userId, string newPassword)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var user = await context.Users.FindAsync(userId);
+            if (user == null)
+            {
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "用户不存在"
+                };
+            }
+
+            var salt = BCrypt.Net.BCrypt.GenerateSalt();
+            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(newPassword, salt);
+
+            user.Salt = salt;
+            user.PasswordHash = hashedPassword;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            await context.SaveChangesAsync();
+
+            _logger.LogInformation("Password updated for user: {SafeUserId}", SafeLogId(userId));
+
+            return new ApiResponse<bool>
+            {
+                Success = true,
+                Data = true,
+                Message = "密码更新成功"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating password for user: {SafeUserId}", SafeLogId(userId));
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "密码更新失败"
+            };
+        }
+    }
+
+    public async Task<ApiResponse<bool>> UpdateUserLastLoginAsync(string userId, string ipAddress)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var user = await context.Users.FindAsync(userId);
+            if (user != null)
+            {
+                user.LastLoginAt = DateTime.UtcNow;
+                user.LastLoginIp = ipAddress;
+                user.LoginAttempts = 0; // 重置登录尝试次数
+                user.UpdatedAt = DateTime.UtcNow;
+
+                await context.SaveChangesAsync();
+
+                return new ApiResponse<bool>
+                {
+                    Success = true,
+                    Data = true,
+                    Message = "登录信息更新成功"
+                };
+            }
+
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "用户不存在"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating last login for user: {SafeUserId}", SafeLogId(userId));
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "登录信息更新失败"
+            };
+        }
+    }
+
+    public async Task<ApiResponse<bool>> LockUserAccountAsync(string userId, DateTime lockUntil)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var user = await context.Users.FindAsync(userId);
+            if (user != null)
+            {
+                user.LockedUntil = lockUntil;
+                user.UpdatedAt = DateTime.UtcNow;
+
+                await context.SaveChangesAsync();
+
+                _logger.LogInformation("User account locked: {SafeUserId} until {LockUntil}", 
+                    SafeLogId(userId), lockUntil);
+
+                return new ApiResponse<bool>
+                {
+                    Success = true,
+                    Data = true,
+                    Message = "用户账户已锁定"
+                };
+            }
+
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "用户不存在"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error locking user account: {SafeUserId}", SafeLogId(userId));
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "账户锁定失败"
+            };
+        }
+    }
+
+    public async Task<ApiResponse<bool>> UnlockUserAccountAsync(string userId)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var user = await context.Users.FindAsync(userId);
+            if (user != null)
+            {
+                user.LockedUntil = null;
+                user.LoginAttempts = 0;
+                user.UpdatedAt = DateTime.UtcNow;
+
+                await context.SaveChangesAsync();
+
+                _logger.LogInformation("User account unlocked: {SafeUserId}", SafeLogId(userId));
+
+                return new ApiResponse<bool>
+                {
+                    Success = true,
+                    Data = true,
+                    Message = "用户账户已解锁"
+                };
+            }
+
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "用户不存在"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error unlocking user account: {SafeUserId}", SafeLogId(userId));
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "账户解锁失败"
+            };
+        }
+    }
+
+    #endregion
+
     #region 玩家数据管理
 
     public async Task<PlayerStorageDto?> GetPlayerAsync(string playerId)
@@ -1234,6 +1593,46 @@ public class SqliteDataStorageService : IDataStorageService
     #endregion
 
     #region 实体映射方法
+
+    private static UserStorageDto MapToDto(UserEntity entity)
+    {
+        return new UserStorageDto
+        {
+            Id = entity.Id,
+            Username = entity.Username,
+            Email = entity.Email,
+            IsActive = entity.IsActive,
+            EmailVerified = entity.EmailVerified,
+            LastLoginAt = entity.LastLoginAt,
+            LastLoginIp = entity.LastLoginIp,
+            LoginAttempts = entity.LoginAttempts,
+            LockedUntil = entity.LockedUntil,
+            CreatedAt = entity.CreatedAt,
+            UpdatedAt = entity.UpdatedAt,
+            Roles = JsonSerializer.Deserialize<List<string>>(entity.RolesJson) ?? new List<string> { "Player" },
+            Profile = JsonSerializer.Deserialize<Dictionary<string, object>>(entity.ProfileJson) ?? new Dictionary<string, object>()
+        };
+    }
+
+    private static UserEntity MapToEntity(UserStorageDto dto)
+    {
+        return new UserEntity
+        {
+            Id = dto.Id,
+            Username = dto.Username,
+            Email = dto.Email,
+            IsActive = dto.IsActive,
+            EmailVerified = dto.EmailVerified,
+            LastLoginAt = dto.LastLoginAt,
+            LastLoginIp = dto.LastLoginIp,
+            LoginAttempts = dto.LoginAttempts,
+            LockedUntil = dto.LockedUntil,
+            CreatedAt = dto.CreatedAt,
+            UpdatedAt = dto.UpdatedAt,
+            RolesJson = JsonSerializer.Serialize(dto.Roles),
+            ProfileJson = JsonSerializer.Serialize(dto.Profile)
+        };
+    }
 
     private static PlayerStorageDto MapToDto(PlayerEntity entity)
     {

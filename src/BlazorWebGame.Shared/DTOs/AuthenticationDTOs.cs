@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace BlazorWebGame.Shared.DTOs;
 
 /// <summary>
-/// ÈÏÖ¤ÏìÓ¦DTO
+/// ï¿½ï¿½Ö¤ï¿½ï¿½Ó¦DTO
 /// </summary>
 public class AuthenticationResponse
 {
@@ -16,7 +16,7 @@ public class AuthenticationResponse
 }
 
 /// <summary>
-/// µÇÂ¼ÇëÇóDTO
+/// ï¿½ï¿½Â¼ï¿½ï¿½ï¿½ï¿½DTO
 /// </summary>
 public class LoginRequest
 {
@@ -25,16 +25,17 @@ public class LoginRequest
 }
 
 /// <summary>
-/// ×¢²áÇëÇóDTO
+/// ×¢ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½DTO
 /// </summary>
 public class RegisterRequest
 {
     public string Username { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
 }
 
 /// <summary>
-/// Ë¢ÐÂÁîÅÆÇëÇóDTO
+/// Ë¢ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½DTO
 /// </summary>
 public class RefreshTokenRequest
 {

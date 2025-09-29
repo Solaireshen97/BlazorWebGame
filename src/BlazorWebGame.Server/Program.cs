@@ -152,7 +152,7 @@ builder.Services.AddHealthChecks()
 
 // 注册安全服务
 builder.Services.AddSingleton<GameAuthenticationService>();
-builder.Services.AddSingleton<DemoUserService>();
+builder.Services.AddScoped<UserService>();
 
 // 注册共享事件管理器
 builder.Services.AddSingleton<BlazorWebGame.Shared.Events.GameEventManager>();
@@ -332,6 +332,16 @@ if (app.Environment.IsDevelopment())
         catch (Exception ex)
         {
             logger.LogError(ex, "Unified event system test failed");
+        }
+        
+        // 运行用户服务测试
+        try
+        {
+            await BlazorWebGame.Server.Tests.UserServiceTests.RunBasicTests(logger);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "User service test failed");
         }
     }
     else
