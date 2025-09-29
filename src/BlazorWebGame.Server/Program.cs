@@ -4,11 +4,13 @@ using BlazorWebGame.Server.Security;
 using BlazorWebGame.Server.Middleware;
 using BlazorWebGame.Server;
 using BlazorWebGame.Server.Configuration;
+using BlazorWebGame.Server.Data;
 using BlazorWebGame.Shared.Models;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.EntityFrameworkCore;
 using System.Text;
 using Serilog;
 using Microsoft.Extensions.Options;
@@ -164,8 +166,22 @@ builder.Services.AddSingleton<UnifiedEventService>();
 // 注册服务定位器（单例模式）
 builder.Services.AddSingleton<ServerServiceLocator>();
 
-// 注册数据存储服务
-builder.Services.AddSingleton<BlazorWebGame.Shared.Interfaces.IDataStorageService, DataStorageService>();
+// 注册数据存储服务 - 使用SQLite实现
+var dataStorageType = builder.Configuration["GameServer:DataStorageType"];
+if (dataStorageType == "SQLite")
+{
+    // 注册DbContext工厂
+    builder.Services.AddDbContextFactory<GameDbContext>(options =>
+        options.UseSqlite(builder.Configuration.GetConnectionString("GameDatabase")));
+    
+    // 注册SQLite数据存储服务
+    builder.Services.AddSingleton<BlazorWebGame.Shared.Interfaces.IDataStorageService, SqliteDataStorageService>();
+}
+else
+{
+    // 保留原有内存实现作为备选
+    builder.Services.AddSingleton<BlazorWebGame.Shared.Interfaces.IDataStorageService, DataStorageService>();
+}
 builder.Services.AddSingleton<DataStorageIntegrationService>();
 
 // 注册离线结算服务
@@ -225,6 +241,29 @@ builder.Services.AddHostedService<GameLoopService>();
 builder.Services.AddHostedService<ServerOptimizationService>();
 
 var app = builder.Build();
+
+// 确保数据库已创建（针对SQLite）
+if (builder.Configuration["GameServer:DataStorageType"] == "SQLite")
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<GameDbContext>>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        
+        try
+        {
+            using var context = contextFactory.CreateDbContext();
+            // 确保数据库已创建
+            await context.Database.EnsureCreatedAsync();
+            logger.LogInformation("SQLite database initialized successfully");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to initialize SQLite database");
+            throw;
+        }
+    }
+}
 
 // 初始化服务定位器
 ServerServiceLocator.Initialize(app.Services);

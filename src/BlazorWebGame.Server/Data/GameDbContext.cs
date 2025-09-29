@@ -1,0 +1,124 @@
+using Microsoft.EntityFrameworkCore;
+using BlazorWebGame.Shared.Models;
+
+namespace BlazorWebGame.Server.Data;
+
+/// <summary>
+/// SQLite数据库上下文 - 游戏数据存储
+/// </summary>
+public class GameDbContext : DbContext
+{
+    public GameDbContext(DbContextOptions<GameDbContext> options) : base(options) { }
+
+    // 数据表定义
+    public DbSet<PlayerEntity> Players { get; set; }
+    public DbSet<TeamEntity> Teams { get; set; }
+    public DbSet<ActionTargetEntity> ActionTargets { get; set; }
+    public DbSet<BattleRecordEntity> BattleRecords { get; set; }
+    public DbSet<OfflineDataEntity> OfflineData { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        // 配置玩家实体
+        modelBuilder.Entity<PlayerEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasMaxLength(100);
+            entity.Property(e => e.Name).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.SelectedBattleProfession).HasMaxLength(20);
+            entity.Property(e => e.CurrentAction).HasMaxLength(20);
+            entity.Property(e => e.CurrentActionTargetId).HasMaxLength(100);
+            
+            // JSON字段
+            entity.Property(e => e.AttributesJson).HasColumnType("TEXT");
+            entity.Property(e => e.InventoryJson).HasColumnType("TEXT");
+            entity.Property(e => e.SkillsJson).HasColumnType("TEXT");
+            entity.Property(e => e.EquipmentJson).HasColumnType("TEXT");
+            
+            // 索引
+            entity.HasIndex(e => e.Name);
+            entity.HasIndex(e => e.IsOnline);
+            entity.HasIndex(e => e.LastActiveAt);
+        });
+
+        // 配置队伍实体
+        modelBuilder.Entity<TeamEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasMaxLength(100);
+            entity.Property(e => e.Name).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.CaptainId).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Status).HasMaxLength(20);
+            entity.Property(e => e.CurrentBattleId).HasMaxLength(100);
+            
+            // JSON字段
+            entity.Property(e => e.MemberIdsJson).HasColumnType("TEXT");
+            
+            // 索引
+            entity.HasIndex(e => e.CaptainId);
+            entity.HasIndex(e => e.Status);
+        });
+
+        // 配置动作目标实体
+        modelBuilder.Entity<ActionTargetEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasMaxLength(100);
+            entity.Property(e => e.PlayerId).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.TargetType).HasMaxLength(50);
+            entity.Property(e => e.TargetId).HasMaxLength(100);
+            entity.Property(e => e.TargetName).HasMaxLength(100);
+            entity.Property(e => e.ActionType).HasMaxLength(50);
+            
+            // JSON字段
+            entity.Property(e => e.ProgressDataJson).HasColumnType("TEXT");
+            
+            // 索引
+            entity.HasIndex(e => e.PlayerId);
+            entity.HasIndex(e => e.IsCompleted);
+            entity.HasIndex(e => e.StartedAt);
+        });
+
+        // 配置战斗记录实体
+        modelBuilder.Entity<BattleRecordEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasMaxLength(100);
+            entity.Property(e => e.BattleId).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.BattleType).HasMaxLength(50);
+            entity.Property(e => e.Status).HasMaxLength(20);
+            entity.Property(e => e.DungeonId).HasMaxLength(100);
+            
+            // JSON字段
+            entity.Property(e => e.ParticipantsJson).HasColumnType("TEXT");
+            entity.Property(e => e.EnemiesJson).HasColumnType("TEXT");
+            entity.Property(e => e.ActionsJson).HasColumnType("TEXT");
+            entity.Property(e => e.ResultsJson).HasColumnType("TEXT");
+            
+            // 索引
+            entity.HasIndex(e => e.BattleId).IsUnique();
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.StartedAt);
+            entity.HasIndex(e => e.PartyId);
+        });
+
+        // 配置离线数据实体
+        modelBuilder.Entity<OfflineDataEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasMaxLength(100);
+            entity.Property(e => e.PlayerId).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.DataType).HasMaxLength(50);
+            
+            // JSON字段
+            entity.Property(e => e.DataJson).HasColumnType("TEXT");
+            
+            // 索引
+            entity.HasIndex(e => e.PlayerId);
+            entity.HasIndex(e => e.IsSynced);
+            entity.HasIndex(e => e.CreatedAt);
+        });
+    }
+}
