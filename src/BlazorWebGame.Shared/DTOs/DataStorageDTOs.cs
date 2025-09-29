@@ -29,6 +29,12 @@ public class PlayerStorageDto
     public List<object> Inventory { get; set; } = new();
     public List<string> Skills { get; set; } = new();
     public Dictionary<string, string> Equipment { get; set; } = new();
+    
+    // JSON字符串版本（用于数据库存储）
+    public string AttributesJson { get; set; } = "{}";
+    public string InventoryJson { get; set; } = "[]";
+    public string SkillsJson { get; set; } = "[]";
+    public string EquipmentJson { get; set; } = "{}";
 }
 
 /// <summary>
@@ -40,6 +46,7 @@ public class TeamStorageDto
     public string Name { get; set; } = string.Empty;
     public string CaptainId { get; set; } = string.Empty;
     public List<string> MemberIds { get; set; } = new();
+    public string MemberIdsJson { get; set; } = "[]"; // JSON版本用于数据库存储
     public int MaxMembers { get; set; } = 5;
     public string Status { get; set; } = "Active";
     public string? CurrentBattleId { get; set; }
@@ -141,8 +148,24 @@ public class BatchOperationRequestDto<T>
 public class BatchOperationResponseDto<T>
 {
     public List<T> SuccessfulItems { get; set; } = new();
+    public List<BatchOperationFailureDto<T>> FailedItems { get; set; } = new();
     public List<string> Errors { get; set; } = new();
+    public int TotalCount { get; set; }
     public int TotalProcessed { get; set; }
     public int SuccessCount { get; set; }
     public int ErrorCount { get; set; }
+    public int FailureCount { get; set; }
+    public bool Success { get; set; }
+    public string? Message { get; set; }
+    public DateTime ProcessedAt { get; set; } = DateTime.UtcNow;
+}
+
+/// <summary>
+/// 批量操作失败项
+/// </summary>
+public class BatchOperationFailureDto<T>
+{
+    public T? Item { get; set; }
+    public string Error { get; set; } = string.Empty;
+    public string? ErrorCode { get; set; }
 }
