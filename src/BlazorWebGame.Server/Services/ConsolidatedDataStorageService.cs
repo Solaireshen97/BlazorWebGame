@@ -17,7 +17,7 @@ using System.Collections.Concurrent;
 namespace BlazorWebGame.Server.Services;
 
 /// <summary>
-/// 统一数据存储服务 - 整合所有数据存储功能的单一实现
+/// 統一数据存储服务 - 整合所有数据存储功能的单一实现
 /// 提供高性能、事务支持、缓存管理和批量操作
 /// </summary>
 public class ConsolidatedDataStorageService : IDataStorageService, IDisposable
@@ -25,7 +25,7 @@ public class ConsolidatedDataStorageService : IDataStorageService, IDisposable
     private readonly IDbContextFactory<ConsolidatedGameDbContext> _contextFactory;
     private readonly IMemoryCache _cache;
     private readonly ILogger<ConsolidatedDataStorageService> _logger;
-    private readonly UnifiedDataStorageOptions _options;
+    private readonly ConsolidatedDataStorageOptions _options;
 
     // 性能统计
     private readonly ConcurrentDictionary<string, long> _operationCounts = new();
@@ -33,7 +33,7 @@ public class ConsolidatedDataStorageService : IDataStorageService, IDisposable
     
     // 批量操作队列
     private readonly ConcurrentQueue<IBatchOperation> _batchQueue = new();
-    private readonly Timer _batchProcessor;
+    private readonly Timer? _batchProcessor;
     private readonly SemaphoreSlim _batchSemaphore = new(1, 1);
     
     // 缓存配置
@@ -138,21 +138,12 @@ public class ConsolidatedDataStorageService : IDataStorageService, IDisposable
         try
         {
             var players = await GetOnlinePlayerEntitiesAsync();
-            if (players.Success && players.Data != null)
-            {
-                var dtos = players.Data.Select(MapToPlayerStorageDto).ToList();
-                return new ApiResponse<List<PlayerStorageDto>>
-                {
-                    Success = true,
-                    Data = dtos,
-                    Message = $"Retrieved {dtos.Count} online players"
-                };
-            }
-            
+            var dtos = players.Select(MapToPlayerStorageDto).ToList();
             return new ApiResponse<List<PlayerStorageDto>>
             {
-                Success = false,
-                Message = players.Message ?? "Failed to get online players"
+                Success = true,
+                Data = dtos,
+                Message = $"Retrieved {dtos.Count} online players"
             };
         }
         catch (Exception ex)
@@ -312,6 +303,36 @@ public class ConsolidatedDataStorageService : IDataStorageService, IDisposable
             EquipmentJson = dto.EquipmentJson,
             CreatedAt = dto.CreatedAt,
             UpdatedAt = dto.UpdatedAt
+        };
+    }
+
+    private TeamStorageDto MapToTeamStorageDto(TeamEntity entity)
+    {
+        return new TeamStorageDto
+        {
+            Id = entity.Id,
+            Name = entity.Name,
+            CaptainId = entity.CaptainId,
+            Status = entity.Status,
+            CurrentBattleId = entity.CurrentBattleId,
+            CreatedAt = entity.CreatedAt,
+            UpdatedAt = entity.UpdatedAt,
+            MemberIdsJson = entity.MemberIdsJson
+        };
+    }
+
+    private TeamEntity MapToTeamEntity(TeamStorageDto dto)
+    {
+        return new TeamEntity
+        {
+            Id = dto.Id,
+            Name = dto.Name,
+            CaptainId = dto.CaptainId,
+            Status = dto.Status,
+            CurrentBattleId = dto.CurrentBattleId,
+            CreatedAt = dto.CreatedAt,
+            UpdatedAt = dto.UpdatedAt,
+            MemberIdsJson = dto.MemberIdsJson
         };
     }
 
@@ -686,6 +707,98 @@ public class ConsolidatedDataStorageService : IDataStorageService, IDisposable
 
     #endregion
 
+    #region Helper Methods
+
+    private async Task<PlayerEntity?> GetPlayerEntityAsync(string playerId)
+    {
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Players.FirstOrDefaultAsync(p => p.Id == playerId);
+    }
+
+    private async Task<ServiceResult<PlayerEntity>> SavePlayerEntityAsync(PlayerEntity player)
+    {
+        try
+        {
+            using var context = await _contextFactory.CreateDbContextAsync();
+            
+            var existing = await context.Players.FirstOrDefaultAsync(p => p.Id == player.Id);
+            if (existing != null)
+            {
+                // Update existing
+                context.Entry(existing).CurrentValues.SetValues(player);
+                context.Players.Update(existing);
+            }
+            else
+            {
+                // Create new
+                context.Players.Add(player);
+            }
+
+            await context.SaveChangesAsync();
+            
+            return new ServiceResult<PlayerEntity>
+            {
+                Success = true,
+                Data = existing ?? player,
+                Message = "Player saved successfully"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving player entity {PlayerId}", player.Id);
+            return new ServiceResult<PlayerEntity>
+            {
+                Success = false,
+                Message = ex.Message
+            };
+        }
+    }
+
+    private async Task<List<PlayerEntity>> GetOnlinePlayerEntitiesAsync()
+    {
+        using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Players.Where(p => p.IsOnline).ToListAsync();
+    }
+
+    private async Task<ApiResponse<bool>> DeletePlayerEntityAsync(string playerId)
+    {
+        try
+        {
+            using var context = await _contextFactory.CreateDbContextAsync();
+            var player = await context.Players.FirstOrDefaultAsync(p => p.Id == playerId);
+            
+            if (player == null)
+            {
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "Player not found"
+                };
+            }
+
+            context.Players.Remove(player);
+            await context.SaveChangesAsync();
+
+            return new ApiResponse<bool>
+            {
+                Success = true,
+                Data = true,
+                Message = "Player deleted successfully"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting player {PlayerId}", playerId);
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Message = ex.Message
+            };
+        }
+    }
+
+    #endregion
+
     #region IDisposable Implementation
 
     public void Dispose()
@@ -708,17 +821,4 @@ public class ConsolidatedDataStorageService : IDataStorageService, IDisposable
 public interface IBatchOperation
 {
     Task ExecuteAsync(ConsolidatedGameDbContext context);
-}
-
-/// <summary>
-/// Advanced repository interface with maintenance operations
-/// </summary>
-public interface IAdvancedGameRepository
-{
-    Task<ServiceResult<bool>> HealthCheckAsync();
-    Task<ServiceResult<Dictionary<string, object>>> GetDatabaseStatsAsync();
-    Task<ServiceResult<bool>> OptimizeDatabaseAsync();
-    Task<ServiceResult<bool>> RebuildIndexesAsync();
-    Task<ServiceResult<bool>> CompactDatabaseAsync();
-    Task<ServiceResult<string>> BackupDatabaseAsync(string backupPath);
 }

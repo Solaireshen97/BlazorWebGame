@@ -160,7 +160,7 @@ public static class UnifiedDataStorageConfigurationExtensions
 
         // 注册仓储服务
         services.AddScoped<IGameRepository, UnifiedGameRepository>();
-        services.AddScoped<IAdvancedGameRepository, UnifiedGameRepository>();
+        services.AddScoped<BlazorWebGame.Shared.Interfaces.IAdvancedGameRepository, UnifiedGameRepository>();
 
         // 注册健康检查
         if (storageOptions.EnableHealthChecks)
@@ -425,7 +425,7 @@ public class UnifiedDataStorageMaintenanceService : BackgroundService
         _logger.LogInformation("Starting unified data storage maintenance tasks");
 
         using var scope = _serviceProvider.CreateScope();
-        var repository = scope.ServiceProvider.GetService<IAdvancedGameRepository>();
+        var repository = scope.ServiceProvider.GetService<BlazorWebGame.Shared.Interfaces.IAdvancedGameRepository>();
         
         if (repository != null)
         {
@@ -474,7 +474,7 @@ public class UnifiedDataStorageMaintenanceService : BackgroundService
         }
         else
         {
-            _logger.LogWarning("IAdvancedGameRepository not available, skipping maintenance tasks");
+            _logger.LogWarning("BlazorWebGame.Shared.Interfaces.IAdvancedGameRepository not available, skipping maintenance tasks");
         }
     }
 
