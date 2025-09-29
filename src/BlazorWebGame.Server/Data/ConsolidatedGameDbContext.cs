@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using BlazorWebGame.Shared.Models;
+using BlazorWebGame.Server.Configuration;
 using System.Text.Json;
 
 namespace BlazorWebGame.Server.Data;
@@ -12,11 +14,16 @@ namespace BlazorWebGame.Server.Data;
 public class ConsolidatedGameDbContext : DbContext
 {
     private readonly ILogger<ConsolidatedGameDbContext>? _logger;
+    private readonly ConsolidatedDataStorageOptions? _options;
 
-    public ConsolidatedGameDbContext(DbContextOptions<ConsolidatedGameDbContext> options, ILogger<ConsolidatedGameDbContext> logger) 
+    public ConsolidatedGameDbContext(
+        DbContextOptions<ConsolidatedGameDbContext> options, 
+        ILogger<ConsolidatedGameDbContext> logger,
+        IOptions<ConsolidatedDataStorageOptions>? storageOptions = null) 
         : base(options)
     {
         _logger = logger;
+        _options = storageOptions?.Value;
     }
 
     // 数据库表集合
@@ -261,25 +268,58 @@ public class ConsolidatedGameDbContext : DbContext
     {
         try
         {
-            // 启用WAL模式以提高并发性能
-            await Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;");
+            var sqliteOpts = _options?.SqliteOptimization ?? new SqliteOptimizationOptions();
             
-            // 设置缓存大小 (10MB)
-            await Database.ExecuteSqlRawAsync("PRAGMA cache_size=10000;");
+            // 启用WAL模式以提高并发性能（如果配置启用）
+            if (sqliteOpts.EnableWALMode)
+            {
+                await Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;");
+                _logger?.LogDebug("SQLite WAL mode enabled");
+            }
             
-            // 启用内存映射
-            await Database.ExecuteSqlRawAsync("PRAGMA mmap_size=268435456;"); // 256MB
+            // 设置缓存大小
+            if (sqliteOpts.CacheSize > 0)
+            {
+                await Database.ExecuteSqlRawAsync($"PRAGMA cache_size={sqliteOpts.CacheSize};");
+                _logger?.LogDebug("SQLite cache size set to {CacheSize}", sqliteOpts.CacheSize);
+            }
             
-            // 设置同步模式为NORMAL以平衡性能和安全性
-            await Database.ExecuteSqlRawAsync("PRAGMA synchronous=NORMAL;");
+            // 启用内存映射（如果配置启用）
+            if (sqliteOpts.EnableMemoryMapping && sqliteOpts.MemoryMapSize > 0)
+            {
+                await Database.ExecuteSqlRawAsync($"PRAGMA mmap_size={sqliteOpts.MemoryMapSize};");
+                _logger?.LogDebug("SQLite memory mapping enabled with size {Size} bytes", sqliteOpts.MemoryMapSize);
+            }
             
-            // 使用内存存储临时表
-            await Database.ExecuteSqlRawAsync("PRAGMA temp_store=MEMORY;");
+            // 设置同步模式
+            if (!string.IsNullOrEmpty(sqliteOpts.SynchronousMode))
+            {
+                await Database.ExecuteSqlRawAsync($"PRAGMA synchronous={sqliteOpts.SynchronousMode};");
+                _logger?.LogDebug("SQLite synchronous mode set to {Mode}", sqliteOpts.SynchronousMode);
+            }
             
-            // 启用查询规划器
-            await Database.ExecuteSqlRawAsync("PRAGMA optimize;");
+            // 设置临时存储模式
+            if (!string.IsNullOrEmpty(sqliteOpts.TempStore))
+            {
+                await Database.ExecuteSqlRawAsync($"PRAGMA temp_store={sqliteOpts.TempStore};");
+                _logger?.LogDebug("SQLite temp store set to {TempStore}", sqliteOpts.TempStore);
+            }
             
-            _logger?.LogDebug("SQLite performance settings applied successfully");
+            // 启用查询规划器优化（如果配置启用）
+            if (sqliteOpts.EnableOptimizer)
+            {
+                await Database.ExecuteSqlRawAsync("PRAGMA optimize;");
+                _logger?.LogDebug("SQLite query optimizer enabled");
+            }
+            
+            // 设置分析限制
+            if (sqliteOpts.AnalysisLimit > 0)
+            {
+                await Database.ExecuteSqlRawAsync($"PRAGMA analysis_limit={sqliteOpts.AnalysisLimit};");
+                _logger?.LogDebug("SQLite analysis limit set to {Limit}", sqliteOpts.AnalysisLimit);
+            }
+            
+            _logger?.LogInformation("SQLite performance settings applied successfully using configuration");
         }
         catch (Exception ex)
         {
