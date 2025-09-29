@@ -60,6 +60,7 @@ public class EventReplayService
     /// </summary>
     public async Task<FrameIntegrityReport> ValidateFrameIntegrityAsync(ulong frameNumber, ulong expectedEventCount)
     {
+
         try
         {
             var events = await _persistence.LoadFrameAsync(frameNumber);

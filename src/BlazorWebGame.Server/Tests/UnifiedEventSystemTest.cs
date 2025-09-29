@@ -172,7 +172,7 @@ namespace BlazorWebGame.Server.Tests
                 throw new Exception($"Expected 2 replayed events, got {replayedCount}");
 
             // 验证完整性
-            var integrityTask = replayService.ValidateFrameIntegrityAsync(200, 200);
+            var integrityTask = replayService.ValidateFrameIntegrityAsync(200, 2);
             integrityTask.Wait();
             var integrityReport = integrityTask.Result;
 
