@@ -501,6 +501,23 @@ public class CreateCharacterRequest
 }
 
 /// <summary>
+/// 角色更新数据传输对象
+/// </summary>
+public class CharacterUpdateDto
+{
+    public int? Health { get; set; }
+    public int? MaxHealth { get; set; }
+    public int? Gold { get; set; }
+    public string? CurrentAction { get; set; }
+    public string? SelectedBattleProfession { get; set; }
+    // 简化版本，使用JSON字符串存储复杂数据
+    public string? AttributesJson { get; set; }
+    public string? InventoryJson { get; set; }
+    public string? SkillsJson { get; set; }
+    public string? EquipmentJson { get; set; }
+}
+
+/// <summary>
 /// 角色经验值更新请求
 /// </summary>
 public class AddExperienceRequest
