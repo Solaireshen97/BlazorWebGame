@@ -30,12 +30,8 @@ public class ConsolidatedGameDbContext : DbContext
     {
         base.OnConfiguring(optionsBuilder);
         
-        // SQLite性能优化配置
-        if (optionsBuilder.IsConfigured && Database.IsSqlite())
-        {
-            // 应用SQLite优化pragma设置
-            ApplySqliteOptimizations();
-        }
+        // SQLite性能优化配置只在选项已配置且不是第一次配置时应用
+        // 避免在OnConfiguring时访问Database属性导致的循环依赖问题
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -243,15 +239,16 @@ public class ConsolidatedGameDbContext : DbContext
         try
         {
             // 确保数据库存在
-            await Database.EnsureCreatedAsync();
+            var created = await Database.EnsureCreatedAsync();
             
-            // 应用SQLite优化设置
-            if (Database.IsSqlite())
+            // 如果数据库是新创建的，或者是SQLite，应用优化设置
+            var isSqlite = Database.ProviderName?.Contains("Sqlite", StringComparison.OrdinalIgnoreCase) == true;
+            if (created || isSqlite)
             {
                 await ApplySqlitePerformanceSettingsAsync();
             }
             
-            _logger?.LogInformation("Database optimization completed successfully");
+            _logger?.LogInformation("Database optimization completed successfully. Created: {WasCreated}", created);
         }
         catch (Exception ex)
         {

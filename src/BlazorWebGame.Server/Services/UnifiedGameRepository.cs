@@ -14,7 +14,7 @@ namespace BlazorWebGame.Server.Services;
 /// </summary>
 public class UnifiedGameRepository : IAdvancedGameRepository
 {
-    private readonly IDbContextFactory<UnifiedGameDbContext> _contextFactory;
+    private readonly IDbContextFactory<ConsolidatedGameDbContext> _contextFactory;
     private readonly IMemoryCache _cache;
     private readonly ILogger<UnifiedGameRepository> _logger;
     
@@ -38,7 +38,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
     private readonly ConcurrentDictionary<string, long> _operationTimes = new();
 
     public UnifiedGameRepository(
-        IDbContextFactory<UnifiedGameDbContext> contextFactory, 
+        IDbContextFactory<ConsolidatedGameDbContext> contextFactory, 
         IMemoryCache cache,
         ILogger<UnifiedGameRepository> logger)
     {
@@ -968,7 +968,15 @@ public class UnifiedGameRepository : IAdvancedGameRepository
         return await ExecuteWithMetricsAsync(nameof(OptimizeDatabaseAsync), async () =>
         {
             using var context = await _contextFactory.CreateDbContextAsync();
-            await context.RebuildIndexesAsync();
+            
+            // SQLite specific optimization
+            if (context.Database.ProviderName?.Contains("Sqlite", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                await context.Database.ExecuteSqlRawAsync("ANALYZE;");
+                await context.Database.ExecuteSqlRawAsync("PRAGMA optimize;");
+                _logger.LogInformation("Database optimized successfully");
+            }
+            
             return ServiceResult<bool>.CreateSuccess(true);
         });
     }
@@ -1246,7 +1254,15 @@ public class UnifiedGameRepository : IAdvancedGameRepository
         return await ExecuteWithMetricsAsync(nameof(RebuildIndexesAsync), async () =>
         {
             using var context = await _contextFactory.CreateDbContextAsync();
-            await context.RebuildIndexesAsync();
+            
+            // SQLite specific index rebuild - analyze and optimize
+            if (context.Database.ProviderName?.Contains("Sqlite", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                await context.Database.ExecuteSqlRawAsync("ANALYZE;");
+                await context.Database.ExecuteSqlRawAsync("PRAGMA optimize;");
+                _logger.LogInformation("SQLite indexes analyzed and optimized");
+            }
+            
             return ServiceResult<bool>.CreateSuccess(true);
         });
     }

@@ -24,7 +24,7 @@ public class ConsolidatedDataStorageOptions
     /// <summary>
     /// 数据库连接字符串
     /// </summary>
-    public string ConnectionString { get; set; } = "Data Source=gamedata.db;Cache=Shared;Journal Mode=WAL";
+    public string ConnectionString { get; set; } = "Data Source=gamedata.db;Cache=Shared";
     
     /// <summary>
     /// 是否启用缓存
@@ -134,10 +134,10 @@ public static class ConsolidatedDataStorageConfigurationExtensions
             services.Configure<ConsolidatedDataStorageOptions>(opts =>
             {
                 configuration.GetSection(ConsolidatedDataStorageOptions.SectionName).Bind(opts);
-                if (opts.ConnectionString == "Data Source=gamedata.db;Cache=Shared;Journal Mode=WAL")
+                if (opts.ConnectionString == "Data Source=gamedata.db;Cache=Shared")
                 {
                     opts.ConnectionString = configuration.GetConnectionString("DefaultConnection") 
-                        ?? "Data Source=gamedata.db;Cache=Shared;Journal Mode=WAL";
+                        ?? "Data Source=gamedata.db;Cache=Shared";
                 }
             });
         }
@@ -156,6 +156,11 @@ public static class ConsolidatedDataStorageConfigurationExtensions
         
         // 注册接口实现
         services.AddScoped<IDataStorageService>(provider => provider.GetRequiredService<ConsolidatedDataStorageService>());
+
+        // 注册游戏仓储服务
+        services.AddScoped<UnifiedGameRepository>();
+        services.AddScoped<IAdvancedGameRepository>(provider => provider.GetRequiredService<UnifiedGameRepository>());
+        services.AddScoped<IGameRepository>(provider => provider.GetRequiredService<UnifiedGameRepository>());
 
         // 注册健康检查
         if (storageOptions.EnableHealthChecks)
@@ -196,7 +201,56 @@ public static class ConsolidatedDataStorageConfigurationExtensions
         ConsolidatedDataStorageOptions storageOptions,
         IWebHostEnvironment environment)
     {
+        // 注册DbContextFactory
         services.AddDbContextFactory<ConsolidatedGameDbContext>(options =>
+        {
+            switch (storageOptions.StorageType.ToLower())
+            {
+                case "sqlite":
+                default:
+                    ConfigureSqlite(options, storageOptions, environment);
+                    break;
+
+                case "postgresql":
+                    ConfigurePostgreSQL(options, storageOptions, environment);
+                    break;
+
+                case "sqlserver":
+                    ConfigureSqlServer(options, storageOptions, environment);
+                    break;
+
+                case "inmemory":
+                    ConfigureInMemory(options, storageOptions, environment);
+                    break;
+            }
+        });
+
+        // 同时注册普通的DbContext以兼容现有代码
+        services.AddDbContext<ConsolidatedGameDbContext>(options =>
+        {
+            switch (storageOptions.StorageType.ToLower())
+            {
+                case "sqlite":
+                default:
+                    ConfigureSqlite(options, storageOptions, environment);
+                    break;
+
+                case "postgresql":
+                    ConfigurePostgreSQL(options, storageOptions, environment);
+                    break;
+
+                case "sqlserver":
+                    ConfigureSqlServer(options, storageOptions, environment);
+                    break;
+
+                case "inmemory":
+                    ConfigureInMemory(options, storageOptions, environment);
+                    break;
+            }
+        });
+
+        // 注册旧的GameDbContext以兼容现有代码
+        services.AddDbContext<GameDbContext>(options =>
         {
             switch (storageOptions.StorageType.ToLower())
             {
