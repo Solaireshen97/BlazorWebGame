@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using BlazorWebGame.Server.Security;
+using BlazorWebGame.Server.Services;
 using BlazorWebGame.Shared.DTOs;
 using Microsoft.AspNetCore.Authorization;
+using System.Text.Json;
 
 namespace BlazorWebGame.Server.Controllers;
 
@@ -13,16 +15,19 @@ namespace BlazorWebGame.Server.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly GameAuthenticationService _authService;
-    private readonly DemoUserService _userService;
+    private readonly IUserService _userService;
+    private readonly DemoUserService _demoUserService; // Keep for demo login
     private readonly ILogger<AuthController> _logger;
 
     public AuthController(
         GameAuthenticationService authService, 
-        DemoUserService userService,
+        IUserService userService,
+        DemoUserService demoUserService,
         ILogger<AuthController> logger)
     {
         _authService = authService;
         _userService = userService;
+        _demoUserService = demoUserService;
         _logger = logger;
     }
 
@@ -30,7 +35,7 @@ public class AuthController : ControllerBase
     /// 用户登录
     /// </summary>
     [HttpPost("login")]
-    public ActionResult<ApiResponse<AuthenticationResponse>> Login(LoginRequest request)
+    public async Task<ActionResult<ApiResponse<AuthenticationResponse>>> Login(LoginRequest request)
     {
         try
         {
@@ -45,7 +50,7 @@ public class AuthController : ControllerBase
             }
 
             // 验证用户凭据
-            var user = _userService.ValidateUser(request.Username, request.Password);
+            var user = await _userService.ValidateUserAsync(request.Username, request.Password);
             if (user == null)
             {
                 _logger.LogWarning("Login failed for username: {Username} from IP: {ClientIp}", 
@@ -59,9 +64,30 @@ public class AuthController : ControllerBase
                 });
             }
 
+            // 解析用户角色
+            var roles = new List<string> { "Player" };
+            try
+            {
+                if (!string.IsNullOrEmpty(user.Roles))
+                {
+                    roles = JsonSerializer.Deserialize<List<string>>(user.Roles) ?? roles;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to deserialize roles for user {UserId}, using default", user.Id);
+            }
+
             // 生成令牌
-            var accessToken = _authService.GenerateAccessToken(user.Id, user.Username, user.Roles);
+            var accessToken = _authService.GenerateAccessToken(user.Id, user.Username, roles);
             var refreshToken = _authService.GenerateRefreshToken();
+
+            // 更新刷新令牌
+            var refreshTokenExpiry = DateTime.UtcNow.AddDays(7); // 7天有效期
+            await _userService.UpdateRefreshTokenAsync(user.Id, refreshToken, refreshTokenExpiry);
+            
+            // 更新最后登录时间
+            await _userService.UpdateLastLoginAsync(user.Id);
 
             _logger.LogInformation("User {Username} (ID: {UserId}) logged in successfully from IP: {ClientIp}", 
                 user.Username, user.Id, GetClientIpAddress());
@@ -75,7 +101,7 @@ public class AuthController : ControllerBase
                     RefreshToken = refreshToken,
                     UserId = user.Id,
                     Username = user.Username,
-                    Roles = user.Roles
+                    Roles = roles
                 },
                 Message = "Login successful",
                 Timestamp = DateTime.UtcNow
@@ -94,10 +120,10 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// 用户注册（演示功能，生产环境需要更严格的验证）
+    /// 用户注册
     /// </summary>
     [HttpPost("register")]
-    public ActionResult<ApiResponse<AuthenticationResponse>> Register(RegisterRequest request)
+    public async Task<ActionResult<ApiResponse<AuthenticationResponse>>> Register(RegisterRequest request)
     {
         try
         {
@@ -121,16 +147,61 @@ public class AuthController : ControllerBase
                 });
             }
 
+            // 检查用户名是否已存在
+            if (!await _userService.IsUsernameAvailableAsync(request.Username))
+            {
+                return BadRequest(new ApiResponse<AuthenticationResponse>
+                {
+                    Success = false,
+                    Message = "Username is already taken",
+                    Timestamp = DateTime.UtcNow
+                });
+            }
+
+            // 验证邮箱
+            var email = string.IsNullOrEmpty(request.Email) ? $"{request.Username}@game.local" : request.Email;
+            
+            // 检查邮箱是否可用
+            if (!string.IsNullOrEmpty(request.Email) && !await _userService.IsEmailAvailableAsync(request.Email))
+            {
+                return BadRequest(new ApiResponse<AuthenticationResponse>
+                {
+                    Success = false,
+                    Message = "Email is already in use",
+                    Timestamp = DateTime.UtcNow
+                });
+            }
+
             _logger.LogInformation("Registration attempt for username: {Username} from IP: {ClientIp}", 
                 request.Username, GetClientIpAddress());
 
-            // 对于演示，直接返回成功，生产环境需要实际创建用户
-            var userId = $"user-{Guid.NewGuid():N}";
-            var accessToken = _authService.GenerateAccessToken(userId, request.Username, new List<string> { "Player" });
+            // 创建用户
+            var user = await _userService.CreateUserAsync(request.Username, email, request.Password);
+            
+            // 解析用户角色
+            var roles = new List<string> { "Player" };
+            try
+            {
+                if (!string.IsNullOrEmpty(user.Roles))
+                {
+                    roles = JsonSerializer.Deserialize<List<string>>(user.Roles) ?? roles;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to deserialize roles for user {UserId}, using default", user.Id);
+            }
+
+            // 生成令牌
+            var accessToken = _authService.GenerateAccessToken(user.Id, user.Username, roles);
             var refreshToken = _authService.GenerateRefreshToken();
 
+            // 更新刷新令牌
+            var refreshTokenExpiry = DateTime.UtcNow.AddDays(7);
+            await _userService.UpdateRefreshTokenAsync(user.Id, refreshToken, refreshTokenExpiry);
+
             _logger.LogInformation("User {Username} (ID: {UserId}) registered successfully from IP: {ClientIp}", 
-                request.Username, userId, GetClientIpAddress());
+                request.Username, user.Id, GetClientIpAddress());
 
             return Ok(new ApiResponse<AuthenticationResponse>
             {
@@ -139,9 +210,9 @@ public class AuthController : ControllerBase
                 {
                     AccessToken = accessToken,
                     RefreshToken = refreshToken,
-                    UserId = userId,
-                    Username = request.Username,
-                    Roles = new List<string> { "Player" }
+                    UserId = user.Id,
+                    Username = user.Username,
+                    Roles = roles
                 },
                 Message = "Registration successful",
                 Timestamp = DateTime.UtcNow
@@ -163,33 +234,22 @@ public class AuthController : ControllerBase
     /// 刷新访问令牌
     /// </summary>
     [HttpPost("refresh")]
-    public ActionResult<ApiResponse<AuthenticationResponse>> RefreshToken(RefreshTokenRequest request)
+    public async Task<ActionResult<ApiResponse<AuthenticationResponse>>> RefreshToken(RefreshTokenRequest request)
     {
         try
         {
-            if (string.IsNullOrEmpty(request.RefreshToken))
+            if (string.IsNullOrEmpty(request.RefreshToken) || string.IsNullOrEmpty(request.UserId))
             {
                 return BadRequest(new ApiResponse<AuthenticationResponse>
                 {
                     Success = false,
-                    Message = "Refresh token is required",
+                    Message = "Refresh token and user ID are required",
                     Timestamp = DateTime.UtcNow
                 });
             }
 
-            // 简化的刷新令牌验证，生产环境需要存储和验证刷新令牌
-            if (string.IsNullOrEmpty(request.UserId))
-            {
-                return BadRequest(new ApiResponse<AuthenticationResponse>
-                {
-                    Success = false,
-                    Message = "User ID is required",
-                    Timestamp = DateTime.UtcNow
-                });
-            }
-
-            var user = _userService.GetUserById(request.UserId);
-            if (user == null)
+            var user = await _userService.GetByIdAsync(request.UserId);
+            if (user == null || user.RefreshToken != request.RefreshToken)
             {
                 return Unauthorized(new ApiResponse<AuthenticationResponse>
                 {
@@ -199,9 +259,38 @@ public class AuthController : ControllerBase
                 });
             }
 
+            // 检查刷新令牌是否过期
+            if (user.RefreshTokenExpiryTime.HasValue && user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+            {
+                return Unauthorized(new ApiResponse<AuthenticationResponse>
+                {
+                    Success = false,
+                    Message = "Refresh token has expired",
+                    Timestamp = DateTime.UtcNow
+                });
+            }
+
+            // 解析用户角色
+            var roles = new List<string> { "Player" };
+            try
+            {
+                if (!string.IsNullOrEmpty(user.Roles))
+                {
+                    roles = JsonSerializer.Deserialize<List<string>>(user.Roles) ?? roles;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to deserialize roles for user {UserId}, using default", user.Id);
+            }
+
             // 生成新的令牌
-            var accessToken = _authService.GenerateAccessToken(user.Id, user.Username, user.Roles);
+            var accessToken = _authService.GenerateAccessToken(user.Id, user.Username, roles);
             var refreshToken = _authService.GenerateRefreshToken();
+
+            // 更新刷新令牌
+            var refreshTokenExpiry = DateTime.UtcNow.AddDays(7);
+            await _userService.UpdateRefreshTokenAsync(user.Id, refreshToken, refreshTokenExpiry);
 
             _logger.LogInformation("Token refreshed for user {UserId} from IP: {ClientIp}", 
                 user.Id, GetClientIpAddress());
@@ -215,7 +304,7 @@ public class AuthController : ControllerBase
                     RefreshToken = refreshToken,
                     UserId = user.Id,
                     Username = user.Username,
-                    Roles = user.Roles
+                    Roles = roles
                 },
                 Message = "Token refreshed successfully",
                 Timestamp = DateTime.UtcNow

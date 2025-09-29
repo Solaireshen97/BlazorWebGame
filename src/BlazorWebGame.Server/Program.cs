@@ -202,6 +202,8 @@ builder.Services.AddHealthChecks()
 // 注册安全服务
 builder.Services.AddSingleton<GameAuthenticationService>();
 builder.Services.AddSingleton<DemoUserService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<DatabaseInitializationService>();
 
 // 注册共享事件管理器
 builder.Services.AddSingleton<BlazorWebGame.Shared.Events.GameEventManager>();
@@ -262,6 +264,14 @@ if (consolidatedStorageOptions.StorageType.ToLower() is "sqlite")
     try
     {
         await app.Services.InitializeConsolidatedDataStorageAsync(logger);
+        
+        // 初始化数据库架构以支持用户认证
+        using (var scope = app.Services.CreateScope())
+        {
+            var dbInitService = scope.ServiceProvider.GetRequiredService<DatabaseInitializationService>();
+            await dbInitService.InitializeDatabaseAsync();
+            await dbInitService.CreateTestUsersAsync();
+        }
     }
     catch (Exception ex)
     {
@@ -319,6 +329,12 @@ if (app.Environment.IsDevelopment())
             try
             {
                 await BlazorWebGame.Server.Tests.SqliteDataStorageServiceTests.RunBasicTests(app.Services, logger);
+                
+                // 运行用户服务测试
+                await BlazorWebGame.Server.Tests.UserServiceTests.RunBasicUserServiceTests(app.Services, logger);
+                
+                // 运行用户服务性能测试
+                await BlazorWebGame.Server.Tests.UserServiceTests.RunPerformanceBenchmark(app.Services, logger);
                 
                 // 清理测试数据
                 await BlazorWebGame.Server.Tests.SqliteDataStorageServiceTests.CleanupTestData(app.Services, logger);

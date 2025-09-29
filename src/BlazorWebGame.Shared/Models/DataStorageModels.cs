@@ -14,10 +14,28 @@ public abstract class BaseEntity
 }
 
 /// <summary>
+/// 用户实体 - 用于用户账号数据存储
+/// </summary>
+public class UserEntity : BaseEntity
+{
+    public string Username { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string PasswordHash { get; set; } = string.Empty;
+    public string Salt { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime LastLoginAt { get; set; } = DateTime.UtcNow;
+    public bool IsActive { get; set; } = true;
+    public string Roles { get; set; } = "Player"; // JSON array stored as string
+    public string RefreshToken { get; set; } = string.Empty;
+    public DateTime? RefreshTokenExpiryTime { get; set; }
+}
+
+/// <summary>
 /// 玩家实体 - 用于数据存储
 /// </summary>
 public class PlayerEntity : BaseEntity
 {
+    public string? UserId { get; set; } // 关联到UserEntity (可为空以保持向后兼容)
     public string Name { get; set; } = string.Empty;
     public int Level { get; set; } = 1;
     public int Experience { get; set; } = 0;
