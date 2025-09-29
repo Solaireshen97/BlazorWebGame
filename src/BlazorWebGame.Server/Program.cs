@@ -268,6 +268,7 @@ using (var scope = app.Services.CreateScope())
             var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<GameDbContext>>();
             using var context = contextFactory.CreateDbContext();
             await context.Database.EnsureCreatedAsync();
+
             logger.LogInformation("SQLite database initialized successfully");
         }
         
