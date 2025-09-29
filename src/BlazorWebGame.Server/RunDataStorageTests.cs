@@ -32,7 +32,7 @@ public class RunDataStorageTests
             Console.WriteLine("✅ 所有测试通过！数据存储系统工作正常");
             Console.WriteLine("✅ 工厂模式已正确实现");
             Console.WriteLine("✅ SQLite数据存储服务功能完整");
-            Console.WriteLine("✅ 可以安全地替换SimpleSqliteDataStorageService");
+            Console.WriteLine("✅ 已移除不完整的SimpleSqliteDataStorageService实现");
         }
         catch (Exception ex)
         {
