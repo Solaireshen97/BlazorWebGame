@@ -4,155 +4,76 @@ using BlazorWebGame.Utils;
 namespace BlazorWebGame.Client.Services.Api;
 
 /// <summary>
-/// 离线模式服务 - 在服务器不可用时提供基本功能
+/// 纯在线服务 - 移除离线模式，只支持在线游戏
+/// 原来的离线功能已完全移除，这个类现在只是一个存根以保持兼容性
 /// </summary>
 public class OfflineService
 {
     private readonly ILogger<OfflineService> _logger;
-    private readonly GameStorage _storage;
-    private bool _isOfflineMode = false;
-    private readonly Queue<OfflineAction> _pendingActions = new();
 
-    public bool IsOfflineMode => _isOfflineMode;
+    // 始终返回 false - 纯在线游戏不支持离线模式
+    public bool IsOfflineMode => false;
+    
+    // 保留事件以保持兼容性，但永远不会触发
     public event Action<bool>? OnOfflineModeChanged;
 
-    public OfflineService(ILogger<OfflineService> logger, GameStorage storage)
+    public OfflineService(ILogger<OfflineService> logger)
     {
         _logger = logger;
-        _storage = storage;
     }
 
     /// <summary>
-    /// 进入离线模式
+    /// 纯在线游戏不支持进入离线模式
     /// </summary>
+    [Obsolete("纯在线游戏不支持离线模式")]
     public async Task EnterOfflineMode()
     {
-        _isOfflineMode = true;
-        _logger.LogWarning("进入离线模式");
-        
-        // 保存当前状态到本地
-        await SaveCurrentStateLocally();
-        
-        OnOfflineModeChanged?.Invoke(true);
+        _logger.LogWarning("纯在线游戏不支持离线模式，忽略进入离线模式请求");
+        await Task.CompletedTask;
     }
 
     /// <summary>
-    /// 退出离线模式并同步数据
+    /// 纯在线游戏不需要退出离线模式
     /// </summary>
+    [Obsolete("纯在线游戏不支持离线模式")]
     public async Task<bool> ExitOfflineMode(GameApiService apiService)
     {
-        try
-        {
-            _logger.LogInformation("尝试退出离线模式并同步数据");
-            
-            // 执行所有待处理的操作
-            while (_pendingActions.Count > 0)
-            {
-                var action = _pendingActions.Dequeue();
-                await ExecutePendingAction(action, apiService);
-            }
-            
-            _isOfflineMode = false;
-            OnOfflineModeChanged?.Invoke(false);
-            _logger.LogInformation("成功退出离线模式");
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "退出离线模式失败");
-            return false;
-        }
+        _logger.LogInformation("纯在线游戏始终在线，无需退出离线模式");
+        return await Task.FromResult(true);
     }
 
     /// <summary>
-    /// 记录离线操作
+    /// 纯在线游戏不支持记录离线操作
     /// </summary>
+    [Obsolete("纯在线游戏不支持离线操作")]
     public void RecordOfflineAction(OfflineActionType actionType, object data)
     {
-        var action = new OfflineAction
-        {
-            Type = actionType,
-            Timestamp = DateTime.UtcNow,
-            Data = System.Text.Json.JsonSerializer.Serialize(data)
-        };
-        
-        _pendingActions.Enqueue(action);
-        _logger.LogInformation("记录离线操作: {ActionType} at {Timestamp}", actionType, action.Timestamp);
+        _logger.LogWarning("纯在线游戏不支持离线操作记录，忽略操作: {ActionType}", actionType);
     }
 
     /// <summary>
-    /// 本地战斗模拟（离线模式）
+    /// 纯在线游戏不支持本地战斗模拟
     /// </summary>
+    [Obsolete("纯在线游戏不支持本地战斗模拟")]
     public BattleStateDto SimulateLocalBattle(string characterId, string enemyId, string? partyId = null)
     {
-        _logger.LogInformation("开始本地战斗模拟");
-        
-        return new BattleStateDto
-        {
-            BattleId = Guid.NewGuid(),
-            CharacterId = characterId,
-            EnemyId = enemyId,
-            PartyId = partyId,
-            IsActive = true,
-            PlayerHealth = 100,
-            PlayerMaxHealth = 100,
-            EnemyHealth = 80,
-            EnemyMaxHealth = 80,
-            LastUpdated = DateTime.UtcNow,
-            BattleType = BattleType.Normal
-        };
+        _logger.LogWarning("纯在线游戏不支持本地战斗模拟");
+        throw new NotSupportedException("纯在线游戏不支持本地战斗模拟，请使用服务端API");
     }
 
     /// <summary>
-    /// 保存当前状态到本地存储
+    /// 纯在线游戏不支持本地战斗模拟
     /// </summary>
-    private async Task SaveCurrentStateLocally()
+    [Obsolete("纯在线游戏不支持本地战斗模拟")]
+    public async Task<BattleStateDto> SimulateLocalBattleAsync(string characterId, string enemyId, string? partyId = null)
     {
-        try
-        {
-            // 这里可以保存重要的游戏状态到本地存储
-            // 暂时留空，实际实现时需要保存角色状态、背包等
-            await Task.CompletedTask;
-            _logger.LogInformation("当前状态已保存到本地");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "保存本地状态失败");
-        }
+        _logger.LogWarning("纯在线游戏不支持本地战斗模拟");
+        await Task.CompletedTask;
+        throw new NotSupportedException("纯在线游戏不支持本地战斗模拟，请使用服务端API");
     }
 
     /// <summary>
-    /// 执行待处理的操作
+    /// 所有其他离线方法都已移除 - 纯在线游戏不需要这些功能
+    /// 如果需要调用任何其他方法，请使用对应的服务端API
     /// </summary>
-    private async Task ExecutePendingAction(OfflineAction action, GameApiService apiService)
-    {
-        try
-        {
-            switch (action.Type)
-            {
-                case OfflineActionType.StartBattle:
-                    var battleRequest = System.Text.Json.JsonSerializer.Deserialize<StartBattleRequest>(action.Data);
-                    if (battleRequest != null)
-                    {
-                        await apiService.StartBattleAsync(battleRequest);
-                    }
-                    break;
-                    
-                case OfflineActionType.StopBattle:
-                    var battleId = System.Text.Json.JsonSerializer.Deserialize<Guid>(action.Data);
-                    await apiService.StopBattleAsync(battleId);
-                    break;
-                    
-                case OfflineActionType.UpdateCharacter:
-                    // 处理角色更新同步
-                    break;
-            }
-            
-            _logger.LogInformation("成功执行离线操作: {ActionType}", action.Type);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "执行离线操作失败: {ActionType}", action.Type);
-        }
-    }
 }

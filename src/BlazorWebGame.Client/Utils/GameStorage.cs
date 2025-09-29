@@ -26,7 +26,7 @@ namespace BlazorWebGame.Utils
             return SetItemAsync(PlayerDataKey, player);
         }
 
-        private async Task<T?> GetItemAsync<T>(string key)
+        public async Task<T?> GetItemAsync<T>(string key)
         {
             try
             {
@@ -48,7 +48,7 @@ namespace BlazorWebGame.Utils
             }
         }
 
-        private async Task SetItemAsync<T>(string key, T value)
+        public async Task SetItemAsync<T>(string key, T value)
         {
             try
             {
@@ -60,5 +60,6 @@ namespace BlazorWebGame.Utils
                 Console.WriteLine($"Error saving data to localStorage for key '{key}': {ex.Message}");
             }
         }
+
     }
 }

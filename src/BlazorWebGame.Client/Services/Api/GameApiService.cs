@@ -1,70 +1,39 @@
 using BlazorWebGame.Shared.DTOs;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace BlazorWebGame.Client.Services.Api;
 
 /// <summary>
-/// 客户端API服务，负责与服务器通信
+/// 客户端API服务，负责与服务器通信 (向后兼容的统一接口)
 /// </summary>
 public class GameApiService
 {
-    private readonly HttpClient _httpClient;
+    private readonly GameApiClient _apiClient;
     private readonly ILogger<GameApiService> _logger;
-    private string _baseUrl = "https://localhost:7000"; // 默认服务器地址
 
-    public string BaseUrl => _baseUrl;
-
-    public GameApiService(HttpClient httpClient, ILogger<GameApiService> logger)
+    public GameApiService(GameApiClient apiClient, ILogger<GameApiService> logger)
     {
-        _httpClient = httpClient;
+        _apiClient = apiClient;
         _logger = logger;
-        
-        // 配置基础地址
-        if (_httpClient.BaseAddress == null)
-        {
-            _httpClient.BaseAddress = new Uri(_baseUrl);
-        }
     }
 
     /// <summary>
-    /// 设置服务器基础地址
+    /// 设置认证令牌 - 为需要认证的API调用做准备
     /// </summary>
-    public void SetBaseUrl(string baseUrl)
+    public async Task<string> SetupAuthenticationAsync()
     {
-        _baseUrl = baseUrl;
-        _httpClient.BaseAddress = new Uri(baseUrl);
+        return await _apiClient.SetupAuthenticationAsync();
     }
+
+    #region Battle API Methods (向后兼容)
 
     /// <summary>
     /// 开始战斗
     /// </summary>
     public async Task<ApiResponse<BattleStateDto>> StartBattleAsync(StartBattleRequest request)
     {
-        try
-        {
-            var response = await _httpClient.PostAsJsonAsync("api/battle/start", request);
-            
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<ApiResponse<BattleStateDto>>() 
-                    ?? new ApiResponse<BattleStateDto> { Success = false };
-            }
-
-            return new ApiResponse<BattleStateDto>
-            {
-                Success = false,
-                Message = $"Server returned {response.StatusCode}"
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error starting battle");
-            return new ApiResponse<BattleStateDto>
-            {
-                Success = false,
-                Message = "Network error occurred"
-            };
-        }
+        return await _apiClient.Battle.StartBattleAsync(request);
     }
 
     /// <summary>
@@ -72,21 +41,15 @@ public class GameApiService
     /// </summary>
     public async Task<ApiResponse<BattleStateDto>> GetBattleStateAsync(Guid battleId)
     {
-        try
-        {
-            return await _httpClient.GetFromJsonAsync<ApiResponse<BattleStateDto>>(
-                $"api/battle/state/{battleId}") 
-                ?? new ApiResponse<BattleStateDto> { Success = false };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting battle state for {BattleId}", battleId);
-            return new ApiResponse<BattleStateDto>
-            {
-                Success = false,
-                Message = "Network error occurred"
-            };
-        }
+        return await _apiClient.Battle.GetBattleStateAsync(battleId);
+    }
+
+    /// <summary>
+    /// 执行战斗动作
+    /// </summary>
+    public async Task<ApiResponse<bool>> ExecuteBattleActionAsync(BattleActionRequest request)
+    {
+        return await _apiClient.Battle.ExecuteBattleActionAsync(request);
     }
 
     /// <summary>
@@ -94,26 +57,87 @@ public class GameApiService
     /// </summary>
     public async Task<ApiResponse<bool>> StopBattleAsync(Guid battleId)
     {
+        return await _apiClient.Battle.StopBattleAsync(battleId);
+    }
+
+    /// <summary>
+    /// 检查服务器连接状态
+    /// </summary>
+    public async Task<bool> IsServerAvailableAsync()
+    {
+        return await _apiClient.IsServerAvailableAsync();
+    }
+
+    #endregion
+
+    #region Party API Methods (向后兼容)
+
+    /// <summary>
+    /// 创建组队
+    /// </summary>
+    public async Task<ApiResponse<PartyDto>> CreatePartyAsync(string characterId)
+    {
+        return await _apiClient.Party.CreatePartyAsync(characterId);
+    }
+
+    /// <summary>
+    /// 加入组队
+    /// </summary>
+    public async Task<ApiResponse<bool>> JoinPartyAsync(string characterId, Guid partyId)
+    {
+        return await _apiClient.Party.JoinPartyAsync(characterId, partyId);
+    }
+
+    /// <summary>
+    /// 离开组队
+    /// </summary>
+    public async Task<ApiResponse<bool>> LeavePartyAsync(string characterId)
+    {
+        return await _apiClient.Party.LeavePartyAsync(characterId);
+    }
+
+    /// <summary>
+    /// 获取角色的组队信息
+    /// </summary>
+    public async Task<ApiResponse<PartyDto>> GetPartyForCharacterAsync(string characterId)
+    {
+        return await _apiClient.Party.GetPartyForCharacterAsync(characterId);
+    }
+
+    /// <summary>
+    /// 获取所有组队列表
+    /// </summary>
+    public async Task<ApiResponse<List<PartyDto>>> GetAllPartiesAsync()
+    {
+        return await _apiClient.Party.GetAllPartiesAsync();
+    }
+
+    /// <summary>
+    /// 根据ID获取组队信息
+    /// </summary>
+    public async Task<ApiResponse<PartyDto>> GetPartyAsync(Guid partyId)
+    {
+        return await _apiClient.Party.GetPartyAsync(partyId);
+    }
+
+    #endregion
+
+    #region Offline Settlement and Synchronization API (向后兼容)
+
+    /// <summary>
+    /// 更新角色数据
+    /// </summary>
+    public async Task<ApiResponse<object>> UpdateCharacterAsync(CharacterUpdateRequest request)
+    {
         try
         {
-            var response = await _httpClient.PostAsync($"api/battle/stop/{battleId}", null);
-            
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<ApiResponse<bool>>() 
-                    ?? new ApiResponse<bool> { Success = false };
-            }
-
-            return new ApiResponse<bool>
-            {
-                Success = false,
-                Message = $"Server returned {response.StatusCode}"
-            };
+            // 使用CharacterApiService的新更新方法
+            return await _apiClient.Character.UpdateCharacterAsync(request.CharacterId, request);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error stopping battle {BattleId}", battleId);
-            return new ApiResponse<bool>
+            _logger.LogError(ex, "Error updating character {CharacterId}", request.CharacterId);
+            return new ApiResponse<object>
             {
                 Success = false,
                 Message = "Network error occurred"
@@ -122,19 +146,67 @@ public class GameApiService
     }
 
     /// <summary>
-    /// 检查服务器连接状态
+    /// 更新队伍进度
     /// </summary>
-    public async Task<bool> IsServerAvailableAsync()
+    public async Task<ApiResponse<object>> UpdateTeamProgressAsync(TeamProgressUpdateRequest request)
     {
         try
         {
-            var response = await _httpClient.GetAsync("api/battle/state/00000000-0000-0000-0000-000000000000");
-            // 我们不关心返回内容，只要能连通就行
-            return true;
+            // 使用PartyApiService的新更新方法
+            return await _apiClient.Party.UpdateTeamProgressAsync(request.PartyId, request);
         }
-        catch
+        catch (Exception ex)
         {
-            return false;
+            _logger.LogError(ex, "Error updating team progress {PartyId}", request.PartyId);
+            return new ApiResponse<object>
+            {
+                Success = false,
+                Message = "Network error occurred"
+            };
         }
     }
+
+    /// <summary>
+    /// 同步离线战斗进度
+    /// </summary>
+    public async Task<ApiResponse<object>> SyncOfflineBattleProgressAsync(string playerId, OfflineBattleProgressSyncRequest request)
+    {
+        try
+        {
+            // 使用OfflineSettlementApiService的新同步方法
+            return await _apiClient.OfflineSettlement.SyncOfflineBattleProgressAsync(playerId, request);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error syncing offline battle progress for player {PlayerId}", playerId);
+            return new ApiResponse<object>
+            {
+                Success = false,
+                Message = "Network error occurred"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 处理离线结算
+    /// </summary>
+    public async Task<ApiResponse<OfflineSettlementResultDto>> ProcessOfflineSettlementAsync(OfflineSettlementRequestDto request)
+    {
+        return await _apiClient.OfflineSettlement.ProcessPlayerOfflineSettlementAsync(request.PlayerId, request);
+    }
+
+    /// <summary>
+    /// 批量处理离线结算
+    /// </summary>
+    public async Task<ApiResponse<List<OfflineSettlementResultDto>>> ProcessBatchOfflineSettlementAsync(BatchOfflineSettlementRequestDto request)
+    {
+        return await _apiClient.OfflineSettlement.ProcessBatchOfflineSettlementAsync(request);
+    }
+
+    #endregion
+
+    /// <summary>
+    /// 获取新的API客户端实例，用于访问所有功能模块
+    /// </summary>
+    public GameApiClient GetApiClient() => _apiClient;
 }

@@ -5,6 +5,7 @@
 @using BlazorWebGame.Utils
 @using BlazorWebGame.Shared.Professions
 @inject GameStateService GameState
+@inject CharacterService CharacterService
 @implements IDisposable
 
 <PageTitle>工程学</PageTitle>
@@ -15,9 +16,9 @@
         <div class="header-section">
             <ProfessionHeader Title="工程学"
                               ProfessionType="Engineering"
-                              Level="@character.GetLevel(ProductionProfession.Engineering)"
+                              Level="@CharacterService.GetLevel(character, ProductionProfession.Engineering)"
                               Experience="@character.ProductionProfessionXP.GetValueOrDefault(ProductionProfession.Engineering)"
-                              GatheringSpeedBonus="@character.GetTotalCraftingSpeedBonus()"
+                              GatheringSpeedBonus="@CharacterService.GetTotalCraftingSpeedBonus(character)"
                               ExtraLootChance="0" />
 
             <QuickSlotBar Title="生产食物"
@@ -49,7 +50,7 @@
             @foreach (var recipe in RecipeData.AllRecipes.Where(r => r.RequiredProfession == ProductionProfession.Engineering).OrderBy(r => r.RequiredLevel))
             {
                 bool isLearned = recipe.IsDefault || character.LearnedRecipeIds.Contains(recipe.Id);
-                bool canCraft = isLearned && character.GetLevel(ProductionProfession.Engineering) >= recipe.RequiredLevel;
+                bool canCraft = isLearned && CharacterService.GetLevel(character, ProductionProfession.Engineering) >= recipe.RequiredLevel;
                 bool hasMaterials = CanAffordRecipe(character, recipe);
 
                 <div class="recipe-card @(isLearned ? "" : "locked") @(canCraft ? "" : "level-locked")">
@@ -148,7 +149,7 @@ else
     private double GetCurrentCraftingTime(Player character)
     {
         if (character.CurrentRecipe == null) return 0;
-        double speedBonus = character.GetTotalCraftingSpeedBonus();
+        double speedBonus = CharacterService.GetTotalCraftingSpeedBonus(character);
         return character.CurrentRecipe.CraftingTimeSeconds / (1 + speedBonus);
     }
 

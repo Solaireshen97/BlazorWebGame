@@ -6,7 +6,7 @@ using System.Collections.Generic;
 namespace BlazorWebGame.Services
 {
     /// <summary>
-    /// ×¨Òµ¼¼ÄÜÏµÍ³·şÎñ£¬¸ºÔğ´¦Àí²É¼¯ºÍÖÆ×÷Ïà¹ØµÄÂß¼­
+    /// ç®€åŒ–çš„ä¸“ä¸šæŠ€èƒ½æœåŠ¡ - ä»…ä¿ç•™UIçŠ¶æ€ç®¡ç†ï¼Œæ‰€æœ‰ç”Ÿäº§é€»è¾‘ç”±æœåŠ¡å™¨å¤„ç†
     /// </summary>
     public class ProfessionService
     {
@@ -14,7 +14,7 @@ namespace BlazorWebGame.Services
         private readonly QuestService _questService;
 
         /// <summary>
-        /// ×´Ì¬±ä¸üÊÂ¼ş
+        /// çŠ¶æ€æ”¹å˜äº‹ä»¶
         /// </summary>
         public event Action? OnStateChanged;
 
@@ -24,254 +24,116 @@ namespace BlazorWebGame.Services
             _questService = questService;
         }
 
+        #region é‡‡é›†ç³»ç»Ÿ - å·²ç§»é™¤æœ¬åœ°å®ç°
+
         /// <summary>
-        /// ´¦Àí²É¼¯»î¶¯
+        /// å¤„ç†é‡‡é›† - å·²ç§»é™¤æœ¬åœ°å®ç°
         /// </summary>
+        [Obsolete("æœ¬åœ°ç”Ÿäº§ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
         public void ProcessGathering(Player character, double elapsedSeconds)
         {
-            if (character?.CurrentGatheringNode == null) return;
-
-            character.GatheringCooldown -= elapsedSeconds;
-            if (character.GatheringCooldown <= 0)
-            {
-                // »ñÈ¡»ù´¡ÎïÆ·
-                _inventoryService.AddItemToInventory(
-                    character, 
-                    character.CurrentGatheringNode.ResultingItemId, 
-                    character.CurrentGatheringNode.ResultingItemQuantity
-                );
-
-                // ¼ÆËã¶îÍâÎïÆ·»ú»á
-                double extraLootChance = character.GetTotalExtraLootChance();
-                if (extraLootChance > 0 && new Random().NextDouble() < extraLootChance)
-                {
-                    _inventoryService.AddItemToInventory(
-                        character, 
-                        character.CurrentGatheringNode.ResultingItemId, 
-                        character.CurrentGatheringNode.ResultingItemQuantity
-                    );
-                }
-
-                // Ôö¼Ó²É¼¯¾­Ñé
-                character.AddGatheringXP(
-                    character.CurrentGatheringNode.RequiredProfession, 
-                    character.CurrentGatheringNode.XpReward
-                );
-
-                // ¸üĞÂÈÎÎñ½ø¶È
-                _questService.UpdateQuestProgress(
-                    character, 
-                    QuestType.GatherItem, 
-                    character.CurrentGatheringNode.ResultingItemId, 
-                    character.CurrentGatheringNode.ResultingItemQuantity
-                );
-                _questService.UpdateQuestProgress(character, QuestType.GatherItem, "any", 1);
-
-                // ÖØÖÃÀäÈ´Ê±¼ä
-                character.GatheringCooldown += GetCurrentGatheringTime(character);
-                
-                // Í¨ÖªUI¸üĞÂ
-                NotifyStateChanged();
-            }
+            // æœ¬åœ°é‡‡é›†å¤„ç†å·²ç§»é™¤ï¼Œæ‰€æœ‰é‡‡é›†é€»è¾‘ç”±æœåŠ¡å™¨å¤„ç†
         }
 
         /// <summary>
-        /// ´¦ÀíÖÆ×÷»î¶¯
+        /// å¼€å§‹é‡‡é›† - å·²ç§»é™¤æœ¬åœ°å®ç°
         /// </summary>
-        public void ProcessCrafting(Player character, double elapsedSeconds)
-        {
-            if (character?.CurrentRecipe == null) return;
-
-            character.CraftingCooldown -= elapsedSeconds;
-            if (character.CraftingCooldown <= 0)
-            {
-                // ¼ì²éÊÇ·ñÓĞ×ã¹»µÄ²ÄÁÏ
-                if (!_inventoryService.CanAffordRecipe(character, character.CurrentRecipe))
-                {
-                    StopCrafting(character);
-                    return;
-                }
-
-                // ÏûºÄ²ÄÁÏ
-                foreach (var ingredient in character.CurrentRecipe.Ingredients)
-                {
-                    _inventoryService.RemoveItemFromInventory(character, ingredient.Key, ingredient.Value, out _);
-                }
-
-                // Ìí¼ÓÖÆ×÷µÄÎïÆ·
-                _inventoryService.AddItemToInventory(
-                    character, 
-                    character.CurrentRecipe.ResultingItemId, 
-                    character.CurrentRecipe.ResultingItemQuantity
-                );
-
-                // Ôö¼ÓÖÆ×÷¾­Ñé
-                character.AddProductionXP(
-                    character.CurrentRecipe.RequiredProfession, 
-                    character.CurrentRecipe.XpReward
-                );
-
-                // ¸üĞÂÈÎÎñ½ø¶È
-                _questService.UpdateQuestProgress(
-                    character, 
-                    QuestType.CraftItem, 
-                    character.CurrentRecipe.ResultingItemId, 
-                    character.CurrentRecipe.ResultingItemQuantity
-                );
-                _questService.UpdateQuestProgress(character, QuestType.CraftItem, "any", 1);
-
-                // ¼ì²éÊÇ·ñ»¹ÓĞ×ã¹»µÄ²ÄÁÏ¼ÌĞøÖÆ×÷
-                if (_inventoryService.CanAffordRecipe(character, character.CurrentRecipe))
-                {
-                    character.CraftingCooldown += GetCurrentCraftingTime(character);
-                }
-                else
-                {
-                    StopCrafting(character);
-                }
-                
-                // Í¨ÖªUI¸üĞÂ
-                NotifyStateChanged();
-            }
-        }
-
-        /// <summary>
-        /// ¿ªÊ¼²É¼¯»î¶¯
-        /// </summary>
+        [Obsolete("æœ¬åœ°ç”Ÿäº§ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
         public void StartGathering(Player character, GatheringNode node)
         {
-            if (character == null || node == null) return;
-            
-            // »ñÈ¡¾ßÌåµÄ²É¼¯×´Ì¬
-            PlayerActionState gatheringState = GetGatheringActionState(node.RequiredProfession);
-            
-            // Èç¹ûÒÑ¾­ÔÚ²É¼¯ÏàÍ¬½Úµã£¬Ôò²»ĞèÒªÖØĞÂ¿ªÊ¼
-            if (character.CurrentAction == gatheringState && 
-                character.CurrentGatheringNode?.Id == node.Id) return;
-
-            // Í£Ö¹µ±Ç°»î¶¯
-            StopCurrentAction(character);
-            
-            // ÉèÖÃ²É¼¯×´Ì¬
-            character.CurrentAction = gatheringState;
-            character.CurrentGatheringNode = node;
-            character.GatheringCooldown = GetCurrentGatheringTime(character);
-            
-            NotifyStateChanged();
+            // æœ¬åœ°é‡‡é›†ç³»ç»Ÿå·²ç§»é™¤
         }
 
         /// <summary>
-        /// ¿ªÊ¼ÖÆ×÷»î¶¯
+        /// åœæ­¢é‡‡é›† - å·²ç§»é™¤æœ¬åœ°å®ç°
         /// </summary>
-        public void StartCrafting(Player character, Recipe recipe)
+        [Obsolete("æœ¬åœ°ç”Ÿäº§ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
+        public void StopGathering(Player character)
         {
-            if (character == null || recipe == null) return;
-            
-            // ¼ì²éÊÇ·ñÓĞ×ã¹»²ÄÁÏ
-            if (!_inventoryService.CanAffordRecipe(character, recipe)) return;
-
-            // »ñÈ¡¾ßÌåµÄÖÆ×÷×´Ì¬
-            PlayerActionState craftingState = GetCraftingActionState(recipe.RequiredProfession);
-            
-            // Í£Ö¹µ±Ç°»î¶¯
-            StopCurrentAction(character);
-            
-            // ÉèÖÃÖÆ×÷×´Ì¬
-            character.CurrentAction = craftingState;
-            character.CurrentRecipe = recipe;
-            character.CraftingCooldown = GetCurrentCraftingTime(character);
-            
-            NotifyStateChanged();
+            // æœ¬åœ°é‡‡é›†ç³»ç»Ÿå·²ç§»é™¤
         }
 
         /// <summary>
-        /// Í£Ö¹µ±Ç°»î¶¯£¨²É¼¯»òÖÆ×÷£©
+        /// è·å–å½“å‰é‡‡é›†æ—¶é—´ - å·²ç§»é™¤æœ¬åœ°å®ç°
         /// </summary>
-        public void StopCurrentAction(Player character)
-        {
-            if (character == null) return;
-
-            // ÖØÖÃ»î¶¯×´Ì¬
-            character.CurrentAction = PlayerActionState.Idle;
-            character.CurrentGatheringNode = null;
-            character.CurrentRecipe = null;
-            character.GatheringCooldown = 0;
-            character.CraftingCooldown = 0;
-            
-            NotifyStateChanged();
-        }
-        
-        /// <summary>
-        /// Í£Ö¹ÖÆ×÷»î¶¯
-        /// </summary>
-        private void StopCrafting(Player character)
-        {
-            if (character == null) return;
-            
-            character.CurrentAction = PlayerActionState.Idle;
-            character.CurrentRecipe = null;
-            character.CraftingCooldown = 0;
-            
-            NotifyStateChanged();
-        }
-
-        /// <summary>
-        /// »ñÈ¡µ±Ç°²É¼¯Ê±¼ä£¨¿¼ÂÇËÙ¶È¼Ó³É£©
-        /// </summary>
+        [Obsolete("æœ¬åœ°ç”Ÿäº§ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
         public double GetCurrentGatheringTime(Player character)
         {
-            if (character?.CurrentGatheringNode == null) return 0;
-            
-            double speedBonus = character.GetTotalGatheringSpeedBonus();
-            return character.CurrentGatheringNode.GatheringTimeSeconds / (1 + speedBonus);
+            // æœ¬åœ°é‡‡é›†ç³»ç»Ÿå·²ç§»é™¤
+            return 0;
+        }
+
+        #endregion
+
+        #region åˆ¶ä½œç³»ç»Ÿ - å·²ç§»é™¤æœ¬åœ°å®ç°
+
+        /// <summary>
+        /// å¤„ç†åˆ¶ä½œ - å·²ç§»é™¤æœ¬åœ°å®ç°
+        /// </summary>
+        [Obsolete("æœ¬åœ°ç”Ÿäº§ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
+        public void ProcessCrafting(Player character, double elapsedSeconds)
+        {
+            // æœ¬åœ°åˆ¶ä½œå¤„ç†å·²ç§»é™¤ï¼Œæ‰€æœ‰åˆ¶ä½œé€»è¾‘ç”±æœåŠ¡å™¨å¤„ç†
         }
 
         /// <summary>
-        /// »ñÈ¡µ±Ç°ÖÆ×÷Ê±¼ä£¨¿¼ÂÇËÙ¶È¼Ó³É£©
+        /// å¼€å§‹åˆ¶ä½œ - å·²ç§»é™¤æœ¬åœ°å®ç°
         /// </summary>
+        [Obsolete("æœ¬åœ°ç”Ÿäº§ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
+        public void StartCrafting(Player character, Recipe recipe)
+        {
+            // æœ¬åœ°åˆ¶ä½œç³»ç»Ÿå·²ç§»é™¤
+        }
+
+        /// <summary>
+        /// åœæ­¢åˆ¶ä½œ - å·²ç§»é™¤æœ¬åœ°å®ç°
+        /// </summary>
+        [Obsolete("æœ¬åœ°ç”Ÿäº§ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
+        public void StopCrafting(Player character)
+        {
+            // æœ¬åœ°åˆ¶ä½œç³»ç»Ÿå·²ç§»é™¤
+        }
+
+        /// <summary>
+        /// è·å–å½“å‰åˆ¶ä½œæ—¶é—´ - å·²ç§»é™¤æœ¬åœ°å®ç°
+        /// </summary>
+        [Obsolete("æœ¬åœ°ç”Ÿäº§ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
         public double GetCurrentCraftingTime(Player character)
         {
-            if (character?.CurrentRecipe == null) return 0;
-            
-            double speedBonus = character.GetTotalCraftingSpeedBonus();
-            return character.CurrentRecipe.CraftingTimeSeconds / (1 + speedBonus);
+            // æœ¬åœ°åˆ¶ä½œç³»ç»Ÿå·²ç§»é™¤
+            return 0;
         }
 
         /// <summary>
-        /// ¸ù¾İ²É¼¯Ö°Òµ»ñÈ¡¶ÔÓ¦µÄĞĞ¶¯×´Ì¬
+        /// æ‰¹é‡åˆ¶ä½œ - å·²ç§»é™¤æœ¬åœ°å®ç°
         /// </summary>
-        private PlayerActionState GetGatheringActionState(GatheringProfession profession)
+        [Obsolete("æœ¬åœ°ç”Ÿäº§ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
+        public void StartBatchCrafting(Player character, Recipe recipe, int quantity)
         {
-            return profession switch
-            {
-                GatheringProfession.Miner => PlayerActionState.GatheringMining,
-                GatheringProfession.Herbalist => PlayerActionState.GatheringHerbalism,
-                GatheringProfession.Fishing => PlayerActionState.GatheringFishing,
-                _ => PlayerActionState.GatheringMining  // Ä¬ÈÏÊ¹ÓÃ²É¿ó×÷Îª±¸ÓÃ
-            };
+            // æœ¬åœ°åˆ¶ä½œç³»ç»Ÿå·²ç§»é™¤
         }
 
         /// <summary>
-        /// ¸ù¾İÖÆ×÷Ö°Òµ»ñÈ¡¶ÔÓ¦µÄĞĞ¶¯×´Ì¬
+        /// åœæ­¢å½“å‰åŠ¨ä½œ - å·²ç§»é™¤æœ¬åœ°å®ç°
         /// </summary>
-        private PlayerActionState GetCraftingActionState(ProductionProfession profession)
+        [Obsolete("æœ¬åœ°ç”Ÿäº§ç³»ç»Ÿå·²ç§»é™¤ï¼Œè¯·ä½¿ç”¨æœåŠ¡å™¨API")]
+        public void StopCurrentAction(Player character)
         {
-            return profession switch
-            {
-                ProductionProfession.Cooking => PlayerActionState.CraftingCooking,
-                ProductionProfession.Alchemy => PlayerActionState.CraftingAlchemy,
-                ProductionProfession.Blacksmithing => PlayerActionState.CraftingBlacksmithing,
-                ProductionProfession.Jewelcrafting => PlayerActionState.CraftingJewelcrafting,
-                ProductionProfession.Leatherworking => PlayerActionState.CraftingLeatherworking,
-                ProductionProfession.Tailoring => PlayerActionState.CraftingTailoring,
-                ProductionProfession.Engineering => PlayerActionState.CraftingEngineering,
-                _ => PlayerActionState.CraftingCooking  // Ä¬ÈÏÊ¹ÓÃÅëâ¿×÷Îª±¸ÓÃ
-            };
+            // æœ¬åœ°åˆ¶ä½œç³»ç»Ÿå·²ç§»é™¤
         }
 
+        #endregion
+
+        #region çŠ¶æ€ç®¡ç†
+
         /// <summary>
-        /// ´¥·¢×´Ì¬±ä¸üÊÂ¼ş
+        /// è§¦å‘çŠ¶æ€æ”¹å˜äº‹ä»¶
         /// </summary>
-        private void NotifyStateChanged() => OnStateChanged?.Invoke();
+        public void NotifyStateChanged()
+        {
+            OnStateChanged?.Invoke();
+        }
+
+        #endregion
     }
 }

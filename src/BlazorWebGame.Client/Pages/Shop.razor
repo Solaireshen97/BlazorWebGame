@@ -2,13 +2,21 @@
 @using BlazorWebGame.Models
 @using BlazorWebGame.Models.Items
 @using BlazorWebGame.Services
+@using BlazorWebGame.Client.Services
 @inject GameStateService GameState
+@inject HybridShopService ShopService
 @implements IDisposable
 
 <PageTitle>商店</PageTitle>
 
 @* --- vvv 核心修改：从检查 Player 改为检查 ActiveCharacter vvv --- *@
-@if (GameState.ActiveCharacter is Player character)
+@if (_isLoading)
+{
+    <div class="text-center">
+        <p>正在加载商店数据...</p>
+    </div>
+}
+else if (GameState.ActiveCharacter is Player character)
 {
     <div class="shop-layout">
         <!-- 左侧：商品分类和列表 -->
@@ -17,7 +25,7 @@
                 @foreach (var category in _shopCategories)
                 {
                     <button class="tab-button @(category == _selectedCategory ? "active" : "")"
-                            @onclick="() => SelectCategory(category)">
+                            @onclick="() => SelectCategoryAsync(category)">
                         @category
                     </button>
                 }
@@ -69,8 +77,8 @@
                             <span>价格:</span>
                             <strong>@GetPriceString(_selectedItem.ShopPurchaseInfo!)</strong>
                         </div>
-                        @* *** 修改点：调用 CanAfford 时传入当前角色 *** *@
-                        <button class="btn btn-success" @onclick="() => BuySelectedItem()" disabled="@(!CanAfford(character, _selectedItem))">
+                        @* *** 修改点：调用 CanAfford 时传入当前角色，并使用async方法 *** *@
+                        <button class="btn btn-success" @onclick="BuySelectedItemAsync" disabled="@(!CanAfford(character, _selectedItem))">
                             购买
                         </button>
                     </div>
@@ -99,35 +107,52 @@ else
     private List<string> _shopCategories = new();
     private string? _selectedCategory;
     private Item? _selectedItem;
+    private List<Item> _currentCategoryItems = new();
 
     private string? _purchaseMessage;
     private string? _purchaseMessageCssClass;
+    private bool _isLoading = true;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         GameState.OnStateChanged += StateHasChanged;
-        LoadShopCategories();
-        if (_shopCategories.Any())
+        await LoadShopDataAsync();
+    }
+
+    private async Task LoadShopDataAsync()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
         {
-            SelectCategory(_shopCategories.First());
+            var categories = await ShopService.GetShopCategoriesAsync();
+            _shopCategories = categories;
+            
+            if (_shopCategories.Any())
+            {
+                await SelectCategoryAsync(_shopCategories.First());
+            }
+        }
+        catch (Exception ex)
+        {
+            _purchaseMessage = $"加载商店数据失败: {ex.Message}";
+            _purchaseMessageCssClass = "error";
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
         }
     }
 
-    private void LoadShopCategories()
-    {
-        _shopCategories = ItemData.AllItems
-            .Where(i => i.ShopPurchaseInfo != null)
-            .Select(i => i.ShopPurchaseInfo!.ShopCategory)
-            .Distinct()
-            .OrderBy(c => c)
-            .ToList();
-    }
-
-    private void SelectCategory(string category)
+    private async Task SelectCategoryAsync(string category)
     {
         _selectedCategory = category;
-        _selectedItem = GetItemsForCurrentCategory().FirstOrDefault();
+        _currentCategoryItems = await ShopService.GetShopItemsByCategoryAsync(category);
+        _selectedItem = _currentCategoryItems.FirstOrDefault();
         ClearPurchaseMessage();
+        StateHasChanged();
     }
 
     private void SelectItem(Item item)
@@ -138,10 +163,7 @@ else
 
     private List<Item> GetItemsForCurrentCategory()
     {
-        return ItemData.AllItems
-            .Where(i => i.ShopPurchaseInfo?.ShopCategory == _selectedCategory)
-            .OrderBy(i => i.Name)
-            .ToList();
+        return _currentCategoryItems;
     }
 
     private string GetPriceString(PurchaseInfo info)
@@ -157,48 +179,41 @@ else
         }
     }
 
-    // --- vvv 这是关键的方法修改 vvv ---
     private bool CanAfford(Player character, Item? item)
     {
         if (item?.ShopPurchaseInfo == null) return false;
-
-        var info = item.ShopPurchaseInfo;
-        if (info.Currency == CurrencyType.Gold)
-        {
-            return character.Gold >= info.Price;
-        }
-        else
-        {
-            int ownedAmount = character.Inventory
-                .Where(s => s.ItemId == info.CurrencyItemId)
-                .Sum(s => s.Quantity);
-            return ownedAmount >= info.Price;
-        }
+        return ShopService.CanAffordItem(character, item);
     }
-    // --- ^^^ 修改结束 ^^^ ---
 
-    private async void BuySelectedItem()
+    private async Task BuySelectedItemAsync()
     {
         if (_selectedItem == null) return;
 
-        // GameState.BuyItem 内部会自动处理当前激活的角色，无需修改
-        bool success = GameState.BuyItem(_selectedItem.Id);
-
-        if (success)
+        try
         {
-            _purchaseMessage = "购买成功！";
-            _purchaseMessageCssClass = "success";
+            var result = await ShopService.BuyItemAsync(_selectedItem.Id, 1);
+            
+            if (result.Success)
+            {
+                _purchaseMessage = result.Message;
+                _purchaseMessageCssClass = "success";
+            }
+            else
+            {
+                _purchaseMessage = result.Message;
+                _purchaseMessageCssClass = "error";
+            }
         }
-        else
+        catch (Exception ex)
         {
-            _purchaseMessage = "货币不足，无法购买。";
+            _purchaseMessage = $"购买失败: {ex.Message}";
             _purchaseMessageCssClass = "error";
         }
 
-        await InvokeAsync(StateHasChanged);
+        StateHasChanged();
         await Task.Delay(2000); // 2秒后清除消息
         ClearPurchaseMessage();
-        await InvokeAsync(StateHasChanged);
+        StateHasChanged();
     }
 
     private void ClearPurchaseMessage()

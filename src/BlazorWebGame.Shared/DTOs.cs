@@ -11,6 +11,8 @@ public class ApiResponse<T>
     public bool Success { get; set; }
     public string Message { get; set; } = string.Empty;
     public T? Data { get; set; }
+    public List<string> Errors { get; set; } = new();
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 }
 
 /// <summary>
@@ -30,6 +32,59 @@ public class BattleStateDto
     public DateTime LastUpdated { get; set; }
     public BattleType BattleType { get; set; }
     public List<string> PartyMemberIds { get; set; } = new();
+    
+    // Enhanced battle state for server-side logic
+    public List<BattleParticipantDto> Players { get; set; } = new();
+    public List<BattleParticipantDto> Enemies { get; set; } = new();
+    public BattleStatus Status { get; set; } = BattleStatus.Active;
+    public Dictionary<string, string> PlayerTargets { get; set; } = new(); // playerId -> enemyName
+    public List<BattleActionDto> RecentActions { get; set; } = new();
+    public BattleResultDto? Result { get; set; }
+}
+
+/// <summary>
+/// 战斗参与者（玩家或敌人）
+/// </summary>
+public class BattleParticipantDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public int Health { get; set; }
+    public int MaxHealth { get; set; }
+    public int AttackPower { get; set; }
+    public double AttacksPerSecond { get; set; } = 1.0;
+    public double AttackCooldown { get; set; }
+    public List<string> EquippedSkills { get; set; } = new();
+    public Dictionary<string, double> SkillCooldowns { get; set; } = new();
+    public bool IsPlayer { get; set; }
+}
+
+/// <summary>
+/// 战斗动作记录
+/// </summary>
+public class BattleActionDto
+{
+    public string ActorId { get; set; } = string.Empty;
+    public string ActorName { get; set; } = string.Empty;
+    public string TargetId { get; set; } = string.Empty;
+    public string TargetName { get; set; } = string.Empty;
+    public BattleActionType ActionType { get; set; }
+    public int Damage { get; set; }
+    public string? SkillId { get; set; }
+    public DateTime Timestamp { get; set; }
+    public bool IsCritical { get; set; }
+}
+
+/// <summary>
+/// 战斗结果
+/// </summary>
+public class BattleResultDto
+{
+    public bool Victory { get; set; }
+    public int ExperienceGained { get; set; }
+    public int GoldGained { get; set; }
+    public List<string> ItemsLooted { get; set; } = new();
+    public DateTime CompletedAt { get; set; }
 }
 
 /// <summary>
@@ -43,6 +98,116 @@ public class StartBattleRequest
 }
 
 /// <summary>
+/// 角色状态传输对象 - 用于轮询获取所有角色状态
+/// </summary>
+public class CharacterStateDto
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string CharacterName { get; set; } = string.Empty;
+    public PlayerActionStateDto CurrentAction { get; set; } = new();
+    public int Level { get; set; }
+    public int Health { get; set; }
+    public int MaxHealth { get; set; }
+    public int Mana { get; set; }
+    public int MaxMana { get; set; }
+    public DateTime LastUpdated { get; set; }
+    public bool IsOnline { get; set; }
+    public LocationDto? CurrentLocation { get; set; }
+    public EquipmentSummaryDto Equipment { get; set; } = new();
+    public List<ActiveBuffDto> ActiveBuffs { get; set; } = new();
+}
+
+/// <summary>
+/// 玩家动作状态传输对象
+/// </summary>
+public class PlayerActionStateDto
+{
+    public string ActionType { get; set; } = "Idle";
+    public string ActionTarget { get; set; } = string.Empty;
+    public double Progress { get; set; } = 0.0; // 0.0 到 1.0
+    public double Duration { get; set; } = 0.0; // 总持续时间（秒）
+    public double TimeRemaining { get; set; } = 0.0; // 剩余时间（秒）
+    public DateTime StartTime { get; set; }
+    public Dictionary<string, object> ActionData { get; set; } = new();
+}
+
+/// <summary>
+/// 位置信息传输对象
+/// </summary>
+public class LocationDto
+{
+    public string Zone { get; set; } = string.Empty;
+    public string SubZone { get; set; } = string.Empty;
+    public double X { get; set; }
+    public double Y { get; set; }
+}
+
+/// <summary>
+/// 装备摘要传输对象
+/// </summary>
+public class EquipmentSummaryDto
+{
+    public int TotalAttackPower { get; set; }
+    public int TotalDefense { get; set; }
+    public Dictionary<string, string> EquippedItems { get; set; } = new(); // slot -> itemName
+}
+
+/// <summary>
+/// 活跃增益效果传输对象
+/// </summary>
+public class ActiveBuffDto
+{
+    public string BuffId { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public double TimeRemaining { get; set; }
+    public int StackCount { get; set; } = 1;
+}
+
+/// <summary>
+/// 批量角色状态查询请求
+/// </summary>
+public class CharacterStatesRequest
+{
+    public List<string> CharacterIds { get; set; } = new();
+    public bool IncludeOfflineCharacters { get; set; } = false;
+    public DateTime? LastUpdateAfter { get; set; }
+}
+
+/// <summary>
+/// 批量角色状态响应
+/// </summary>
+public class CharacterStatesResponse
+{
+    public List<CharacterStateDto> Characters { get; set; } = new();
+    public DateTime ServerTimestamp { get; set; } = DateTime.UtcNow;
+    public int TotalCount { get; set; }
+}
+
+/// <summary>
+/// 角色状态服务统计信息
+/// </summary>
+public class CharacterStateServiceStats
+{
+    public long TotalStateQueries { get; set; }
+    public long TotalStateUpdates { get; set; }
+    public int CachedCharacterCount { get; set; }
+    public int QueuedUpdateCount { get; set; }
+}
+
+/// <summary>
+/// 战斗动作请求
+/// </summary>
+public class BattleActionRequest
+{
+    public Guid BattleId { get; set; }
+    public string PlayerId { get; set; } = string.Empty;
+    public BattleActionType ActionType { get; set; }
+    public string? TargetId { get; set; }
+    public string? SkillId { get; set; }
+}
+
+/// <summary>
 /// 战斗类型
 /// </summary>
 public enum BattleType
@@ -52,13 +217,38 @@ public enum BattleType
 }
 
 /// <summary>
+/// 战斗状态
+/// </summary>
+public enum BattleStatus
+{
+    Active,
+    Paused,
+    Completed,
+    Cancelled
+}
+
+/// <summary>
+/// 战斗动作类型
+/// </summary>
+public enum BattleActionType
+{
+    Attack,
+    UseSkill,
+    Defend,
+    Move,
+    UseItem
+}
+
+/// <summary>
 /// 离线操作类型
 /// </summary>
 public enum OfflineActionType
 {
     StartBattle,
     StopBattle,
-    UpdateCharacter
+    UpdateCharacter,
+    SyncTeamProgress,
+    SyncOfflineBattleProgress
 }
 
 /// <summary>
@@ -69,4 +259,739 @@ public class OfflineAction
     public OfflineActionType Type { get; set; }
     public DateTime Timestamp { get; set; }
     public string Data { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 装备生成质量等级
+/// </summary>
+public enum EquipmentQuality
+{
+    Common,     // 白装
+    Uncommon,   // 绿装
+    Rare,       // 蓝装
+    Epic        // 紫装
+}
+
+/// <summary>
+/// 装备属性等级
+/// </summary>
+public enum AttributeTier
+{
+    T1, // 低等级 (0.8±0.05)
+    T2, // 中等级 (1±0.05)
+    T3  // 高等级 (1.2±0.05)
+}
+
+/// <summary>
+/// 装备生成请求
+/// </summary>
+public class EquipmentGenerationRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public int Level { get; set; }
+    public string Slot { get; set; } = string.Empty;
+    public EquipmentQuality Quality { get; set; }
+    public AttributeTier AttributeTier { get; set; } = AttributeTier.T2;
+    public string WeaponType { get; set; } = "None";
+    public string ArmorType { get; set; } = "None";
+    public bool IsTwoHanded { get; set; }
+    public List<string> AllowedProfessions { get; set; } = new();
+    public List<string> SecondaryAttributePool { get; set; } = new();
+    public Dictionary<string, object> CustomAttributes { get; set; } = new();
+}
+
+/// <summary>
+/// 装备数据传输对象
+/// </summary>
+public class EquipmentDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public int RequiredLevel { get; set; }
+    public string Slot { get; set; } = string.Empty; // Store as string to avoid enum conflicts
+    public string WeaponType { get; set; } = "None";
+    public string ArmorType { get; set; } = "None";
+    public bool IsTwoHanded { get; set; }
+    public List<string> AllowedProfessions { get; set; } = new();
+    
+    // 武器属性
+    public int WeaponDamage { get; set; }
+    public double AttackSpeed { get; set; } = 1.0;
+    
+    // 护甲属性
+    public int ArmorValue { get; set; }
+    public int BlockChance { get; set; }
+    
+    // 主属性加成
+    public Dictionary<string, int> AttributeBonuses { get; set; } = new();
+    
+    // 其他属性加成
+    public int AttackBonus { get; set; }
+    public int HealthBonus { get; set; }
+    public double CriticalChanceBonus { get; set; }
+    public double CriticalDamageBonus { get; set; }
+    public double AttackSpeedBonus { get; set; }
+    public int AccuracyBonus { get; set; }
+    public double DodgeChanceBonus { get; set; }
+    
+    // 生产和采集加成
+    public double GatheringSpeedBonus { get; set; }
+    public double ExtraLootChanceBonus { get; set; }
+    public double CraftingSuccessBonus { get; set; }
+    public double ResourceConservationBonus { get; set; }
+    
+    // 元素抗性
+    public Dictionary<string, double> ElementalResistances { get; set; } = new();
+    
+    // 经济属性
+    public int Value { get; set; }
+    public ShopPurchaseInfoDto? ShopPurchaseInfo { get; set; }
+}
+
+/// <summary>
+/// 商店购买信息
+/// </summary>
+public class ShopPurchaseInfoDto
+{
+    public string ShopCategory { get; set; } = string.Empty;
+    public int Price { get; set; }
+}
+
+/// <summary>
+/// 角色基本信息DTO
+/// </summary>
+public class CharacterDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public int Health { get; set; }
+    public int MaxHealth { get; set; }
+    public int Gold { get; set; }
+    public bool IsDead { get; set; }
+    public double RevivalTimeRemaining { get; set; }
+    public string CurrentAction { get; set; } = "Idle";
+    public string SelectedBattleProfession { get; set; } = "Warrior";
+    public DateTime LastUpdated { get; set; }
+}
+
+/// <summary>
+/// 角色详细信息DTO
+/// </summary>
+public class CharacterDetailsDto : CharacterDto
+{
+    public Dictionary<string, int> BattleProfessionXP { get; set; } = new();
+    public Dictionary<string, int> GatheringProfessionXP { get; set; } = new();
+    public Dictionary<string, int> ProductionProfessionXP { get; set; } = new();
+    public List<string> LearnedSharedSkills { get; set; } = new();
+    public Dictionary<string, List<string>> EquippedSkills { get; set; } = new();
+    public Dictionary<string, int> Reputation { get; set; } = new();
+    public List<string> CompletedQuestIds { get; set; } = new();
+    public Dictionary<string, int> QuestProgress { get; set; } = new();
+    
+    // Additional properties needed for server-side player services
+    public List<InventorySlotDto> Inventory { get; set; } = new();
+    public Dictionary<string, string> EquippedItems { get; set; } = new();
+    public List<StatBuffDto> ActiveBuffs { get; set; } = new();
+    public Dictionary<string, DateTime> SkillCooldowns { get; set; } = new();
+    public HashSet<string> AutoSellItemIds { get; set; } = new();
+    public HashSet<string> DefeatedMonsterIds { get; set; } = new();
+    public Dictionary<string, DateTime> ConsumableCooldowns { get; set; } = new();
+    public HashSet<string> LearnedRecipeIds { get; set; } = new();
+    public Dictionary<int, string> PotionQuickSlots { get; set; } = new();
+    public Dictionary<int, string> CombatFoodQuickSlots { get; set; } = new();
+    public Dictionary<int, string> GatheringFoodQuickSlots { get; set; } = new();
+    public Dictionary<int, string> ProductionFoodQuickSlots { get; set; } = new();
+    public AttributeSetDto? BaseAttributes { get; set; }
+}
+
+/// <summary>
+/// 创建角色请求
+/// </summary>
+public class CreateCharacterRequest
+{
+    public string Name { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 角色经验值更新请求
+/// </summary>
+public class AddExperienceRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string ProfessionType { get; set; } = string.Empty; // "Battle", "Gathering", "Production"
+    public string Profession { get; set; } = string.Empty;
+    public int Amount { get; set; }
+}
+
+/// <summary>
+/// 角色状态更新请求
+/// </summary>
+public class UpdateCharacterStatusRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string Action { get; set; } = string.Empty;
+    public Dictionary<string, object> Data { get; set; } = new();
+}
+
+/// <summary>
+/// 组队数据传输对象
+/// </summary>
+public class PartyDto
+{
+    public Guid Id { get; set; }
+    public string CaptainId { get; set; } = string.Empty;
+    public List<string> MemberIds { get; set; } = new();
+    public DateTime CreatedAt { get; set; }
+    public DateTime LastUpdated { get; set; }
+    public int MaxMembers { get; set; } = 5;
+}
+
+/// <summary>
+/// 创建组队请求
+/// </summary>
+public class CreatePartyRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 加入组队请求
+/// </summary>
+public class JoinPartyRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public Guid PartyId { get; set; }
+}
+
+/// <summary>
+/// 离开组队请求
+/// </summary>
+public class LeavePartyRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+}
+
+// ====== 生产系统 DTOs ======
+
+/// <summary>
+/// 采集节点 DTO
+/// </summary>
+public class GatheringNodeDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public double GatheringTimeSeconds { get; set; }
+    public string ResultingItemId { get; set; } = string.Empty;
+    public int ResultingItemQuantity { get; set; } = 1;
+    public int XpReward { get; set; }
+    public string RequiredProfession { get; set; } = string.Empty; // Mining, Herbalist, Fishing
+    public int RequiredLevel { get; set; }
+    public string? RequiredMonsterId { get; set; }
+}
+
+/// <summary>
+/// 开始采集请求
+/// </summary>
+public class StartGatheringRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string NodeId { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 采集状态 DTO
+/// </summary>
+public class GatheringStateDto
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string? CurrentNodeId { get; set; }
+    public double RemainingTimeSeconds { get; set; }
+    public bool IsGathering { get; set; }
+    public DateTime? StartTime { get; set; }
+    public DateTime? EstimatedCompletionTime { get; set; }
+}
+
+/// <summary>
+/// 采集完成结果
+/// </summary>
+public class GatheringResultDto
+{
+    public bool Success { get; set; }
+    public string ItemId { get; set; } = string.Empty;
+    public int Quantity { get; set; }
+    public int XpGained { get; set; }
+    public bool ExtraLoot { get; set; }
+    public string Message { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 停止采集请求
+/// </summary>
+public class StopGatheringRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+}
+
+// ==================== 制作系统 DTOs ====================
+
+/// <summary>
+/// 制作配方 DTO
+/// </summary>
+public class RecipeDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string RequiredProfession { get; set; } = string.Empty; // Alchemy, Engineering, etc.
+    public int RequiredLevel { get; set; }
+    public Dictionary<string, int> Ingredients { get; set; } = new(); // ItemId -> Quantity
+    public string ResultingItemId { get; set; } = string.Empty;
+    public int ResultingItemQuantity { get; set; } = 1;
+    public double CraftingTimeSeconds { get; set; }
+    public int XpReward { get; set; }
+    public bool IsDefault { get; set; } = false; // 是否默认学会
+    public string? UnlockItemId { get; set; } // 解锁配方所需的图纸物品ID
+}
+
+/// <summary>
+/// 获取配方请求
+/// </summary>
+public class GetRecipesRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string? Profession { get; set; } // 可选：筛选特定职业
+    public int? MaxLevel { get; set; } // 可选：筛选等级范围
+}
+
+/// <summary>
+/// 开始制作请求
+/// </summary>
+public class StartCraftingRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string RecipeId { get; set; } = string.Empty;
+    public int Quantity { get; set; } = 1; // 批量制作数量
+}
+
+/// <summary>
+/// 制作状态 DTO
+/// </summary>
+public class CraftingStateDto
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string? CurrentRecipeId { get; set; }
+    public int TotalQuantity { get; set; }
+    public int CompletedQuantity { get; set; }
+    public double RemainingTimeSeconds { get; set; }
+    public bool IsCrafting { get; set; }
+    public DateTime? StartTime { get; set; }
+    public DateTime? EstimatedCompletionTime { get; set; }
+}
+
+/// <summary>
+/// 制作完成结果
+/// </summary>
+public class CraftingResultDto
+{
+    public bool Success { get; set; }
+    public string ItemId { get; set; } = string.Empty;
+    public int Quantity { get; set; }
+    public int XpGained { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public List<string> MaterialsConsumed { get; set; } = new();
+}
+
+/// <summary>
+/// 停止制作请求
+/// </summary>
+public class StopCraftingRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 批量制作请求
+/// </summary>
+public class BatchCraftingRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public List<BatchCraftingItem> Items { get; set; } = new();
+}
+
+/// <summary>
+/// 批量制作项目
+/// </summary>
+public class BatchCraftingItem
+{
+    public string RecipeId { get; set; } = string.Empty;
+    public int Quantity { get; set; } = 1;
+}
+
+/// <summary>
+/// 节点解锁状态检查请求
+/// </summary>
+public class NodeUnlockCheckRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string NodeId { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 节点解锁状态响应
+/// </summary>
+public class NodeUnlockStatusDto
+{
+    public bool IsUnlocked { get; set; }
+    public string Reason { get; set; } = string.Empty;
+    public int? RequiredLevel { get; set; }
+    public string? RequiredMonsterId { get; set; }
+}
+
+/// <summary>
+/// 物品数据传输对象
+/// </summary>
+public class ItemDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public int Value { get; set; }
+    public string Category { get; set; } = string.Empty;
+    public string Rarity { get; set; } = string.Empty;
+    public bool IsStackable { get; set; }
+    public int MaxStackSize { get; set; } = 99;
+    public Dictionary<string, object> Properties { get; set; } = new();
+}
+
+/// <summary>
+/// 物品槽数据传输对象
+/// </summary>
+public class InventorySlotDto
+{
+    public int SlotIndex { get; set; }
+    public string ItemId { get; set; } = string.Empty;
+    public int Quantity { get; set; }
+    public bool IsEmpty => string.IsNullOrEmpty(ItemId) || Quantity <= 0;
+}
+
+/// <summary>
+/// 角色库存数据传输对象
+/// </summary>
+public class InventoryDto
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public List<InventorySlotDto> Slots { get; set; } = new();
+    public Dictionary<string, InventorySlotDto> Equipment { get; set; } = new();
+    public Dictionary<string, List<InventorySlotDto>> QuickSlots { get; set; } = new();
+}
+
+/// <summary>
+/// 添加物品请求
+/// </summary>
+public class AddItemRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string ItemId { get; set; } = string.Empty;
+    public int Quantity { get; set; } = 1;
+}
+
+/// <summary>
+/// 使用物品请求
+/// </summary>
+public class UseItemRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string ItemId { get; set; } = string.Empty;
+    public int SlotIndex { get; set; } = -1;
+}
+
+/// <summary>
+/// 装备物品请求
+/// </summary>
+public class EquipItemRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string ItemId { get; set; } = string.Empty;
+    public string EquipmentSlot { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 出售物品请求
+/// </summary>
+public class SellItemRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string ItemId { get; set; } = string.Empty;
+    public int Quantity { get; set; } = 1;
+}
+
+/// <summary>
+/// 任务数据传输对象
+/// </summary>
+public class QuestDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty; // Daily, Weekly, Main, etc.
+    public string Status { get; set; } = string.Empty; // Available, Active, Completed
+    public List<QuestObjectiveDto> Objectives { get; set; } = new();
+    public List<QuestRewardDto> Rewards { get; set; } = new();
+    public DateTime CreatedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public DateTime? ExpiresAt { get; set; }
+}
+
+/// <summary>
+/// 任务目标数据传输对象
+/// </summary>
+public class QuestObjectiveDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty; // Kill, Collect, Gather, etc.
+    public string TargetId { get; set; } = string.Empty;
+    public int RequiredCount { get; set; }
+    public int CurrentCount { get; set; }
+    public bool IsCompleted => CurrentCount >= RequiredCount;
+}
+
+/// <summary>
+/// 任务奖励数据传输对象
+/// </summary>
+public class QuestRewardDto
+{
+    public string Type { get; set; } = string.Empty; // Experience, Gold, Item
+    public string? ItemId { get; set; }
+    public int Amount { get; set; }
+    public string? ProfessionType { get; set; }
+}
+
+/// <summary>
+/// 角色任务状态数据传输对象
+/// </summary>
+public class CharacterQuestStatusDto
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public List<QuestDto> ActiveQuests { get; set; } = new();
+    public List<QuestDto> CompletedQuests { get; set; } = new();
+    public List<QuestDto> AvailableQuests { get; set; } = new();
+    public DateTime LastDailyReset { get; set; }
+    public DateTime LastWeeklyReset { get; set; }
+}
+
+/// <summary>
+/// 接受任务请求
+/// </summary>
+public class AcceptQuestRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string QuestId { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 完成任务请求
+/// </summary>
+public class CompleteQuestRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string QuestId { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 更新任务进度请求
+/// </summary>
+public class UpdateQuestProgressRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public string QuestId { get; set; } = string.Empty;
+    public string ObjectiveId { get; set; } = string.Empty;
+    public int Progress { get; set; }
+}
+
+/// <summary>
+/// 属性集合DTO
+/// </summary>
+public class AttributeSetDto
+{
+    public int Strength { get; set; }
+    public int Agility { get; set; }
+    public int Intellect { get; set; }
+    public int Spirit { get; set; }
+    public int Stamina { get; set; }
+    
+    public AttributeSetDto Clone()
+    {
+        return new AttributeSetDto
+        {
+            Strength = this.Strength,
+            Agility = this.Agility,
+            Intellect = this.Intellect,
+            Spirit = this.Spirit,
+            Stamina = this.Stamina
+        };
+    }
+    
+    public void Add(AttributeSetDto other)
+    {
+        this.Strength += other.Strength;
+        this.Agility += other.Agility;
+        this.Intellect += other.Intellect;
+        this.Spirit += other.Spirit;
+        this.Stamina += other.Stamina;
+    }
+}
+
+/// <summary>
+/// 状态Buff DTO
+/// </summary>
+public class StatBuffDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string BuffType { get; set; } = string.Empty;
+    public double BuffValue { get; set; }
+    public DateTime StartTime { get; set; }
+    public TimeSpan Duration { get; set; }
+    public DateTime EndTime => StartTime.Add(Duration);
+    public bool IsExpired => DateTime.UtcNow > EndTime;
+}
+
+// ====== Missing Enums and DTOs ======
+
+/// <summary>
+/// 武器类型枚举
+/// </summary>
+public enum WeaponType
+{
+    None,
+    Sword,
+    Axe,
+    Mace,
+    Dagger,
+    Staff,
+    Bow,
+    TwoHandSword,
+    TwoHandAxe,
+    TwoHandMace,
+    Polearm,
+    Shield
+}
+
+/// <summary>
+/// 护甲类型枚举
+/// </summary>
+public enum ArmorType
+{
+    None,
+    Cloth,
+    Leather,
+    Mail,
+    Plate
+}
+
+/// <summary>
+/// 战斗开始请求
+/// </summary>
+public class BattleStartRequest
+{
+    public string? PlayerId { get; set; }
+    public Guid? PartyId { get; set; }
+    public string BattleType { get; set; } = "Normal";
+    public string? DungeonId { get; set; }
+    public List<string> EnemyIds { get; set; } = new();
+}
+
+// ====== Additional DTOs for API compatibility ======
+
+/// <summary>
+/// 玩家离线信息DTO
+/// </summary>
+public class PlayerOfflineInfoDto
+{
+    public string PlayerId { get; set; } = string.Empty;
+    public DateTime LastOnlineTime { get; set; }
+    public TimeSpan OfflineDuration { get; set; }
+    public List<string> PendingActions { get; set; } = new();
+    public bool HasPendingSettlement { get; set; }
+}
+
+/// <summary>
+/// 离线结算统计信息DTO
+/// </summary>
+public class OfflineSettlementStatisticsDto
+{
+    public int TotalSettlements { get; set; }
+    public int SuccessfulSettlements { get; set; }
+    public int FailedSettlements { get; set; }
+    public double AverageProcessingTime { get; set; }
+    public DateTime LastResetTime { get; set; }
+}
+
+// ====== Team Progress DTOs ======
+
+/// <summary>
+/// 角色更新请求
+/// </summary>
+public class CharacterUpdateRequest
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public Dictionary<string, object> Updates { get; set; } = new();
+}
+
+/// <summary>
+/// 团队进度更新请求
+/// </summary>
+public class TeamProgressUpdateRequest
+{
+    public string PartyId { get; set; } = string.Empty;
+    public Dictionary<string, object> ProgressData { get; set; } = new();
+}
+
+/// <summary>
+/// 用户信息DTO
+/// </summary>
+public class UserInfoDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Username { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public List<string> Roles { get; set; } = new();
+}
+
+// ====== Monitoring API DTOs ======
+
+/// <summary>
+/// 系统性能指标DTO
+/// </summary>
+public class SystemMetricsDto
+{
+    public double CpuUsage { get; set; }
+    public long MemoryUsed { get; set; }
+    public long MemoryTotal { get; set; }
+    public int ActiveConnections { get; set; }
+    public TimeSpan Uptime { get; set; }
+}
+
+/// <summary>
+/// 操作性能指标DTO
+/// </summary>
+public class OperationMetricsDto
+{
+    public Dictionary<string, int> RequestCounts { get; set; } = new();
+    public Dictionary<string, double> AverageResponseTimes { get; set; } = new();
+    public Dictionary<string, int> ErrorCounts { get; set; } = new();
+}
+
+/// <summary>
+/// 游戏状态DTO
+/// </summary>
+public class GameStatusDto
+{
+    public int ActivePlayers { get; set; }
+    public int ActiveBattles { get; set; }
+    public int ActiveParties { get; set; }
+    public string ServerStatus { get; set; } = string.Empty;
+    public DateTime LastUpdated { get; set; }
 }

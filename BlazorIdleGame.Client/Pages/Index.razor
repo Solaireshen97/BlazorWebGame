@@ -1,0 +1,95 @@
+﻿@page "/"
+@using BlazorIdleGame.Client.Models.Core
+@using BlazorIdleGame.Client.Services.Core
+@using BlazorIdleGame.Client.Services.Auth
+@inject IGameSyncService GameSync
+@inject IAuthService AuthService
+@inject NavigationManager NavigationManager
+
+<PageTitle>BlazorIdleGame</PageTitle>
+
+<div class="game-container">
+    @if (!AuthService.IsAuthenticated)
+    {
+        <div class="welcome-screen">
+            <h2>欢迎来到闲置游戏</h2>
+            <p>请登录或注册以开始游戏</p>
+            <div>
+                <button class="btn btn-primary me-2" @onclick="NavigateToLogin">登录</button>
+                <button class="btn btn-outline-primary" @onclick="NavigateToRegister">注册</button>
+            </div>
+        </div>
+    }
+    else if (!_isLoaded)
+    {
+        <div class="loading-screen">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">加载中...</span>
+            </div>
+            <p>正在连接服务器...</p>
+        </div>
+    }
+    else
+    {
+        <div class="game-layout">
+            <div class="top-bar">
+                <div class="player-info">
+                    <h3>@_playerInfo.Name</h3>
+                    <span>等级: @_playerInfo.Level</span>
+                </div>
+
+                <div class="resources">
+                    <span>金币: @_resources.Gold</span>
+                    <span>木材: @_resources.Wood</span>
+                    <span>石头: @_resources.Stone</span>
+                </div>
+            </div>
+
+            <div class="main-content">
+                <h4>游戏主界面</h4>
+                <p>活动系统开发中...</p>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool _isLoaded = false;
+    private PlayerInfo _playerInfo = new();
+    private Resources _resources = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // 检查是否已认证
+        if (!AuthService.IsAuthenticated)
+        {
+            return; // 未认证，显示欢迎页面
+        }
+        
+        // 已认证，初始化游戏
+        await GameSync.InitializeAsync();
+        
+        // 使用认证服务中的玩家信息
+        _playerInfo = AuthService.CurrentPlayer;
+        
+        // 临时使用假数据
+        _resources = new Resources
+        {
+            Gold = 100,
+            Wood = 50,
+            Stone = 30
+        };
+
+        _isLoaded = true;
+    }
+    
+    private void NavigateToLogin()
+    {
+        NavigationManager.NavigateTo("/login");
+    }
+    
+    private void NavigateToRegister()
+    {
+        NavigationManager.NavigateTo("/register");
+    }
+}
