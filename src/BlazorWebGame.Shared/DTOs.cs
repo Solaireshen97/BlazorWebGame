@@ -84,6 +84,22 @@ public class ServiceResult<T>
             ErrorCode = exception.GetType().Name
         };
     }
+
+    /// <summary>
+    /// 创建成功结果的便捷方法
+    /// </summary>
+    public static ServiceResult<T> SuccessResult(T data, string? message = null)
+    {
+        return CreateSuccess(data, message);
+    }
+
+    /// <summary>
+    /// 创建失败结果的便捷方法
+    /// </summary>
+    public static ServiceResult<T> ErrorResult(string message, string? errorCode = null)
+    {
+        return CreateFailure(message, errorCode);
+    }
 }
 
 /// <summary>

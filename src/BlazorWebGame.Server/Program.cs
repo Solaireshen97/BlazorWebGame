@@ -216,7 +216,7 @@ builder.Services.AddSingleton<UnifiedEventService>();
 builder.Services.AddSingleton<ServerServiceLocator>();
 
 // 配置统一的数据存储系统
-builder.Services.AddUnifiedDataStorage(builder.Configuration, builder.Environment);
+builder.Services.AddConsolidatedDataStorage(builder.Configuration, builder.Environment);
 
 // 注册离线结算服务
 builder.Services.AddSingleton<OfflineSettlementService>();
@@ -281,20 +281,20 @@ builder.Services.AddHostedService<ServerOptimizationService>();
 var app = builder.Build();
 
 // 初始化统一数据存储系统
-var unifiedStorageOptions = builder.Configuration.GetSection("UnifiedDataStorage")
-    .Get<BlazorWebGame.Server.Configuration.UnifiedDataStorageOptions>() ?? new BlazorWebGame.Server.Configuration.UnifiedDataStorageOptions();
+var consolidatedStorageOptions = builder.Configuration.GetSection("ConsolidatedDataStorage")
+    .Get<BlazorWebGame.Server.Configuration.ConsolidatedDataStorageOptions>() ?? new BlazorWebGame.Server.Configuration.ConsolidatedDataStorageOptions();
 
-if (unifiedStorageOptions.StorageType.ToLower() is "sqlite")
+if (consolidatedStorageOptions.StorageType.ToLower() is "sqlite")
 {
     var logger = app.Services.GetRequiredService<ILogger<Program>>();
     
     try
     {
-        await app.Services.InitializeUnifiedDataStorageAsync(logger);
+        await app.Services.InitializeConsolidatedDataStorageAsync(logger);
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "Failed to initialize unified data storage system");
+        logger.LogError(ex, "Failed to initialize consolidated data storage system");
     }
 }
 
@@ -341,7 +341,7 @@ if (app.Environment.IsDevelopment())
         }
 
         // 运行SQLite数据存储测试（如果启用了SQLite）
-        if (unifiedStorageOptions.StorageType.ToLower() is "sqlite")
+        if (consolidatedStorageOptions.StorageType.ToLower() is "sqlite")
         {
             try
             {
