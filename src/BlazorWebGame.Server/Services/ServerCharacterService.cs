@@ -163,6 +163,7 @@ namespace BlazorWebGame.Server.Services
                 var characters = new List<CharacterDto>();
                 foreach (var userChar in userCharactersResult.Data.Where(uc => uc.IsActive))
                 {
+                    //var characterData = await _dataStorage.GetCharacterAsync(userChar.CharacterId);
                     if (_characters.TryGetValue(userChar.CharacterId, out var character))
                     {
                         characters.Add(new CharacterDto
