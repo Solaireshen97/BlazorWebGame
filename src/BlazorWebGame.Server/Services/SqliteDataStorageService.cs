@@ -1171,7 +1171,7 @@ public class SqliteDataStorageService : IDataStorageService
 
     #region 实体映射方法
 
-    private PlayerStorageDto MapToDto(PlayerEntity entity)
+    private static PlayerStorageDto MapToDto(PlayerEntity entity)
     {
         return new PlayerStorageDto
         {
@@ -1243,7 +1243,7 @@ public class SqliteDataStorageService : IDataStorageService
         entity.EquipmentJson = JsonSerializer.Serialize(dto.Equipment);
     }
 
-    private TeamStorageDto MapToDto(TeamEntity entity)
+    private static TeamStorageDto MapToDto(TeamEntity entity)
     {
         return new TeamStorageDto
         {
@@ -1288,7 +1288,7 @@ public class SqliteDataStorageService : IDataStorageService
         entity.LastBattleAt = dto.LastBattleAt;
     }
 
-    private ActionTargetStorageDto MapToDto(ActionTargetEntity entity)
+    private static ActionTargetStorageDto MapToDto(ActionTargetEntity entity)
     {
         return new ActionTargetStorageDto
         {
@@ -1345,7 +1345,7 @@ public class SqliteDataStorageService : IDataStorageService
         entity.ProgressDataJson = JsonSerializer.Serialize(dto.ProgressData);
     }
 
-    private BattleRecordStorageDto MapToDto(BattleRecordEntity entity)
+    private static BattleRecordStorageDto MapToDto(BattleRecordEntity entity)
     {
         return new BattleRecordStorageDto
         {
@@ -1408,7 +1408,7 @@ public class SqliteDataStorageService : IDataStorageService
         entity.Duration = dto.Duration;
     }
 
-    private OfflineDataStorageDto MapToDto(OfflineDataEntity entity)
+    private static OfflineDataStorageDto MapToDto(OfflineDataEntity entity)
     {
         return new OfflineDataStorageDto
         {
