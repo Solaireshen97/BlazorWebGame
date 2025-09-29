@@ -360,6 +360,16 @@ if (app.Environment.IsDevelopment())
         {
             logger.LogError(ex, "User service test failed");
         }
+        
+        // 运行用户角色关联系统测试
+        try
+        {
+            await BlazorWebGame.Server.Tests.UserCharacterServiceTests.RunComprehensiveTests(logger);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "User-Character relationship test failed");
+        }
     }
     else
     {

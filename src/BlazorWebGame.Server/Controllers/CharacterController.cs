@@ -1,6 +1,8 @@
 using BlazorWebGame.Shared.DTOs;
 using BlazorWebGame.Server.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace BlazorWebGame.Server.Controllers
 {
@@ -9,16 +11,59 @@ namespace BlazorWebGame.Server.Controllers
     public class CharacterController : ControllerBase
     {
         private readonly ServerCharacterService _characterService;
+        private readonly UserService _userService;
         private readonly ILogger<CharacterController> _logger;
 
-        public CharacterController(ServerCharacterService characterService, ILogger<CharacterController> logger)
+        public CharacterController(
+            ServerCharacterService characterService, 
+            UserService userService,
+            ILogger<CharacterController> logger)
         {
             _characterService = characterService;
+            _userService = userService;
             _logger = logger;
         }
 
         /// <summary>
-        /// 获取所有角色
+        /// 获取当前用户的角色列表
+        /// </summary>
+        [HttpGet("my")]
+        [Authorize]
+        public async Task<ActionResult<ApiResponse<List<CharacterDto>>>> GetMyCharacters()
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized(new ApiResponse<List<CharacterDto>>
+                    {
+                        Success = false,
+                        Message = "用户未认证"
+                    });
+                }
+
+                var characters = await _characterService.GetUserCharactersAsync(userId);
+                return Ok(new ApiResponse<List<CharacterDto>>
+                {
+                    Success = true,
+                    Data = characters,
+                    Message = "用户角色列表获取成功"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get user characters");
+                return StatusCode(500, new ApiResponse<List<CharacterDto>>
+                {
+                    Success = false,
+                    Message = "获取用户角色列表失败"
+                });
+            }
+        }
+
+        /// <summary>
+        /// 获取所有角色（管理员使用）
         /// </summary>
         [HttpGet]
         public async Task<ActionResult<ApiResponse<List<CharacterDto>>>> GetCharacters()
@@ -48,10 +93,28 @@ namespace BlazorWebGame.Server.Controllers
         /// 获取角色详细信息
         /// </summary>
         [HttpGet("{characterId}")]
+        [Authorize]
         public async Task<ActionResult<ApiResponse<CharacterDetailsDto>>> GetCharacterDetails(string characterId)
         {
             try
             {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized(new ApiResponse<CharacterDetailsDto>
+                    {
+                        Success = false,
+                        Message = "用户未认证"
+                    });
+                }
+
+                // 验证用户是否拥有该角色
+                var ownsCharacter = await _characterService.UserOwnsCharacterAsync(userId, characterId);
+                if (!ownsCharacter)
+                {
+                    return Forbid();
+                }
+
                 var character = await _characterService.GetCharacterDetailsAsync(characterId);
                 if (character == null)
                 {
@@ -84,6 +147,7 @@ namespace BlazorWebGame.Server.Controllers
         /// 创建新角色
         /// </summary>
         [HttpPost]
+        [Authorize]
         public async Task<ActionResult<ApiResponse<CharacterDto>>> CreateCharacter(CreateCharacterRequest request)
         {
             try
@@ -97,7 +161,17 @@ namespace BlazorWebGame.Server.Controllers
                     });
                 }
 
-                var character = await _characterService.CreateCharacterAsync(request);
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized(new ApiResponse<CharacterDto>
+                    {
+                        Success = false,
+                        Message = "用户未认证"
+                    });
+                }
+
+                var character = await _characterService.CreateCharacterAsync(request, userId);
                 return Ok(new ApiResponse<CharacterDto>
                 {
                     Success = true,

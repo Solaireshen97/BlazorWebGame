@@ -17,6 +17,7 @@ public class GameDbContext : DbContext
     public DbSet<ActionTargetEntity> ActionTargets { get; set; }
     public DbSet<BattleRecordEntity> BattleRecords { get; set; }
     public DbSet<OfflineDataEntity> OfflineData { get; set; }
+    public DbSet<UserCharacterEntity> UserCharacters { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -142,6 +143,23 @@ public class GameDbContext : DbContext
             entity.HasIndex(e => e.PlayerId);
             entity.HasIndex(e => e.IsSynced);
             entity.HasIndex(e => e.CreatedAt);
+        });
+
+        // 配置用户角色关联实体
+        modelBuilder.Entity<UserCharacterEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasMaxLength(100);
+            entity.Property(e => e.UserId).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.CharacterId).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.CharacterName).HasMaxLength(50);
+            
+            // 索引
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.CharacterId);
+            entity.HasIndex(e => new { e.UserId, e.CharacterId }).IsUnique();
+            entity.HasIndex(e => e.IsActive);
+            entity.HasIndex(e => e.IsDefault);
         });
     }
 }

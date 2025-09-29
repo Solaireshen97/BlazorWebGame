@@ -1,5 +1,6 @@
 using BlazorWebGame.Shared.DTOs;
 using BlazorWebGame.Shared.Events;
+using BlazorWebGame.Shared.Interfaces;
 using System.Collections.Concurrent;
 
 namespace BlazorWebGame.Server.Services
@@ -15,19 +16,22 @@ namespace BlazorWebGame.Server.Services
         private readonly ServerPlayerAttributeService _playerAttributeService;
         private readonly ServerPlayerProfessionService _playerProfessionService;
         private readonly ServerPlayerUtilityService _playerUtilityService;
+        private readonly IDataStorageService _dataStorage;
 
         public ServerCharacterService(
             GameEventManager eventManager, 
             ILogger<ServerCharacterService> logger,
             ServerPlayerAttributeService playerAttributeService,
             ServerPlayerProfessionService playerProfessionService,
-            ServerPlayerUtilityService playerUtilityService)
+            ServerPlayerUtilityService playerUtilityService,
+            IDataStorageService dataStorage)
         {
             _eventManager = eventManager;
             _logger = logger;
             _playerAttributeService = playerAttributeService;
             _playerProfessionService = playerProfessionService;
             _playerUtilityService = playerUtilityService;
+            _dataStorage = dataStorage;
             
             // 初始化一些测试角色
             InitializeTestCharacters();
@@ -68,7 +72,7 @@ namespace BlazorWebGame.Server.Services
         /// <summary>
         /// 创建新角色
         /// </summary>
-        public async Task<CharacterDto> CreateCharacterAsync(CreateCharacterRequest request)
+        public async Task<CharacterDto> CreateCharacterAsync(CreateCharacterRequest request, string? userId = null)
         {
             var characterId = Guid.NewGuid().ToString();
             var character = new CharacterDetailsDto
@@ -94,10 +98,38 @@ namespace BlazorWebGame.Server.Services
 
             _characters.TryAdd(characterId, character);
 
+            // 如果提供了用户ID，创建用户角色关联
+            if (!string.IsNullOrEmpty(userId))
+            {
+                try
+                {
+                    // 检查用户是否已有默认角色
+                    var userCharacters = await _dataStorage.GetUserCharactersAsync(userId);
+                    var isFirstCharacter = !userCharacters.Success || userCharacters.Data?.Count == 0;
+                    
+                    var relationResult = await _dataStorage.CreateUserCharacterAsync(
+                        userId, characterId, request.Name, isFirstCharacter);
+                    
+                    if (relationResult.Success)
+                    {
+                        _logger.LogInformation($"Created user-character relationship: User {userId} -> Character {characterId} ({request.Name})");
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"Failed to create user-character relationship: {relationResult.Message}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"Error creating user-character relationship for User {userId} -> Character {characterId}");
+                }
+            }
+
             // 触发角色创建事件
             _eventManager.Raise(new GameEventArgs(GameEventType.CharacterCreated, characterId));
 
-            _logger.LogInformation($"Created character {request.Name} with ID {characterId}");
+            _logger.LogInformation($"Created character {request.Name} with ID {characterId}" + 
+                (userId != null ? $" for user {userId}" : ""));
 
             await Task.Delay(1); // 模拟异步操作
             return new CharacterDto
@@ -113,6 +145,65 @@ namespace BlazorWebGame.Server.Services
                 SelectedBattleProfession = character.SelectedBattleProfession,
                 LastUpdated = character.LastUpdated
             };
+        }
+
+        /// <summary>
+        /// 获取用户拥有的角色列表
+        /// </summary>
+        public async Task<List<CharacterDto>> GetUserCharactersAsync(string userId)
+        {
+            try
+            {
+                var userCharactersResult = await _dataStorage.GetUserCharactersAsync(userId);
+                if (!userCharactersResult.Success || userCharactersResult.Data == null)
+                {
+                    return new List<CharacterDto>();
+                }
+
+                var characters = new List<CharacterDto>();
+                foreach (var userChar in userCharactersResult.Data.Where(uc => uc.IsActive))
+                {
+                    if (_characters.TryGetValue(userChar.CharacterId, out var character))
+                    {
+                        characters.Add(new CharacterDto
+                        {
+                            Id = character.Id,
+                            Name = character.Name,
+                            Health = character.Health,
+                            MaxHealth = character.MaxHealth,
+                            Gold = character.Gold,
+                            IsDead = character.IsDead,
+                            RevivalTimeRemaining = character.RevivalTimeRemaining,
+                            CurrentAction = character.CurrentAction,
+                            SelectedBattleProfession = character.SelectedBattleProfession,
+                            LastUpdated = character.LastUpdated
+                        });
+                    }
+                }
+
+                return characters;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error getting characters for user {userId}");
+                return new List<CharacterDto>();
+            }
+        }
+
+        /// <summary>
+        /// 验证用户是否拥有指定角色
+        /// </summary>
+        public async Task<bool> UserOwnsCharacterAsync(string userId, string characterId)
+        {
+            try
+            {
+                return await _dataStorage.UserOwnsCharacterAsync(userId, characterId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error verifying character ownership: User {userId}, Character {characterId}");
+                return false;
+            }
         }
 
         /// <summary>
