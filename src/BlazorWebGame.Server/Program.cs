@@ -205,6 +205,9 @@ builder.Services.AddSingleton<DemoUserService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<DatabaseInitializationService>();
 
+// 注册增强的角色管理服务
+builder.Services.AddScoped<IDatabaseCharacterService, DatabaseCharacterService>();
+
 // 注册共享事件管理器
 builder.Services.AddSingleton<BlazorWebGame.Shared.Events.GameEventManager>();
 
