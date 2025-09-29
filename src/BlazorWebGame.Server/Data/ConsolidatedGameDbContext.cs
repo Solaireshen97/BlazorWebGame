@@ -27,6 +27,7 @@ public class ConsolidatedGameDbContext : DbContext
     }
 
     // 数据库表集合
+    public DbSet<UserEntity> Users { get; set; } = null!;
     public DbSet<PlayerEntity> Players { get; set; } = null!;
     public DbSet<TeamEntity> Teams { get; set; } = null!;
     public DbSet<ActionTargetEntity> ActionTargets { get; set; } = null!;
@@ -44,6 +45,9 @@ public class ConsolidatedGameDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // 配置用户实体
+        ConfigureUserEntity(modelBuilder);
 
         // 配置玩家实体
         ConfigurePlayerEntity(modelBuilder);
@@ -66,6 +70,32 @@ public class ConsolidatedGameDbContext : DbContext
         _logger?.LogDebug("Consolidated database model configuration completed");
     }
 
+    private void ConfigureUserEntity(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<UserEntity>(entity =>
+        {
+            // 主键和基本属性
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasMaxLength(50);
+            entity.Property(e => e.Username).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Email).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.PasswordHash).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Salt).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Roles).HasMaxLength(500).HasDefaultValue("Player");
+            entity.Property(e => e.RefreshToken).HasMaxLength(255);
+            
+            // 唯一约束
+            entity.HasIndex(e => e.Username).IsUnique();
+            entity.HasIndex(e => e.Email).IsUnique();
+            
+            // 性能优化索引
+            entity.HasIndex(e => e.IsActive);
+            entity.HasIndex(e => e.LastLoginAt);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => new { e.Username, e.IsActive });
+        });
+    }
+
     private void ConfigurePlayerEntity(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<PlayerEntity>(entity =>
@@ -73,6 +103,7 @@ public class ConsolidatedGameDbContext : DbContext
             // 主键和基本属性
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasMaxLength(50);
+            entity.Property(e => e.UserId).HasMaxLength(50).IsRequired(false); // 可为空以保持向后兼容
             entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
             entity.Property(e => e.SelectedBattleProfession).HasMaxLength(50);
             entity.Property(e => e.CurrentAction).HasMaxLength(50);
@@ -92,13 +123,22 @@ public class ConsolidatedGameDbContext : DbContext
                 .HasColumnType("TEXT")
                 .HasDefaultValue("{}");
             
+            // 外键关系 (可选)
+            entity.HasOne<UserEntity>()
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .IsRequired(false);
+            
             // 性能优化索引
             entity.HasIndex(e => e.Name).IsUnique();
+            entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => e.IsOnline);
             entity.HasIndex(e => e.LastActiveAt);
             entity.HasIndex(e => e.PartyId);
             entity.HasIndex(e => new { e.IsOnline, e.LastActiveAt });
             entity.HasIndex(e => new { e.PartyId, e.IsOnline });
+            entity.HasIndex(e => new { e.UserId, e.IsOnline });
         });
     }
 
