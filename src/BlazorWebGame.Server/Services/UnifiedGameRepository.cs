@@ -65,13 +65,13 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             
             if (player == null)
             {
-                return ServiceResult<PlayerEntity>.Failure($"Player with ID {playerId} not found");
+                return ServiceResult<PlayerEntity>.CreateFailure($"Player with ID {playerId} not found");
             }
 
             // 缓存结果
             _cache.Set(cacheKey, player, _defaultCacheOptions);
             
-            return ServiceResult<PlayerEntity>.Success(player);
+            return ServiceResult<PlayerEntity>.CreateSuccess(player);
         });
     }
 
@@ -85,7 +85,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             var existingPlayer = await context.Players.FirstOrDefaultAsync(p => p.Name == player.Name);
             if (existingPlayer != null)
             {
-                return ServiceResult<PlayerEntity>.Failure($"Player with name '{player.Name}' already exists");
+                return ServiceResult<PlayerEntity>.CreateFailure($"Player with name '{player.Name}' already exists");
             }
 
             player.Id = string.IsNullOrEmpty(player.Id) ? Guid.NewGuid().ToString() : player.Id;
@@ -99,7 +99,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             var cacheKey = $"player:{player.Id}";
             _cache.Set(cacheKey, player, _defaultCacheOptions);
             
-            return ServiceResult<PlayerEntity>.Success(player);
+            return ServiceResult<PlayerEntity>.CreateSuccess(player);
         });
     }
 
@@ -112,7 +112,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             var existingPlayer = await context.Players.FindAsync(player.Id);
             if (existingPlayer == null)
             {
-                return ServiceResult<PlayerEntity>.Failure($"Player with ID {player.Id} not found");
+                return ServiceResult<PlayerEntity>.CreateFailure($"Player with ID {player.Id} not found");
             }
 
             // 更新字段
@@ -140,7 +140,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             var cacheKey = $"player:{player.Id}";
             _cache.Set(cacheKey, existingPlayer, _defaultCacheOptions);
             
-            return ServiceResult<PlayerEntity>.Success(existingPlayer);
+            return ServiceResult<PlayerEntity>.CreateSuccess(existingPlayer);
         });
     }
 
@@ -153,7 +153,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             var player = await context.Players.FindAsync(playerId);
             if (player == null)
             {
-                return ServiceResult<bool>.Failure($"Player with ID {playerId} not found");
+                return ServiceResult<bool>.CreateFailure($"Player with ID {playerId} not found");
             }
 
             context.Players.Remove(player);
@@ -163,7 +163,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             var cacheKey = $"player:{playerId}";
             _cache.Remove(cacheKey);
             
-            return ServiceResult<bool>.Success(true);
+            return ServiceResult<bool>.CreateSuccess(true);
         });
     }
 
@@ -179,7 +179,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
                 .Take(pageSize)
                 .ToListAsync();
             
-            return ServiceResult<List<PlayerEntity>>.Success(players);
+            return ServiceResult<List<PlayerEntity>>.CreateSuccess(players);
         });
     }
 
@@ -190,7 +190,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             var cacheKey = "players:online";
             if (_cache.TryGetValue(cacheKey, out List<PlayerEntity>? cachedPlayers) && cachedPlayers != null)
             {
-                return ServiceResult<List<PlayerEntity>>.Success(cachedPlayers);
+                return ServiceResult<List<PlayerEntity>>.CreateSuccess(cachedPlayers);
             }
 
             using var context = await _contextFactory.CreateDbContextAsync();
@@ -203,7 +203,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             // 短期缓存在线玩家列表
             _cache.Set(cacheKey, players, TimeSpan.FromMinutes(1));
             
-            return ServiceResult<List<PlayerEntity>>.Success(players);
+            return ServiceResult<List<PlayerEntity>>.CreateSuccess(players);
         });
     }
 
@@ -217,14 +217,14 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             var team = await context.Teams.FindAsync(teamId);
             if (team == null)
             {
-                return ServiceResult<List<PlayerEntity>>.Failure($"Team with ID {teamId} not found");
+                return ServiceResult<List<PlayerEntity>>.CreateFailure($"Team with ID {teamId} not found");
             }
 
             var players = await context.Players
                 .Where(p => p.PartyId.ToString() == teamId)
                 .ToListAsync();
             
-            return ServiceResult<List<PlayerEntity>>.Success(players);
+            return ServiceResult<List<PlayerEntity>>.CreateSuccess(players);
         });
     }
 
@@ -239,10 +239,10 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             
             if (player == null)
             {
-                return ServiceResult<PlayerEntity>.Failure($"Player with name '{playerName}' not found");
+                return ServiceResult<PlayerEntity>.CreateFailure($"Player with name '{playerName}' not found");
             }
             
-            return ServiceResult<PlayerEntity>.Success(player);
+            return ServiceResult<PlayerEntity>.CreateSuccess(player);
         });
     }
 
@@ -257,7 +257,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             var cacheKey = $"team:{teamId}";
             if (_cache.TryGetValue(cacheKey, out TeamEntity? cachedTeam) && cachedTeam != null)
             {
-                return ServiceResult<TeamEntity>.Success(cachedTeam);
+                return ServiceResult<TeamEntity>.CreateSuccess(cachedTeam);
             }
 
             using var context = await _contextFactory.CreateDbContextAsync();
@@ -265,12 +265,12 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             
             if (team == null)
             {
-                return ServiceResult<TeamEntity>.Failure($"Team with ID {teamId} not found");
+                return ServiceResult<TeamEntity>.CreateFailure($"Team with ID {teamId} not found");
             }
 
             _cache.Set(cacheKey, team, _defaultCacheOptions);
             
-            return ServiceResult<TeamEntity>.Success(team);
+            return ServiceResult<TeamEntity>.CreateSuccess(team);
         });
     }
 
@@ -290,7 +290,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             var cacheKey = $"team:{team.Id}";
             _cache.Set(cacheKey, team, _defaultCacheOptions);
             
-            return ServiceResult<TeamEntity>.Success(team);
+            return ServiceResult<TeamEntity>.CreateSuccess(team);
         });
     }
 
@@ -303,7 +303,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             var existingTeam = await context.Teams.FindAsync(team.Id);
             if (existingTeam == null)
             {
-                return ServiceResult<TeamEntity>.Failure($"Team with ID {team.Id} not found");
+                return ServiceResult<TeamEntity>.CreateFailure($"Team with ID {team.Id} not found");
             }
 
             existingTeam.Name = team.Name;
@@ -320,7 +320,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             var cacheKey = $"team:{team.Id}";
             _cache.Set(cacheKey, existingTeam, _defaultCacheOptions);
             
-            return ServiceResult<TeamEntity>.Success(existingTeam);
+            return ServiceResult<TeamEntity>.CreateSuccess(existingTeam);
         });
     }
 
@@ -333,7 +333,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             var team = await context.Teams.FindAsync(teamId);
             if (team == null)
             {
-                return ServiceResult<bool>.Failure($"Team with ID {teamId} not found");
+                return ServiceResult<bool>.CreateFailure($"Team with ID {teamId} not found");
             }
 
             context.Teams.Remove(team);
@@ -342,7 +342,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             var cacheKey = $"team:{teamId}";
             _cache.Remove(cacheKey);
             
-            return ServiceResult<bool>.Success(true);
+            return ServiceResult<bool>.CreateSuccess(true);
         });
     }
 
@@ -358,7 +358,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
                 .Take(pageSize)
                 .ToListAsync();
             
-            return ServiceResult<List<TeamEntity>>.Success(teams);
+            return ServiceResult<List<TeamEntity>>.CreateSuccess(teams);
         });
     }
 
@@ -373,7 +373,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
                 .OrderByDescending(t => t.LastBattleAt)
                 .ToListAsync();
             
-            return ServiceResult<List<TeamEntity>>.Success(teams);
+            return ServiceResult<List<TeamEntity>>.CreateSuccess(teams);
         });
     }
 
@@ -388,10 +388,10 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             
             if (team == null)
             {
-                return ServiceResult<TeamEntity>.Failure($"Team with captain ID {captainId} not found");
+                return ServiceResult<TeamEntity>.CreateFailure($"Team with captain ID {captainId} not found");
             }
             
-            return ServiceResult<TeamEntity>.Success(team);
+            return ServiceResult<TeamEntity>.CreateSuccess(team);
         });
     }
 
@@ -408,10 +408,10 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             
             if (actionTarget == null)
             {
-                return ServiceResult<ActionTargetEntity>.Failure($"Action target with ID {actionTargetId} not found");
+                return ServiceResult<ActionTargetEntity>.CreateFailure($"Action target with ID {actionTargetId} not found");
             }
             
-            return ServiceResult<ActionTargetEntity>.Success(actionTarget);
+            return ServiceResult<ActionTargetEntity>.CreateSuccess(actionTarget);
         });
     }
 
@@ -428,7 +428,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             context.ActionTargets.Add(actionTarget);
             await context.SaveChangesAsync();
             
-            return ServiceResult<ActionTargetEntity>.Success(actionTarget);
+            return ServiceResult<ActionTargetEntity>.CreateSuccess(actionTarget);
         });
     }
 
@@ -441,7 +441,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             var existing = await context.ActionTargets.FindAsync(actionTarget.Id);
             if (existing == null)
             {
-                return ServiceResult<ActionTargetEntity>.Failure($"Action target with ID {actionTarget.Id} not found");
+                return ServiceResult<ActionTargetEntity>.CreateFailure($"Action target with ID {actionTarget.Id} not found");
             }
 
             existing.TargetType = actionTarget.TargetType;
@@ -457,7 +457,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
 
             await context.SaveChangesAsync();
             
-            return ServiceResult<ActionTargetEntity>.Success(existing);
+            return ServiceResult<ActionTargetEntity>.CreateSuccess(existing);
         });
     }
 
@@ -470,13 +470,13 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             var actionTarget = await context.ActionTargets.FindAsync(actionTargetId);
             if (actionTarget == null)
             {
-                return ServiceResult<bool>.Failure($"Action target with ID {actionTargetId} not found");
+                return ServiceResult<bool>.CreateFailure($"Action target with ID {actionTargetId} not found");
             }
 
             context.ActionTargets.Remove(actionTarget);
             await context.SaveChangesAsync();
             
-            return ServiceResult<bool>.Success(true);
+            return ServiceResult<bool>.CreateSuccess(true);
         });
     }
 
@@ -491,7 +491,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
                 .OrderByDescending(at => at.StartedAt)
                 .ToListAsync();
             
-            return ServiceResult<List<ActionTargetEntity>>.Success(actionTargets);
+            return ServiceResult<List<ActionTargetEntity>>.CreateSuccess(actionTargets);
         });
     }
 
@@ -506,7 +506,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
                 .OrderBy(at => at.StartedAt)
                 .ToListAsync();
             
-            return ServiceResult<List<ActionTargetEntity>>.Success(actionTargets);
+            return ServiceResult<List<ActionTargetEntity>>.CreateSuccess(actionTargets);
         });
     }
 
@@ -523,10 +523,10 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             
             if (actionTarget == null)
             {
-                return ServiceResult<ActionTargetEntity>.Failure($"No active action target found for player {playerId}");
+                return ServiceResult<ActionTargetEntity>.CreateFailure($"No active action target found for player {playerId}");
             }
             
-            return ServiceResult<ActionTargetEntity>.Success(actionTarget);
+            return ServiceResult<ActionTargetEntity>.CreateSuccess(actionTarget);
         });
     }
 
@@ -543,10 +543,10 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             
             if (battleRecord == null)
             {
-                return ServiceResult<BattleRecordEntity>.Failure($"Battle record with ID {battleRecordId} not found");
+                return ServiceResult<BattleRecordEntity>.CreateFailure($"Battle record with ID {battleRecordId} not found");
             }
             
-            return ServiceResult<BattleRecordEntity>.Success(battleRecord);
+            return ServiceResult<BattleRecordEntity>.CreateSuccess(battleRecord);
         });
     }
 
@@ -563,7 +563,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             context.BattleRecords.Add(battleRecord);
             await context.SaveChangesAsync();
             
-            return ServiceResult<BattleRecordEntity>.Success(battleRecord);
+            return ServiceResult<BattleRecordEntity>.CreateSuccess(battleRecord);
         });
     }
 
@@ -576,7 +576,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             var existing = await context.BattleRecords.FindAsync(battleRecord.Id);
             if (existing == null)
             {
-                return ServiceResult<BattleRecordEntity>.Failure($"Battle record with ID {battleRecord.Id} not found");
+                return ServiceResult<BattleRecordEntity>.CreateFailure($"Battle record with ID {battleRecord.Id} not found");
             }
 
             existing.BattleType = battleRecord.BattleType;
@@ -592,7 +592,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
 
             await context.SaveChangesAsync();
             
-            return ServiceResult<BattleRecordEntity>.Success(existing);
+            return ServiceResult<BattleRecordEntity>.CreateSuccess(existing);
         });
     }
 
@@ -605,13 +605,13 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             var battleRecord = await context.BattleRecords.FindAsync(battleRecordId);
             if (battleRecord == null)
             {
-                return ServiceResult<bool>.Failure($"Battle record with ID {battleRecordId} not found");
+                return ServiceResult<bool>.CreateFailure($"Battle record with ID {battleRecordId} not found");
             }
 
             context.BattleRecords.Remove(battleRecord);
             await context.SaveChangesAsync();
             
-            return ServiceResult<bool>.Success(true);
+            return ServiceResult<bool>.CreateSuccess(true);
         });
     }
 
@@ -627,7 +627,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
                 .Take(pageSize)
                 .ToListAsync();
             
-            return ServiceResult<List<BattleRecordEntity>>.Success(battleRecords);
+            return ServiceResult<List<BattleRecordEntity>>.CreateSuccess(battleRecords);
         });
     }
 
@@ -642,7 +642,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
                 .OrderByDescending(br => br.StartedAt)
                 .ToListAsync();
             
-            return ServiceResult<List<BattleRecordEntity>>.Success(battleRecords);
+            return ServiceResult<List<BattleRecordEntity>>.CreateSuccess(battleRecords);
         });
     }
 
@@ -657,7 +657,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
                 .OrderByDescending(br => br.StartedAt)
                 .ToListAsync();
             
-            return ServiceResult<List<BattleRecordEntity>>.Success(battleRecords);
+            return ServiceResult<List<BattleRecordEntity>>.CreateSuccess(battleRecords);
         });
     }
 
@@ -672,7 +672,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
                 .OrderBy(br => br.StartedAt)
                 .ToListAsync();
             
-            return ServiceResult<List<BattleRecordEntity>>.Success(battleRecords);
+            return ServiceResult<List<BattleRecordEntity>>.CreateSuccess(battleRecords);
         });
     }
 
@@ -687,10 +687,10 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             
             if (battleRecord == null)
             {
-                return ServiceResult<BattleRecordEntity>.Failure($"Battle record with battle ID {battleId} not found");
+                return ServiceResult<BattleRecordEntity>.CreateFailure($"Battle record with battle ID {battleId} not found");
             }
             
-            return ServiceResult<BattleRecordEntity>.Success(battleRecord);
+            return ServiceResult<BattleRecordEntity>.CreateSuccess(battleRecord);
         });
     }
 
@@ -707,10 +707,10 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             
             if (offlineData == null)
             {
-                return ServiceResult<OfflineDataEntity>.Failure($"Offline data with ID {offlineDataId} not found");
+                return ServiceResult<OfflineDataEntity>.CreateFailure($"Offline data with ID {offlineDataId} not found");
             }
             
-            return ServiceResult<OfflineDataEntity>.Success(offlineData);
+            return ServiceResult<OfflineDataEntity>.CreateSuccess(offlineData);
         });
     }
 
@@ -727,7 +727,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             context.OfflineData.Add(offlineData);
             await context.SaveChangesAsync();
             
-            return ServiceResult<OfflineDataEntity>.Success(offlineData);
+            return ServiceResult<OfflineDataEntity>.CreateSuccess(offlineData);
         });
     }
 
@@ -740,7 +740,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             var existing = await context.OfflineData.FindAsync(offlineData.Id);
             if (existing == null)
             {
-                return ServiceResult<OfflineDataEntity>.Failure($"Offline data with ID {offlineData.Id} not found");
+                return ServiceResult<OfflineDataEntity>.CreateFailure($"Offline data with ID {offlineData.Id} not found");
             }
 
             existing.DataType = offlineData.DataType;
@@ -751,7 +751,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
 
             await context.SaveChangesAsync();
             
-            return ServiceResult<OfflineDataEntity>.Success(existing);
+            return ServiceResult<OfflineDataEntity>.CreateSuccess(existing);
         });
     }
 
@@ -764,13 +764,13 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             var offlineData = await context.OfflineData.FindAsync(offlineDataId);
             if (offlineData == null)
             {
-                return ServiceResult<bool>.Failure($"Offline data with ID {offlineDataId} not found");
+                return ServiceResult<bool>.CreateFailure($"Offline data with ID {offlineDataId} not found");
             }
 
             context.OfflineData.Remove(offlineData);
             await context.SaveChangesAsync();
             
-            return ServiceResult<bool>.Success(true);
+            return ServiceResult<bool>.CreateSuccess(true);
         });
     }
 
@@ -785,7 +785,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
                 .OrderByDescending(od => od.CreatedAt)
                 .ToListAsync();
             
-            return ServiceResult<List<OfflineDataEntity>>.Success(offlineData);
+            return ServiceResult<List<OfflineDataEntity>>.CreateSuccess(offlineData);
         });
     }
 
@@ -800,7 +800,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
                 .OrderBy(od => od.CreatedAt)
                 .ToListAsync();
             
-            return ServiceResult<List<OfflineDataEntity>>.Success(unsyncedData);
+            return ServiceResult<List<OfflineDataEntity>>.CreateSuccess(unsyncedData);
         });
     }
 
@@ -813,7 +813,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             var offlineData = await context.OfflineData.FindAsync(offlineDataId);
             if (offlineData == null)
             {
-                return ServiceResult<bool>.Failure($"Offline data with ID {offlineDataId} not found");
+                return ServiceResult<bool>.CreateFailure($"Offline data with ID {offlineDataId} not found");
             }
 
             offlineData.IsSynced = true;
@@ -822,7 +822,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
 
             await context.SaveChangesAsync();
             
-            return ServiceResult<bool>.Success(true);
+            return ServiceResult<bool>.CreateSuccess(true);
         });
     }
 
@@ -836,7 +836,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
         {
             using var context = await _contextFactory.CreateDbContextAsync();
             await context.SaveChangesAsync();
-            return ServiceResult<bool>.Success(true);
+            return ServiceResult<bool>.CreateSuccess(true);
         });
     }
 
@@ -856,7 +856,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             context.Set<T>().AddRange(entities);
             await context.SaveChangesAsync();
             
-            return ServiceResult<List<T>>.Success(entities);
+            return ServiceResult<List<T>>.CreateSuccess(entities);
         });
     }
 
@@ -874,7 +874,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
 
             await context.SaveChangesAsync();
             
-            return ServiceResult<List<T>>.Success(entities);
+            return ServiceResult<List<T>>.CreateSuccess(entities);
         });
     }
 
@@ -891,7 +891,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             context.Set<T>().RemoveRange(entities);
             await context.SaveChangesAsync();
             
-            return ServiceResult<bool>.Success(true);
+            return ServiceResult<bool>.CreateSuccess(true);
         });
     }
 
@@ -914,7 +914,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
                 ["CacheStats"] = GetCacheStats()
             };
             
-            return ServiceResult<Dictionary<string, object>>.Success(stats);
+            return ServiceResult<Dictionary<string, object>>.CreateSuccess(stats);
         });
     }
 
@@ -926,12 +926,12 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             {
                 using var context = await _contextFactory.CreateDbContextAsync();
                 await context.Database.ExecuteSqlRawAsync("SELECT 1");
-                return ServiceResult<bool>.Success(true);
+                return ServiceResult<bool>.CreateSuccess(true);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Health check failed");
-                return ServiceResult<bool>.Failure($"Health check failed: {ex.Message}");
+                return ServiceResult<bool>.CreateFailure($"Health check failed: {ex.Message}");
             }
         });
     }
@@ -942,7 +942,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
         {
             using var context = await _contextFactory.CreateDbContextAsync();
             await context.RebuildIndexesAsync();
-            return ServiceResult<bool>.Success(true);
+            return ServiceResult<bool>.CreateSuccess(true);
         });
     }
 
@@ -975,7 +975,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             {
                 await transaction.RollbackAsync();
                 _logger.LogError(ex, "Transaction failed");
-                return ServiceResult<T>.Failure($"Transaction failed: {ex.Message}");
+                return ServiceResult<T>.CreateFailure($"Transaction failed: {ex.Message}");
             }
         });
     }
@@ -997,7 +997,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
                 .Take(pageSize)
                 .ToListAsync();
             
-            return ServiceResult<List<PlayerEntity>>.Success(players);
+            return ServiceResult<List<PlayerEntity>>.CreateSuccess(players);
         });
     }
 
@@ -1014,7 +1014,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
                 .Take(pageSize)
                 .ToListAsync();
             
-            return ServiceResult<List<TeamEntity>>.Success(teams);
+            return ServiceResult<List<TeamEntity>>.CreateSuccess(teams);
         });
     }
 
@@ -1031,7 +1031,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
                 .Take(pageSize)
                 .ToListAsync();
             
-            return ServiceResult<List<BattleRecordEntity>>.Success(battleRecords);
+            return ServiceResult<List<BattleRecordEntity>>.CreateSuccess(battleRecords);
         });
     }
 
@@ -1051,7 +1051,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
                     .CountAsync(at => at.PlayerId == playerId && !at.IsCompleted)
             };
             
-            return ServiceResult<Dictionary<string, int>>.Success(stats);
+            return ServiceResult<Dictionary<string, int>>.CreateSuccess(stats);
         });
     }
 
@@ -1071,7 +1071,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
                     .CountAsync(br => br.PartyId.ToString() == teamId && br.Status == "InProgress")
             };
             
-            return ServiceResult<Dictionary<string, int>>.Success(stats);
+            return ServiceResult<Dictionary<string, int>>.CreateSuccess(stats);
         });
     }
 
@@ -1085,10 +1085,10 @@ public class UnifiedGameRepository : IAdvancedGameRepository
         {
             if (_cache.TryGetValue(key, out T? value) && value != null)
             {
-                return ServiceResult<T>.Success(value);
+                return ServiceResult<T>.CreateSuccess(value);
             }
             
-            return ServiceResult<T>.Failure($"Key '{key}' not found in cache");
+            return ServiceResult<T>.CreateFailure($"Key '{key}' not found in cache");
         });
     }
 
@@ -1101,7 +1101,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
                 : _defaultCacheOptions;
                 
             _cache.Set(key, value, options);
-            return ServiceResult<bool>.Success(true);
+            return ServiceResult<bool>.CreateSuccess(true);
         });
     }
 
@@ -1110,7 +1110,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
         return await Task.Run(() =>
         {
             _cache.Remove(key);
-            return ServiceResult<bool>.Success(true);
+            return ServiceResult<bool>.CreateSuccess(true);
         });
     }
 
@@ -1128,7 +1128,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
                 }
             }
             
-            return ServiceResult<bool>.Success(true);
+            return ServiceResult<bool>.CreateSuccess(true);
         });
     }
 
@@ -1153,7 +1153,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             await context.Set<T>().AddRangeAsync(entityList);
             await context.SaveChangesAsync();
             
-            return ServiceResult<bool>.Success(true);
+            return ServiceResult<bool>.CreateSuccess(true);
         });
     }
 
@@ -1172,7 +1172,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             context.Set<T>().UpdateRange(entityList);
             await context.SaveChangesAsync();
             
-            return ServiceResult<bool>.Success(true);
+            return ServiceResult<bool>.CreateSuccess(true);
         });
     }
 
@@ -1190,7 +1190,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             context.Set<T>().RemoveRange(entities);
             await context.SaveChangesAsync();
             
-            return ServiceResult<bool>.Success(true);
+            return ServiceResult<bool>.CreateSuccess(true);
         });
     }
 
@@ -1210,7 +1210,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
                 await context.Database.ExecuteSqlRawAsync("ANALYZE");
             }
             
-            return ServiceResult<bool>.Success(true);
+            return ServiceResult<bool>.CreateSuccess(true);
         });
     }
 
@@ -1220,7 +1220,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
         {
             using var context = await _contextFactory.CreateDbContextAsync();
             await context.RebuildIndexesAsync();
-            return ServiceResult<bool>.Success(true);
+            return ServiceResult<bool>.CreateSuccess(true);
         });
     }
 
@@ -1246,12 +1246,12 @@ public class UnifiedGameRepository : IAdvancedGameRepository
                     if (File.Exists(sourceFile))
                     {
                         File.Copy(sourceFile, fullPath, true);
-                        return ServiceResult<string>.Success(fullPath);
+                        return ServiceResult<string>.CreateSuccess(fullPath);
                     }
                 }
             }
             
-            return ServiceResult<string>.Failure("Failed to create database backup");
+            return ServiceResult<string>.CreateFailure("Failed to create database backup");
         });
     }
 
@@ -1261,7 +1261,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
         {
             if (!File.Exists(backupPath))
             {
-                return ServiceResult<bool>.Failure($"Backup file not found: {backupPath}");
+                return ServiceResult<bool>.CreateFailure($"Backup file not found: {backupPath}");
             }
             
             using var context = await _contextFactory.CreateDbContextAsync();
@@ -1272,11 +1272,11 @@ public class UnifiedGameRepository : IAdvancedGameRepository
                 {
                     var targetFile = connectionString.Split('=')[1].Split(';')[0];
                     File.Copy(backupPath, targetFile, true);
-                    return ServiceResult<bool>.Success(true);
+                    return ServiceResult<bool>.CreateSuccess(true);
                 }
             }
             
-            return ServiceResult<bool>.Failure("Failed to restore database from backup");
+            return ServiceResult<bool>.CreateFailure("Failed to restore database from backup");
         });
     }
 
@@ -1306,7 +1306,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             _logger.LogError(ex, "Operation {OperationName} failed after {ElapsedMs} ms", 
                 operationName, stopwatch.ElapsedMilliseconds);
             
-            return ServiceResult<T>.Failure($"Operation {operationName} failed: {ex.Message}");
+            return ServiceResult<T>.CreateFailure($"Operation {operationName} failed: {ex.Message}");
         }
     }
 

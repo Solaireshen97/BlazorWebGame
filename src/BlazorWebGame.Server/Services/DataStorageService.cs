@@ -1317,7 +1317,7 @@ public class DataStorageService : IDataStorageService
             PlayerId = entity.PlayerId,
             DataType = entity.DataType,
             Data = JsonSerializer.Deserialize<Dictionary<string, object>>(entity.DataJson) ?? new Dictionary<string, object>(),
-            SyncedAt = entity.SyncedAt,
+            SyncedAt = entity.SyncedAt ?? DateTime.MinValue,
             IsSynced = entity.IsSynced,
             Version = entity.Version,
             CreatedAt = entity.CreatedAt,

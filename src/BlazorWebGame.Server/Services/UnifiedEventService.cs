@@ -136,6 +136,9 @@ namespace BlazorWebGame.Server.Services
             evt.SetData(data);
             return _eventQueue.Enqueue(ref evt);
         }
+
+        /// <summary>
+        /// 入队战斗事件
         /// </summary>
         public bool EnqueueBattleEvent(ushort eventType, ulong battleId, ulong actorId = 0, ulong targetId = 0, object? eventData = null)
         {

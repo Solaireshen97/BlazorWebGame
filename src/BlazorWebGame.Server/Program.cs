@@ -191,7 +191,7 @@ builder.Services.AddSingleton(rateLimitOptions);
 
 // 注册统一服务
 builder.Services.AddSingleton<ErrorHandlingService>();
-builder.Services.AddSingleton<PerformanceMonitoringService>();
+builder.Services.AddSingleton<BlazorWebGame.Server.Services.PerformanceMonitoringService>();
 builder.Services.AddSingleton<ServerOptimizationService>();
 
 // 添加健康检查
@@ -277,10 +277,10 @@ builder.Services.AddHostedService<ServerOptimizationService>();
 var app = builder.Build();
 
 // 初始化统一数据存储系统
-var unifiedStorageOptions = builder.Configuration.GetSection(UnifiedDataStorageConfiguration.UnifiedDataStorageOptions.SectionName)
-    .Get<UnifiedDataStorageConfiguration.UnifiedDataStorageOptions>() ?? new UnifiedDataStorageConfiguration.UnifiedDataStorageOptions();
+var unifiedStorageOptions = builder.Configuration.GetSection("UnifiedDataStorage")
+    .Get<BlazorWebGame.Server.Configuration.UnifiedDataStorageOptions>() ?? new BlazorWebGame.Server.Configuration.UnifiedDataStorageOptions();
 
-if (unifiedStorageOptions.StorageType.ToLower() is "sqlite" or "postgresql" or "sqlserver")
+if (unifiedStorageOptions.StorageType.ToLower() is "sqlite")
 {
     var logger = app.Services.GetRequiredService<ILogger<Program>>();
     
@@ -337,7 +337,7 @@ if (app.Environment.IsDevelopment())
         }
 
         // 运行SQLite数据存储测试（如果启用了SQLite）
-        if (dataStorageOptions.StorageType.ToLower() is "sqlite" or "optimized")
+        if (unifiedStorageOptions.StorageType.ToLower() is "sqlite")
         {
             try
             {

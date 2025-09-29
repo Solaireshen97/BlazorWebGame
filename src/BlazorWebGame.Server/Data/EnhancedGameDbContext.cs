@@ -332,35 +332,35 @@ public class EnhancedGameDbContext : DbContext
                 .Where(p => p.IsDeleted && p.DeletedAt < cleanupThreshold)
                 .ToListAsync();
             
-            Database.RemoveRange(deletedPlayers);
+            Players.RemoveRange(deletedPlayers);
             var playersDeleted = deletedPlayers.Count;
 
             var deletedTeams = await Teams.IgnoreQueryFilters()
                 .Where(t => t.IsDeleted && t.DeletedAt < cleanupThreshold)
                 .ToListAsync();
             
-            Database.RemoveRange(deletedTeams);
+            Teams.RemoveRange(deletedTeams);
             var teamsDeleted = deletedTeams.Count;
 
             var deletedActionTargets = await ActionTargets.IgnoreQueryFilters()
                 .Where(at => at.IsDeleted && at.DeletedAt < cleanupThreshold)
                 .ToListAsync();
             
-            Database.RemoveRange(deletedActionTargets);
+            ActionTargets.RemoveRange(deletedActionTargets);
             var actionTargetsDeleted = deletedActionTargets.Count;
 
             var deletedBattleRecords = await BattleRecords.IgnoreQueryFilters()
                 .Where(br => br.IsDeleted && br.DeletedAt < cleanupThreshold)
                 .ToListAsync();
             
-            Database.RemoveRange(deletedBattleRecords);
+            BattleRecords.RemoveRange(deletedBattleRecords);
             var battleRecordsDeleted = deletedBattleRecords.Count;
 
             var deletedOfflineData = await OfflineData.IgnoreQueryFilters()
                 .Where(od => od.IsDeleted && od.DeletedAt < cleanupThreshold)
                 .ToListAsync();
             
-            Database.RemoveRange(deletedOfflineData);
+            OfflineData.RemoveRange(deletedOfflineData);
             var offlineDataDeleted = deletedOfflineData.Count;
 
             // 2. 清理已同步的旧离线数据（超过7天）

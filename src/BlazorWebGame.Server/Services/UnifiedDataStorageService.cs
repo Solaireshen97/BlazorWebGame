@@ -344,13 +344,7 @@ public class UnifiedDataStorageService : IUnifiedDataStorageService, IDataStorag
             {
                 Success = true,
                 Data = results,
-                Message = $"查询成功，共 {results.Count} 条记录",
-                Metadata = new Dictionary<string, object>
-                {
-                    ["TotalCount"] = totalCount,
-                    ["PageSize"] = specification.Take ?? results.Count,
-                    ["Skip"] = specification.Skip ?? 0
-                }
+                Message = $"查询成功，共 {results.Count} 条记录"
             };
         }
         catch (Exception ex)
