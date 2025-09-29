@@ -57,7 +57,7 @@ public class UnifiedGameRepository : IAdvancedGameRepository
             var cacheKey = $"player:{playerId}";
             if (_cache.TryGetValue(cacheKey, out PlayerEntity? cachedPlayer) && cachedPlayer != null)
             {
-            return ServiceResult<PlayerEntity>.CreateSuccess(cachedPlayer);
+                return ServiceResult<PlayerEntity>.CreateSuccess(cachedPlayer);
             }
 
             using var context = await _contextFactory.CreateDbContextAsync();
@@ -68,8 +68,9 @@ public class UnifiedGameRepository : IAdvancedGameRepository
                 return ServiceResult<PlayerEntity>.CreateFailure($"Player with ID {playerId} not found");
             }
 
-            // 缓存结果
-            _cache.Set(cacheKey, player, _defaultCacheOptions);
+            // 缓存结果（对活跃玩家使用高优先级缓存）
+            var cacheOptions = player.IsOnline ? _highPriorityCacheOptions : _defaultCacheOptions;
+            _cache.Set(cacheKey, player, cacheOptions);
             
             return ServiceResult<PlayerEntity>.CreateSuccess(player);
         });
@@ -844,19 +845,45 @@ public class UnifiedGameRepository : IAdvancedGameRepository
     {
         return await ExecuteWithMetricsAsync($"BatchCreate{typeof(T).Name}", async () =>
         {
-            using var context = await _contextFactory.CreateDbContextAsync();
-            
-            foreach (var entity in entities)
+            if (!entities.Any())
             {
-                entity.Id = string.IsNullOrEmpty(entity.Id) ? Guid.NewGuid().ToString() : entity.Id;
-                entity.CreatedAt = DateTime.UtcNow;
-                entity.UpdatedAt = DateTime.UtcNow;
+                return ServiceResult<List<T>>.CreateSuccess(entities, "No entities to create");
             }
 
-            context.Set<T>().AddRange(entities);
-            await context.SaveChangesAsync();
+            using var context = await _contextFactory.CreateDbContextAsync();
             
-            return ServiceResult<List<T>>.CreateSuccess(entities);
+            // 批量设置创建时间和ID
+            var now = DateTime.UtcNow;
+            foreach (var entity in entities)
+            {
+                if (string.IsNullOrEmpty(entity.Id))
+                {
+                    entity.Id = Guid.NewGuid().ToString();
+                }
+                entity.CreatedAt = now;
+                entity.UpdatedAt = now;
+            }
+
+            // 使用事务提高性能和一致性
+            using var transaction = await context.Database.BeginTransactionAsync();
+            try
+            {
+                context.Set<T>().AddRange(entities);
+                await context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                
+                _logger.LogInformation("Successfully batch created {Count} {EntityType} entities", 
+                    entities.Count, typeof(T).Name);
+                
+                return ServiceResult<List<T>>.CreateSuccess(entities);
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Failed to batch create {Count} {EntityType} entities", 
+                    entities.Count, typeof(T).Name);
+                throw;
+            }
         });
     }
 
