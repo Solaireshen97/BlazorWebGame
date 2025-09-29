@@ -201,6 +201,10 @@ public static class UnifiedDataStorageConfigurationExtensions
                 break;
 
             case "postgresql":
+                // PostgreSQL support is not currently implemented
+                // To enable PostgreSQL, add Npgsql.EntityFrameworkCore.PostgreSQL package
+                // and uncomment the following code:
+                /*
                 services.AddDbContextFactory<UnifiedGameDbContext>(options =>
                 {
                     options.UseNpgsql(connectionString, npgsqlOptions =>
@@ -210,27 +214,21 @@ public static class UnifiedDataStorageConfigurationExtensions
 
                     ConfigureEntityFrameworkOptions(options, environment, storageOptions);
                 });
-                break;
+                */
+                throw new NotSupportedException("PostgreSQL support is not currently enabled. Please use SQLite instead.");
+                // break;
 
             case "sqlserver":
-                services.AddDbContextFactory<UnifiedGameDbContext>(options =>
-                {
-                    options.UseSqlServer(connectionString, sqlServerOptions =>
-                    {
-                        sqlServerOptions.CommandTimeout(storageOptions.CommandTimeoutSeconds);
-                    });
-
-                    ConfigureEntityFrameworkOptions(options, environment, storageOptions);
-                });
-                break;
+                // SQL Server support is not currently implemented
+                // To enable SQL Server, add Microsoft.EntityFrameworkCore.SqlServer package
+                throw new NotSupportedException("SQL Server support is not currently enabled. Please use SQLite instead.");
+                // break;
 
             case "inmemory":
-                services.AddDbContextFactory<UnifiedGameDbContext>(options =>
-                {
-                    options.UseInMemoryDatabase("UnifiedGameDb");
-                    ConfigureEntityFrameworkOptions(options, environment, storageOptions);
-                });
-                break;
+                // In-memory database support is not currently implemented  
+                // To enable In-Memory database, add Microsoft.EntityFrameworkCore.InMemory package
+                throw new NotSupportedException("In-Memory database support is not currently enabled. Please use SQLite instead.");
+                // break;
         }
     }
 

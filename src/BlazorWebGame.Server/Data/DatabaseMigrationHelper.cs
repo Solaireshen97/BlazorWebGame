@@ -251,6 +251,9 @@ public static class DatabaseMigrationHelper
         {
             logger.LogError(ex, "Failed to initialize database");
             throw;
+        }
+    }
+
     /// <summary>
     /// 导出数据库数据到JSON（备份用途）
     /// </summary>

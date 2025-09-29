@@ -306,7 +306,7 @@ public static class EnhancedDataStorageConfigurationExtensions
         else
         {
             // 注册空的缓存实现
-            services.AddSingleton<IMemoryCache, Microsoft.Extensions.Caching.Memory.NullMemoryCache>();
+            services.AddSingleton<IMemoryCache>(provider => new MemoryCache(new MemoryCacheOptions()));
         }
     }
 
@@ -327,8 +327,9 @@ public static class EnhancedDataStorageConfigurationExtensions
         {
             case "unified":
                 services.AddSingleton<IUnifiedDataStorageService, UnifiedDataStorageService>();
+                // Note: UnifiedDataStorageService implements both interfaces
                 services.AddSingleton<IDataStorageService>(provider => 
-                    provider.GetRequiredService<IUnifiedDataStorageService>());
+                    (IDataStorageService)provider.GetRequiredService<IUnifiedDataStorageService>());
                 break;
 
             case "optimized":
@@ -369,8 +370,9 @@ public static class EnhancedDataStorageConfigurationExtensions
         EnhancedDataStorageOptions options)
     {
         services.AddHealthChecks()
-            .AddCheck<EnhancedDataStorageHealthCheck>("enhanced_data_storage")
-            .AddDbContextCheck<EnhancedGameDbContext>("enhanced_database");
+            .AddCheck<EnhancedDataStorageHealthCheck>("enhanced_data_storage");
+            // Database health check is not available without additional packages
+            // .AddDbContextCheck<EnhancedGameDbContext>("enhanced_database");
     }
 
     /// <summary>
