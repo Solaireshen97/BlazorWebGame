@@ -1,6 +1,15 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿@implements IDisposable
+@inject BlazorIdleGame.Client.Services.Auth.IAuthService AuthService
+<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">BlazorIdleGame.Client</a>
+        @if (AuthService.IsAuthenticated)
+        {
+            <a href="" class="navbar-brand">用户:@AuthService.CurrentPlayer.Name</a>
+        }
+        else
+        {
+            <a href="" class="navbar-brand">银河魔男放置</a>
+        }
         <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -25,5 +34,20 @@
     private void ToggleNavMenu()
     {
         collapseNavMenu = !collapseNavMenu;
+    }
+
+    protected override void OnInitialized()
+    {
+        AuthService.AuthenticationStateChanged += OnAuthStateChanged;
+    }
+
+    private void OnAuthStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        AuthService.AuthenticationStateChanged -= OnAuthStateChanged;
     }
 }

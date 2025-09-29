@@ -9,18 +9,6 @@ using BlazorWebGame.Shared.DTOs;
 
 namespace BlazorIdleGame.Client.Services.Auth
 {
-    public interface IAuthService
-    {
-        Task<bool> AutoLoginAsync(string? username = null);
-        Task<LoginResult> LoginAsync(string username, string password);
-        Task<RegisterResult> RegisterAsync(string username, string password, string confirmPassword);
-        Task LogoutAsync();
-        bool IsAuthenticated { get; }
-        PlayerInfo CurrentPlayer { get; }
-        event EventHandler<PlayerInfo>? PlayerAuthenticated;
-        event EventHandler? LoggedOut;
-    }
-
     public class AuthService : IAuthService
     {
         private readonly ILogger<AuthService> _logger;
@@ -33,10 +21,16 @@ namespace BlazorIdleGame.Client.Services.Auth
 
         public event EventHandler<PlayerInfo>? PlayerAuthenticated;
         public event EventHandler? LoggedOut;
+        public event Action? AuthenticationStateChanged;
 
         private const string AUTH_TOKEN_KEY = "auth_token";
         private const string REFRESH_TOKEN_KEY = "refresh_token";
         private const string USER_INFO_KEY = "user_info";
+
+        private void NotifyAuthenticationStateChanged()
+        {
+            AuthenticationStateChanged?.Invoke();
+        }
 
         public AuthService(
             ILogger<AuthService> logger,
@@ -82,7 +76,7 @@ namespace BlazorIdleGame.Client.Services.Auth
 
                 _logger.LogInformation("令牌有效，已自动登录: {PlayerName}", _currentPlayer.Name);
                 PlayerAuthenticated?.Invoke(this, _currentPlayer);
-
+                NotifyAuthenticationStateChanged();
                 return true;
             }
             catch (Exception ex)
@@ -145,7 +139,7 @@ namespace BlazorIdleGame.Client.Services.Auth
 
                 _logger.LogInformation("用户登录成功: {Username}", username);
                 PlayerAuthenticated?.Invoke(this, _currentPlayer);
-
+                NotifyAuthenticationStateChanged();
                 return new LoginResult { Success = true };
             }
             catch (Exception ex)
@@ -229,20 +223,7 @@ namespace BlazorIdleGame.Client.Services.Auth
 
             _logger.LogInformation("用户已登出");
             LoggedOut?.Invoke(this, EventArgs.Empty);
+            NotifyAuthenticationStateChanged();
         }
-    }
-
-    public class LoginResult
-    {
-        public bool Success { get; set; }
-        public string Message { get; set; } = string.Empty;
-    }
-
-
-
-    public class RegisterResult
-    {
-        public bool Success { get; set; }
-        public string Message { get; set; } = string.Empty;
     }
 }
