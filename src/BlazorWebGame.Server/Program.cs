@@ -166,22 +166,34 @@ builder.Services.AddSingleton<UnifiedEventService>();
 // 注册服务定位器（单例模式）
 builder.Services.AddSingleton<ServerServiceLocator>();
 
-// 注册数据存储服务 - 使用SQLite实现
-var dataStorageType = builder.Configuration["GameServer:DataStorageType"];
-if (dataStorageType == "SQLite")
+// 注册数据存储服务 - 使用工厂模式
+var dataStorageType = builder.Configuration["GameServer:DataStorageType"] ?? "Memory";
+
+// 注册DbContext工厂（SQLite需要）
+builder.Services.AddDbContextFactory<GameDbContext>(options =>
+    options.UseSqlite(builder.Configuration.GetConnectionString("GameDatabase") ?? "Data Source=gamedata.db"));
+
+// 注册数据存储服务工厂
+builder.Services.AddSingleton<BlazorWebGame.Shared.Interfaces.IDataStorageServiceFactory, DataStorageServiceFactory>();
+
+// 注册数据存储服务实例
+builder.Services.AddSingleton<BlazorWebGame.Shared.Interfaces.IDataStorageService>(serviceProvider =>
 {
-    // 注册DbContext工厂
-    builder.Services.AddDbContextFactory<GameDbContext>(options =>
-        options.UseSqlite(builder.Configuration.GetConnectionString("GameDatabase")));
+    var factory = serviceProvider.GetRequiredService<BlazorWebGame.Shared.Interfaces.IDataStorageServiceFactory>();
+    var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
     
-    // 注册简化的SQLite数据存储服务
-    builder.Services.AddSingleton<BlazorWebGame.Shared.Interfaces.IDataStorageService, SimpleSqliteDataStorageService>();
-}
-else
-{
-    // 保留原有内存实现作为备选
-    builder.Services.AddSingleton<BlazorWebGame.Shared.Interfaces.IDataStorageService, DataStorageService>();
-}
+    try
+    {
+        var dataService = factory.CreateDataStorageService(dataStorageType);
+        logger.LogInformation("Successfully created {DataStorageType} data storage service", dataStorageType);
+        return dataService;
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Failed to create {DataStorageType} data storage service, falling back to Memory", dataStorageType);
+        return factory.CreateDataStorageService("Memory");
+    }
+});
 builder.Services.AddSingleton<DataStorageIntegrationService>();
 
 // 注册离线结算服务
@@ -242,26 +254,41 @@ builder.Services.AddHostedService<ServerOptimizationService>();
 
 var app = builder.Build();
 
-// 确保数据库已创建（针对SQLite）
-if (builder.Configuration["GameServer:DataStorageType"] == "SQLite")
+// 确保数据库已创建和数据存储服务健康检查
+using (var scope = app.Services.CreateScope())
 {
-    using (var scope = app.Services.CreateScope())
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var factory = scope.ServiceProvider.GetRequiredService<BlazorWebGame.Shared.Interfaces.IDataStorageServiceFactory>();
+    
+    try
     {
-        var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<GameDbContext>>();
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        
-        try
+        // 如果是SQLite，确保数据库已创建
+        if (dataStorageType.Equals("SQLite", StringComparison.OrdinalIgnoreCase))
         {
+            var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<GameDbContext>>();
             using var context = contextFactory.CreateDbContext();
-            // 确保数据库已创建
             await context.Database.EnsureCreatedAsync();
             logger.LogInformation("SQLite database initialized successfully");
         }
-        catch (Exception ex)
+        
+        // 执行数据存储服务健康检查
+        var healthInfo = await factory.GetStorageHealthAsync(dataStorageType);
+        var status = healthInfo.GetValueOrDefault("Status", "Unknown");
+        
+        if (status.ToString() == "Healthy")
         {
-            logger.LogError(ex, "Failed to initialize SQLite database");
-            throw;
+            logger.LogInformation("Data storage service ({DataStorageType}) health check passed", dataStorageType);
         }
+        else
+        {
+            logger.LogWarning("Data storage service ({DataStorageType}) health check failed: {HealthInfo}", 
+                dataStorageType, healthInfo);
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Failed to initialize data storage service ({DataStorageType})", dataStorageType);
+        // 不抛出异常，让应用继续启动，但会降级到内存存储
     }
 }
 
