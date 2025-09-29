@@ -173,6 +173,9 @@ var dataStorageType = builder.Configuration["GameServer:DataStorageType"] ?? "Me
 builder.Services.AddDbContextFactory<GameDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("GameDatabase") ?? "Data Source=gamedata.db"));
 
+// 注册数据库初始化服务
+builder.Services.AddSingleton<DatabaseInitializationService>();
+
 // 注册数据存储服务工厂
 builder.Services.AddSingleton<BlazorWebGame.Shared.Interfaces.IDataStorageServiceFactory, DataStorageServiceFactory>();
 
@@ -262,14 +265,27 @@ using (var scope = app.Services.CreateScope())
     
     try
     {
-        // 如果是SQLite，确保数据库已创建
+        // 如果是SQLite，使用增强的数据库初始化服务
         if (dataStorageType.Equals("SQLite", StringComparison.OrdinalIgnoreCase))
         {
-            var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<GameDbContext>>();
-            using var context = contextFactory.CreateDbContext();
-            await context.Database.EnsureCreatedAsync();
+            var dbInitService = scope.ServiceProvider.GetRequiredService<DatabaseInitializationService>();
+            await dbInitService.InitializeDatabaseAsync();
 
-            logger.LogInformation("SQLite database initialized successfully");
+            // 验证数据库完整性
+            var isValid = await dbInitService.ValidateDatabaseIntegrityAsync();
+            if (isValid)
+            {
+                logger.LogInformation("SQLite database initialization and validation completed successfully");
+                
+                // 获取数据库健康状态
+                var dbHealth = await dbInitService.GetDatabaseHealthAsync();
+                logger.LogInformation("Database health: {HealthStatus}", 
+                    System.Text.Json.JsonSerializer.Serialize(dbHealth, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+            }
+            else
+            {
+                logger.LogWarning("Database integrity validation failed");
+            }
         }
         
         // 执行数据存储服务健康检查
