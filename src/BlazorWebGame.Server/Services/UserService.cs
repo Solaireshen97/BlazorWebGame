@@ -152,19 +152,19 @@ public class UserService
     }
 
     /// <summary>
-    /// 检查用户是否拥有角色（为了兼容现有代码）
+    /// 检查用户是否拥有角色（使用数据库验证）
     /// </summary>
     public async Task<bool> UserHasCharacterAsync(string userId, string characterId)
     {
-        var user = await _dataStorage.GetUserByIdAsync(userId);
-        if (user == null) return false;
-
-        // 管理员可以访问任何角色
-        if (user.Roles.Contains("Admin", StringComparer.OrdinalIgnoreCase))
-            return true;
-
-        // 简单的角色检查 - 用户可以访问自己ID开头的角色
-        return characterId.StartsWith(userId, StringComparison.OrdinalIgnoreCase);
+        try
+        {
+            return await _dataStorage.UserOwnsCharacterAsync(userId, characterId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error verifying character ownership for user {UserId}, character {CharacterId}", userId, characterId);
+            return false;
+        }
     }
 
     /// <summary>

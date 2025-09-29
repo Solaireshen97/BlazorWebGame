@@ -110,6 +110,19 @@ public class BattleRecordEntity : BaseEntity
 }
 
 /// <summary>
+/// 用户角色关联实体 - 建立用户与游戏角色的关系
+/// </summary>
+public class UserCharacterEntity : BaseEntity
+{
+    public string UserId { get; set; } = string.Empty;
+    public string CharacterId { get; set; } = string.Empty;
+    public string CharacterName { get; set; } = string.Empty;
+    public bool IsActive { get; set; } = true;
+    public bool IsDefault { get; set; } = false; // 是否为用户的默认角色
+    public DateTime LastPlayedAt { get; set; } = DateTime.UtcNow;
+}
+
+/// <summary>
 /// 离线数据实体 - 用于离线模式数据存储
 /// </summary>
 public class OfflineDataEntity : BaseEntity

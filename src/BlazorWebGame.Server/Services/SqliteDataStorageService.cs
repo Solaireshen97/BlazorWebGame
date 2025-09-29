@@ -398,6 +398,284 @@ public class SqliteDataStorageService : IDataStorageService
 
     #endregion
 
+    #region 用户角色关联管理
+
+    public async Task<ApiResponse<UserCharacterStorageDto>> CreateUserCharacterAsync(string userId, string characterId, string characterName, bool isDefault = false)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+
+            // 验证用户存在
+            var userExists = await context.Users.AnyAsync(u => u.Id == userId);
+            if (!userExists)
+            {
+                return new ApiResponse<UserCharacterStorageDto>
+                {
+                    Success = false,
+                    Message = "用户不存在"
+                };
+            }
+
+            // 检查角色是否已被其他用户关联
+            var existingRelation = await context.UserCharacters
+                .FirstOrDefaultAsync(uc => uc.CharacterId == characterId && uc.IsActive);
+            
+            if (existingRelation != null)
+            {
+                return new ApiResponse<UserCharacterStorageDto>
+                {
+                    Success = false,
+                    Message = "该角色已被其他用户占用"
+                };
+            }
+
+            // 如果设置为默认角色，需要先取消其他默认角色
+            if (isDefault)
+            {
+                var userCharacters = await context.UserCharacters
+                    .Where(uc => uc.UserId == userId && uc.IsDefault)
+                    .ToListAsync();
+                
+                foreach (var uc in userCharacters)
+                {
+                    uc.IsDefault = false;
+                    uc.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+
+            var userCharacter = new UserCharacterEntity
+            {
+                Id = Guid.NewGuid().ToString(),
+                UserId = userId,
+                CharacterId = characterId,
+                CharacterName = characterName,
+                IsActive = true,
+                IsDefault = isDefault,
+                LastPlayedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            context.UserCharacters.Add(userCharacter);
+            await context.SaveChangesAsync();
+
+            _logger.LogInformation($"Created user-character relationship: {SafeLogId(userId)} -> {SafeLogId(characterId)}");
+
+            return new ApiResponse<UserCharacterStorageDto>
+            {
+                Success = true,
+                Data = ConvertToUserCharacterDto(userCharacter),
+                Message = "用户角色关联创建成功"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Error creating user-character relationship: {SafeLogId(userId)} -> {SafeLogId(characterId)}");
+            return new ApiResponse<UserCharacterStorageDto>
+            {
+                Success = false,
+                Message = "创建用户角色关联失败"
+            };
+        }
+    }
+
+    public async Task<ApiResponse<List<UserCharacterStorageDto>>> GetUserCharactersAsync(string userId)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+
+            var userCharacters = await context.UserCharacters
+                .Where(uc => uc.UserId == userId && uc.IsActive)
+                .OrderByDescending(uc => uc.IsDefault)
+                .ThenByDescending(uc => uc.LastPlayedAt)
+                .Select(uc => ConvertToUserCharacterDto(uc))
+                .ToListAsync();
+
+            return new ApiResponse<List<UserCharacterStorageDto>>
+            {
+                Success = true,
+                Data = userCharacters,
+                Message = "获取用户角色列表成功"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Error getting user characters: {SafeLogId(userId)}");
+            return new ApiResponse<List<UserCharacterStorageDto>>
+            {
+                Success = false,
+                Message = "获取用户角色列表失败"
+            };
+        }
+    }
+
+    public async Task<UserCharacterStorageDto?> GetCharacterOwnerAsync(string characterId)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+
+            var userCharacter = await context.UserCharacters
+                .FirstOrDefaultAsync(uc => uc.CharacterId == characterId && uc.IsActive);
+
+            return userCharacter != null ? ConvertToUserCharacterDto(userCharacter) : null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Error getting character owner: {SafeLogId(characterId)}");
+            return null;
+        }
+    }
+
+    public async Task<bool> UserOwnsCharacterAsync(string userId, string characterId)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+
+            // 管理员可以访问任何角色
+            var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            if (user != null)
+            {
+                var roles = JsonSerializer.Deserialize<List<string>>(user.RolesJson) ?? new List<string>();
+                if (roles.Contains("Admin", StringComparer.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return await context.UserCharacters
+                .AnyAsync(uc => uc.UserId == userId && uc.CharacterId == characterId && uc.IsActive);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Error checking character ownership: {SafeLogId(userId)} -> {SafeLogId(characterId)}");
+            return false;
+        }
+    }
+
+    public async Task<ApiResponse<bool>> SetDefaultCharacterAsync(string userId, string characterId)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+
+            // 验证用户拥有该角色
+            var targetCharacter = await context.UserCharacters
+                .FirstOrDefaultAsync(uc => uc.UserId == userId && uc.CharacterId == characterId && uc.IsActive);
+            
+            if (targetCharacter == null)
+            {
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "用户不拥有该角色"
+                };
+            }
+
+            // 取消所有默认角色
+            var userCharacters = await context.UserCharacters
+                .Where(uc => uc.UserId == userId && uc.IsActive)
+                .ToListAsync();
+
+            foreach (var uc in userCharacters)
+            {
+                uc.IsDefault = uc.CharacterId == characterId;
+                uc.UpdatedAt = DateTime.UtcNow;
+                if (uc.CharacterId == characterId)
+                {
+                    uc.LastPlayedAt = DateTime.UtcNow;
+                }
+            }
+
+            await context.SaveChangesAsync();
+
+            return new ApiResponse<bool>
+            {
+                Success = true,
+                Data = true,
+                Message = "设置默认角色成功"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Error setting default character: {SafeLogId(userId)} -> {SafeLogId(characterId)}");
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "设置默认角色失败"
+            };
+        }
+    }
+
+    public async Task<ApiResponse<bool>> DeleteUserCharacterAsync(string userId, string characterId)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+
+            var userCharacter = await context.UserCharacters
+                .FirstOrDefaultAsync(uc => uc.UserId == userId && uc.CharacterId == characterId && uc.IsActive);
+
+            if (userCharacter == null)
+            {
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "用户角色关联不存在"
+                };
+            }
+
+            // 软删除 - 标记为非活跃
+            userCharacter.IsActive = false;
+            userCharacter.IsDefault = false;
+            userCharacter.UpdatedAt = DateTime.UtcNow;
+
+            await context.SaveChangesAsync();
+
+            _logger.LogInformation($"Deleted user-character relationship: {SafeLogId(userId)} -> {SafeLogId(characterId)}");
+
+            return new ApiResponse<bool>
+            {
+                Success = true,
+                Data = true,
+                Message = "删除用户角色关联成功"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Error deleting user-character relationship: {SafeLogId(userId)} -> {SafeLogId(characterId)}");
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "删除用户角色关联失败"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 转换用户角色关联实体到DTO
+    /// </summary>
+    private static UserCharacterStorageDto ConvertToUserCharacterDto(UserCharacterEntity entity)
+    {
+        return new UserCharacterStorageDto
+        {
+            Id = entity.Id,
+            UserId = entity.UserId,
+            CharacterId = entity.CharacterId,
+            CharacterName = entity.CharacterName,
+            IsActive = entity.IsActive,
+            IsDefault = entity.IsDefault,
+            LastPlayedAt = entity.LastPlayedAt,
+            CreatedAt = entity.CreatedAt,
+            UpdatedAt = entity.UpdatedAt
+        };
+    }
+
+    #endregion
+
     #region 玩家数据管理
 
     public async Task<PlayerStorageDto?> GetPlayerAsync(string playerId)

@@ -115,6 +115,22 @@ public class BattleRecordStorageDto
 }
 
 /// <summary>
+/// 用户角色关联数据传输对象
+/// </summary>
+public class UserCharacterStorageDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string UserId { get; set; } = string.Empty;
+    public string CharacterId { get; set; } = string.Empty;
+    public string CharacterName { get; set; } = string.Empty;
+    public bool IsActive { get; set; } = true;
+    public bool IsDefault { get; set; } = false;
+    public DateTime LastPlayedAt { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+/// <summary>
 /// 离线数据传输对象
 /// </summary>
 public class OfflineDataStorageDto
