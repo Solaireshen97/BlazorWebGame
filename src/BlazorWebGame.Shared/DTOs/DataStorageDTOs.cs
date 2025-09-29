@@ -4,6 +4,28 @@ using System.Collections.Generic;
 namespace BlazorWebGame.Shared.DTOs;
 
 /// <summary>
+/// 用户数据传输对象
+/// </summary>
+public class UserStorageDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Username { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public bool IsActive { get; set; } = true;
+    public bool EmailVerified { get; set; } = false;
+    public DateTime LastLoginAt { get; set; } = DateTime.MinValue;
+    public string LastLoginIp { get; set; } = string.Empty;
+    public int LoginAttempts { get; set; } = 0;
+    public DateTime? LockedUntil { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    
+    // 复杂属性 - 在传输时已经反序列化
+    public List<string> Roles { get; set; } = new() { "Player" };
+    public Dictionary<string, object> Profile { get; set; } = new();
+}
+
+/// <summary>
 /// 玩家数据传输对象
 /// </summary>
 public class PlayerStorageDto

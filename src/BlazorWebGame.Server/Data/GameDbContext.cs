@@ -11,6 +11,7 @@ public class GameDbContext : DbContext
     public GameDbContext(DbContextOptions<GameDbContext> options) : base(options) { }
 
     // 数据表定义
+    public DbSet<UserEntity> Users { get; set; }
     public DbSet<PlayerEntity> Players { get; set; }
     public DbSet<TeamEntity> Teams { get; set; }
     public DbSet<ActionTargetEntity> ActionTargets { get; set; }
@@ -20,6 +21,28 @@ public class GameDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // 配置用户实体
+        modelBuilder.Entity<UserEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasMaxLength(100);
+            entity.Property(e => e.Username).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Email).HasMaxLength(100);
+            entity.Property(e => e.PasswordHash).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Salt).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.LastLoginIp).HasMaxLength(45); // IPv6 max length
+            
+            // JSON字段
+            entity.Property(e => e.RolesJson).HasColumnType("TEXT");
+            entity.Property(e => e.ProfileJson).HasColumnType("TEXT");
+            
+            // 索引
+            entity.HasIndex(e => e.Username).IsUnique();
+            entity.HasIndex(e => e.Email);
+            entity.HasIndex(e => e.IsActive);
+            entity.HasIndex(e => e.LastLoginAt);
+        });
 
         // 配置玩家实体
         modelBuilder.Entity<PlayerEntity>(entity =>

@@ -10,6 +10,60 @@ namespace BlazorWebGame.Shared.Interfaces;
 /// </summary>
 public interface IDataStorageService
 {
+    #region 用户账号管理
+    
+    /// <summary>
+    /// 根据用户名获取用户数据
+    /// </summary>
+    Task<UserStorageDto?> GetUserByUsernameAsync(string username);
+    
+    /// <summary>
+    /// 根据ID获取用户数据
+    /// </summary>
+    Task<UserStorageDto?> GetUserByIdAsync(string userId);
+    
+    /// <summary>
+    /// 根据邮箱获取用户数据
+    /// </summary>
+    Task<UserStorageDto?> GetUserByEmailAsync(string email);
+    
+    /// <summary>
+    /// 创建新用户账号
+    /// </summary>
+    Task<ApiResponse<UserStorageDto>> CreateUserAsync(UserStorageDto user, string password);
+    
+    /// <summary>
+    /// 更新用户数据
+    /// </summary>
+    Task<ApiResponse<UserStorageDto>> UpdateUserAsync(UserStorageDto user);
+    
+    /// <summary>
+    /// 验证用户密码
+    /// </summary>
+    Task<bool> ValidateUserPasswordAsync(string userId, string password);
+    
+    /// <summary>
+    /// 更新用户密码
+    /// </summary>
+    Task<ApiResponse<bool>> UpdateUserPasswordAsync(string userId, string newPassword);
+    
+    /// <summary>
+    /// 更新用户最后登录信息
+    /// </summary>
+    Task<ApiResponse<bool>> UpdateUserLastLoginAsync(string userId, string ipAddress);
+    
+    /// <summary>
+    /// 锁定用户账户
+    /// </summary>
+    Task<ApiResponse<bool>> LockUserAccountAsync(string userId, DateTime lockUntil);
+    
+    /// <summary>
+    /// 解锁用户账户
+    /// </summary>
+    Task<ApiResponse<bool>> UnlockUserAccountAsync(string userId);
+    
+    #endregion
+
     #region 玩家数据管理
     
     /// <summary>

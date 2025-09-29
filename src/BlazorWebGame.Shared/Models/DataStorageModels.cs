@@ -14,6 +14,25 @@ public abstract class BaseEntity
 }
 
 /// <summary>
+/// 用户实体 - 用于用户账号数据存储
+/// </summary>
+public class UserEntity : BaseEntity
+{
+    public string Username { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string PasswordHash { get; set; } = string.Empty;
+    public string Salt { get; set; } = string.Empty;
+    public bool IsActive { get; set; } = true;
+    public bool EmailVerified { get; set; } = false;
+    public DateTime LastLoginAt { get; set; } = DateTime.MinValue;
+    public string LastLoginIp { get; set; } = string.Empty;
+    public int LoginAttempts { get; set; } = 0;
+    public DateTime? LockedUntil { get; set; }
+    public string RolesJson { get; set; } = "[\"Player\"]"; // JSON array of role strings
+    public string ProfileJson { get; set; } = "{}"; // Additional profile data
+}
+
+/// <summary>
 /// 玩家实体 - 用于数据存储
 /// </summary>
 public class PlayerEntity : BaseEntity
