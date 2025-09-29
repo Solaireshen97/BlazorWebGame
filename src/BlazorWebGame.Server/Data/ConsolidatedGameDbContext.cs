@@ -13,10 +13,6 @@ public class ConsolidatedGameDbContext : DbContext
 {
     private readonly ILogger<ConsolidatedGameDbContext>? _logger;
 
-    public ConsolidatedGameDbContext(DbContextOptions<ConsolidatedGameDbContext> options) : base(options)
-    {
-    }
-
     public ConsolidatedGameDbContext(DbContextOptions<ConsolidatedGameDbContext> options, ILogger<ConsolidatedGameDbContext> logger) 
         : base(options)
     {
