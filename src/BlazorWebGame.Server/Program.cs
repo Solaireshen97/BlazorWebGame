@@ -218,39 +218,9 @@ builder.Services.AddSingleton<ServerServiceLocator>();
 // 配置统一的数据存储系统
 builder.Services.AddConsolidatedDataStorage(builder.Configuration, builder.Environment);
 
-// 注册离线结算服务
-builder.Services.AddSingleton<OfflineSettlementService>();
-
-// 注册增强的离线结算系统
-builder.Services.AddSingleton<OfflineActivityManager>();
-builder.Services.AddSingleton<EnhancedOfflineSettlementService>();
-
-// 注册新的玩家服务系统
-builder.Services.AddSingleton<ServerPlayerAttributeService>();
-builder.Services.AddSingleton<ServerPlayerProfessionService>();
-builder.Services.AddSingleton<ServerPlayerUtilityService>();
-
-// 注册游戏服务
-builder.Services.AddSingleton<ServerSkillSystem>();
-builder.Services.AddSingleton<ServerLootService>();
-builder.Services.AddSingleton<ServerCombatEngine>();
-builder.Services.AddSingleton<ServerCharacterCombatService>();  // 新增角色战斗服务
-builder.Services.AddSingleton<ServerPartyService>();
-builder.Services.AddSingleton<ServerBattleFlowService>();
-builder.Services.AddSingleton<ServerProductionService>();
-builder.Services.AddSingleton<ServerInventoryService>();
-builder.Services.AddSingleton<ServerQuestService>();
-builder.Services.AddSingleton<ServerShopService>();  // 添加商店服务
-builder.Services.AddSingleton<ServerReputationService>();  // 添加声望服务
-builder.Services.AddSingleton<ServerEquipmentService>();  // 添加装备服务
-builder.Services.AddSingleton<ServerEquipmentGenerator>(); // 新增装备生成器
-builder.Services.AddSingleton<GameEngineService>(); // 改回Singleton以支持其他Singleton服务
-builder.Services.AddSingleton<ServerCharacterService>();
-builder.Services.AddSingleton<ServerEventService>();
-
-// 注册旧的数据存储服务以支持现有代码
-builder.Services.AddSingleton<BlazorWebGame.Shared.Interfaces.IDataStorageService, BlazorWebGame.Server.Services.UnifiedDataStorageService>();
-builder.Services.AddSingleton<BlazorWebGame.Server.Services.DataStorageIntegrationService>();
+// 注释掉旧的数据存储服务以避免冲突
+// builder.Services.AddSingleton<BlazorWebGame.Shared.Interfaces.IDataStorageService, BlazorWebGame.Server.Services.UnifiedDataStorageService>();
+// builder.Services.AddSingleton<BlazorWebGame.Server.Services.DataStorageIntegrationService>();
 
 // 注册事件驱动的服务系统
 builder.Services.AddSingleton<EventDrivenBattleEngine>();
