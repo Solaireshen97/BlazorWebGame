@@ -156,9 +156,6 @@ public static class ConsolidatedDataStorageConfigurationExtensions
         
         // 注册接口实现
         services.AddScoped<IDataStorageService>(provider => provider.GetRequiredService<ConsolidatedDataStorageService>());
-        services.AddScoped<IUnifiedDataStorageService>(provider => provider.GetRequiredService<ConsolidatedDataStorageService>());
-        services.AddScoped<IGameRepository>(provider => provider.GetRequiredService<ConsolidatedDataStorageService>());
-        services.AddScoped<IAdvancedGameRepository>(provider => provider.GetRequiredService<ConsolidatedDataStorageService>());
 
         // 注册健康检查
         if (storageOptions.EnableHealthChecks)
@@ -343,7 +340,7 @@ public static class ConsolidatedDataStorageConfigurationExtensions
             }
 
             // 验证服务健康状态
-            var dataStorageService = scope.ServiceProvider.GetRequiredService<IAdvancedGameRepository>();
+            var dataStorageService = scope.ServiceProvider.GetRequiredService<BlazorWebGame.Shared.Interfaces.IAdvancedGameRepository>();
             var healthCheck = await dataStorageService.HealthCheckAsync();
             
             if (healthCheck.Success)
@@ -479,7 +476,7 @@ public class ConsolidatedDataStorageMaintenanceService : BackgroundService
         _logger.LogInformation("Starting consolidated data storage maintenance tasks");
 
         using var scope = _serviceProvider.CreateScope();
-        var repository = scope.ServiceProvider.GetService<IAdvancedGameRepository>();
+        var repository = scope.ServiceProvider.GetService<BlazorWebGame.Shared.Interfaces.IAdvancedGameRepository>();
         
         if (repository != null)
         {
@@ -529,7 +526,7 @@ public class ConsolidatedDataStorageMaintenanceService : BackgroundService
         }
         else
         {
-            _logger.LogWarning("IAdvancedGameRepository not available, skipping maintenance tasks");
+            _logger.LogWarning("BlazorWebGame.Shared.Interfaces.IAdvancedGameRepository not available, skipping maintenance tasks");
         }
     }
 
