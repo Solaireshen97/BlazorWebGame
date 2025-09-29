@@ -1,12 +1,62 @@
 ﻿@inherits LayoutComponentBase
+@using BlazorIdleGame.Client.Services.Character
+@using BlazorIdleGame.Client.Services.Auth
+@using BlazorWebGame.Shared.DTOs
+@using BlazorIdleGame.Client.Components
+@inject ICharacterService CharacterService
+@inject IAuthService AuthService
+@inject NavigationManager NavigationManager
+
 <div class="page">
     <div class="sidebar">
         <NavMenu />
     </div>
 
     <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+        <div class="character-selector">
+            @if (AuthService.IsAuthenticated)
+            {
+                <div class="character-cards">
+                    @if (_characters.Count == 0 && !_isLoading)
+                    {
+                        <div class="character-card new-character" @onclick="ShowCreateCharacterDialog">
+                            <div class="card-inner">
+                                <div class="create-icon">+</div>
+                                <span>创建新角色</span>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        @for (int i = 0; i < _characters.Count; i++)
+                        {
+                            var character = _characters[i];
+                            var isActive = _activeCharacterId == character.Id;
+                            <div class="character-card @(isActive ? "active" : "")" @onclick="() => SelectCharacter(character.Id)">
+                                <div class="card-inner">
+                                    <div class="character-avatar">
+                                        <img src="images/character-placeholder.png" alt="@character.Name" />
+                                    </div>
+                                    <div class="character-info">
+                                        <span class="character-name">@character.Name</span>
+                                        <span class="character-level">等级: @GetCharacterLevel(character)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        @if (_characters.Count < 5)
+                        {
+                            <div class="character-card new-character" @onclick="ShowCreateCharacterDialog">
+                                <div class="card-inner">
+                                    <div class="create-icon">+</div>
+                                    <span>创建新角色</span>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            }
         </div>
 
         <article class="content px-4">
@@ -14,3 +64,113 @@
         </article>
     </main>
 </div>
+
+@if (_showCreateCharacterDialog)
+{
+    <div class="modal-backdrop" @onclick="CloseCreateCharacterDialog"></div>
+    <div class="floating-dialog">
+        <div class="dialog-header">
+            <h5>创建新角色</h5>
+            <button type="button" class="btn-close" @onclick="CloseCreateCharacterDialog"></button>
+        </div>
+        <div class="dialog-body">
+            <CreateCharacterForm OnCharacterCreated="OnCharacterCreated" OnCancel="CloseCreateCharacterDialog" />
+        </div>
+    </div>
+}
+
+@code {
+    private List<CharacterDto> _characters = new();
+    private bool _isLoading = true;
+    private string? _activeCharacterId;
+    private bool _showCreateCharacterDialog = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // 订阅认证状态变更事件
+        AuthService.AuthenticationStateChanged += OnAuthenticationStateChanged;
+        
+        // 如果已认证，加载角色
+        if (AuthService.IsAuthenticated)
+        {
+            await LoadCharactersAsync();
+        }
+    }
+
+    private async void OnAuthenticationStateChanged()
+    {
+        if (AuthService.IsAuthenticated)
+        {
+            await LoadCharactersAsync();
+        }
+        else
+        {
+            _characters.Clear();
+            _activeCharacterId = null;
+        }
+        
+        // 由于这是事件处理程序，需要手动触发UI更新
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadCharactersAsync()
+    {
+        _isLoading = true;
+        StateHasChanged();
+        
+        try
+        {
+            _characters = await CharacterService.GetMyCharactersAsync();
+            
+            // 如果有角色，默认选中第一个
+            if (_characters.Count > 0 && string.IsNullOrEmpty(_activeCharacterId))
+            {
+                _activeCharacterId = _characters[0].Id;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"加载角色失败: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void SelectCharacter(string characterId)
+    {
+        _activeCharacterId = characterId;
+        // 这里可以添加切换角色的逻辑，如通知游戏系统切换当前角色
+    }
+
+    private int GetCharacterLevel(CharacterDto character)
+    {
+        // 这里简单返回一个值，实际应该根据角色属性计算等级
+        return character.MaxHealth / 10; // 假设每10点最大生命值代表1级
+    }
+
+    private void ShowCreateCharacterDialog()
+    {
+        _showCreateCharacterDialog = true;
+    }
+
+    private void CloseCreateCharacterDialog()
+    {
+        _showCreateCharacterDialog = false;
+    }
+
+    private async Task OnCharacterCreated()
+    {
+        // 关闭对话框并刷新角色列表
+        _showCreateCharacterDialog = false;
+        await LoadCharactersAsync();
+    }
+
+    public void Dispose()
+    {
+        // 取消订阅事件
+        AuthService.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+    }
+}

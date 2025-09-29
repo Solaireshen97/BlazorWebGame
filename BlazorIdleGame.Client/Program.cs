@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.DependencyInjection;
-using BlazorIdleGame.Client.Services.Auth;
+using BlazorIdleGame.Client.Services.Character;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -36,6 +36,7 @@ builder.Services.AddScoped<IGameCommunicationService, GameCommunicationService>(
 builder.Services.AddScoped<IGameSyncService, GameSyncService>();
 builder.Services.AddScoped<LocalStorageService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ICharacterService, CharacterService>();
 
 // 设置日志级别（帮助调试）
 builder.Logging.SetMinimumLevel(LogLevel.Debug);

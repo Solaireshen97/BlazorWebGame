@@ -146,7 +146,7 @@ namespace BlazorWebGame.Server.Controllers
         /// <summary>
         /// 创建新角色
         /// </summary>
-        [HttpPost]
+        [HttpPost("create")]
         [Authorize]
         public async Task<ActionResult<ApiResponse<CharacterDto>>> CreateCharacter(CreateCharacterRequest request)
         {

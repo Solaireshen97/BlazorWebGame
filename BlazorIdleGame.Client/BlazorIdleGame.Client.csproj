@@ -15,7 +15,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Components\" />
     <Folder Include="Models\Activities\" />
     <Folder Include="Models\Battle\" />
     <Folder Include="Models\Party\" />
