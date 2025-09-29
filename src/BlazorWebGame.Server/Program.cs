@@ -244,9 +244,13 @@ builder.Services.AddSingleton<ServerShopService>();  // 添加商店服务
 builder.Services.AddSingleton<ServerReputationService>();  // 添加声望服务
 builder.Services.AddSingleton<ServerEquipmentService>();  // 添加装备服务
 builder.Services.AddSingleton<ServerEquipmentGenerator>(); // 新增装备生成器
-builder.Services.AddScoped<GameEngineService>();
+builder.Services.AddSingleton<GameEngineService>(); // 改回Singleton以支持其他Singleton服务
 builder.Services.AddSingleton<ServerCharacterService>();
 builder.Services.AddSingleton<ServerEventService>();
+
+// 注册旧的数据存储服务以支持现有代码
+builder.Services.AddSingleton<BlazorWebGame.Shared.Interfaces.IDataStorageService, BlazorWebGame.Server.Services.UnifiedDataStorageService>();
+builder.Services.AddSingleton<BlazorWebGame.Server.Services.DataStorageIntegrationService>();
 
 // 注册事件驱动的服务系统
 builder.Services.AddSingleton<EventDrivenBattleEngine>();
