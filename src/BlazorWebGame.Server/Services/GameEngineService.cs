@@ -3,7 +3,9 @@ using BlazorWebGame.Shared.Models;
 using BlazorWebGame.Shared.Events;
 using BlazorWebGame.Shared.Interfaces;
 using BlazorWebGame.Server.Hubs;
+using BlazorWebGame.Server.Data;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 
 namespace BlazorWebGame.Server.Services;
 
@@ -21,12 +23,12 @@ public class GameEngineService
     private readonly ServerBattleFlowService _battleFlowService;
     private readonly IHubContext<GameHub> _hubContext;
     private readonly UnifiedEventService _eventService;
-    private readonly IGameRepository _gameRepository;
+    private readonly IDbContextFactory<UnifiedGameDbContext> _contextFactory;
 
     public GameEngineService(ILogger<GameEngineService> logger, ServerCombatEngine combatEngine, 
         ServerPartyService partyService, ServerBattleFlowService battleFlowService, 
         IHubContext<GameHub> hubContext, UnifiedEventService eventService,
-        IGameRepository gameRepository)
+        IDbContextFactory<UnifiedGameDbContext> contextFactory)
     {
         _logger = logger;
         _combatEngine = combatEngine;
@@ -34,7 +36,7 @@ public class GameEngineService
         _battleFlowService = battleFlowService;
         _hubContext = hubContext;
         _eventService = eventService;
-        _gameRepository = gameRepository;
+        _contextFactory = contextFactory;
     }
 
     /// <summary>
@@ -166,14 +168,15 @@ public class GameEngineService
     {
         try
         {
-            var result = await _gameRepository.GetPlayerAsync(playerId);
-            if (result.Success && result.Data != null)
+            using var context = await _contextFactory.CreateDbContextAsync();
+            var player = await context.Players.FindAsync(playerId);
+            
+            if (player == null)
             {
-                return result.Data;
+                _logger.LogWarning("Player {PlayerId} not found in database, using default values", playerId);
             }
             
-            _logger.LogWarning("Player {PlayerId} not found in database, using default values", playerId);
-            return null;
+            return player;
         }
         catch (Exception ex)
         {
@@ -382,6 +385,8 @@ public class GameEngineService
     {
         try
         {
+            using var dbContext = await _contextFactory.CreateDbContextAsync();
+            
             var battleRecord = new BattleRecordEntity
             {
                 BattleId = context.BattleId.ToString(),
@@ -398,7 +403,9 @@ public class GameEngineService
                 Duration = 0
             };
 
-            await _gameRepository.CreateBattleRecordAsync(battleRecord);
+            dbContext.BattleRecords.Add(battleRecord);
+            await dbContext.SaveChangesAsync();
+            
             _logger.LogDebug("Battle record saved for battle {BattleId}", context.BattleId);
         }
         catch (Exception ex)
