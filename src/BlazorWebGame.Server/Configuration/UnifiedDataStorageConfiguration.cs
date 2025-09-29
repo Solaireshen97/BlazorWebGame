@@ -320,11 +320,15 @@ public static class UnifiedDataStorageConfigurationExtensions
 /// </summary>
 public class UnifiedDataStorageHealthCheck : Microsoft.Extensions.Diagnostics.HealthChecks.IHealthCheck
 {
-    private readonly IGameRepository _repository;
+    private readonly IDbContextFactory<UnifiedGameDbContext> _contextFactory;
+    private readonly ILogger<UnifiedDataStorageHealthCheck> _logger;
 
-    public UnifiedDataStorageHealthCheck(IGameRepository repository)
+    public UnifiedDataStorageHealthCheck(
+        IDbContextFactory<UnifiedGameDbContext> contextFactory,
+        ILogger<UnifiedDataStorageHealthCheck> logger)
     {
-        _repository = repository;
+        _contextFactory = contextFactory;
+        _logger = logger;
     }
 
     public async Task<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult> CheckHealthAsync(
@@ -333,24 +337,25 @@ public class UnifiedDataStorageHealthCheck : Microsoft.Extensions.Diagnostics.He
     {
         try
         {
-            var healthCheck = await _repository.HealthCheckAsync();
+            using var dbContext = await _contextFactory.CreateDbContextAsync(cancellationToken);
             
-            if (healthCheck.Success)
-            {
-                var stats = await _repository.GetDatabaseStatsAsync();
-                var data = stats.Success && stats.Data != null ? stats.Data : new Dictionary<string, object>();
-                
-                return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy(
-                    "Unified data storage system is healthy", data);
-            }
-            else
+            // 测试数据库连接
+            var canConnect = await dbContext.Database.CanConnectAsync(cancellationToken);
+            if (!canConnect)
             {
                 return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Unhealthy(
-                    $"Unified data storage system is unhealthy: {healthCheck.Message}");
+                    "Cannot connect to database");
             }
+
+            // 获取基本统计信息
+            var stats = await dbContext.GetDatabaseStatsAsync();
+            
+            return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy(
+                "Unified data storage is healthy", stats);
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Unified data storage health check failed");
             return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Unhealthy(
                 "Unified data storage health check failed", ex);
         }

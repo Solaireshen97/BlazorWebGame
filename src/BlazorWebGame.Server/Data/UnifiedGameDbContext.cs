@@ -308,6 +308,9 @@ public class UnifiedGameDbContext : DbContext
             "PRAGMA cache_size = 10000",          // 增加缓存大小（10MB）
             "PRAGMA temp_store = MEMORY",          // 将临时表存储在内存中
             "PRAGMA mmap_size = 268435456",       // 启用内存映射（256MB）
+            "PRAGMA busy_timeout = 30000",        // 设置繁忙超时30秒
+            "PRAGMA foreign_keys = ON",           // 启用外键约束
+            "PRAGMA auto_vacuum = INCREMENTAL",   // 启用增量自动清理
             "PRAGMA optimize",                     // 优化查询计划
             "PRAGMA analysis_limit = 1000"        // 设置分析限制
         };
@@ -323,6 +326,96 @@ public class UnifiedGameDbContext : DbContext
             {
                 _logger?.LogWarning(ex, "Failed to apply SQLite optimization: {Pragma}", pragma);
             }
+        }
+
+        // 创建自定义函数和触发器来优化性能
+        await CreatePerformanceOptimizationsAsync();
+    }
+
+    /// <summary>
+    /// 创建性能优化的自定义触发器和索引
+    /// </summary>
+    private async Task CreatePerformanceOptimizationsAsync()
+    {
+        try
+        {
+            // 创建自动更新UpdatedAt字段的触发器
+            var updateTriggers = new[]
+            {
+                @"CREATE TRIGGER IF NOT EXISTS update_players_timestamp 
+                  AFTER UPDATE ON Players 
+                  BEGIN 
+                    UPDATE Players SET UpdatedAt = datetime('now') WHERE Id = NEW.Id; 
+                  END;",
+                
+                @"CREATE TRIGGER IF NOT EXISTS update_teams_timestamp 
+                  AFTER UPDATE ON Teams 
+                  BEGIN 
+                    UPDATE Teams SET UpdatedAt = datetime('now') WHERE Id = NEW.Id; 
+                  END;",
+                
+                @"CREATE TRIGGER IF NOT EXISTS update_actiontargets_timestamp 
+                  AFTER UPDATE ON ActionTargets 
+                  BEGIN 
+                    UPDATE ActionTargets SET UpdatedAt = datetime('now') WHERE Id = NEW.Id; 
+                  END;",
+                
+                @"CREATE TRIGGER IF NOT EXISTS update_battlerecords_timestamp 
+                  AFTER UPDATE ON BattleRecords 
+                  BEGIN 
+                    UPDATE BattleRecords SET UpdatedAt = datetime('now') WHERE Id = NEW.Id; 
+                  END;",
+                
+                @"CREATE TRIGGER IF NOT EXISTS update_offlinedata_timestamp 
+                  AFTER UPDATE ON OfflineData 
+                  BEGIN 
+                    UPDATE OfflineData SET UpdatedAt = datetime('now') WHERE Id = NEW.Id; 
+                  END;"
+            };
+
+            foreach (var trigger in updateTriggers)
+            {
+                await Database.ExecuteSqlRawAsync(trigger);
+            }
+
+            // 创建统计视图以提高查询性能
+            var statisticsViews = new[]
+            {
+                @"CREATE VIEW IF NOT EXISTS PlayerStatistics AS
+                  SELECT 
+                    p.Id,
+                    p.Name,
+                    p.Level,
+                    p.Experience,
+                    p.IsOnline,
+                    p.LastActiveAt,
+                    COUNT(br.Id) as TotalBattles,
+                    COUNT(CASE WHEN br.Status = 'Victory' THEN 1 END) as Victories,
+                    COUNT(CASE WHEN br.Status = 'Defeat' THEN 1 END) as Defeats
+                  FROM Players p
+                  LEFT JOIN BattleRecords br ON JSON_EXTRACT(br.ParticipantsJson, '$[*]') LIKE '%' || p.Id || '%'
+                  GROUP BY p.Id;",
+
+                @"CREATE VIEW IF NOT EXISTS ActivePlayerSummary AS
+                  SELECT 
+                    COUNT(*) as TotalPlayers,
+                    COUNT(CASE WHEN IsOnline = 1 THEN 1 END) as OnlinePlayers,
+                    AVG(Level) as AverageLevel,
+                    MAX(Level) as MaxLevel,
+                    COUNT(CASE WHEN LastActiveAt >= datetime('now', '-1 day') THEN 1 END) as ActiveToday
+                  FROM Players;"
+            };
+
+            foreach (var view in statisticsViews)
+            {
+                await Database.ExecuteSqlRawAsync(view);
+            }
+
+            _logger?.LogInformation("Performance optimization triggers and views created successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to create some performance optimizations");
         }
     }
 
