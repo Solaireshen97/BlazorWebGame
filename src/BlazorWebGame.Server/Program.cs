@@ -174,8 +174,8 @@ if (dataStorageType == "SQLite")
     builder.Services.AddDbContextFactory<GameDbContext>(options =>
         options.UseSqlite(builder.Configuration.GetConnectionString("GameDatabase")));
     
-    // 注册SQLite数据存储服务
-    builder.Services.AddSingleton<BlazorWebGame.Shared.Interfaces.IDataStorageService, SqliteDataStorageService>();
+    // 注册简化的SQLite数据存储服务
+    builder.Services.AddSingleton<BlazorWebGame.Shared.Interfaces.IDataStorageService, SimpleSqliteDataStorageService>();
 }
 else
 {
