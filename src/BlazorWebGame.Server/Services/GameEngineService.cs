@@ -1,6 +1,7 @@
 using BlazorWebGame.Shared.DTOs;
 using BlazorWebGame.Shared.Models;
 using BlazorWebGame.Shared.Events;
+using BlazorWebGame.Shared.Interfaces;
 using BlazorWebGame.Server.Hubs;
 using Microsoft.AspNetCore.SignalR;
 
@@ -8,7 +9,7 @@ namespace BlazorWebGame.Server.Services;
 
 /// <summary>
 /// 服务端游戏引擎，处理所有游戏逻辑
-/// 重构为使用统一事件队列系统
+/// 重构为使用统一事件队列系统和数据持久化
 /// </summary>
 public class GameEngineService
 {
@@ -20,10 +21,12 @@ public class GameEngineService
     private readonly ServerBattleFlowService _battleFlowService;
     private readonly IHubContext<GameHub> _hubContext;
     private readonly UnifiedEventService _eventService;
+    private readonly IGameRepository _gameRepository;
 
     public GameEngineService(ILogger<GameEngineService> logger, ServerCombatEngine combatEngine, 
         ServerPartyService partyService, ServerBattleFlowService battleFlowService, 
-        IHubContext<GameHub> hubContext, UnifiedEventService eventService)
+        IHubContext<GameHub> hubContext, UnifiedEventService eventService,
+        IGameRepository gameRepository)
     {
         _logger = logger;
         _combatEngine = combatEngine;
@@ -31,37 +34,57 @@ public class GameEngineService
         _battleFlowService = battleFlowService;
         _hubContext = hubContext;
         _eventService = eventService;
+        _gameRepository = gameRepository;
     }
 
     /// <summary>
     /// 开始新战斗
     /// </summary>
-    public BattleStateDto StartBattle(StartBattleRequest request)
+    public async Task<BattleStateDto> StartBattleAsync(StartBattleRequest request)
     {
         var battleId = Guid.NewGuid();
         
-        // 创建服务端战斗上下文
-        var serverContext = CreateServerBattleContext(battleId, request);
-        _serverBattleContexts[battleId] = serverContext;
-        
-        // 创建客户端战斗状态DTO
-        var battleState = ConvertToDto(serverContext);
-        _activeBattles[battleId] = battleState;
-        
-        // 使用新事件系统触发战斗开始事件
-        _eventService.EnqueueBattleEvent(GameEventTypes.BATTLE_STARTED, (ulong)battleId.GetHashCode(), 
-            actorId: HashString(request.CharacterId));
-        
-        _logger.LogInformation("Battle started: {BattleId} for character {CharacterId}", 
-            battleId, request.CharacterId);
-        
-        return battleState;
+        try
+        {
+            // 创建服务端战斗上下文（使用数据库数据）
+            var serverContext = await CreateServerBattleContextAsync(battleId, request);
+            _serverBattleContexts[battleId] = serverContext;
+            
+            // 创建客户端战斗状态DTO
+            var battleState = ConvertToDto(serverContext);
+            _activeBattles[battleId] = battleState;
+            
+            // 保存战斗记录到数据库
+            await SaveBattleRecordAsync(serverContext);
+            
+            // 使用新事件系统触发战斗开始事件
+            _eventService.EnqueueBattleEvent(GameEventTypes.BATTLE_STARTED, (ulong)battleId.GetHashCode(), 
+                actorId: HashString(request.CharacterId));
+            
+            _logger.LogInformation("Battle started: {BattleId} for character {CharacterId}", 
+                battleId, request.CharacterId);
+            
+            return battleState;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to start battle for character {CharacterId}", request.CharacterId);
+            throw;
+        }
     }
 
     /// <summary>
-    /// 创建服务端战斗上下文
+    /// 开始新战斗（同步版本，向后兼容）
     /// </summary>
-    private ServerBattleContext CreateServerBattleContext(Guid battleId, StartBattleRequest request)
+    public BattleStateDto StartBattle(StartBattleRequest request)
+    {
+        return StartBattleAsync(request).GetAwaiter().GetResult();
+    }
+
+    /// <summary>
+    /// 创建服务端战斗上下文（异步版本，使用数据库数据）
+    /// </summary>
+    private async Task<ServerBattleContext> CreateServerBattleContextAsync(Guid battleId, StartBattleRequest request)
     {
         Guid? partyGuid = null;
         if (!string.IsNullOrEmpty(request.PartyId) && Guid.TryParse(request.PartyId, out var parsedPartyGuid))
@@ -96,52 +119,293 @@ public class GameEngineService
             participantIds = new List<string> { request.CharacterId };
         }
 
-        // 为每个参与者创建玩家实例
+        // 为每个参与者创建玩家实例（从数据库获取真实数据）
         foreach (var characterId in participantIds)
         {
+            var playerData = await GetPlayerDataAsync(characterId);
             var player = new ServerBattlePlayer
             {
                 Id = characterId,
-                Name = $"英雄-{characterId[^4..]}", // 使用后4位作为显示名，实际应从数据库获取
-                Health = 100,
-                MaxHealth = 100,
-                BaseAttackPower = 15,
-                AttacksPerSecond = 1.2,
-                Level = 1,
-                SelectedBattleProfession = "Warrior",
-                EquippedSkills = new List<string> { "warrior_charge", "warrior_shield_bash" }
+                Name = playerData?.Name ?? $"英雄-{characterId[^4..]}", // 使用数据库名称或后备名称
+                Health = playerData?.Health ?? 100,
+                MaxHealth = playerData?.MaxHealth ?? 100,
+                BaseAttackPower = CalculatePlayerAttackPower(playerData),
+                AttacksPerSecond = CalculatePlayerAttackSpeed(playerData),
+                Level = playerData?.Level ?? 1,
+                SelectedBattleProfession = playerData?.SelectedBattleProfession ?? "Warrior",
+                EquippedSkills = GetPlayerSkills(playerData)
             };
             context.Players.Add(player);
         }
 
-        // 创建敌人（根据参与者数量调整敌人强度）
+        // 创建敌人（根据参与者数量和等级调整敌人强度）
+        var averageLevel = context.Players.Any() ? (int)context.Players.Average(p => p.Level) : 1;
         int enemyCount = Math.Max(1, participantIds.Count / 2); // 每2个玩家对应1个敌人，至少1个
+        
         for (int i = 0; i < enemyCount; i++)
         {
-            var enemy = new ServerBattleEnemy
-            {
-                Id = $"{request.EnemyId}-{i}",
-                Name = $"哥布林-{i + 1}",
-                Health = 80 + (participantIds.Count * 10), // 根据队伍大小调整血量
-                MaxHealth = 80 + (participantIds.Count * 10),
-                BaseAttackPower = 12 + (participantIds.Count * 2), // 根据队伍大小调整攻击力
-                AttacksPerSecond = 1.0,
-                Level = 1,
-                XpReward = 25,
-                MinGoldReward = 5,
-                MaxGoldReward = 15,
-                EnemyType = "Goblin",
-                LootTable = new Dictionary<string, double>
-                {
-                    { "iron_sword", 0.1 },
-                    { "health_potion", 0.3 }
-                },
-                EquippedSkills = new List<string> { "goblin_slash" }
-            };
+            var enemy = CreateBalancedEnemy(request.EnemyId, i, averageLevel, participantIds.Count);
             context.Enemies.Add(enemy);
         }
 
         return context;
+    }
+
+    /// <summary>
+    /// 创建服务端战斗上下文（同步版本，向后兼容）
+    /// </summary>
+    private ServerBattleContext CreateServerBattleContext(Guid battleId, StartBattleRequest request)
+    {
+        return CreateServerBattleContextAsync(battleId, request).GetAwaiter().GetResult();
+    }
+
+    /// <summary>
+    /// 从数据库获取玩家数据
+    /// </summary>
+    private async Task<PlayerEntity?> GetPlayerDataAsync(string playerId)
+    {
+        try
+        {
+            var result = await _gameRepository.GetPlayerAsync(playerId);
+            if (result.Success && result.Data != null)
+            {
+                return result.Data;
+            }
+            
+            _logger.LogWarning("Player {PlayerId} not found in database, using default values", playerId);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get player data for {PlayerId}", playerId);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// 计算玩家攻击力（基于装备和属性）
+    /// </summary>
+    private int CalculatePlayerAttackPower(PlayerEntity? playerData)
+    {
+        if (playerData == null) return 15; // 默认攻击力
+
+        var baseAttack = 10 + (playerData.Level * 2); // 基础攻击力
+        
+        // TODO: 解析装备JSON并计算装备加成
+        // var equipment = ParseEquipmentJson(playerData.EquipmentJson);
+        // var equipmentBonus = CalculateEquipmentAttackBonus(equipment);
+        
+        return Math.Max(baseAttack, 15); // 至少15点攻击力
+    }
+
+    /// <summary>
+    /// 计算玩家攻击速度
+    /// </summary>
+    private double CalculatePlayerAttackSpeed(PlayerEntity? playerData)
+    {
+        if (playerData == null) return 1.2; // 默认攻击速度
+
+        var baseSpeed = 1.0;
+        var levelBonus = (playerData.Level - 1) * 0.05; // 每级增加5%攻击速度
+        
+        return Math.Min(baseSpeed + levelBonus, 2.5); // 最大2.5次/秒
+    }
+
+    /// <summary>
+    /// 获取玩家技能列表
+    /// </summary>
+    private List<string> GetPlayerSkills(PlayerEntity? playerData)
+    {
+        if (playerData == null)
+        {
+            return new List<string> { "warrior_charge", "warrior_shield_bash" }; // 默认战士技能
+        }
+
+        try
+        {
+            // TODO: 解析技能JSON
+            // var skills = ParseSkillsJson(playerData.SkillsJson);
+            // return skills;
+
+            // 根据职业返回默认技能
+            return playerData.SelectedBattleProfession?.ToLower() switch
+            {
+                "warrior" => new List<string> { "warrior_charge", "warrior_shield_bash", "warrior_berserker_rage" },
+                "mage" => new List<string> { "mage_fireball", "mage_ice_shard", "mage_lightning_bolt" },
+                "archer" => new List<string> { "archer_precise_shot", "archer_multi_shot", "archer_explosive_arrow" },
+                "rogue" => new List<string> { "rogue_backstab", "rogue_poison_blade", "rogue_shadow_strike" },
+                _ => new List<string> { "warrior_charge", "warrior_shield_bash" }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to parse player skills for {PlayerId}", playerData.Id);
+            return new List<string> { "warrior_charge", "warrior_shield_bash" };
+        }
+    }
+
+    /// <summary>
+    /// 创建平衡的敌人
+    /// </summary>
+    private ServerBattleEnemy CreateBalancedEnemy(string enemyId, int index, int playerAverageLevel, int playerCount)
+    {
+        var enemyLevel = Math.Max(1, playerAverageLevel + Random.Shared.Next(-1, 2)); // 敌人等级在玩家平均等级±1
+        var healthMultiplier = 1.0 + (playerCount - 1) * 0.2; // 每增加一个玩家，敌人血量增加20%
+        var attackMultiplier = 1.0 + (playerCount - 1) * 0.15; // 每增加一个玩家，敌人攻击力增加15%
+
+        var baseHealth = 60 + (enemyLevel * 15);
+        var baseAttack = 8 + (enemyLevel * 3);
+
+        return new ServerBattleEnemy
+        {
+            Id = $"{enemyId}-{index}",
+            Name = GetEnemyName(enemyId, index),
+            Health = (int)(baseHealth * healthMultiplier),
+            MaxHealth = (int)(baseHealth * healthMultiplier),
+            BaseAttackPower = (int)(baseAttack * attackMultiplier),
+            AttacksPerSecond = 0.8 + (enemyLevel * 0.1), // 攻击速度随等级增长
+            Level = enemyLevel,
+            XpReward = 20 + (enemyLevel * 5),
+            MinGoldReward = 3 + enemyLevel,
+            MaxGoldReward = 8 + (enemyLevel * 2),
+            EnemyType = GetEnemyType(enemyId),
+            LootTable = GetEnemyLootTable(enemyId, enemyLevel),
+            EquippedSkills = GetEnemySkills(enemyId, enemyLevel)
+        };
+    }
+
+    /// <summary>
+    /// 获取敌人名称
+    /// </summary>
+    private string GetEnemyName(string enemyId, int index)
+    {
+        var names = enemyId.ToLower() switch
+        {
+            "goblin" => new[] { "哥布林战士", "哥布林弓手", "哥布林萨满", "哥布林头目" },
+            "orc" => new[] { "兽人战士", "兽人斧手", "兽人督军", "兽人酋长" },
+            "skeleton" => new[] { "骷髅兵", "骷髅弓手", "骷髅法师", "骷髅王" },
+            "wolf" => new[] { "野狼", "灰狼", "银狼", "狼王" },
+            _ => new[] { "未知敌人", "神秘生物", "黑暗使者", "邪恶存在" }
+        };
+
+        return $"{names[index % names.Length]}-{index + 1}";
+    }
+
+    /// <summary>
+    /// 获取敌人类型
+    /// </summary>
+    private string GetEnemyType(string enemyId)
+    {
+        return enemyId.ToLower() switch
+        {
+            "goblin" => "Humanoid",
+            "orc" => "Humanoid", 
+            "skeleton" => "Undead",
+            "wolf" => "Beast",
+            _ => "Unknown"
+        };
+    }
+
+    /// <summary>
+    /// 获取敌人掉落表
+    /// </summary>
+    private Dictionary<string, double> GetEnemyLootTable(string enemyId, int level)
+    {
+        var baseLootTable = enemyId.ToLower() switch
+        {
+            "goblin" => new Dictionary<string, double>
+            {
+                { "iron_sword", 0.1 },
+                { "health_potion", 0.3 },
+                { "goblin_ear", 0.5 },
+                { "copper_coin", 0.8 }
+            },
+            "orc" => new Dictionary<string, double>
+            {
+                { "steel_axe", 0.15 },
+                { "orc_hide", 0.4 },
+                { "strength_potion", 0.2 },
+                { "silver_coin", 0.6 }
+            },
+            "skeleton" => new Dictionary<string, double>
+            {
+                { "bone_staff", 0.12 },
+                { "soul_gem", 0.25 },
+                { "mana_potion", 0.35 },
+                { "ancient_coin", 0.5 }
+            },
+            _ => new Dictionary<string, double>
+            {
+                { "health_potion", 0.3 },
+                { "mysterious_item", 0.1 }
+            }
+        };
+
+        // 根据等级调整掉落率
+        var adjustedLootTable = new Dictionary<string, double>();
+        foreach (var item in baseLootTable)
+        {
+            var adjustedRate = Math.Min(0.95, item.Value * (1.0 + level * 0.05));
+            adjustedLootTable[item.Key] = adjustedRate;
+        }
+
+        return adjustedLootTable;
+    }
+
+    /// <summary>
+    /// 获取敌人技能
+    /// </summary>
+    private List<string> GetEnemySkills(string enemyId, int level)
+    {
+        var skills = enemyId.ToLower() switch
+        {
+            "goblin" => new List<string> { "goblin_slash" },
+            "orc" => new List<string> { "orc_charge", "orc_rage" },
+            "skeleton" => new List<string> { "bone_throw", "necromantic_aura" },
+            "wolf" => new List<string> { "wolf_bite", "pack_howl" },
+            _ => new List<string> { "basic_attack" }
+        };
+
+        // 高等级敌人可能有更多技能
+        if (level >= 5)
+        {
+            skills.Add($"{enemyId.ToLower()}_advanced_skill");
+        }
+
+        return skills;
+    }
+
+    /// <summary>
+    /// 保存战斗记录到数据库
+    /// </summary>
+    private async Task SaveBattleRecordAsync(ServerBattleContext context)
+    {
+        try
+        {
+            var battleRecord = new BattleRecordEntity
+            {
+                BattleId = context.BattleId.ToString(),
+                BattleType = context.BattleType,
+                StartedAt = DateTime.UtcNow,
+                Status = "InProgress",
+                ParticipantsJson = System.Text.Json.JsonSerializer.Serialize(context.Players.Select(p => p.Id).ToList()),
+                EnemiesJson = System.Text.Json.JsonSerializer.Serialize(context.Enemies.Select(e => new { e.Id, e.Name, e.Level, e.EnemyType }).ToList()),
+                ActionsJson = "[]",
+                ResultsJson = "{}",
+                PartyId = context.PartyId,
+                DungeonId = context.DungeonId,
+                WaveNumber = 0,
+                Duration = 0
+            };
+
+            await _gameRepository.CreateBattleRecordAsync(battleRecord);
+            _logger.LogDebug("Battle record saved for battle {BattleId}", context.BattleId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save battle record for battle {BattleId}", context.BattleId);
+            // 不抛出异常，避免影响战斗开始
+        }
     }
 
     /// <summary>
