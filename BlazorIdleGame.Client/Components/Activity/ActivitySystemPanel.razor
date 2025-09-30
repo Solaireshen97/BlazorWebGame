@@ -1,0 +1,136 @@
+﻿@using BlazorIdleGame.Client.Services.Activity
+@using BlazorWebGame.Shared.DTOs.Activity
+@inject IActivityService ActivityService
+@inject ILogger<ActivitySystemPanel> Logger
+
+<div class="activity-system-panel">
+    <h3>活动系统</h3>
+
+    @if (ActivitySystem != null)
+    {
+        <div class="activity-slots">
+            @foreach (var slot in ActivitySystem.Slots)
+            {
+                <div class="activity-slot @(slot.IsUnlocked ? "" : "locked")">
+                    <div class="slot-header">
+                        槽位 @(slot.Index + 1)
+                        @if (!slot.IsUnlocked)
+                        {
+                            <span class="locked-icon">🔒</span>
+                        }
+                    </div>
+
+                    @if (slot.CurrentPlan != null)
+                    {
+                        <div class="current-activity">
+                            <h4>@slot.CurrentPlan.ActivityName</h4>
+                            <div class="activity-state">@slot.CurrentPlan.State</div>
+
+                            @if (slot.CurrentPlan.Progress != null)
+                            {
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: @(slot.CurrentPlan.Progress.Percentage)%"></div>
+                                </div>
+                                <div class="progress-text">
+                                    @slot.CurrentPlan.Progress.Current / @slot.CurrentPlan.Progress.Total
+                                </div>
+                            }
+
+                            <button class="btn-cancel" @onclick="() => CancelActivity(slot.CurrentPlan.Id)">
+                                取消
+                            </button>
+                        </div>
+                    }
+                    else if (slot.IsUnlocked)
+                    {
+                        <div class="empty-slot">
+                            <button class="btn-add" @onclick="() => ShowActivitySelector(slot.Index)">
+                                + 添加活动
+                            </button>
+                        </div>
+                    }
+
+                    @if (slot.Queue.Any())
+                    {
+                        <div class="activity-queue">
+                            <h5>队列 (@slot.Queue.Count/@slot.MaxQueueSize)</h5>
+                            @foreach (var queued in slot.Queue)
+                            {
+                                <div class="queued-activity">
+                                    @queued.ActivityName
+                                    <button @onclick="() => RemoveFromQueue(queued.Id)">×</button>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="loading">加载中...</div>
+    }
+</div>
+
+@code {
+    private ActivitySystemDto? ActivitySystem;
+    private List<ActivityDefinitionDto> AvailableActivities = new();
+    private bool ShowSelector;
+    private int? SelectedSlot;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ActivityService.SystemUpdated += OnSystemUpdated;
+        ActivityService.ActivityCompleted += OnActivityCompleted;
+
+        await RefreshSystem();
+        AvailableActivities = await ActivityService.GetAvailableActivitiesAsync();
+    }
+
+    private async Task RefreshSystem()
+    {
+        ActivitySystem = await ActivityService.GetActivitySystemAsync();
+        StateHasChanged();
+    }
+
+    private void OnSystemUpdated(object? sender, ActivitySystemDto system)
+    {
+        ActivitySystem = system;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnActivityCompleted(object? sender, ActivityPlanDto plan)
+    {
+        Logger.LogInformation("活动完成: {ActivityName}", plan.ActivityName);
+        // 可以显示完成通知
+    }
+
+    private async Task CancelActivity(string planId)
+    {
+        if (await ActivityService.CancelActivityAsync(planId))
+        {
+            await RefreshSystem();
+        }
+    }
+
+    private async Task RemoveFromQueue(string planId)
+    {
+        if (await ActivityService.CancelActivityAsync(planId, false))
+        {
+            await RefreshSystem();
+        }
+    }
+
+    private void ShowActivitySelector(int slotIndex)
+    {
+        SelectedSlot = slotIndex;
+        ShowSelector = true;
+    }
+
+    public void Dispose()
+    {
+        ActivityService.SystemUpdated -= OnSystemUpdated;
+        ActivityService.ActivityCompleted -= OnActivityCompleted;
+    }
+}

@@ -1,13 +1,16 @@
 using BlazorIdleGame.Client;
+using BlazorIdleGame.Client.Services.Activity;
 using BlazorIdleGame.Client.Services.Auth;
+using BlazorIdleGame.Client.Services.Battle;
+using BlazorIdleGame.Client.Services.Character;
 using BlazorIdleGame.Client.Services.Core;
+using BlazorIdleGame.Client.Services.Time;
 using Fluxor;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.DependencyInjection;
-using BlazorIdleGame.Client.Services.Character;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -32,6 +35,12 @@ builder.Services.AddFluxor(options => options
     .UseReduxDevTools());
 
 // 注册其他服务
+// 时间服务
+builder.Services.AddSingleton<IGameTimeService, GameTimeService>();
+// 活动服务
+builder.Services.AddScoped<IActivityService, ActivityService>();
+// 战斗服务
+builder.Services.AddScoped<IBattleService, BattleService>();
 builder.Services.AddScoped<IGameCommunicationService, GameCommunicationService>();
 builder.Services.AddScoped<IGameSyncService, GameSyncService>();
 builder.Services.AddScoped<LocalStorageService>();
