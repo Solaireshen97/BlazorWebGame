@@ -140,15 +140,10 @@ namespace BlazorWebGame.Shared.Mappers
             // 创建用户实例
             var user = new User(username, email);
 
-            // 反射设置私有字段
-            var idField = typeof(User).GetField("_id", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            if (idField != null) idField.SetValue(user, id);
-
-            var createdAtField = typeof(User).GetField("_createdAt", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            if (createdAtField != null) createdAtField.SetValue(user, createdAt);
-
-            var updatedAtField = typeof(User).GetField("_updatedAt", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            if (updatedAtField != null) updatedAtField.SetValue(user, updatedAt);
+            // 使用属性反射而不是字段反射
+            typeof(User).GetProperty("Id")?.SetValue(user, id);
+            typeof(User).GetProperty("CreatedAt")?.SetValue(user, createdAt);
+            typeof(User).GetProperty("UpdatedAt")?.SetValue(user, updatedAt);
 
             // 设置状态
             if (isActive) user.Activate(); else user.Deactivate();
@@ -162,11 +157,8 @@ namespace BlazorWebGame.Shared.Mappers
         /// </summary>
         internal static void SetLastLoginInfo(User user, DateTime lastLoginAt, string lastLoginIp)
         {
-            var lastLoginAtField = typeof(User).GetField("_lastLoginAt", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            if (lastLoginAtField != null) lastLoginAtField.SetValue(user, lastLoginAt);
-
-            var lastLoginIpField = typeof(User).GetField("_lastLoginIp", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            if (lastLoginIpField != null) lastLoginIpField.SetValue(user, lastLoginIp);
+            typeof(User).GetProperty("LastLoginAt")?.SetValue(user, lastLoginAt);
+            typeof(User).GetProperty("LastLoginIp")?.SetValue(user, lastLoginIp);
         }
     }
 }
