@@ -5,7 +5,7 @@ using System.Linq;
 namespace BlazorWebGame.Shared.Models;
 
 /// <summary>
-/// 游戏角色领域模型
+/// 游戏角色领域模型 - 增强版
 /// </summary>
 public class Character
 {
@@ -24,14 +24,35 @@ public class Character
     public CharacterAttributes Attributes { get; private set; } = new();
     public CharacterProfessions Professions { get; private set; } = new();
     public CharacterInventory Inventory { get; private set; } = new();
-    public CharacterActions Actions { get; private set; } = new();
+
+    // 替换原有的 CharacterActions 为新的活动系统
+    public ActivitySystem ActivitySystem { get; private set; }
+
     public CharacterQuests Quests { get; private set; } = new();
+
+    // 新增：技能系统
+    public CharacterSkillManager SkillManager { get; private set; } = new();
+
+    // 新增：当前区域
+    public string? CurrentRegionId { get; private set; }
+
+    // 新增：声望系统
+    public Dictionary<string, int> Reputations { get; private set; } = new();
+
+    // 新增：消耗品装载
+    public ConsumableLoadout ConsumableLoadout { get; private set; } = new();
 
     // 组队信息
     public Guid? PartyId { get; private set; }
 
+    // 新增：离线记录
+    public OfflineRecord? LastOfflineRecord { get; private set; }
+
     // 私有构造函数，用于反序列化
-    private Character() { }
+    private Character()
+    {
+        ActivitySystem = new ActivitySystem(Id);
+    }
 
     /// <summary>
     /// 创建新角色
@@ -51,8 +72,62 @@ public class Character
         Vitals = new CharacterVitals(Attributes);
         Professions = new CharacterProfessions();
         Inventory = new CharacterInventory();
-        Actions = new CharacterActions();
+        ActivitySystem = new ActivitySystem(Id);
         Quests = new CharacterQuests();
+        SkillManager = new CharacterSkillManager();
+        ConsumableLoadout = new ConsumableLoadout();
+    }
+
+    /// <summary>
+    /// 设置当前区域
+    /// </summary>
+    public void SetCurrentRegion(string regionId)
+    {
+        CurrentRegionId = regionId;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// 增加声望
+    /// </summary>
+    public void GainReputation(string factionId, int amount)
+    {
+        if (!Reputations.ContainsKey(factionId))
+            Reputations[factionId] = 0;
+
+        Reputations[factionId] += amount;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// 记录离线数据
+    /// </summary>
+    public void RecordOffline()
+    {
+        LastOfflineRecord = new OfflineRecord
+        {
+            OfflineAt = DateTime.UtcNow,
+            CharacterState = CreateSnapshot(),
+            ActivePlans = ActivitySystem.GetActivePlans()
+        };
+    }
+
+    /// <summary>
+    /// 创建角色快照
+    /// </summary>
+    public CharacterSnapshot CreateSnapshot()
+    {
+        return new CharacterSnapshot
+        {
+            CharacterId = Id,
+            Level = Level,
+            Experience = Experience,
+            Gold = Gold,
+            CurrentRegionId = CurrentRegionId,
+            VitalsSnapshot = Vitals.CreateSnapshot(),
+            AttributesSnapshot = Attributes.CreateSnapshot(),
+            Timestamp = DateTime.UtcNow
+        };
     }
 
     /// <summary>
@@ -202,6 +277,116 @@ public class Character
 }
 
 /// <summary>
+/// 消耗品装载配置
+/// </summary>
+public class ConsumableLoadout
+{
+    // 通用槽位（2个）
+    public List<ConsumableSlot> GeneralSlots { get; private set; } = new();
+
+    // 战斗专用槽位（2个）
+    public List<ConsumableSlot> CombatSlots { get; private set; } = new();
+
+    public ConsumableLoadout()
+    {
+        for (int i = 0; i < 2; i++)
+        {
+            GeneralSlots.Add(new ConsumableSlot($"general_{i}"));
+            CombatSlots.Add(new ConsumableSlot($"combat_{i}"));
+        }
+    }
+
+    public void SetConsumable(string slotId, string? itemId, UsePolicy policy)
+    {
+        var slot = GeneralSlots.FirstOrDefault(s => s.SlotId == slotId) ??
+                  CombatSlots.FirstOrDefault(s => s.SlotId == slotId);
+
+        if (slot != null)
+        {
+            slot.ItemId = itemId;
+            slot.Policy = policy;
+        }
+    }
+}
+
+/// <summary>
+/// 消耗品槽位
+/// </summary>
+public class ConsumableSlot
+{
+    public string SlotId { get; }
+    public string? ItemId { get; set; }
+    public UsePolicy Policy { get; set; } = UsePolicy.OnStart;
+    public DateTime? LastUsedAt { get; set; }
+
+    public ConsumableSlot(string slotId)
+    {
+        SlotId = slotId;
+    }
+}
+
+/// <summary>
+/// 使用策略
+/// </summary>
+public enum UsePolicy
+{
+    OnStart,        // 活动开始时
+    OnBuffExpire,   // Buff过期时
+    OnHpBelow25,    // 生命值低于25%
+    OnHpBelow50,    // 生命值低于50%
+    OnManaBelow25,  // 法力值低于25%
+    Manual          // 手动
+}
+
+/// <summary>
+/// 离线记录
+/// </summary>
+public class OfflineRecord
+{
+    public DateTime OfflineAt { get; set; }
+    public CharacterSnapshot? CharacterState { get; set; }
+    public List<ActivityPlan> ActivePlans { get; set; } = new();
+}
+
+/// <summary>
+/// 角色快照
+/// </summary>
+public class CharacterSnapshot
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public int Level { get; set; }
+    public int Experience { get; set; }
+    public int Gold { get; set; }
+    public string? CurrentRegionId { get; set; }
+    public VitalsSnapshot? VitalsSnapshot { get; set; }
+    public AttributesSnapshot? AttributesSnapshot { get; set; }
+    public DateTime Timestamp { get; set; }
+}
+
+/// <summary>
+/// 生命值快照
+/// </summary>
+public class VitalsSnapshot
+{
+    public int Health { get; set; }
+    public int MaxHealth { get; set; }
+    public int Mana { get; set; }
+    public int MaxMana { get; set; }
+}
+
+/// <summary>
+/// 属性快照
+/// </summary>
+public class AttributesSnapshot
+{
+    public int Strength { get; set; }
+    public int Agility { get; set; }
+    public int Intellect { get; set; }
+    public int Spirit { get; set; }
+    public int Stamina { get; set; }
+}
+
+/// <summary>
 /// 角色生命值和法力值
 /// </summary>
 public class CharacterVitals
@@ -220,6 +405,17 @@ public class CharacterVitals
     {
         RecalculateMaxValues(attributes);
         RestoreToFull();
+    }
+
+    public VitalsSnapshot CreateSnapshot()
+    {
+        return new VitalsSnapshot
+        {
+            Health = Health,
+            MaxHealth = MaxHealth,
+            Mana = Mana,
+            MaxMana = MaxMana
+        };
     }
 
     /// <summary>
@@ -343,6 +539,18 @@ public class CharacterAttributes
     public void AddAttributePoints(int points)
     {
         AttributePoints += points;
+    }
+
+    public AttributesSnapshot CreateSnapshot()
+    {
+        return new AttributesSnapshot
+        {
+            Strength = Strength,
+            Agility = Agility,
+            Intellect = Intellect,
+            Spirit = Spirit,
+            Stamina = Stamina
+        };
     }
 
     /// <summary>
