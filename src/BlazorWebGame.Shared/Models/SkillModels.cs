@@ -17,8 +17,17 @@ public class Skill
     public int RequiredLevel { get; private set; } = 1;
     public string RequiredProfession { get; private set; } = string.Empty;
     public TimeSpan Cooldown { get; private set; } = TimeSpan.Zero;
-    public int ManaCost { get; private set; } = 0;
-    public bool IsShared { get; private set; } = false; // 是否为共享技能
+
+    // 修改：支持多种资源消耗
+    public Dictionary<string, double> ResourceCosts { get; private set; } = new();
+
+    // 新增：轨道亲和性
+    public string TrackAffinity { get; private set; } = "none"; // attack, special, none
+
+    // 新增：技能标签
+    public HashSet<string> Tags { get; private set; } = new();
+
+    public bool IsShared { get; private set; } = false;
 
     // 技能效果
     private readonly List<SkillEffect> _effects = new();
@@ -28,13 +37,17 @@ public class Skill
     private readonly List<string> _prerequisites = new();
     public IReadOnlyList<string> Prerequisites => _prerequisites.AsReadOnly();
 
+    // 新增：条件要求
+    public string? RequirementExpr { get; private set; }
+
     // 私有构造函数，用于反序列化
     private Skill() { }
 
     /// <summary>
     /// 创建新技能
     /// </summary>
-    public Skill(string name, string description, SkillType type, SkillCategory category, string requiredProfession = "")
+    public Skill(string name, string description, SkillType type,
+                 SkillCategory category, string requiredProfession = "")
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("技能名称不能为空", nameof(name));
@@ -44,6 +57,53 @@ public class Skill
         Type = type;
         Category = category;
         RequiredProfession = requiredProfession?.Trim() ?? string.Empty;
+    }
+
+    /// <summary>
+    /// 设置资源消耗
+    /// </summary>
+    public void SetResourceCost(string resourceId, double amount)
+    {
+        ResourceCosts[resourceId] = amount;
+    }
+
+    /// <summary>
+    /// 设置轨道亲和性
+    /// </summary>
+    public void SetTrackAffinity(string track)
+    {
+        TrackAffinity = track;
+    }
+
+    /// <summary>
+    /// 添加标签
+    /// </summary>
+    public void AddTag(string tag)
+    {
+        Tags.Add(tag);
+    }
+
+    /// <summary>
+    /// 设置条件要求
+    /// </summary>
+    public void SetRequirement(string expr)
+    {
+        RequirementExpr = expr;
+    }
+
+    /// <summary>
+    /// 检查是否满足资源要求
+    /// </summary>
+    public bool CanAffordCosts(Dictionary<string, ResourceBucket> resources)
+    {
+        foreach (var cost in ResourceCosts)
+        {
+            if (!resources.TryGetValue(cost.Key, out var bucket))
+                return false;
+            if (bucket.Current < cost.Value)
+                return false;
+        }
+        return true;
     }
 
     /// <summary>
@@ -60,14 +120,6 @@ public class Skill
     public void SetCooldown(TimeSpan cooldown)
     {
         Cooldown = cooldown;
-    }
-
-    /// <summary>
-    /// 设置法力消耗
-    /// </summary>
-    public void SetManaCost(int manaCost)
-    {
-        ManaCost = Math.Max(0, manaCost);
     }
 
     /// <summary>
@@ -101,7 +153,7 @@ public class Skill
     /// <summary>
     /// 检查是否可以使用技能
     /// </summary>
-    public bool CanUse(string profession, int level, int currentMana)
+    public bool CanUse(string profession, int level, Dictionary<string, ResourceBucket> resources)
     {
         // 检查职业要求
         if (!string.IsNullOrEmpty(RequiredProfession) && RequiredProfession != profession && !IsShared)
@@ -112,12 +164,69 @@ public class Skill
             return false;
 
         // 检查法力消耗
-        if (currentMana < ManaCost)
+        if (CanAffordCosts(resources))
             return false;
 
         return true;
     }
 }
+
+/// <summary>
+/// 技能槽位系统
+/// </summary>
+public class SkillSlotSystem
+{
+    private readonly List<SkillSlot> _slots = new();
+    public IReadOnlyList<SkillSlot> Slots => _slots.AsReadOnly();
+
+    public SkillSlotSystem(int slotCount = 4)
+    {
+        for (int i = 0; i < slotCount; i++)
+        {
+            _slots.Add(new SkillSlot(i + 1));
+        }
+    }
+
+    /// <summary>
+    /// 装备技能到槽位
+    /// </summary>
+    public bool EquipSkill(string skillId, int slotIndex)
+    {
+        if (slotIndex < 0 || slotIndex >= _slots.Count)
+            return false;
+
+        _slots[slotIndex].SkillId = skillId;
+        return true;
+    }
+
+    /// <summary>
+    /// 获取优先级排序的技能列表（用于自动施放）
+    /// </summary>
+    public List<string> GetSkillsByPriority()
+    {
+        return _slots
+            .Where(s => !string.IsNullOrEmpty(s.SkillId))
+            .OrderBy(s => s.SlotIndex)
+            .Select(s => s.SkillId!)
+            .ToList();
+    }
+}
+
+/// <summary>
+/// 技能槽位
+/// </summary>
+public class SkillSlot
+{
+    public int SlotIndex { get; }
+    public string? SkillId { get; set; }
+    public bool IsLocked { get; set; } = false;
+
+    public SkillSlot(int index)
+    {
+        SlotIndex = index;
+    }
+}
+
 
 /// <summary>
 /// 技能效果
