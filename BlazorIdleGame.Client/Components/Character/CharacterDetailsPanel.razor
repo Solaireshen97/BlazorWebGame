@@ -1,0 +1,373 @@
+﻿@using BlazorIdleGame.Client.Services.Character
+@using BlazorWebGame.Shared.DTOs.Character
+@inject IEnhancedCharacterService CharacterService
+@inject ILogger<CharacterDetailsPanel> Logger
+
+<div class="character-details-panel">
+    @if (Character != null)
+    {
+        <!-- 基础信息 -->
+        <div class="character-header">
+            <div class="character-portrait-large">
+                <img src="@GetProfessionIcon(Character.Profession.Icon)" alt="@Character.Profession.Name" />
+            </div>
+            <div class="character-basic-info">
+                <h2>@Character.Name</h2>
+                <div class="level-info">
+                    <span class="level">等级 @Character.Level</span>
+                    <div class="exp-bar">
+                        <div class="exp-fill" style="width: @GetExpPercentage()%"></div>
+                        <span class="exp-text">@Character.Experience / @Character.ExperienceToNextLevel</span>
+                    </div>
+                </div>
+                <div class="profession-info">
+                    <span class="profession-name">@Character.Profession.Name</span>
+                    @if (!string.IsNullOrEmpty(Character.Profession.ActiveSpecialization))
+                    {
+                        <span class="specialization">(@Character.Profession.ActiveSpecialization)</span>
+                    }
+                </div>
+                <div class="gold-display">
+                    <span class="gold-icon">💰</span>
+                    <span class="gold-amount">@Character.Gold.ToString("N0")</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 生命值和法力值 -->
+        <div class="vitals-section">
+            <div class="vital-bar health-bar">
+                <div class="vital-label">生命值</div>
+                <div class="bar-container">
+                    <div class="bar-fill health-fill" style="width: @Character.Vitals.HealthPercentage%"></div>
+                    <span class="bar-text">@Character.Vitals.Health / @Character.Vitals.MaxHealth</span>
+                </div>
+                <span class="regen-text">+@Character.Vitals.HealthRegen.ToString("F1")/秒</span>
+            </div>
+            <div class="vital-bar mana-bar">
+                <div class="vital-label">法力值</div>
+                <div class="bar-container">
+                    <div class="bar-fill mana-fill" style="width: @Character.Vitals.ManaPercentage%"></div>
+                    <span class="bar-text">@Character.Vitals.Mana / @Character.Vitals.MaxMana</span>
+                </div>
+                <span class="regen-text">+@Character.Vitals.ManaRegen.ToString("F1")/秒</span>
+            </div>
+        </div>
+
+        <!-- 属性面板 -->
+        <div class="attributes-section">
+            <h3>属性 @if(Character.Attributes.AvailablePoints > 0) { <span class="available-points">(@Character.Attributes.AvailablePoints 点可分配)</span> }</h3>
+            
+            <div class="primary-attributes">
+                <div class="attribute-row">
+                    <span class="attr-name">力量</span>
+                    <span class="attr-value">@Character.Attributes.Strength</span>
+                    @if (Character.Attributes.AvailablePoints > 0)
+                    {
+                    <button class="btn-add-point" @onclick='() => AllocatePoint("Strength")'>+</button>
+                    }
+                </div>
+                <div class="attribute-row">
+                    <span class="attr-name">敏捷</span>
+                    <span class="attr-value">@Character.Attributes.Agility</span>
+                    @if (Character.Attributes.AvailablePoints > 0)
+                    {
+                    <button class="btn-add-point" @onclick='() => AllocatePoint("Agility")'>+</button>
+                    }
+                </div>
+                <div class="attribute-row">
+                    <span class="attr-name">智力</span>
+                    <span class="attr-value">@Character.Attributes.Intellect</span>
+                    @if (Character.Attributes.AvailablePoints > 0)
+                    {
+                    <button class="btn-add-point" @onclick='() => AllocatePoint("Intellect")'>+</button>
+                    }
+                </div>
+                <div class="attribute-row">
+                    <span class="attr-name">精神</span>
+                    <span class="attr-value">@Character.Attributes.Spirit</span>
+                    @if (Character.Attributes.AvailablePoints > 0)
+                    {
+                    <button class="btn-add-point" @onclick='() => AllocatePoint("Spirit")'>+</button>
+                    }
+                </div>
+                <div class="attribute-row">
+                    <span class="attr-name">耐力</span>
+                    <span class="attr-value">@Character.Attributes.Stamina</span>
+                    @if (Character.Attributes.AvailablePoints > 0)
+                    {
+                    <button class="btn-add-point" @onclick='() => AllocatePoint("Stamina")'>+</button>
+                    }
+                </div>
+            </div>
+
+            <div class="derived-attributes">
+                <h4>战斗属性</h4>
+                <div class="derived-grid">
+                    <div class="derived-item">
+                        <span class="derived-label">攻击力:</span>
+                        <span class="derived-value">@Character.Attributes.AttackPower.ToString("F0")</span>
+                    </div>
+                    <div class="derived-item">
+                        <span class="derived-label">法术强度:</span>
+                        <span class="derived-value">@Character.Attributes.SpellPower.ToString("F0")</span>
+                    </div>
+                    <div class="derived-item">
+                        <span class="derived-label">暴击率:</span>
+                        <span class="derived-value">@Character.Attributes.CriticalChance.ToString("F1")%</span>
+                    </div>
+                    <div class="derived-item">
+                        <span class="derived-label">暴击伤害:</span>
+                        <span class="derived-value">@Character.Attributes.CriticalDamage.ToString("F0")%</span>
+                    </div>
+                    <div class="derived-item">
+                        <span class="derived-label">攻击速度:</span>
+                        <span class="derived-value">@Character.Attributes.AttackSpeed.ToString("F2")</span>
+                    </div>
+                    <div class="derived-item">
+                        <span class="derived-label">施法速度:</span>
+                        <span class="derived-value">@Character.Attributes.CastSpeed.ToString("F2")</span>
+                    </div>
+                    <div class="derived-item">
+                        <span class="derived-label">护甲:</span>
+                        <span class="derived-value">@Character.Attributes.Armor.ToString("F0")</span>
+                    </div>
+                    <div class="derived-item">
+                        <span class="derived-label">魔法抗性:</span>
+                        <span class="derived-value">@Character.Attributes.MagicResistance.ToString("F0")</span>
+                    </div>
+                </div>
+            </div>
+
+            @if (PendingPoints.Any())
+            {
+                <div class="attribute-actions">
+                    <button class="btn-apply" @onclick="ApplyAttributePoints">应用更改</button>
+                    <button class="btn-cancel" @onclick="CancelAttributePoints">取消</button>
+                </div>
+            }
+        </div>
+
+        <!-- 装备概览 -->
+        <div class="equipment-section">
+            <h3>装备 <span class="gear-score">装备评分: @Character.Equipment.TotalGearScore</span></h3>
+            <div class="equipment-grid">
+                @foreach (var slot in GetEquipmentSlots())
+                {
+                    <div class="equipment-slot @(slot.Item != null ? $"rarity-{slot.Item.Rarity.ToLower()}" : "empty")">
+                        <div class="slot-name">@slot.Name</div>
+                        @if (slot.Item != null)
+                        {
+                            <div class="item-icon">
+                                <img src="@slot.Item.Icon" alt="@slot.Item.ItemName" />
+                            </div>
+                            <div class="item-name">@slot.Item.ItemName</div>
+                            <div class="item-level">Lv.@slot.Item.Level</div>
+                        }
+                        else
+                        {
+                            <div class="empty-slot-icon">空</div>
+                        }
+                    </div>
+                }
+            </div>
+            @if (Character.Equipment.ActiveSetBonuses.Any())
+            {
+                <div class="set-bonuses">
+                    <h4>套装效果</h4>
+                    @foreach (var bonus in Character.Equipment.ActiveSetBonuses)
+                    {
+                        <div class="set-bonus">• @bonus</div>
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- 统计信息 -->
+        <div class="statistics-section">
+            <h3>游戏统计</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-label">游戏时间:</span>
+                    <span class="stat-value">@FormatPlayTime(Character.Statistics.TotalPlayTime)</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">击杀怪物:</span>
+                    <span class="stat-value">@Character.Statistics.MonstersKilled.ToString("N0")</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">完成副本:</span>
+                    <span class="stat-value">@Character.Statistics.DungeonsCompleted</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">完成任务:</span>
+                    <span class="stat-value">@Character.Statistics.QuestsCompleted</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">死亡次数:</span>
+                    <span class="stat-value">@Character.Statistics.Deaths</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">总伤害:</span>
+                    <span class="stat-value">@FormatLargeNumber(Character.Statistics.TotalDamageDealt)</span>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="no-character">
+            <p>请先选择或创建一个角色</p>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public CharacterFullDto? Character { get; set; }
+    
+    private Dictionary<string, int> PendingPoints = new();
+
+    protected override void OnInitialized()
+    {
+        CharacterService.ActiveCharacterUpdated += OnCharacterUpdated;
+    }
+
+    private void OnCharacterUpdated(object? sender, CharacterFullDto character)
+    {
+        Character = character;
+        PendingPoints.Clear();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private double GetExpPercentage()
+    {
+        if (Character == null || Character.ExperienceToNextLevel == 0)
+            return 0;
+        return (double)Character.Experience / Character.ExperienceToNextLevel * 100;
+    }
+
+    private void AllocatePoint(string attribute)
+    {
+        if (!PendingPoints.ContainsKey(attribute))
+            PendingPoints[attribute] = 0;
+        
+        PendingPoints[attribute]++;
+        
+        // 临时更新显示
+        switch (attribute)
+        {
+            case "Strength":
+                Character!.Attributes.Strength++;
+                break;
+            case "Agility":
+                Character!.Attributes.Agility++;
+                break;
+            case "Intellect":
+                Character!.Attributes.Intellect++;
+                break;
+            case "Spirit":
+                Character!.Attributes.Spirit++;
+                break;
+            case "Stamina":
+                Character!.Attributes.Stamina++;
+                break;
+        }
+        
+        Character!.Attributes.AvailablePoints--;
+        StateHasChanged();
+    }
+
+    private async Task ApplyAttributePoints()
+    {
+        if (await CharacterService.AllocateAttributePointsAsync(PendingPoints))
+        {
+            Logger.LogInformation("属性点分配成功");
+            PendingPoints.Clear();
+        }
+    }
+
+    private void CancelAttributePoints()
+    {
+        // 恢复原始值
+        foreach (var kvp in PendingPoints)
+        {
+            switch (kvp.Key)
+            {
+                case "Strength":
+                    Character!.Attributes.Strength -= kvp.Value;
+                    break;
+                case "Agility":
+                    Character!.Attributes.Agility -= kvp.Value;
+                    break;
+                case "Intellect":
+                    Character!.Attributes.Intellect -= kvp.Value;
+                    break;
+                case "Spirit":
+                    Character!.Attributes.Spirit -= kvp.Value;
+                    break;
+                case "Stamina":
+                    Character!.Attributes.Stamina -= kvp.Value;
+                    break;
+            }
+            
+            Character!.Attributes.AvailablePoints += kvp.Value;
+        }
+        
+        PendingPoints.Clear();
+        StateHasChanged();
+    }
+
+    private List<(string Name, EquipmentSlotDto? Item)> GetEquipmentSlots()
+    {
+        if (Character?.Equipment == null)
+            return new();
+
+        return new List<(string, EquipmentSlotDto?)>
+        {
+            ("武器", Character.Equipment.Weapon),
+            ("副手", Character.Equipment.OffHand),
+            ("头盔", Character.Equipment.Helmet),
+            ("胸甲", Character.Equipment.Chest),
+            ("手套", Character.Equipment.Gloves),
+            ("靴子", Character.Equipment.Boots),
+            ("戒指1", Character.Equipment.Ring1),
+            ("戒指2", Character.Equipment.Ring2),
+            ("项链", Character.Equipment.Amulet)
+        };
+    }
+
+    private string GetProfessionIcon(string icon)
+    {
+        return string.IsNullOrEmpty(icon) ? "/_content/BlazorIdleGame.Client/images/default-profession.png" : icon;
+    }
+
+    private string FormatPlayTime(int minutes)
+    {
+        var hours = minutes / 60;
+        var days = hours / 24;
+        
+        if (days > 0)
+            return $"{days}天 {hours % 24}小时";
+        if (hours > 0)
+            return $"{hours}小时 {minutes % 60}分钟";
+        
+        return $"{minutes}分钟";
+    }
+
+    private string FormatLargeNumber(long number)
+    {
+        if (number >= 1_000_000_000)
+            return $"{number / 1_000_000_000.0:F1}B";
+        if (number >= 1_000_000)
+            return $"{number / 1_000_000.0:F1}M";
+        if (number >= 1_000)
+            return $"{number / 1_000.0:F1}K";
+        
+        return number.ToString();
+    }
+
+    public void Dispose()
+    {
+        CharacterService.ActiveCharacterUpdated -= OnCharacterUpdated;
+    }
+}

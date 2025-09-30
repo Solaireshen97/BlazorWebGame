@@ -1,0 +1,50 @@
+﻿.character-details-panel {
+    padding: 1.5rem;
+    background: white;
+    border-radius: 12px;
+}
+
+.character-header {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.character-portrait-large {
+    width: 120px;
+    height: 120px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+    .character-portrait-large img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+.character-basic-info {
+    flex: 1;
+}
+
+    .character-basic-info h2 {
+        margin: 0 0 0.5rem 0;
+        color: #333;
+    }
+
+.level-info {
+    margin-bottom: 1rem;
+}
+
+.level {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #ff9800;
+}
+
+.exp-bar {
+    position: relative;
+}

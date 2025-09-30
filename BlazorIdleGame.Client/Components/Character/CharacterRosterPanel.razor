@@ -1,0 +1,277 @@
+﻿@using BlazorIdleGame.Client.Services.Character
+@using BlazorWebGame.Shared.DTOs.Character
+@inject IEnhancedCharacterService CharacterService
+@inject ILogger<CharacterRosterPanel> Logger
+
+<div class="roster-panel">
+    <div class="roster-header">
+        <h2>我的角色</h2>
+        <span class="slot-info">@(Roster?.UnlockedSlots ?? 0) / @(Roster?.MaxSlots ?? 5) 槽位</span>
+    </div>
+
+    @if (Roster != null)
+    {
+        <div class="character-slots">
+            @foreach (var slot in Roster.Slots.OrderBy(s => s.SlotIndex))
+            {
+                <div class="character-slot @GetSlotClass(slot)" @onclick="() => OnSlotClick(slot)">
+                    @if (slot.State == "Occupied" && slot.Character != null)
+                    {
+                        <!-- 已占用的槽位 -->
+                        <div class="character-card @(IsActiveCharacter(slot.Character.Id) ? "active" : "")">
+                            <div class="character-portrait">
+                                <img src="@GetProfessionIcon(slot.Character.ProfessionIcon)" alt="@slot.Character.ProfessionName" />
+                                @if (slot.Character.IsOnline)
+                                {
+                                    <span class="online-indicator">●</span>
+                                }
+                            </div>
+                            <div class="character-info">
+                                <h4 class="character-name">@slot.Character.Name</h4>
+                                <div class="character-level">Lv.@slot.Character.Level</div>
+                                <div class="character-profession">@slot.Character.ProfessionName</div>
+                                <div class="last-played">
+                                    @GetLastPlayedText(slot.LastPlayedAt)
+                                </div>
+                            </div>
+                            @if (IsActiveCharacter(slot.Character.Id))
+                            {
+                                <div class="active-badge">当前角色</div>
+                            }
+                            else
+                            {
+                                <button class="btn-switch" @onclick:stopPropagation="true"
+                                        @onclick="() => SwitchCharacter(slot.Character.Id)">
+                                    切换
+                                </button>
+                            }
+                        </div>
+                    }
+                    else if (slot.State == "Unlocked")
+                    {
+                        <!-- 已解锁但空闲的槽位 -->
+                        <div class="empty-slot">
+                            <div class="add-character-icon">+</div>
+                            <div class="add-character-text">创建角色</div>
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- 未解锁的槽位 -->
+                        <div class="locked-slot">
+                            <div class="lock-icon">🔒</div>
+                            <div class="unlock-condition">@slot.UnlockCondition</div>
+                            <button class="btn-unlock" @onclick:stopPropagation="true"
+                                    @onclick="() => TryUnlockSlot(slot.SlotIndex)">
+                                解锁
+                            </button>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="loading">
+            <span class="spinner"></span>
+            加载中...
+        </div>
+    }
+</div>
+
+<!-- 创建角色对话框 -->
+@if (ShowCreateDialog)
+{
+    <div class="modal-backdrop" @onclick="CloseCreateDialog">
+        <div class="modal-content" @onclick:stopPropagation="true">
+            <h3>创建新角色</h3>
+            <div class="form-group">
+                <label>角色名称:</label>
+                <input type="text" @bind="NewCharacterName" @bind:event="oninput"
+                       @onblur="ValidateName" maxlength="16" />
+                @if (!string.IsNullOrEmpty(NameValidationError))
+                {
+                    <span class="error-text">@NameValidationError</span>
+                }
+            </div>
+            <div class="form-group">
+                <label>起始职业:</label>
+                <select @bind="SelectedProfession">
+                    <option value="adventurer">冒险者</option>
+                    <option value="warrior">战士</option>
+                    <option value="mage">法师</option>
+                    <option value="ranger">游侠</option>
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel" @onclick="CloseCreateDialog">取消</button>
+                <button class="btn-confirm" @onclick="CreateCharacter"
+                        disabled="@(!IsNameValid || IsCreating)">
+                    @(IsCreating ? "创建中..." : "创建")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private RosterDto? Roster;
+    private bool ShowCreateDialog;
+    private int? SelectedSlotIndex;
+    private string NewCharacterName = "";
+    private string SelectedProfession = "adventurer";
+    private string? NameValidationError;
+    private bool IsNameValid;
+    private bool IsCreating;
+
+    protected override async Task OnInitializedAsync()
+    {
+        CharacterService.RosterUpdated += OnRosterUpdated;
+        CharacterService.SlotUnlocked += OnSlotUnlocked;
+
+        await LoadRoster();
+    }
+
+    private async Task LoadRoster()
+    {
+        Roster = await CharacterService.GetRosterAsync();
+        StateHasChanged();
+    }
+
+    private void OnRosterUpdated(object? sender, RosterDto roster)
+    {
+        Roster = roster;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnSlotUnlocked(object? sender, CharacterSlotDto slot)
+    {
+        Logger.LogInformation("槽位 {SlotIndex} 已解锁", slot.SlotIndex);
+        InvokeAsync(LoadRoster);
+    }
+
+    private void OnSlotClick(CharacterSlotDto slot)
+    {
+        if (slot.State == "Unlocked")
+        {
+            // 打开创建角色对话框
+            SelectedSlotIndex = slot.SlotIndex;
+            ShowCreateDialog = true;
+        }
+    }
+
+    private async Task SwitchCharacter(string characterId)
+    {
+        if (await CharacterService.SwitchCharacterAsync(characterId))
+        {
+            Logger.LogInformation("已切换到角色: {CharacterId}", characterId);
+        }
+    }
+
+    private async Task TryUnlockSlot(int slotIndex)
+    {
+        if (await CharacterService.UnlockSlotAsync(slotIndex))
+        {
+            Logger.LogInformation("成功解锁槽位 {SlotIndex}", slotIndex);
+        }
+        else
+        {
+            Logger.LogWarning("解锁槽位失败，条件未满足");
+        }
+    }
+
+    private async Task ValidateName()
+    {
+        if (string.IsNullOrWhiteSpace(NewCharacterName))
+        {
+            NameValidationError = "角色名不能为空";
+            IsNameValid = false;
+            return;
+        }
+
+        var result = await CharacterService.ValidateNameAsync(NewCharacterName);
+        IsNameValid = result.IsValid;
+        NameValidationError = result.IsValid ? null : result.Reason;
+    }
+
+    private async Task CreateCharacter()
+    {
+        if (!IsNameValid || !SelectedSlotIndex.HasValue)
+            return;
+
+        IsCreating = true;
+
+        var request = new CreateCharacterRequestDto
+        {
+            Name = NewCharacterName,
+            StartingProfessionId = SelectedProfession,
+            SlotIndex = SelectedSlotIndex.Value
+        };
+
+        var character = await CharacterService.CreateCharacterAsync(request);
+
+        IsCreating = false;
+
+        if (character != null)
+        {
+            Logger.LogInformation("成功创建角色: {Name}", character.Name);
+            CloseCreateDialog();
+            await LoadRoster();
+        }
+    }
+
+    private void CloseCreateDialog()
+    {
+        ShowCreateDialog = false;
+        NewCharacterName = "";
+        NameValidationError = null;
+        IsNameValid = false;
+        SelectedSlotIndex = null;
+    }
+
+    private bool IsActiveCharacter(string characterId)
+    {
+        return Roster?.ActiveCharacterId == characterId;
+    }
+
+    private string GetSlotClass(CharacterSlotDto slot)
+    {
+        return slot.State switch
+        {
+            "Occupied" => "occupied",
+            "Unlocked" => "unlocked",
+            _ => "locked"
+        };
+    }
+
+    private string GetProfessionIcon(string icon)
+    {
+        return string.IsNullOrEmpty(icon) ? "/_content/BlazorIdleGame.Client/images/default-portrait.png" : icon;
+    }
+
+    private string GetLastPlayedText(DateTime? lastPlayed)
+    {
+        if (!lastPlayed.HasValue)
+            return "从未登录";
+
+        var diff = DateTime.UtcNow - lastPlayed.Value;
+
+        if (diff.TotalMinutes < 1)
+            return "刚刚";
+        if (diff.TotalMinutes < 60)
+            return $"{(int)diff.TotalMinutes}分钟前";
+        if (diff.TotalHours < 24)
+            return $"{(int)diff.TotalHours}小时前";
+        if (diff.TotalDays < 7)
+            return $"{(int)diff.TotalDays}天前";
+
+        return lastPlayed.Value.ToString("yyyy-MM-dd");
+    }
+
+    public void Dispose()
+    {
+        CharacterService.RosterUpdated -= OnRosterUpdated;
+        CharacterService.SlotUnlocked -= OnSlotUnlocked;
+    }
+}
