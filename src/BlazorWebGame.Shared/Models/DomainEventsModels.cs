@@ -21,7 +21,7 @@ public abstract class DomainEventBase : IDomainEvent
 {
     public Guid Id { get; } = Guid.NewGuid();
     public DateTime OccurredAt { get; } = DateTime.UtcNow;
-    public string AggregateId { get; protected set; } = string.Empty;
+    public string AggregateId { get; set; } = string.Empty;
     public abstract string EventType { get; }
 }
 
