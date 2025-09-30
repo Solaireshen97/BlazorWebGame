@@ -3,7 +3,7 @@ using BlazorWebGame.Shared.DTOs;
 using BlazorWebGame.Shared.Models;
 using Microsoft.Extensions.Logging;
 
-namespace BlazorWebGame.Server;
+namespace BlazorWebGame.Server.Tests;
 
 /// <summary>
 /// 测试类，演示服务端战斗系统的功能

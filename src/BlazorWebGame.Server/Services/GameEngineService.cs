@@ -3,6 +3,8 @@ using BlazorWebGame.Shared.Models;
 using BlazorWebGame.Shared.Events;
 using BlazorWebGame.Server.Hubs;
 using Microsoft.AspNetCore.SignalR;
+using BattleStatus = BlazorWebGame.Shared.DTOs.BattleStatus;
+using BattleActionType = BlazorWebGame.Shared.DTOs.BattleActionType;
 
 namespace BlazorWebGame.Server.Services;
 

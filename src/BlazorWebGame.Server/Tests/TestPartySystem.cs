@@ -3,7 +3,7 @@ using BlazorWebGame.Shared.DTOs;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace BlazorWebGame.Server;
+namespace BlazorWebGame.Server.Tests;
 
 /// <summary>
 /// 组队系统测试类

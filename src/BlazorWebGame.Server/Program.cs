@@ -2,7 +2,6 @@ using BlazorWebGame.Server.Hubs;
 using BlazorWebGame.Server.Services;
 using BlazorWebGame.Server.Security;
 using BlazorWebGame.Server.Middleware;
-using BlazorWebGame.Server;
 using BlazorWebGame.Server.Configuration;
 using BlazorWebGame.Server.Data;
 using BlazorWebGame.Shared.Models;
@@ -14,6 +13,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Text;
 using Serilog;
 using Microsoft.Extensions.Options;
+using BlazorWebGame.Server.Tests;
 
 var builder = WebApplication.CreateBuilder(args);
 

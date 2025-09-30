@@ -261,7 +261,7 @@ public static class UserCharacterServiceTests
         
         // 手动给管理员添加Admin角色
         var adminUser = adminResult.Data!;
-        adminUser.Roles.Add("Admin");
+        adminUser.Roles[0]="Admin";
         
         // 获取普通用户的角色
         var regularUser = await userService.ValidateUserAsync("gameuser", "password123");

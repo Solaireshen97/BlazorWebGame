@@ -1,8 +1,7 @@
 using System;
 using System.Threading.Tasks;
-using BlazorWebGame.Server.Tests;
 
-namespace BlazorWebGame.Server;
+namespace BlazorWebGame.Server.Tests;
 
 /// <summary>
 /// 数据存储系统测试程序
@@ -90,10 +89,10 @@ public class TestDataStorageSystem
         var startTime = DateTime.UtcNow;
         
         // 创建100个测试玩家
-        var players = new List<BlazorWebGame.Shared.DTOs.PlayerStorageDto>();
+        var players = new List<Shared.DTOs.PlayerStorageDto>();
         for (int i = 0; i < 100; i++)
         {
-            players.Add(new BlazorWebGame.Shared.DTOs.PlayerStorageDto
+            players.Add(new Shared.DTOs.PlayerStorageDto
             {
                 Id = $"performance-test-player-{i}",
                 Name = $"性能测试玩家{i}",
