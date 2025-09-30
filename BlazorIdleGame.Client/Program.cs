@@ -4,6 +4,7 @@ using BlazorIdleGame.Client.Services.Auth;
 using BlazorIdleGame.Client.Services.Battle;
 using BlazorIdleGame.Client.Services.Character;
 using BlazorIdleGame.Client.Services.Core;
+using BlazorIdleGame.Client.Services.Skill;
 using BlazorIdleGame.Client.Services.Time;
 using Fluxor;
 using Microsoft.AspNetCore.Components.Web;
@@ -46,6 +47,9 @@ builder.Services.AddScoped<IGameSyncService, GameSyncService>();
 builder.Services.AddScoped<LocalStorageService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICharacterService, CharacterService>();
+builder.Services.AddScoped<IEnhancedCharacterService, EnhancedCharacterService>();
+// 技能服务
+builder.Services.AddScoped<ISkillService, SkillService>();
 
 // 设置日志级别（帮助调试）
 builder.Logging.SetMinimumLevel(LogLevel.Debug);

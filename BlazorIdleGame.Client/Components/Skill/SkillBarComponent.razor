@@ -1,0 +1,481 @@
+﻿@using BlazorIdleGame.Client.Services.Skill
+@using BlazorWebGame.Shared.DTOs.Skill
+@inject ISkillService SkillService
+@inject ILogger<SkillBarComponent> Logger
+@implements IDisposable
+
+<div class="skill-bar">
+    <div class="skill-bar-header">
+        <h3>技能栏</h3>
+        <div class="skill-bar-controls">
+            <label class="auto-cast-toggle">
+                <input type="checkbox" @bind="AutoCastEnabled" @bind:event="onchange" bind:after="OnAutoCastToggle" />
+                <span>自动施放</span>
+            </label>
+            @if (AutoCastEnabled)
+            {
+                <select class="auto-cast-policy" @bind="AutoCastPolicy" @bind:event="onchange" bind:after="OnPolicyChange">
+                    <option value="Priority">优先级</option>
+                    <option value="Rotation">循环</option>
+                    <option value="Smart">智能</option>
+                </select>
+            }
+        </div>
+    </div>
+
+    <!-- 主动技能栏 -->
+    <div class="active-skills">
+        <h4>主动技能</h4>
+        <div class="skill-slots">
+            @for (int i = 0; i < ActiveSlotCount; i++)
+            {
+                var slotIndex = i;
+                var slot = GetActiveSlot(slotIndex);
+                
+                <div class="skill-slot @(slot?.IsLocked == true ? "locked" : "") @(IsOnCooldown(slot?.SkillId) ? "cooldown" : "")"
+                     @ondrop="() => HandleDrop(slotIndex, false)"
+                     @ondrop:preventDefault="true"
+                     @ondragover:preventDefault="true">
+                    
+                    @if (slot?.IsLocked == true)
+                    {
+                        <div class="slot-locked">
+                            <span class="lock-icon">🔒</span>
+                            <span class="unlock-level">Lv.@slot.UnlockLevel</span>
+                        </div>
+                    }
+                    else if (!string.IsNullOrEmpty(slot?.SkillId))
+                    {
+                        <div class="skill-icon" 
+                             draggable="true"
+                             @ondragstart="() => HandleDragStart(slot.SkillId)"
+                             @onclick="() => UseSkill(slot.SkillId)">
+                            
+                            <img src="@GetSkillIcon(slot.SkillIcon)" alt="@slot.SkillName" />
+                            
+                            @if (IsOnCooldown(slot.SkillId))
+                            {
+                                <div class="cooldown-overlay" style="height: @GetCooldownHeight(slot.SkillId)%"></div>
+                                <span class="cooldown-text">@GetCooldownText(slot.SkillId)</span>
+                            }
+                            
+                            <span class="skill-keybind">@GetKeybind(slotIndex)</span>
+                            
+                            @if (slot.AutoCastSetting?.Enabled == true)
+                            {
+                                <span class="auto-cast-indicator">A</span>
+                            }
+                        </div>
+                        
+                        <div class="skill-tooltip">
+                            <strong>@slot.SkillName</strong>
+                            @if (LearnedSkills.TryGetValue(slot.SkillId, out var learned))
+                            {
+                                <div class="tooltip-level">等级 @learned.CurrentLevel / @learned.MaxLevel</div>
+                                <div class="tooltip-cost">
+                                    @if (learned.CurrentCost.ManaCost > 0)
+                                    {
+                                        <span>法力: @learned.CurrentCost.ManaCost</span>
+                                    }
+                                </div>
+                                <div class="tooltip-cooldown">冷却: @learned.CurrentCooldown.TotalSeconds.ToString("F1")秒</div>
+                                @if (learned.CurrentEffects.Damage > 0)
+                                {
+                                    <div class="tooltip-damage">伤害: @learned.CurrentEffects.Damage</div>
+                                }
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="empty-slot">
+                            <span class="slot-number">@(slotIndex + 1)</span>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- 被动技能栏 -->
+    <div class="passive-skills">
+        <h4>被动技能</h4>
+        <div class="skill-slots passive">
+            @for (int i = 0; i < PassiveSlotCount; i++)
+            {
+                var slotIndex = i;
+                var slot = GetPassiveSlot(slotIndex);
+                
+                <div class="skill-slot passive-slot @(slot?.IsLocked == true ? "locked" : "")"
+                     @ondrop="() => HandleDrop(slotIndex, true)"
+                     @ondrop:preventDefault="true"
+                     @ondragover:preventDefault="true">
+                    
+                    @if (slot?.IsLocked == true)
+                    {
+                        <div class="slot-locked">
+                            <span class="lock-icon">🔒</span>
+                        </div>
+                    }
+                    else if (!string.IsNullOrEmpty(slot?.SkillId))
+                    {
+                        <div class="skill-icon passive"
+                             draggable="true"
+                             @ondragstart="() => HandleDragStart(slot.SkillId)">
+                            <img src="@GetSkillIcon(slot.SkillIcon)" alt="@slot.SkillName" />
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="empty-slot passive">P@(slotIndex + 1)</div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- 技能列表面板 -->
+@if (ShowSkillPanel)
+{
+    <div class="skill-panel-backdrop" @onclick="CloseSkillPanel">
+        <div class="skill-panel" @onclick:stopPropagation="true">
+            <div class="skill-panel-header">
+                <h3>技能列表</h3>
+                <button class="btn-close" @onclick="CloseSkillPanel">×</button>
+            </div>
+            
+            <div class="skill-categories">
+                <button class="category-btn @(SelectedCategory == "All" ? "active" : "")"@onclick='() => SelectCategory("All")'>全部</button>
+                <button class="category-btn @(SelectedCategory == "Combat" ? "active" : "")"@onclick='()=>SelectCategory("Combat")'>战斗</button>
+                <button class="category-btn @(SelectedCategory == "Utility" ? "active" : "")" @onclick='() => SelectCategory(" Utility")'>实用</button>
+                <button class="category-btn @(SelectedCategory == "Profession" ? "active" : "")" @onclick='() => SelectCategory(" Profession")'>职业</button>
+            </div>
+            
+            <div class="skill-list">
+                @foreach (var skill in GetFilteredSkills())
+                {
+                    <div class="skill-item @(LearnedSkills.ContainsKey(skill.SkillId) ? "learned" : "")"
+                         draggable="@LearnedSkills.ContainsKey(skill.SkillId)"
+                         @ondragstart="() => HandleDragStart(skill.SkillId)">
+                        
+                        <img src="@GetSkillIcon(skill.Icon)" alt="@skill.Name" class="skill-item-icon" />
+                        
+                        <div class="skill-item-info">
+                            <div class="skill-item-name">@skill.Name</div>
+                            @if (LearnedSkills.ContainsKey(skill.SkillId))
+                            {
+                                <div class="skill-item-level">
+                                    Lv.@LearnedSkills[skill.SkillId].CurrentLevel / @LearnedSkills[skill.SkillId].MaxLevel
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="skill-item-requirements">
+                                    需要等级: @GetSkillDefinition(skill.SkillId)?.RequiredCharacterLevel
+                                </div>
+                            }
+                        </div>
+                        
+                        @if (!LearnedSkills.ContainsKey(skill.SkillId) && CanLearnSkill(skill.SkillId))
+                        {
+                            <button class="btn-learn" @onclick="() => LearnSkill(skill.SkillId)">学习</button>
+                        }
+                        else if (LearnedSkills.ContainsKey(skill.SkillId) && CanUpgradeSkill(skill.SkillId))
+                        {
+                            <button class="btn-upgrade" @onclick="() => UpgradeSkill(skill.SkillId)">升级</button>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private const int ActiveSlotCount = 6;
+    private const int PassiveSlotCount = 4;
+    
+    private SkillBarDto? SkillBar;
+    private Dictionary<string, LearnedSkillDto> LearnedSkills = new();
+    private List<SkillDefinitionDto> AvailableSkills = new();
+    private Dictionary<string, SkillCooldownDto> Cooldowns = new();
+    
+    private bool AutoCastEnabled;
+    private string AutoCastPolicy = "Priority";
+    private bool ShowSkillPanel;
+    private string SelectedCategory = "All";
+    private string? DraggedSkillId;
+    
+    private System.Threading.Timer? _updateTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        SkillService.SkillBarUpdated += OnSkillBarUpdated;
+        SkillService.SkillLearned += OnSkillLearned;
+        SkillService.SkillUpgraded += OnSkillUpgraded;
+        SkillService.SkillUsed += OnSkillUsed;
+        SkillService.CooldownsUpdated += OnCooldownsUpdated;
+        
+        await LoadSkillData();
+        
+        // 启动UI更新定时器（用于冷却显示）
+        _updateTimer = new System.Threading.Timer(
+            _ => InvokeAsync(StateHasChanged),
+            null,
+            TimeSpan.FromMilliseconds(100),
+            TimeSpan.FromMilliseconds(100)
+        );
+    }
+
+    private async Task LoadSkillData()
+    {
+        await SkillService.LoadSkillDataAsync();
+        
+        SkillBar = SkillService.CurrentSkillBar;
+        LearnedSkills = SkillService.LearnedSkills;
+        AvailableSkills = SkillService.AvailableSkills;
+        Cooldowns = SkillService.Cooldowns;
+        
+        if (SkillBar != null)
+        {
+            AutoCastEnabled = SkillBar.AutoCastEnabled;
+            AutoCastPolicy = SkillBar.AutoCastPolicy ?? "Priority";
+        }
+        
+        StateHasChanged();
+    }
+
+    private SkillSlotConfigDto? GetActiveSlot(int index)
+    {
+        return SkillBar?.ActiveSlots.FirstOrDefault(s => s.SlotIndex == index);
+    }
+
+    private SkillSlotConfigDto? GetPassiveSlot(int index)
+    {
+        return SkillBar?.PassiveSlots.FirstOrDefault(s => s.SlotIndex == index);
+    }
+
+    private async Task UseSkill(string skillId)
+    {
+        if (IsOnCooldown(skillId))
+        {
+            Logger.LogInformation("技能冷却中");
+            return;
+        }
+
+        var result = await SkillService.UseSkillAsync(skillId);
+        
+        if (result?.Success == true)
+        {
+            Logger.LogInformation("技能使用成功: {SkillId}", skillId);
+        }
+        else
+        {
+            Logger.LogWarning("技能使用失败: {Reason}", result?.FailureReason);
+        }
+    }
+
+    private async Task LearnSkill(string skillId)
+    {
+        var learned = await SkillService.LearnSkillAsync(skillId);
+        if (learned != null)
+        {
+            Logger.LogInformation("成功学习技能: {SkillName}", learned.Name);
+        }
+    }
+
+    private async Task UpgradeSkill(string skillId)
+    {
+        var upgraded = await SkillService.UpgradeSkillAsync(skillId);
+        if (upgraded != null)
+        {
+            Logger.LogInformation("技能升级成功: {SkillName} Lv.{Level}", 
+                upgraded.Name, upgraded.CurrentLevel);
+        }
+    }
+
+    private void HandleDragStart(string skillId)
+    {
+        DraggedSkillId = skillId;
+    }
+
+    private async Task HandleDrop(int slotIndex, bool isPassive)
+    {
+        if (string.IsNullOrEmpty(DraggedSkillId))
+            return;
+
+        await SkillService.EquipSkillAsync(DraggedSkillId, slotIndex, isPassive);
+        DraggedSkillId = null;
+    }
+
+    private async Task OnAutoCastToggle()
+    {
+        // TODO: 更新自动施放设置
+        Logger.LogInformation("自动施放: {Enabled}", AutoCastEnabled);
+    }
+
+    private async Task OnPolicyChange()
+    {
+        // TODO: 更新自动施放策略
+        Logger.LogInformation("自动施放策略: {Policy}", AutoCastPolicy);
+    }
+
+    private bool IsOnCooldown(string? skillId)
+    {
+        return !string.IsNullOrEmpty(skillId) && SkillService.IsSkillOnCooldown(skillId);
+    }
+
+    private double GetCooldownHeight(string? skillId)
+    {
+        if (string.IsNullOrEmpty(skillId))
+            return 0;
+            
+        if (Cooldowns.TryGetValue(skillId, out var cooldown))
+        {
+            return 100 - cooldown.CooldownPercentage;
+        }
+        
+        return 0;
+    }
+
+    private string GetCooldownText(string? skillId)
+    {
+        if (string.IsNullOrEmpty(skillId))
+            return "";
+            
+        var remaining = SkillService.GetRemainingCooldown(skillId);
+        if (remaining.TotalSeconds > 0)
+        {
+            return remaining.TotalSeconds < 10 
+                ? remaining.TotalSeconds.ToString("F1") 
+                : ((int)remaining.TotalSeconds).ToString();
+        }
+        
+        return "";
+    }
+
+    private string GetKeybind(int slotIndex)
+    {
+        return (slotIndex + 1).ToString();
+    }
+
+    private string GetSkillIcon(string? icon)
+    {
+        return string.IsNullOrEmpty(icon) 
+            ? "/_content/BlazorIdleGame.Client/images/skills/default.png" 
+            : icon;
+    }
+
+    private void SelectCategory(string category)
+    {
+        SelectedCategory = category;
+    }
+
+    private List<SkillListItemDto> GetFilteredSkills()
+    {
+        var skills = new List<SkillListItemDto>();
+        
+        // 添加已学技能
+        foreach (var learned in LearnedSkills.Values)
+        {
+            var def = AvailableSkills.FirstOrDefault(s => s.Id == learned.SkillId);
+            if (def != null && (SelectedCategory == "All" || def.Category == SelectedCategory))
+            {
+                skills.Add(new SkillListItemDto
+                {
+                    SkillId = learned.SkillId,
+                    Name = learned.Name,
+                    Icon = learned.Icon,
+                    IsLearned = true
+                });
+            }
+        }
+        
+        // 添加未学技能
+        foreach (var skill in AvailableSkills)
+        {
+            if (!LearnedSkills.ContainsKey(skill.Id) && 
+                (SelectedCategory == "All" || skill.Category == SelectedCategory))
+            {
+                skills.Add(new SkillListItemDto
+                {
+                    SkillId = skill.Id,
+                    Name = skill.Name,
+                    Icon = skill.Icon,
+                    IsLearned = false
+                });
+            }
+        }
+        
+        return skills.OrderByDescending(s => s.IsLearned).ThenBy(s => s.Name).ToList();
+    }
+
+    private bool CanLearnSkill(string skillId)
+    {
+        return SkillService.CanLearnSkill(skillId);
+    }
+
+    private bool CanUpgradeSkill(string skillId)
+    {
+        return SkillService.CanUpgradeSkill(skillId);
+    }
+
+    private SkillDefinitionDto? GetSkillDefinition(string skillId)
+    {
+        return AvailableSkills.FirstOrDefault(s => s.Id == skillId);
+    }
+
+    private void CloseSkillPanel()
+    {
+        ShowSkillPanel = false;
+    }
+
+    private void OnSkillBarUpdated(object? sender, SkillBarDto skillBar)
+    {
+        SkillBar = skillBar;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnSkillLearned(object? sender, LearnedSkillDto skill)
+    {
+        LearnedSkills[skill.SkillId] = skill;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnSkillUpgraded(object? sender, LearnedSkillDto skill)
+    {
+        LearnedSkills[skill.SkillId] = skill;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnSkillUsed(object? sender, SkillUseResult result)
+    {
+        // 可以显示技能使用效果
+    }
+
+    private void OnCooldownsUpdated(object? sender, Dictionary<string, SkillCooldownDto> cooldowns)
+    {
+        Cooldowns = cooldowns;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        _updateTimer?.Dispose();
+        
+        SkillService.SkillBarUpdated -= OnSkillBarUpdated;
+        SkillService.SkillLearned -= OnSkillLearned;
+        SkillService.SkillUpgraded -= OnSkillUpgraded;
+        SkillService.SkillUsed -= OnSkillUsed;
+        SkillService.CooldownsUpdated -= OnCooldownsUpdated;
+    }
+
+    private class SkillListItemDto
+    {
+        public string SkillId { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string Icon { get; set; } = string.Empty;
+        public bool IsLearned { get; set; }
+    }
+}
