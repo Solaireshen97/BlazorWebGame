@@ -26,6 +26,7 @@ namespace BlazorIdleGame.Client.Services.Auth
         private const string AUTH_TOKEN_KEY = "auth_token";
         private const string REFRESH_TOKEN_KEY = "refresh_token";
         private const string USER_INFO_KEY = "user_info";
+        private const string REMEMBER_ME_KEY = "remember_me";
 
         private void NotifyAuthenticationStateChanged()
         {
@@ -50,10 +51,12 @@ namespace BlazorIdleGame.Client.Services.Auth
             try
             {
                 var token = await _localStorage.GetItemAsync<string>(AUTH_TOKEN_KEY);
+                var rememberMe = await _localStorage.GetItemAsync<bool>(REMEMBER_ME_KEY);
 
-                if (string.IsNullOrEmpty(token))
+                // 如果没有记住登录状态或令牌不存在，则不自动登录
+                if (string.IsNullOrEmpty(token) || !rememberMe)
                 {
-                    _logger.LogInformation("无保存的令牌，需要用户手动登录");
+                    _logger.LogInformation("无保存的令牌或未选择记住登录，需要用户手动登录");
                     return false;
                 }
 
@@ -89,7 +92,7 @@ namespace BlazorIdleGame.Client.Services.Auth
         /// <summary>
         /// 用户登录
         /// </summary>
-        public async Task<LoginResult> LoginAsync(string username, string password)
+        public async Task<LoginResult> LoginAsync(string username, string password, bool rememberMe = false)
         {
             try
             {
@@ -113,6 +116,7 @@ namespace BlazorIdleGame.Client.Services.Auth
 
                 // 保存令牌
                 await _localStorage.SetItemAsync(AUTH_TOKEN_KEY, response.Data.AccessToken);
+                await _localStorage.SetItemAsync(REMEMBER_ME_KEY, rememberMe);
 
                 if (!string.IsNullOrEmpty(response.Data.RefreshToken))
                 {
@@ -156,23 +160,15 @@ namespace BlazorIdleGame.Client.Services.Auth
         /// <summary>
         /// 用户注册
         /// </summary>
-        public async Task<RegisterResult> RegisterAsync(string username, string password, string confirmPassword)
+        public async Task<RegisterResult> RegisterAsync(string username, string password, string email)
         {
             try
             {
-                if (password != confirmPassword)
-                {
-                    return new RegisterResult
-                    {
-                        Success = false,
-                        Message = "两次输入的密码不一致"
-                    };
-                }
-
                 var registerRequest = new RegisterRequest
                 {
                     Username = username,
-                    Password = password
+                    Password = password,
+                    Email = email
                 };
 
                 var response = await _communicationService.PostAsync<RegisterRequest, ApiResponse<AuthenticationResponse>>(
@@ -215,6 +211,17 @@ namespace BlazorIdleGame.Client.Services.Auth
             await _localStorage.RemoveItemAsync(AUTH_TOKEN_KEY);
             await _localStorage.RemoveItemAsync(REFRESH_TOKEN_KEY);
             await _localStorage.RemoveItemAsync(USER_INFO_KEY);
+            await _localStorage.RemoveItemAsync(REMEMBER_ME_KEY);
+
+            // 尝试通知服务器用户登出
+            try
+            {
+                await _communicationService.PostAsync("api/auth/logout", new { });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "通知服务器登出失败，继续本地登出流程");
+            }
 
             // 重置认证状态
             _communicationService.ClearAuthToken();
