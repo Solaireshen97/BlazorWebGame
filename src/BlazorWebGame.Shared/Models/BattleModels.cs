@@ -18,14 +18,20 @@ public class Battle
     public string? DungeonId { get; private set; }
     public int WaveNumber { get; private set; } = 0;
     public bool AllowAutoRevive { get; private set; } = false;
+    // 新增：战斗实例引用
+    public BattleInstance? Instance { get; private set; }
+
+    // 新增：区域修饰符
+    public string? RegionId { get; private set; }
+    public RegionModifiers? RegionModifiers { get; private set; }
 
     // 战斗参与者
     private readonly List<BattleParticipant> _participants = new();
     public IReadOnlyList<BattleParticipant> Participants => _participants.AsReadOnly();
-    
+
     // 战斗日志
-    private readonly List<BattleAction> _actionHistory = new();
-    public IReadOnlyList<BattleAction> ActionHistory => _actionHistory.AsReadOnly();
+    private readonly List<CombatSegment> _segments = new();
+    public IReadOnlyList<CombatSegment> Segments => _segments.AsReadOnly();
 
     // 战斗结果
     public BattleResult? Result { get; private set; }
@@ -36,12 +42,54 @@ public class Battle
     /// <summary>
     /// 创建新战斗
     /// </summary>
-    public Battle(BattleType type = BattleType.Normal, Guid? partyId = null, string? dungeonId = null)
+    public Battle(BattleType type, GameClock clock, string? regionId = null,
+                  Guid? partyId = null, string? dungeonId = null)
     {
         Type = type;
         PartyId = partyId;
         DungeonId = dungeonId;
-        StartTime = DateTime.UtcNow;
+        RegionId = regionId;
+        StartTime = clock.CurrentTime;
+
+        // 创建战斗实例
+        var seed = $"{Id}_{DateTime.UtcNow.Ticks}";
+        Instance = new BattleInstance(type.ToString(), clock, seed);
+    }
+
+    /// <summary>
+    /// 设置区域修饰符
+    /// </summary>
+    public void SetRegionModifiers(RegionModifiers modifiers)
+    {
+        RegionModifiers = modifiers;
+    }
+
+    /// <summary>
+    /// 获取最近的片段
+    /// </summary>
+    public CombatSegment? GetLatestSegment()
+    {
+        return _segments.LastOrDefault();
+    }
+
+    /// <summary>
+    /// 计算总伤害输出
+    /// </summary>
+    public Dictionary<string, double> GetTotalDamageBySource()
+    {
+        var totalDamage = new Dictionary<string, double>();
+
+        foreach (var segment in _segments)
+        {
+            foreach (var kvp in segment.DamageBySource)
+            {
+                if (!totalDamage.ContainsKey(kvp.Key))
+                    totalDamage[kvp.Key] = 0;
+                totalDamage[kvp.Key] += kvp.Value;
+            }
+        }
+
+        return totalDamage;
     }
 
     /// <summary>
@@ -134,14 +182,6 @@ public class Battle
         Status = BattleStatus.Cancelled;
         EndTime = DateTime.UtcNow;
         return true;
-    }
-
-    /// <summary>
-    /// 记录战斗动作
-    /// </summary>
-    public void RecordAction(BattleAction action)
-    {
-        _actionHistory.Add(action);
     }
 
     /// <summary>
@@ -596,6 +636,15 @@ public class BattleResult
     public TimeSpan Duration { get; private set; }
     public Dictionary<string, object> Statistics { get; private set; } = new();
 
+    // 新增：资源收获
+    public Dictionary<string, double> ResourceGains { get; private set; } = new();
+
+    // 新增：职业经验
+    public Dictionary<string, int> ProfessionExperience { get; private set; } = new();
+
+    // 新增：声望奖励
+    public Dictionary<string, int> ReputationGains { get; private set; } = new();
+
     // 私有构造函数，用于反序列化
     private BattleResult() { }
 
@@ -639,6 +688,23 @@ public class BattleResult
     public void SetStatistic(string key, object value)
     {
         Statistics[key] = value;
+    }
+
+    /// <summary>
+    /// 应用区域修饰符
+    /// </summary>
+    public void ApplyRegionModifiers(RegionModifiers? modifiers)
+    {
+        if (modifiers == null) return;
+
+        ExperienceGained = (int)(ExperienceGained * modifiers.ExperienceMultiplier);
+        GoldGained = (int)(GoldGained * modifiers.GoldMultiplier);
+
+        // 应用掉落率修饰
+        if (modifiers.DropRateMultiplier > 1.0)
+        {
+            // 可能增加额外掉落
+        }
     }
 }
 
