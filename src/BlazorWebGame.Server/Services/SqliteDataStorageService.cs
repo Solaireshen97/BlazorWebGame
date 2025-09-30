@@ -108,7 +108,7 @@ public class SqliteDataStorageService : IDataStorageService
             }
 
             using var context = _contextFactory.CreateDbContext();
-            
+
             // 检查用户名是否已存在
             var existingUser = await context.Users
                 .FirstOrDefaultAsync(u => u.Username.ToLower() == user.Username.ToLower());
@@ -136,17 +136,31 @@ public class SqliteDataStorageService : IDataStorageService
                 }
             }
 
-            var entity = MapToEntity(user);
-            entity.Id = Guid.NewGuid().ToString();
-            entity.Salt = BCrypt.Net.BCrypt.GenerateSalt();
-            entity.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password, entity.Salt);
-            entity.CreatedAt = DateTime.UtcNow;
-            entity.UpdatedAt = DateTime.UtcNow;
+            // 确保ID和其他必要字段已设置
+            if (string.IsNullOrEmpty(user.Id))
+            {
+                user.Id = Guid.NewGuid().ToString();
+            }
 
+            // 设置密码哈希和盐
+            user.PasswordSalt = BCrypt.Net.BCrypt.GenerateSalt();
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password, user.PasswordSalt);
+
+            // 设置创建和更新时间
+            user.CreatedAt = DateTime.UtcNow;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            // 确保角色列表包含"Player"
+            if (!user.Roles.Contains("Player"))
+            {
+                user.Roles.Add("Player");
+            }
+
+            var entity = MapToEntity(user);
             context.Users.Add(entity);
             await context.SaveChangesAsync();
 
-            _logger.LogInformation("User created successfully: {SafeUserId}, Username: {Username}", 
+            _logger.LogInformation("User created successfully: {SafeUserId}, Username: {Username}",
                 SafeLogId(entity.Id), user.Username);
 
             return new ApiResponse<UserStorageDto>
@@ -1874,7 +1888,7 @@ public class SqliteDataStorageService : IDataStorageService
 
     private static UserStorageDto MapToDto(UserEntity entity)
     {
-        return new UserStorageDto
+        var dto = new UserStorageDto
         {
             Id = entity.Id,
             Username = entity.Username,
@@ -1885,16 +1899,65 @@ public class SqliteDataStorageService : IDataStorageService
             LastLoginIp = entity.LastLoginIp,
             LoginAttempts = entity.LoginAttempts,
             LockedUntil = entity.LockedUntil,
+            LastPasswordChange = entity.LastPasswordChange,
             CreatedAt = entity.CreatedAt,
             UpdatedAt = entity.UpdatedAt,
-            Roles = JsonSerializer.Deserialize<List<string>>(entity.RolesJson) ?? new List<string> { "Player" },
-            Profile = JsonSerializer.Deserialize<Dictionary<string, object>>(entity.ProfileJson) ?? new Dictionary<string, object>()
+            DisplayName = entity.DisplayName,
+            Avatar = entity.Avatar,
+            PasswordHash = entity.PasswordHash,
+            PasswordSalt = entity.Salt
         };
+
+        // 反序列化角色
+        try
+        {
+            dto.Roles = JsonSerializer.Deserialize<List<string>>(entity.RolesJson) ?? new List<string> { "Player" };
+        }
+        catch
+        {
+            dto.Roles = new List<string> { "Player" };
+        }
+
+        // 反序列化登录历史
+        try
+        {
+            dto.LoginHistory = JsonSerializer.Deserialize<List<string>>(entity.LoginHistoryJson) ?? new List<string>();
+        }
+        catch
+        {
+            dto.LoginHistory = new List<string>();
+        }
+
+        // 反序列化自定义属性
+        try
+        {
+            var profile = JsonSerializer.Deserialize<Dictionary<string, object>>(entity.ProfileJson)
+                ?? new Dictionary<string, object>();
+
+            dto.CustomProperties = profile.Where(p => p.Key != "DisplayName" && p.Key != "Avatar")
+                .ToDictionary(p => p.Key, p => p.Value);
+        }
+        catch
+        {
+            dto.CustomProperties = new Dictionary<string, object>();
+        }
+
+        // 反序列化角色ID列表
+        try
+        {
+            dto.CharacterIds = JsonSerializer.Deserialize<List<string>>(entity.CharacterIdsJson) ?? new List<string>();
+        }
+        catch
+        {
+            dto.CharacterIds = new List<string>();
+        }
+
+        return dto;
     }
 
     private static UserEntity MapToEntity(UserStorageDto dto)
     {
-        return new UserEntity
+        var entity = new UserEntity
         {
             Id = dto.Id,
             Username = dto.Username,
@@ -1905,11 +1968,22 @@ public class SqliteDataStorageService : IDataStorageService
             LastLoginIp = dto.LastLoginIp,
             LoginAttempts = dto.LoginAttempts,
             LockedUntil = dto.LockedUntil,
+            LastPasswordChange = dto.LastPasswordChange,
             CreatedAt = dto.CreatedAt,
             UpdatedAt = dto.UpdatedAt,
+            DisplayName = dto.DisplayName,
+            Avatar = dto.Avatar,
+            PasswordHash = dto.PasswordHash,
+            Salt = dto.PasswordSalt,
             RolesJson = JsonSerializer.Serialize(dto.Roles),
-            ProfileJson = JsonSerializer.Serialize(dto.Profile)
+            LoginHistoryJson = JsonSerializer.Serialize(dto.LoginHistory),
+            CharacterIdsJson = JsonSerializer.Serialize(dto.CharacterIds)
         };
+
+        // 序列化自定义属性
+        entity.ProfileJson = JsonSerializer.Serialize(dto.CustomProperties);
+
+        return entity;
     }
 
     private static PlayerStorageDto MapToDto(PlayerEntity entity)

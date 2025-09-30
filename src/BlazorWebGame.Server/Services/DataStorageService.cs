@@ -17,7 +17,7 @@ namespace BlazorWebGame.Server.Services;
 public class DataStorageService : IDataStorageService
 {
     private readonly ILogger<DataStorageService> _logger;
-    
+
     // 内存存储容器 - 生产环境中可替换为数据库连接
     private readonly ConcurrentDictionary<string, UserEntity> _users = new();
     private readonly ConcurrentDictionary<string, PlayerEntity> _players = new();
@@ -26,7 +26,7 @@ public class DataStorageService : IDataStorageService
     private readonly ConcurrentDictionary<string, BattleRecordEntity> _battleRecords = new();
     private readonly ConcurrentDictionary<string, OfflineDataEntity> _offlineData = new();
     private readonly ConcurrentDictionary<string, UserCharacterEntity> _userCharacters = new();
-    
+
     // 索引 - 提高查询性能
     private readonly ConcurrentDictionary<string, string> _usernameToUserId = new(); // username -> userId
     private readonly ConcurrentDictionary<string, string> _emailToUserId = new(); // email -> userId
@@ -50,7 +50,7 @@ public class DataStorageService : IDataStorageService
     {
         if (string.IsNullOrEmpty(id))
             return "[empty]";
-        
+
         // 只保留字母数字和连字符，并截取前8位
         var sanitized = new string(id.Where(c => char.IsLetterOrDigit(c) || c == '-').ToArray());
         return sanitized.Substring(0, Math.Min(8, sanitized.Length)) + (sanitized.Length > 8 ? "..." : "");
@@ -140,15 +140,23 @@ public class DataStorageService : IDataStorageService
             entity.CreatedAt = DateTime.UtcNow;
             entity.UpdatedAt = DateTime.UtcNow;
 
+            // 确保角色列表包含"Player"
+            var roles = JsonSerializer.Deserialize<List<string>>(entity.RolesJson) ?? new List<string>();
+            if (!roles.Contains("Player"))
+            {
+                roles.Add("Player");
+                entity.RolesJson = JsonSerializer.Serialize(roles);
+            }
+
             _users.TryAdd(entity.Id, entity);
             _usernameToUserId.TryAdd(user.Username.ToLowerInvariant(), entity.Id);
-            
+
             if (!string.IsNullOrEmpty(user.Email))
             {
                 _emailToUserId.TryAdd(user.Email.ToLowerInvariant(), entity.Id);
             }
 
-            _logger.LogInformation("User created successfully: {SafeUserId}, Username: {Username}", 
+            _logger.LogInformation("User created successfully: {SafeUserId}, Username: {Username}",
                 SafeLogId(entity.Id), user.Username);
 
             return new ApiResponse<UserStorageDto>
@@ -238,6 +246,7 @@ public class DataStorageService : IDataStorageService
             existingEntity.Salt = salt;
             existingEntity.PasswordHash = hashedPassword;
             existingEntity.UpdatedAt = DateTime.UtcNow;
+            existingEntity.LastPasswordChange = DateTime.UtcNow;
 
             _logger.LogInformation("Password updated for user: {SafeUserId}", SafeLogId(userId));
 
@@ -269,6 +278,17 @@ public class DataStorageService : IDataStorageService
                 user.LastLoginIp = ipAddress;
                 user.LoginAttempts = 0; // 重置登录尝试次数
                 user.UpdatedAt = DateTime.UtcNow;
+
+                // 添加登录历史记录
+                var loginHistory = JsonSerializer.Deserialize<List<string>>(user.LoginHistoryJson) ?? new List<string>();
+                var loginRecord = $"{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} - {ipAddress}";
+                loginHistory.Insert(0, loginRecord);
+
+                // 保留最近10条记录
+                if (loginHistory.Count > 10)
+                    loginHistory.RemoveAt(loginHistory.Count - 1);
+
+                user.LoginHistoryJson = JsonSerializer.Serialize(loginHistory);
 
                 return await Task.FromResult(new ApiResponse<bool>
                 {
@@ -304,7 +324,7 @@ public class DataStorageService : IDataStorageService
                 user.LockedUntil = lockUntil;
                 user.UpdatedAt = DateTime.UtcNow;
 
-                _logger.LogInformation("User account locked: {SafeUserId} until {LockUntil}", 
+                _logger.LogInformation("User account locked: {SafeUserId} until {LockUntil}",
                     SafeLogId(userId), lockUntil);
 
                 return await Task.FromResult(new ApiResponse<bool>
@@ -1739,7 +1759,7 @@ public class DataStorageService : IDataStorageService
 
     private UserStorageDto MapToDto(UserEntity entity)
     {
-        return new UserStorageDto
+        var dto = new UserStorageDto
         {
             Id = entity.Id,
             Username = entity.Username,
@@ -1750,16 +1770,65 @@ public class DataStorageService : IDataStorageService
             LastLoginIp = entity.LastLoginIp,
             LoginAttempts = entity.LoginAttempts,
             LockedUntil = entity.LockedUntil,
+            LastPasswordChange = entity.LastPasswordChange,
             CreatedAt = entity.CreatedAt,
             UpdatedAt = entity.UpdatedAt,
-            Roles = JsonSerializer.Deserialize<List<string>>(entity.RolesJson) ?? new List<string> { "Player" },
-            Profile = JsonSerializer.Deserialize<Dictionary<string, object>>(entity.ProfileJson) ?? new Dictionary<string, object>()
+            DisplayName = entity.DisplayName,
+            Avatar = entity.Avatar,
+            PasswordHash = entity.PasswordHash,
+            PasswordSalt = entity.Salt
         };
+
+        // 反序列化角色
+        try
+        {
+            dto.Roles = JsonSerializer.Deserialize<List<string>>(entity.RolesJson) ?? new List<string> { "Player" };
+        }
+        catch
+        {
+            dto.Roles = new List<string> { "Player" };
+        }
+
+        // 反序列化登录历史
+        try
+        {
+            dto.LoginHistory = JsonSerializer.Deserialize<List<string>>(entity.LoginHistoryJson) ?? new List<string>();
+        }
+        catch
+        {
+            dto.LoginHistory = new List<string>();
+        }
+
+        // 反序列化自定义属性
+        try
+        {
+            var profile = JsonSerializer.Deserialize<Dictionary<string, object>>(entity.ProfileJson)
+                ?? new Dictionary<string, object>();
+
+            dto.CustomProperties = profile.Where(p => p.Key != "DisplayName" && p.Key != "Avatar")
+                .ToDictionary(p => p.Key, p => p.Value);
+        }
+        catch
+        {
+            dto.CustomProperties = new Dictionary<string, object>();
+        }
+
+        // 反序列化角色ID列表
+        try
+        {
+            dto.CharacterIds = JsonSerializer.Deserialize<List<string>>(entity.CharacterIdsJson) ?? new List<string>();
+        }
+        catch
+        {
+            dto.CharacterIds = new List<string>();
+        }
+
+        return dto;
     }
 
     private UserEntity MapToEntity(UserStorageDto dto)
     {
-        return new UserEntity
+        var entity = new UserEntity
         {
             Id = dto.Id,
             Username = dto.Username,
@@ -1770,11 +1839,22 @@ public class DataStorageService : IDataStorageService
             LastLoginIp = dto.LastLoginIp,
             LoginAttempts = dto.LoginAttempts,
             LockedUntil = dto.LockedUntil,
+            LastPasswordChange = dto.LastPasswordChange,
             CreatedAt = dto.CreatedAt,
             UpdatedAt = dto.UpdatedAt,
+            DisplayName = dto.DisplayName,
+            Avatar = dto.Avatar,
+            PasswordHash = dto.PasswordHash,
+            Salt = dto.PasswordSalt,
             RolesJson = JsonSerializer.Serialize(dto.Roles),
-            ProfileJson = JsonSerializer.Serialize(dto.Profile)
+            LoginHistoryJson = JsonSerializer.Serialize(dto.LoginHistory),
+            CharacterIdsJson = JsonSerializer.Serialize(dto.CharacterIds)
         };
+
+        // 序列化自定义属性
+        entity.ProfileJson = JsonSerializer.Serialize(dto.CustomProperties);
+
+        return entity;
     }
 
     private PlayerStorageDto MapToDto(PlayerEntity entity)

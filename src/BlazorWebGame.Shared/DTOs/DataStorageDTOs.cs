@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-
 namespace BlazorWebGame.Shared.DTOs;
 
 /// <summary>
@@ -8,21 +7,39 @@ namespace BlazorWebGame.Shared.DTOs;
 /// </summary>
 public class UserStorageDto
 {
+    // 基本用户信息
     public string Id { get; set; } = string.Empty;
     public string Username { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
-    public bool EmailVerified { get; set; } = false;
+    public bool EmailVerified { get; set; } = false; 
+
+    // 登录相关信息
     public DateTime LastLoginAt { get; set; } = DateTime.MinValue;
     public string LastLoginIp { get; set; } = string.Empty;
+
+    // 安全信息
     public int LoginAttempts { get; set; } = 0;
     public DateTime? LockedUntil { get; set; }
+    public DateTime? LastPasswordChange { get; set; }
+    public List<string> LoginHistory { get; set; } = new();
+    public List<string> Roles { get; set; } = new() { "Player" };
+
+    // 密码哈希 - 数据库存储需要，但不会返回给客户端
+    public string PasswordHash { get; set; } = string.Empty;
+    public string PasswordSalt { get; set; } = string.Empty;
+
+    // 个人资料信息
+    public string DisplayName { get; set; } = string.Empty;
+    public string Avatar { get; set; } = string.Empty;
+    public Dictionary<string, object> CustomProperties { get; set; } = new();
+
+    // 用户拥有的游戏角色ID
+    public List<string> CharacterIds { get; set; } = new();
+
+    // 审计信息
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-    
-    // 复杂属性 - 在传输时已经反序列化
-    public List<string> Roles { get; set; } = new() { "Player" };
-    public Dictionary<string, object> Profile { get; set; } = new();
 }
 
 /// <summary>

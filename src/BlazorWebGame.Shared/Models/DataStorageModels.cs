@@ -28,8 +28,13 @@ public class UserEntity : BaseEntity
     public string LastLoginIp { get; set; } = string.Empty;
     public int LoginAttempts { get; set; } = 0;
     public DateTime? LockedUntil { get; set; }
-    public string RolesJson { get; set; } = "[\"Player\"]"; // JSON array of role strings
-    public string ProfileJson { get; set; } = "{}"; // Additional profile data
+    public DateTime? LastPasswordChange { get; set; }
+    public string RolesJson { get; set; } = "[]";
+    public string ProfileJson { get; set; } = "{}";
+    public string LoginHistoryJson { get; set; } = "[]"; // 新增字段 - 登录历史
+    public string CharacterIdsJson { get; set; } = "[]"; // 新增字段 - 角色ID列表
+    public string DisplayName { get; set; } = string.Empty; // 新增字段 - 显示名称
+    public string Avatar { get; set; } = string.Empty; // 新增字段 - 头像
 }
 
 /// <summary>
