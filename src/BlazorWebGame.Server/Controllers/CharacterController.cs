@@ -197,7 +197,7 @@ namespace BlazorWebGame.Server.Controllers
                     return Forbid();
                 }
 
-                var result = _characterService.GetCharacterDetails(characterId);
+                var result = await _characterService.GetCharacterDetails(characterId);
                 return Ok(result);
             }
             catch (Exception ex)
@@ -230,7 +230,7 @@ namespace BlazorWebGame.Server.Controllers
                     return Forbid();
                 }
 
-                var result = _characterService.AllocateAttributePointsAsync(characterId, request);
+                var result = await _characterService.AllocateAttributePointsAsync(characterId, request);
                 return Ok(result);
             }
             catch (Exception ex)
@@ -262,7 +262,7 @@ namespace BlazorWebGame.Server.Controllers
                     return Forbid();
                 }
 
-                var result = _characterService.ResetAttributesAsync(characterId);
+                var result = await _characterService.ResetAttributesAsync(characterId);
                 return Ok(result);
             }
             catch (Exception ex)

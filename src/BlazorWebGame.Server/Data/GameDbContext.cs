@@ -18,6 +18,7 @@ public class GameDbContext : DbContext
     public DbSet<BattleRecordEntity> BattleRecords { get; set; }
     public DbSet<OfflineDataEntity> OfflineData { get; set; }
     public DbSet<UserCharacterEntity> UserCharacters { get; set; }
+    public DbSet<CharacterEntity> Characters { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -51,6 +52,41 @@ public class GameDbContext : DbContext
             entity.HasIndex(e => e.IsActive);
             entity.HasIndex(e => e.LastLoginAt);
             entity.HasIndex(e => e.DisplayName); // 为显示名称添加索引，提高查询性能
+        });
+
+        // 配置角色实体
+        modelBuilder.Entity<CharacterEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasMaxLength(100);
+            entity.Property(e => e.Name).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.ProfessionId).HasMaxLength(20);
+            entity.Property(e => e.CurrentRegionId).HasMaxLength(100);
+
+            // 基本信息索引
+            entity.HasIndex(e => e.Name);
+            entity.HasIndex(e => e.IsOnline);
+            entity.HasIndex(e => e.LastActiveAt);
+            entity.HasIndex(e => e.PartyId);
+
+            // JSON字段配置
+            entity.Property(e => e.BattleProfessionsJson).HasColumnType("TEXT").HasDefaultValue("{}");
+            entity.Property(e => e.GatheringProfessionsJson).HasColumnType("TEXT").HasDefaultValue("{}");
+            entity.Property(e => e.ProductionProfessionsJson).HasColumnType("TEXT").HasDefaultValue("{}");
+            entity.Property(e => e.ReputationsJson).HasColumnType("TEXT").HasDefaultValue("{}");
+            entity.Property(e => e.InventoryJson).HasColumnType("TEXT").HasDefaultValue("[]");
+            entity.Property(e => e.EquipmentJson).HasColumnType("TEXT").HasDefaultValue("{}");
+            entity.Property(e => e.OfflineRecordJson).HasColumnType("TEXT").HasDefaultValue("{}");
+
+            // 新增字段配置
+            entity.Property(e => e.LearnedSkillsJson).HasColumnType("TEXT").HasDefaultValue("{}");
+            entity.Property(e => e.EquippedSkillsJson).HasColumnType("TEXT").HasDefaultValue("{}");
+            entity.Property(e => e.ActiveQuestsJson).HasColumnType("TEXT").HasDefaultValue("[]");
+            entity.Property(e => e.CompletedQuestsJson).HasColumnType("TEXT").HasDefaultValue("[]");
+            entity.Property(e => e.QuestProgressJson).HasColumnType("TEXT").HasDefaultValue("{}");
+            entity.Property(e => e.GeneralConsumableSlotsJson).HasColumnType("TEXT").HasDefaultValue("[]");
+            entity.Property(e => e.CombatConsumableSlotsJson).HasColumnType("TEXT").HasDefaultValue("[]");
+            entity.Property(e => e.ActivitySlotsJson).HasColumnType("TEXT").HasDefaultValue("[]");
         });
 
         // 配置玩家实体

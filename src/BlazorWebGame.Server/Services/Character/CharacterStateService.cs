@@ -1,6 +1,6 @@
 using BlazorWebGame.Server.Services.Core;
 using BlazorWebGame.Server.Services.Profession;
-using BlazorWebGame.Server.Services.System;
+using BlazorWebGame.Server.Services.GameSystem;
 using BlazorWebGame.Shared.DTOs;
 using BlazorWebGame.Shared.Events;
 using BlazorWebGame.Shared.Models;

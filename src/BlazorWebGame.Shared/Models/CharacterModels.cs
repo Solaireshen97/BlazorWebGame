@@ -150,6 +150,38 @@ public class Character
     }
 
     /// <summary>
+    /// 设置ID (用于从存储创建角色时)
+    /// </summary>
+    public void SetId(string id)
+    {
+        Id = id;
+    }
+
+    /// <summary>
+    /// 设置等级 (用于从存储加载数据时)
+    /// </summary>
+    public void SetLevel(int level)
+    {
+        Level = level;
+    }
+
+    /// <summary>
+    /// 设置经验值 (用于从存储加载数据时)
+    /// </summary>
+    public void SetExperience(int experience)
+    {
+        Experience = experience;
+    }
+
+    /// <summary>
+    /// 设置最后活跃时间
+    /// </summary>
+    public void SetLastActiveTime(DateTime lastActiveTime)
+    {
+        LastActiveAt = lastActiveTime;
+    }
+
+    /// <summary>
     /// 更新活跃时间
     /// </summary>
     public void UpdateActivity()

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using BlazorWebGame.Server.Services.Battle;
-using BlazorWebGame.Server.Services.System;
+using BlazorWebGame.Server.Services.GameSystem;
 using BlazorWebGame.Shared.DTOs;
 using BlazorWebGame.Shared.Interfaces;
 using Microsoft.Extensions.Logging;

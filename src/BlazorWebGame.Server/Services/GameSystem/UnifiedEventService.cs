@@ -3,7 +3,7 @@ using BlazorWebGame.Server.Hubs;
 using BlazorWebGame.Shared.DTOs;
 using Microsoft.AspNetCore.SignalR;
 
-namespace BlazorWebGame.Server.Services.System
+namespace BlazorWebGame.Server.Services.GameSystem
 {
     /// <summary>
     /// 统一事件服务 - 服务端实现

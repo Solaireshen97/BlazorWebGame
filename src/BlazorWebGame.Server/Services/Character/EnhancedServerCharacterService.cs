@@ -16,6 +16,12 @@ namespace BlazorWebGame.Server.Services.Character
     /// </summary>
     public class EnhancedServerCharacterService
     {
+        // 使用内存缓存+过期策略
+        private readonly ConcurrentDictionary<string, Tuple<BlazorWebGame.Shared.Models.Character, DateTime>> _characterCache = new();
+
+        // 缓存过期时间（例如30分钟不活跃就从内存中移除）
+        private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(30);
+
         private readonly ConcurrentDictionary<string, BlazorWebGame.Shared.Models.Character> _characters = new();
         private readonly GameEventManager _eventManager;
         private readonly ILogger<EnhancedServerCharacterService> _logger;
@@ -44,8 +50,110 @@ namespace BlazorWebGame.Server.Services.Character
             
             // 初始化测试角色
             InitializeTestCharacters();
+
+            // 添加定时任务，定期清理过期的角色缓存
+            StartCacheCleanupTask();
         }
 
+        // 获取角色 - 如果不在缓存中则从数据库加载
+        private async Task<BlazorWebGame.Shared.Models.Character?> GetOrLoadCharacterAsync(string characterId)
+        {
+            // 检查缓存
+            if (_characterCache.TryGetValue(characterId, out var cachedData))
+            {
+                // 更新最后访问时间
+                _characterCache[characterId] = new Tuple<BlazorWebGame.Shared.Models.Character, DateTime>(
+                    cachedData.Item1, DateTime.UtcNow);
+                return cachedData.Item1;
+            }
+
+            // 从数据库加载
+            var response = await _dataStorage.GetCharacterByIdAsync(characterId);
+            if (!response.IsSuccess || response.Data == null)
+            {
+                return null;
+            }
+
+            // 转换为领域模型
+            var character = ConvertToDomainModel(response.Data);
+
+            // 添加到缓存
+            _characterCache[characterId] = new Tuple<BlazorWebGame.Shared.Models.Character, DateTime>(
+                character, DateTime.UtcNow);
+
+            return character;
+        }
+
+        // 保存角色到数据库
+        private async Task SaveCharacterToStorageAsync(BlazorWebGame.Shared.Models.Character character)
+        {
+            // 使用CharacterMapper转换为DTO
+            var dto = BlazorWebGame.Shared.Mappers.CharacterMapper.ToDto(character);
+            // 调用数据存储服务保存角色
+            await _dataStorage.SaveCharacterAsync(dto);
+        }
+
+
+        // 定期清理缓存
+        private void StartCacheCleanupTask()
+        {
+            Task.Run(async () =>
+            {
+                while (true)
+                {
+                    try
+                    {
+                        CleanupExpiredCacheEntries();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "清理角色缓存时出错");
+                    }
+
+                    // 每5分钟执行一次清理
+                    await Task.Delay(TimeSpan.FromMinutes(5));
+                }
+            });
+        }
+
+        // 清理过期缓存
+        private void CleanupExpiredCacheEntries()
+        {
+            var now = DateTime.UtcNow;
+            var expiredKeys = _characterCache
+                .Where(kvp => (now - kvp.Value.Item2) > _cacheExpiration)
+                .Select(kvp => kvp.Key)
+                .ToList();
+
+            foreach (var key in expiredKeys)
+            {
+                _characterCache.TryRemove(key, out _);
+                _logger.LogInformation("已从内存中移除长时间未活动的角色: {CharacterId}", key);
+            }
+        }
+
+        // 显式从内存中移除角色
+        public void RemoveCharacterFromCache(string characterId)
+        {
+            _characterCache.TryRemove(characterId, out _);
+        }
+
+        // 用户离线时，移除该用户的所有角色缓存
+        public async Task RemoveUserCharactersFromCacheAsync(string userId)
+        {
+            var response = await _dataStorage.GetUserCharactersAsync(userId);
+            if (response.IsSuccess && response.Data != null)
+            {
+                foreach (var userChar in response.Data)
+                {
+                    RemoveCharacterFromCache(userChar.CharacterId);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 获取用户的角色花名册
+        /// </summary>
         /// <summary>
         /// 获取用户的角色花名册
         /// </summary>
@@ -68,6 +176,18 @@ namespace BlazorWebGame.Server.Services.Character
                     Slots = new List<CharacterSlotDto>(),
                     ActiveCharacterId = activeUserCharacters.FirstOrDefault(uc => uc.IsDefault)?.CharacterId
                 };
+
+                // 预加载所有角色数据到内存中
+                foreach (var userChar in activeUserCharacters)
+                {
+                    // 使用GetOrLoadCharacterAsync确保角色数据被加载到内存中
+                    var character = await GetOrLoadCharacterAsync(userChar.CharacterId);
+                    if (character != null)
+                    {
+                        // 确保角色也添加到_characters字典中(GetOrLoadCharacterAsync已经添加到_characterCache)
+                        _characters.TryAdd(character.Id, character);
+                    }
+                }
 
                 // 填充已解锁槽位
                 for (int i = 0; i < roster.UnlockedSlots; i++)
@@ -224,16 +344,20 @@ namespace BlazorWebGame.Server.Services.Character
 
                 // 创建新角色
                 var character = new BlazorWebGame.Shared.Models.Character(request.Name);
-                
+
                 // 设置职业
-                var profession = !string.IsNullOrEmpty(request.StartingProfessionId) 
-                    ? request.StartingProfessionId 
+                var profession = !string.IsNullOrEmpty(request.StartingProfessionId)
+                    ? request.StartingProfessionId
                     : "Warrior";
-                
+
                 character.Professions.SelectBattleProfession(profession);
 
-                // 保存到内存和数据库
+                // 保存到内存
                 _characters.TryAdd(character.Id, character);
+                var characterDto = ConvertToStorageDto(character);
+
+                // 保存角色到数据库
+                await _dataStorage.SaveCharacterAsync(characterDto);
 
                 // 创建用户-角色关联
                 var isFirstCharacter = roster.Slots.All(s => s.Character == null);
@@ -248,12 +372,12 @@ namespace BlazorWebGame.Server.Services.Character
 
                 // 触发角色创建事件
                 _eventManager.Raise(new GameEventArgs(GameEventType.CharacterCreated, character.Id));
-                
+
                 _logger.LogInformation($"用户 {userId} 创建了角色 {request.Name}，ID：{character.Id}");
 
                 // 将角色转换为DTO
-                var characterDto = ConvertToFullDto(character);
-                return ApiResponse<CharacterFullDto>.Success(characterDto);
+                var characterFullDto = ConvertToFullDto(character);
+                return ApiResponse<CharacterFullDto>.Success(characterFullDto);
             }
             catch (Exception ex)
             {
@@ -303,14 +427,23 @@ namespace BlazorWebGame.Server.Services.Character
         /// <summary>
         /// 获取角色详情
         /// </summary>
-        public ApiResponse<CharacterFullDto> GetCharacterDetails(string characterId)
+        public async Task<ApiResponse<CharacterFullDto>> GetCharacterDetails(string characterId)
         {
-            if (!_characters.TryGetValue(characterId, out var character))
+            try
             {
-                return ApiResponse<CharacterFullDto>.Failure("角色不存在");
-            }
+                var character = await GetOrLoadCharacterAsync(characterId);
+                if (character == null)
+                {
+                    return ApiResponse<CharacterFullDto>.Failure("角色不存在");
+                }
 
-            return ApiResponse<CharacterFullDto>.Success(ConvertToFullDto(character));
+                return ApiResponse<CharacterFullDto>.Success(ConvertToFullDto(character));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "获取角色详情失败 {CharacterId}", characterId);
+                return ApiResponse<CharacterFullDto>.Failure($"获取角色详情失败：{ex.Message}");
+            }
         }
 
         /// <summary>
@@ -360,6 +493,22 @@ namespace BlazorWebGame.Server.Services.Character
             {
                 _logger.LogError(ex, $"切换角色失败：{characterId}");
                 return ApiResponse<CharacterFullDto>.Failure("切换角色时发生错误");
+            }
+        }
+
+        /// <summary>
+        /// 检查用户是否拥有角色
+        /// </summary>
+        public async Task<bool> UserOwnsCharacterAsync(string userId, string characterId)
+        {
+            try
+            {
+                return await _dataStorage.UserOwnsCharacterAsync(userId, characterId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "检查用户角色所有权失败 {UserId} -> {CharacterId}", userId, characterId);
+                return false;
             }
         }
 
@@ -416,117 +565,120 @@ namespace BlazorWebGame.Server.Services.Character
         /// <summary>
         /// 分配属性点
         /// </summary>
-        public ApiResponse<CharacterAttributesDto> AllocateAttributePointsAsync(string characterId, AllocateAttributePointsRequest request)
+        public async Task<ApiResponse<CharacterAttributesDto>> AllocateAttributePointsAsync(string characterId, AllocateAttributePointsRequest request)
         {
-            if (!_characters.TryGetValue(characterId, out var character))
+            try
             {
-                return ApiResponse<CharacterAttributesDto>.Failure("角色不存在");
-            }
-
-            // 验证总点数是否超过可用点数
-            var totalPoints = request.Points.Values.Sum();
-            if (totalPoints > character.Attributes.AttributePoints)
-            {
-                return ApiResponse<CharacterAttributesDto>.Failure("分配的属性点超过可用点数");
-            }
-
-            // 分配属性点
-            foreach (var kvp in request.Points)
-            {
-                if (kvp.Value <= 0) continue;
-
-                bool success = character.Attributes.AllocateAttribute(kvp.Key, kvp.Value);
-                if (!success)
+                var character = await GetOrLoadCharacterAsync(characterId);
+                if (character == null)
                 {
-                    return ApiResponse<CharacterAttributesDto>.Failure($"分配属性点失败：{kvp.Key}");
+                    return ApiResponse<CharacterAttributesDto>.Failure("角色不存在");
                 }
+
+                // 验证总点数是否超过可用点数
+                var totalPoints = request.Points.Values.Sum();
+                if (totalPoints > character.Attributes.AttributePoints)
+                {
+                    return ApiResponse<CharacterAttributesDto>.Failure("分配的属性点超过可用点数");
+                }
+
+                // 分配属性点
+                foreach (var kvp in request.Points)
+                {
+                    if (kvp.Value <= 0) continue;
+
+                    bool success = character.Attributes.AllocateAttribute(kvp.Key, kvp.Value);
+                    if (!success)
+                    {
+                        return ApiResponse<CharacterAttributesDto>.Failure($"分配属性点失败：{kvp.Key}");
+                    }
+                }
+
+                // 更新生命值和法力值上限
+                character.Vitals.RecalculateMaxValues(character.Attributes);
+
+                // 保存更新后的角色数据到数据库
+                await SaveCharacterToStorageAsync(character);
+
+                // 转换为DTO
+                var attributesDto = new CharacterAttributesDto
+                {
+                    Strength = character.Attributes.Strength,
+                    Agility = character.Attributes.Agility,
+                    Intellect = character.Attributes.Intellect,
+                    Spirit = character.Attributes.Spirit,
+                    Stamina = character.Attributes.Stamina,
+                    AvailablePoints = character.Attributes.AttributePoints,
+
+                    // 衍生属性
+                    AttackPower = CalculateAttackPower(character),
+                    SpellPower = CalculateSpellPower(character),
+                    CriticalChance = CalculateCritChance(character),
+                    CriticalDamage = CalculateCritDamage(character),
+                    AttackSpeed = 1.0,
+                    CastSpeed = 1.0,
+                    Armor = CalculateArmor(character),
+                    MagicResistance = CalculateMagicResistance(character)
+                };
+
+                return ApiResponse<CharacterAttributesDto>.Success(attributesDto);
             }
-
-            // 更新生命值和法力值上限
-            character.Vitals.RecalculateMaxValues(character.Attributes);
-
-            // 转换为DTO
-            var attributesDto = new CharacterAttributesDto
+            catch (Exception ex)
             {
-                Strength = character.Attributes.Strength,
-                Agility = character.Attributes.Agility,
-                Intellect = character.Attributes.Intellect,
-                Spirit = character.Attributes.Spirit,
-                Stamina = character.Attributes.Stamina,
-                AvailablePoints = character.Attributes.AttributePoints,
-                
-                // 衍生属性
-                AttackPower = CalculateAttackPower(character),
-                SpellPower = CalculateSpellPower(character),
-                CriticalChance = CalculateCritChance(character),
-                CriticalDamage = CalculateCritDamage(character),
-                AttackSpeed = 1.0,
-                CastSpeed = 1.0,
-                Armor = CalculateArmor(character),
-                MagicResistance = CalculateMagicResistance(character)
-            };
-
-            return ApiResponse<CharacterAttributesDto>.Success(attributesDto);
+                _logger.LogError(ex, "分配属性点失败 {CharacterId}", characterId);
+                return ApiResponse<CharacterAttributesDto>.Failure($"分配属性点失败：{ex.Message}");
+            }
         }
 
         /// <summary>
         /// 重置属性点
         /// </summary>
-        public ApiResponse<CharacterAttributesDto> ResetAttributesAsync(string characterId)
-        {
-            if (!_characters.TryGetValue(characterId, out var character))
-            {
-                return ApiResponse<CharacterAttributesDto>.Failure("角色不存在");
-            }
-
-            // 重置属性
-            character.Attributes.ResetAttributes();
-            
-            // 更新生命值和法力值上限
-            character.Vitals.RecalculateMaxValues(character.Attributes);
-
-            // 转换为DTO
-            var attributesDto = new CharacterAttributesDto
-            {
-                Strength = character.Attributes.Strength,
-                Agility = character.Attributes.Agility,
-                Intellect = character.Attributes.Intellect,
-                Spirit = character.Attributes.Spirit,
-                Stamina = character.Attributes.Stamina,
-                AvailablePoints = character.Attributes.AttributePoints,
-                
-                // 衍生属性
-                AttackPower = CalculateAttackPower(character),
-                SpellPower = CalculateSpellPower(character),
-                CriticalChance = CalculateCritChance(character),
-                CriticalDamage = CalculateCritDamage(character),
-                AttackSpeed = 1.0,
-                CastSpeed = 1.0,
-                Armor = CalculateArmor(character),
-                MagicResistance = CalculateMagicResistance(character)
-            };
-
-            return ApiResponse<CharacterAttributesDto>.Success(attributesDto);
-        }
-
-        /// <summary>
-        /// 检查用户是否拥有指定的角色
-        /// </summary>
-        /// <param name="userId">用户ID</param>
-        /// <param name="characterId">角色ID</param>
-        /// <returns>如果用户拥有该角色，返回true；否则返回false</returns>
-        public async Task<bool> UserOwnsCharacterAsync(string userId, string characterId)
+        public async Task<ApiResponse<CharacterAttributesDto>> ResetAttributesAsync(string characterId)
         {
             try
             {
-                // 通过数据存储服务检查用户角色关联
-                bool ownsCharacter = await _dataStorage.UserOwnsCharacterAsync(userId, characterId);
-                return ownsCharacter;
+                var character = await GetOrLoadCharacterAsync(characterId);
+                if (character == null)
+                {
+                    return ApiResponse<CharacterAttributesDto>.Failure("角色不存在");
+                }
+
+                // 重置属性
+                character.Attributes.ResetAttributes();
+
+                // 更新生命值和法力值上限
+                character.Vitals.RecalculateMaxValues(character.Attributes);
+
+                // 保存更新后的角色数据到数据库
+                await SaveCharacterToStorageAsync(character);
+
+                // 转换为DTO
+                var attributesDto = new CharacterAttributesDto
+                {
+                    Strength = character.Attributes.Strength,
+                    Agility = character.Attributes.Agility,
+                    Intellect = character.Attributes.Intellect,
+                    Spirit = character.Attributes.Spirit,
+                    Stamina = character.Attributes.Stamina,
+                    AvailablePoints = character.Attributes.AttributePoints,
+
+                    // 衍生属性
+                    AttackPower = CalculateAttackPower(character),
+                    SpellPower = CalculateSpellPower(character),
+                    CriticalChance = CalculateCritChance(character),
+                    CriticalDamage = CalculateCritDamage(character),
+                    AttackSpeed = 1.0,
+                    CastSpeed = 1.0,
+                    Armor = CalculateArmor(character),
+                    MagicResistance = CalculateMagicResistance(character)
+                };
+
+                return ApiResponse<CharacterAttributesDto>.Success(attributesDto);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"检查用户是否拥有角色失败: 用户 {userId}, 角色 {characterId}");
-                return false;
+                _logger.LogError(ex, "重置属性点失败 {CharacterId}", characterId);
+                return ApiResponse<CharacterAttributesDto>.Failure($"重置属性点失败：{ex.Message}");
             }
         }
 
@@ -696,6 +848,20 @@ namespace BlazorWebGame.Server.Services.Character
             }
 
             return roster;
+        }
+
+        // 将存储DTO转换为领域模型
+        private BlazorWebGame.Shared.Models.Character ConvertToDomainModel(CharacterStorageDto dto)
+        {
+            // 使用CharacterMapper的ToCharacter方法
+            return BlazorWebGame.Shared.Mappers.CharacterMapper.ToCharacter(dto);
+        }
+
+        // 将领域模型转换为存储DTO
+        private CharacterStorageDto ConvertToStorageDto(BlazorWebGame.Shared.Models.Character character)
+        {
+            // 使用CharacterMapper的ToDto方法
+            return BlazorWebGame.Shared.Mappers.CharacterMapper.ToDto(character);
         }
 
         /// <summary>

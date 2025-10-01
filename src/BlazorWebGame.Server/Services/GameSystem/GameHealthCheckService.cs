@@ -3,7 +3,7 @@ using BlazorWebGame.Server.Configuration;
 using Microsoft.Extensions.Options;
 using BlazorWebGame.Server.Services.Core;
 
-namespace BlazorWebGame.Server.Services.System;
+namespace BlazorWebGame.Server.Services.GameSystem;
 
 /// <summary>
 /// 游戏服务器健康检查服务

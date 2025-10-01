@@ -3,7 +3,7 @@ using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;
 using System.Runtime;
 
-namespace BlazorWebGame.Server.Services.System;
+namespace BlazorWebGame.Server.Services.GameSystem;
 
 /// <summary>
 /// 服务器优化服务，提供自动优化和缓存管理

@@ -1,3 +1,4 @@
+using BlazorWebGame.Shared.DTOs.Skill;
 using System;
 using System.Collections.Generic;
 namespace BlazorWebGame.Shared.DTOs;
@@ -40,6 +41,234 @@ public class UserStorageDto
     // 审计信息
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+/// <summary>
+/// 角色数据存储传输对象
+/// </summary>
+public class CharacterStorageDto
+{
+    // 基本信息
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public int Level { get; set; } = 1;
+    public int Experience { get; set; } = 0;
+    public int Gold { get; set; } = 0;
+    public bool IsOnline { get; set; } = false;
+    public string? CurrentRegionId { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime LastActiveAt { get; set; } = DateTime.UtcNow;
+    public Guid? PartyId { get; set; }
+
+    // 生命值和法力值
+    public int Health { get; set; } = 100;
+    public int MaxHealth { get; set; } = 100;
+    public int Mana { get; set; } = 100;
+    public int MaxMana { get; set; } = 100;
+    public bool IsDead { get; set; } = false;
+    public DateTime? DeathTime { get; set; }
+
+    // 基础属性
+    public int Strength { get; set; } = 10;
+    public int Agility { get; set; } = 10;
+    public int Intellect { get; set; } = 10;
+    public int Spirit { get; set; } = 10;
+    public int Stamina { get; set; } = 10;
+    public int AttributePoints { get; set; } = 0;
+
+    // 职业信息
+    public string ProfessionId { get; set; } = "Warrior"; // 当前选择的战斗职业
+    public Dictionary<string, ProfessionLevelDto> BattleProfessions { get; set; } = new();
+    public Dictionary<string, ProfessionLevelDto> GatheringProfessions { get; set; } = new();
+    public Dictionary<string, ProfessionLevelDto> ProductionProfessions { get; set; } = new();
+
+    // 背包
+    public List<InventoryItemDto> Items { get; set; } = new();
+    public Dictionary<string, string> EquippedItems { get; set; } = new(); // slot -> itemId
+
+    // 消耗品装载
+    public List<ConsumableSlotDto> GeneralConsumableSlots { get; set; } = new();
+    public List<ConsumableSlotDto> CombatConsumableSlots { get; set; } = new();
+
+    // 声望系统
+    public Dictionary<string, int> Reputations { get; set; } = new();
+
+    // 任务系统
+    public List<string> ActiveQuestIds { get; set; } = new();
+    public List<string> CompletedQuestIds { get; set; } = new();
+    public Dictionary<string, int> QuestProgress { get; set; } = new();
+
+    // 技能系统
+    public Dictionary<string, LearnedSkillDto> LearnedSkills { get; set; } = new();
+    public Dictionary<string, List<string>> EquippedSkills { get; set; } = new();
+
+    // 活动系统
+    public List<ActivitySlotDto> ActivitySlots { get; set; } = new();
+
+    // 离线记录
+    public OfflineRecordDto? LastOfflineRecord { get; set; }
+}
+
+/// <summary>
+/// 职业等级DTO
+/// </summary>
+public class ProfessionLevelDto
+{
+    public int Level { get; set; } = 1;
+    public int Experience { get; set; } = 0;
+}
+
+/// <summary>
+/// 背包物品DTO
+/// </summary>
+public class InventoryItemDto
+{
+    public string ItemId { get; set; } = string.Empty;
+    public int Quantity { get; set; } = 1;
+}
+
+/// <summary>
+/// 消耗品槽位DTO
+/// </summary>
+public class ConsumableSlotDto
+{
+    public string SlotId { get; set; } = string.Empty;
+    public string? ItemId { get; set; }
+    public string UsePolicy { get; set; } = "OnStart";
+    public DateTime? LastUsedAt { get; set; }
+}
+
+/// <summary>
+/// 已学习技能DTO
+/// </summary>
+public class LearnedSkillDto
+{
+    // 基本信息
+    public string SkillId { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Icon { get; set; } = string.Empty;
+
+    // 等级信息
+    public int CurrentLevel { get; set; } = 1;
+    public int MaxLevel { get; set; } = 10;
+    public int ExperienceToNextLevel { get; set; } = 100;
+    public bool IsMaxLevel => CurrentLevel >= MaxLevel;
+
+    // 当前等级的实际数值
+    public SkillCostDto CurrentCost { get; set; } = new();
+    public SkillEffectsDto CurrentEffects { get; set; } = new();
+    public TimeSpan CurrentCooldown { get; set; } = TimeSpan.FromSeconds(5);
+    public double CurrentRange { get; set; } = 5.0;
+    public double CurrentCastTime { get; set; } = 1.0;
+
+    // 下一级预览（如果不是满级）
+    public SkillCostDto? NextLevelCost { get; set; }
+    public SkillEffectsDto? NextLevelEffects { get; set; }
+
+    // 使用统计
+    public int TimesUsed { get; set; } = 0;
+    public DateTime LearnedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? LastUsedAt { get; set; }
+    public long TotalDamageDealt { get; set; } = 0;
+    public long TotalHealingDone { get; set; } = 0;
+}
+
+
+/// <summary>
+/// 活动槽位DTO
+/// </summary>
+public class ActivitySlotDto
+{
+    public int SlotIndex { get; set; }  // 这里与引用参数中的 Index 不一致
+    public bool IsUnlocked { get; set; } = true;  // 缺失属性
+    public ActivityPlanDto? CurrentPlan { get; set; }
+    public List<ActivityPlanDto> Queue { get; set; } = new();  // 缺失属性
+    public int MaxQueueSize { get; set; } = 1;  // 缺失属性
+}
+
+/// <summary>
+/// 活动计划DTO
+/// </summary>
+public class ActivityPlanDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string ActivityId { get; set; } = string.Empty;
+    public string ActivityName { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty;
+
+    // 时间相关
+    public DateTime? StartTime { get; set; }  // 主要使用字段
+    public DateTime? StartedAt { get; set; }  // 向后兼容
+    public DateTime? EndTime { get; set; }    // 主要使用字段
+    public DateTime? CompletedAt { get; set; } // 向后兼容
+
+    // 状态和进度
+    public string State { get; set; } = "Pending";
+    public int? RepeatCount { get; set; }
+    public TimeSpan? Duration { get; set; }
+    public double Progress { get; set; } = 0.0;
+    public ProgressInfoDto? ProgressInfo { get; set; }
+
+    // 参数和限制
+    public Dictionary<string, object> Parameters { get; set; } = new();
+    public Dictionary<string, object> Payload { get; set; } = new(); // 向后兼容
+    public LimitSpecDto Limit { get; set; } = new();
+}
+
+/// <summary>
+/// 活动进度信息DTO
+/// </summary>
+public class ProgressInfoDto
+{
+    public double Current { get; set; } = 0;
+    public double Total { get; set; } = 100;
+    public double Percentage => Total > 0 ? (Current / Total * 100) : 0;
+    public string Status { get; set; } = string.Empty;
+    public DateTime? LastUpdateTime { get; set; }
+    public Dictionary<string, object> AdditionalData { get; set; } = new();
+}
+
+/// <summary>
+/// 限制规格DTO
+/// </summary>
+public class LimitSpecDto
+{
+    public string Type { get; set; } = "Time";
+    public double Value { get; set; } = 0;
+    public double Remaining { get; set; } = 0;
+}
+
+/// <summary>
+/// 离线记录DTO
+/// </summary>
+public class OfflineRecordDto
+{
+    public DateTime OfflineAt { get; set; }
+    public CharacterSnapshotDto? CharacterState { get; set; }
+    public List<ActivityPlanDto> ActivePlans { get; set; } = new();
+}
+
+/// <summary>
+/// 角色快照DTO
+/// </summary>
+public class CharacterSnapshotDto
+{
+    public string CharacterId { get; set; } = string.Empty;
+    public int Level { get; set; }
+    public int Experience { get; set; }
+    public int Gold { get; set; }
+    public string? CurrentRegionId { get; set; }
+    public int Health { get; set; }
+    public int MaxHealth { get; set; }
+    public int Mana { get; set; }
+    public int MaxMana { get; set; }
+    public int Strength { get; set; }
+    public int Agility { get; set; }
+    public int Intellect { get; set; }
+    public int Spirit { get; set; }
+    public int Stamina { get; set; }
+    public DateTime Timestamp { get; set; }
 }
 
 /// <summary>

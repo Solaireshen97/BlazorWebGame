@@ -7,7 +7,7 @@ using BattleStatus = BlazorWebGame.Shared.DTOs.BattleStatus;
 using BattleActionType = BlazorWebGame.Shared.DTOs.BattleActionType;
 using BlazorWebGame.Server.Services.Battle;
 using BlazorWebGame.Server.Services.Party;
-using BlazorWebGame.Server.Services.System;
+using BlazorWebGame.Server.Services.GameSystem;
 
 namespace BlazorWebGame.Server.Services.Core;
 

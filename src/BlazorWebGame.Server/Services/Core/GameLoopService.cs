@@ -1,6 +1,6 @@
 using BlazorWebGame.Server.Configuration;
 using BlazorWebGame.Server.Services.Profession;
-using BlazorWebGame.Server.Services.System;
+using BlazorWebGame.Server.Services.GameSystem;
 using BlazorWebGame.Shared.Events;
 using Microsoft.Extensions.Options;
 
