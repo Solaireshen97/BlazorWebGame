@@ -241,6 +241,7 @@ builder.Services.AddSingleton<ServerEquipmentService>();  // 添加装备服务
 builder.Services.AddSingleton<ServerEquipmentGenerator>(); // 新增装备生成器
 builder.Services.AddSingleton<GameEngineService>();
 builder.Services.AddSingleton<ServerCharacterService>();
+builder.Services.AddSingleton<ServerCharacterManagementService>(); // 新增角色管理服务
 builder.Services.AddSingleton<ServerEventService>();
 
 // 注册事件驱动的服务系统
