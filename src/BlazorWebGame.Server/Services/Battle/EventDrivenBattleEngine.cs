@@ -3,7 +3,7 @@ using BlazorWebGame.Shared.DTOs;
 using BlazorWebGame.Shared.Models;
 using BlazorWebGame.Server.Hubs;
 using Microsoft.AspNetCore.SignalR;
-using BlazorWebGame.Server.Services.System;
+using BlazorWebGame.Server.Services.GameSystem;
 using System.Runtime.InteropServices;
 
 namespace BlazorWebGame.Server.Services.Battle;

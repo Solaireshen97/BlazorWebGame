@@ -392,6 +392,90 @@ public class DataStorageService : IDataStorageService
 
     #endregion
 
+    #region 角色数据管理
+
+    public async Task<ApiResponse<CharacterStorageDto>> GetCharacterByIdAsync(string characterId)
+    {
+        try
+        {
+            if (_characters.TryGetValue(characterId, out var character))
+            {
+                // 使用已存在的映射器进行转换
+                var dto = BlazorWebGame.Shared.Mappers.CharacterMapper.ToDto(character);
+                return ApiResponse<CharacterStorageDto>.Success(dto, "获取角色成功");
+            }
+
+            _logger.LogWarning("Character not found: {SafeCharacterId}", SafeLogId(characterId));
+            return ApiResponse<CharacterStorageDto>.Failure("角色不存在");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get character by ID: {SafeCharacterId}", SafeLogId(characterId));
+            return ApiResponse<CharacterStorageDto>.Failure($"获取角色失败: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResponse<CharacterStorageDto>> SaveCharacterAsync(CharacterStorageDto character)
+    {
+        try
+        {
+            // 更新角色数据
+            if (_characters.TryGetValue(character.Id, out var domainCharacter))
+            {
+                // 存在角色，更新
+                // 使用现有的实体并且更新其状态
+                BlazorWebGame.Shared.Mappers.CharacterMapper.UpdateFromDto(domainCharacter, character);
+            }
+            else
+            {
+                // 新建角色
+                var newDomainCharacter = BlazorWebGame.Shared.Mappers.CharacterMapper.ToCharacter(character);
+                _characters[character.Id] = newDomainCharacter;
+            }
+
+            // 创建存储实体 - 如果需要可以在此处创建 CharacterEntity
+            // 这里我们主要使用领域模型，但在实际数据库存储服务中可能会用到这个实体
+            var entity = new CharacterEntity
+            {
+                Id = character.Id,
+                Name = character.Name,
+                // 其他基本属性设置...
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _logger.LogDebug("Character saved successfully with ID: {SafeCharacterId}", SafeLogId(character.Id));
+
+            return ApiResponse<CharacterStorageDto>.Success(character, "角色保存成功");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save character with ID: {SafeCharacterId}", SafeLogId(character.Id));
+            return ApiResponse<CharacterStorageDto>.Failure($"保存角色失败: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResponse<List<CharacterStorageDto>>> GetRecentActiveCharactersAsync(TimeSpan activeWithin)
+    {
+        try
+        {
+            var cutoffTime = DateTime.UtcNow - activeWithin;
+            var activeCharacters = _characters.Values
+                .Where(c => c.LastActiveAt >= cutoffTime)
+                .Select(BlazorWebGame.Shared.Mappers.CharacterMapper.ToDto)
+                .OrderByDescending(c => c.LastActiveAt)
+                .ToList();
+
+            return ApiResponse<List<CharacterStorageDto>>.Success(activeCharacters, $"获取到 {activeCharacters.Count} 个活跃角色");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get recent active characters");
+            return ApiResponse<List<CharacterStorageDto>>.Failure($"获取活跃角色失败: {ex.Message}");
+        }
+    }
+
+    #endregion
+
     #region 玩家数据管理
 
     public async Task<PlayerStorageDto?> GetPlayerAsync(string playerId)

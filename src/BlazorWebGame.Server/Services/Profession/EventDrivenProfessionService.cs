@@ -4,7 +4,7 @@ using BlazorWebGame.Server.Hubs;
 using Microsoft.AspNetCore.SignalR;
 using System.Collections.Concurrent;
 using BlazorWebGame.Server.Services.Inventory;
-using BlazorWebGame.Server.Services.System;
+using BlazorWebGame.Server.Services.GameSystem;
 
 namespace BlazorWebGame.Server.Services.Profession;
 

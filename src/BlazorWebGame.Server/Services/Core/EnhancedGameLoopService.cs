@@ -3,7 +3,7 @@ using BlazorWebGame.Server.Hubs;
 using Microsoft.AspNetCore.SignalR;
 using BlazorWebGame.Server.Services.Battle;
 using BlazorWebGame.Server.Services.Profession;
-using BlazorWebGame.Server.Services.System;
+using BlazorWebGame.Server.Services.GameSystem;
 
 namespace BlazorWebGame.Server.Services.Core;
 

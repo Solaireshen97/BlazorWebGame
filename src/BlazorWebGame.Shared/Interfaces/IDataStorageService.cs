@@ -103,6 +103,25 @@ public interface IDataStorageService
 
     #endregion
 
+    #region 角色数据管理
+
+    /// <summary>
+    /// 根据角色ID获取角色数据
+    /// </summary>
+    Task<ApiResponse<CharacterStorageDto>> GetCharacterByIdAsync(string characterId);
+
+    /// <summary>
+    /// 保存角色数据
+    /// </summary>
+    Task<ApiResponse<CharacterStorageDto>> SaveCharacterAsync(CharacterStorageDto character);
+
+    /// <summary>
+    /// 获取一段时间内活跃的角色列表
+    /// </summary>
+    Task<ApiResponse<List<CharacterStorageDto>>> GetRecentActiveCharactersAsync(TimeSpan activeWithin);
+
+    #endregion
+
     #region 玩家数据管理
 
     /// <summary>

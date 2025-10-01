@@ -2,7 +2,7 @@ using BlazorWebGame.Shared.Events;
 using BlazorWebGame.Server.Hubs;
 using Microsoft.AspNetCore.SignalR;
 
-namespace BlazorWebGame.Server.Services.System
+namespace BlazorWebGame.Server.Services.GameSystem
 {
     /// <summary>
     /// 服务端事件管理服务，负责事件的处理和SignalR广播

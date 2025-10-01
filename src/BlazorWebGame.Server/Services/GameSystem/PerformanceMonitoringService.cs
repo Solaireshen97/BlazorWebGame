@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 using BlazorWebGame.Server.Configuration;
 using Microsoft.Extensions.Options;
 
-namespace BlazorWebGame.Server.Services.System;
+namespace BlazorWebGame.Server.Services.GameSystem;
 
 /// <summary>
 /// 性能监控服务

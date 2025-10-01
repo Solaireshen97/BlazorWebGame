@@ -21,7 +21,7 @@ using BlazorWebGame.Server.Services.Inventory;
 using BlazorWebGame.Server.Services.Party;
 using BlazorWebGame.Server.Services.Profession;
 using BlazorWebGame.Server.Services.Activities;
-using BlazorWebGame.Server.Services.System;
+using BlazorWebGame.Server.Services.GameSystem;
 using BlazorWebGame.Server.Services.Quset;
 using BlazorWebGame.Server.Services.Data;
 using BlazorWebGame.Server.Services.Users;

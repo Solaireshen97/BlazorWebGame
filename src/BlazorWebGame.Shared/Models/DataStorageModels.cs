@@ -38,6 +38,58 @@ public class UserEntity : BaseEntity
 }
 
 /// <summary>
+/// 角色实体 - 用于游戏角色数据存储
+/// </summary>
+public class CharacterEntity : BaseEntity
+{
+    public string Name { get; set; } = string.Empty;
+    public int Level { get; set; } = 1;
+    public int Experience { get; set; } = 0;
+    public int Gold { get; set; } = 0;
+    public bool IsOnline { get; set; } = false;
+    public string? CurrentRegionId { get; set; }
+    public DateTime LastActiveAt { get; set; } = DateTime.UtcNow;
+    public Guid? PartyId { get; set; }
+
+    // 生命值和法力值
+    public int Health { get; set; } = 100;
+    public int MaxHealth { get; set; } = 100;
+    public int Mana { get; set; } = 100;
+    public int MaxMana { get; set; } = 100;
+    public bool IsDead { get; set; } = false;
+    public DateTime? DeathTime { get; set; }
+
+    // 基础属性
+    public int Strength { get; set; } = 10;
+    public int Agility { get; set; } = 10;
+    public int Intellect { get; set; } = 10;
+    public int Spirit { get; set; } = 10;
+    public int Stamina { get; set; } = 10;
+    public int AttributePoints { get; set; } = 0;
+
+    // 职业信息
+    public string ProfessionId { get; set; } = "Warrior";
+
+    // JSON序列化的复杂数据
+    public string BattleProfessionsJson { get; set; } = "{}";
+    public string GatheringProfessionsJson { get; set; } = "{}";
+    public string ProductionProfessionsJson { get; set; } = "{}";
+    public string ReputationsJson { get; set; } = "{}";
+    public string InventoryJson { get; set; } = "[]";
+    public string EquipmentJson { get; set; } = "{}";
+    public string LearnedSkillsJson { get; set; } = "{}"; // 替换 SkillsJson
+    public string EquippedSkillsJson { get; set; } = "{}"; // 新增
+    public string ActiveQuestsJson { get; set; } = "[]"; // 替换 QuestsJson
+    public string CompletedQuestsJson { get; set; } = "[]"; // 新增
+    public string QuestProgressJson { get; set; } = "{}"; // 新增
+    public string OfflineRecordJson { get; set; } = "{}";
+
+    public string GeneralConsumableSlotsJson { get; set; } = "[]"; // 新增
+    public string CombatConsumableSlotsJson { get; set; } = "[]"; // 新增
+    public string ActivitySlotsJson { get; set; } = "[]"; // 新增
+}
+
+/// <summary>
 /// 玩家实体 - 用于数据存储
 /// </summary>
 public class PlayerEntity : BaseEntity

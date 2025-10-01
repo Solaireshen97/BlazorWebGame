@@ -5,6 +5,7 @@ using BlazorIdleGame.Client.Services.Core;
 using BlazorWebGame.Shared.DTOs;
 using BlazorWebGame.Shared.DTOs.Activity;
 using Microsoft.Extensions.Logging;
+using ActivityPlanDto = BlazorWebGame.Shared.DTOs.Activity.ActivityPlanDto;
 
 namespace BlazorIdleGame.Client.Services.Activity
 {

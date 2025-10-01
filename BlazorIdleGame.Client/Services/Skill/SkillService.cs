@@ -6,6 +6,7 @@ using BlazorIdleGame.Client.Services.Core;
 using BlazorWebGame.Shared.DTOs;
 using BlazorWebGame.Shared.DTOs.Skill;
 using Microsoft.Extensions.Logging;
+using LearnedSkillDto = BlazorWebGame.Shared.DTOs.Skill.LearnedSkillDto;
 
 namespace BlazorIdleGame.Client.Services.Skill
 {

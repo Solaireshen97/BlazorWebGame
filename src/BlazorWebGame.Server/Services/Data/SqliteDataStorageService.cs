@@ -453,11 +453,23 @@ public class SqliteDataStorageService : IDataStorageService
             // 查询角色信息以获取职业和等级
             string professionName = "Warrior";
             int level = 1;
-            var player = await context.Players.FindAsync(characterId);
-            if (player != null)
+
+            // 首先尝试从Characters表获取信息
+            var character = await context.Characters.FindAsync(characterId);
+            if (character != null)
             {
-                professionName = player.SelectedBattleProfession;
-                level = player.Level;
+                professionName = character.ProfessionId;
+                level = character.Level;
+            }
+            // 如果没有找到，尝试从Players表获取（向后兼容）
+            else
+            {
+                var player = await context.Players.FindAsync(characterId);
+                if (player != null)
+                {
+                    professionName = player.SelectedBattleProfession;
+                    level = player.Level;
+                }
             }
 
             var userCharacter = new UserCharacterEntity
@@ -735,6 +747,268 @@ public class SqliteDataStorageService : IDataStorageService
             CreatedAt = entity.CreatedAt,
             UpdatedAt = entity.UpdatedAt
         };
+    }
+
+    #endregion
+
+    #region 角色数据管理
+
+    public async Task<ApiResponse<CharacterStorageDto>> GetCharacterByIdAsync(string characterId)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var entity = await context.Characters.FindAsync(characterId);
+
+            if (entity == null)
+            {
+                _logger.LogWarning("Character not found: {SafeCharacterId}", SafeLogId(characterId));
+                return ApiResponse<CharacterStorageDto>.Failure("角色不存在");
+            }
+
+            var dto = MapToCharacterDto(entity);
+            return ApiResponse<CharacterStorageDto>.Success(dto, "获取角色成功");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get character by ID: {SafeCharacterId}", SafeLogId(characterId));
+            return ApiResponse<CharacterStorageDto>.Failure($"获取角色失败: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResponse<CharacterStorageDto>> SaveCharacterAsync(CharacterStorageDto character)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var entity = MapToCharacterEntity(character);
+            entity.UpdatedAt = DateTime.UtcNow;
+
+            var existing = await context.Characters.FindAsync(character.Id);
+            if (existing != null)
+            {
+                // 更新现有角色
+                context.Entry(existing).CurrentValues.SetValues(entity);
+            }
+            else
+            {
+                // 添加新角色
+                await context.Characters.AddAsync(entity);
+            }
+
+            await context.SaveChangesAsync();
+
+            _logger.LogDebug("Character saved successfully with ID: {SafeCharacterId}", SafeLogId(character.Id));
+
+            return ApiResponse<CharacterStorageDto>.Success(character, "角色保存成功");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save character with ID: {SafeCharacterId}", SafeLogId(character.Id));
+            return ApiResponse<CharacterStorageDto>.Failure($"保存角色失败: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResponse<List<CharacterStorageDto>>> GetRecentActiveCharactersAsync(TimeSpan activeWithin)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var cutoffTime = DateTime.UtcNow - activeWithin;
+
+            var activeCharacters = await context.Characters
+                .Where(c => c.LastActiveAt >= cutoffTime)
+                .OrderByDescending(c => c.LastActiveAt)
+                .ToListAsync();
+
+            var dtos = activeCharacters.Select(c => MapToCharacterDto(c)).ToList();
+            return ApiResponse<List<CharacterStorageDto>>.Success(dtos, $"获取到 {dtos.Count} 个活跃角色");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get recent active characters");
+            return ApiResponse<List<CharacterStorageDto>>.Failure($"获取活跃角色失败: {ex.Message}");
+        }
+    }
+
+    // 映射方法：实体到DTO
+    private CharacterStorageDto MapToCharacterDto(CharacterEntity entity)
+    {
+        var dto = new CharacterStorageDto
+        {
+            Id = entity.Id,
+            Name = entity.Name,
+            Level = entity.Level,
+            Experience = entity.Experience,
+            Gold = entity.Gold,
+            IsOnline = entity.IsOnline,
+            CurrentRegionId = entity.CurrentRegionId,
+            CreatedAt = entity.CreatedAt,
+            UpdatedAt = entity.UpdatedAt,
+            LastActiveAt = entity.LastActiveAt,
+            PartyId = entity.PartyId,
+
+            // 生命值和法力值
+            Health = entity.Health,
+            MaxHealth = entity.MaxHealth,
+            Mana = entity.Mana,
+            MaxMana = entity.MaxMana,
+            IsDead = entity.IsDead,
+            DeathTime = entity.DeathTime,
+
+            // 基础属性
+            Strength = entity.Strength,
+            Agility = entity.Agility,
+            Intellect = entity.Intellect,
+            Spirit = entity.Spirit,
+            Stamina = entity.Stamina,
+            AttributePoints = entity.AttributePoints,
+
+            // 职业
+            ProfessionId = entity.ProfessionId
+        };
+
+        try
+        {
+            // 职业相关反序列化
+            dto.BattleProfessions = JsonSerializer.Deserialize<Dictionary<string, ProfessionLevelDto>>(entity.BattleProfessionsJson)
+                ?? new Dictionary<string, ProfessionLevelDto>();
+
+            dto.GatheringProfessions = JsonSerializer.Deserialize<Dictionary<string, ProfessionLevelDto>>(entity.GatheringProfessionsJson)
+                ?? new Dictionary<string, ProfessionLevelDto>();
+
+            dto.ProductionProfessions = JsonSerializer.Deserialize<Dictionary<string, ProfessionLevelDto>>(entity.ProductionProfessionsJson)
+                ?? new Dictionary<string, ProfessionLevelDto>();
+
+            // 声望系统反序列化
+            dto.Reputations = JsonSerializer.Deserialize<Dictionary<string, int>>(entity.ReputationsJson)
+                ?? new Dictionary<string, int>();
+
+            // 背包和装备反序列化
+            dto.Items = JsonSerializer.Deserialize<List<InventoryItemDto>>(entity.InventoryJson)
+                ?? new List<InventoryItemDto>();
+
+            dto.EquippedItems = JsonSerializer.Deserialize<Dictionary<string, string>>(entity.EquipmentJson)
+                ?? new Dictionary<string, string>();
+
+            // 消耗品装载反序列化
+            dto.GeneralConsumableSlots = JsonSerializer.Deserialize<List<ConsumableSlotDto>>(entity.GeneralConsumableSlotsJson)
+                ?? new List<ConsumableSlotDto>();
+
+            dto.CombatConsumableSlots = JsonSerializer.Deserialize<List<ConsumableSlotDto>>(entity.CombatConsumableSlotsJson)
+                ?? new List<ConsumableSlotDto>();
+
+            // 技能系统反序列化
+            dto.LearnedSkills = JsonSerializer.Deserialize<Dictionary<string, LearnedSkillDto>>(entity.LearnedSkillsJson)
+                ?? new Dictionary<string, LearnedSkillDto>();
+
+            dto.EquippedSkills = JsonSerializer.Deserialize<Dictionary<string, List<string>>>(entity.EquippedSkillsJson)
+                ?? new Dictionary<string, List<string>>();
+
+            // 任务系统反序列化
+            dto.ActiveQuestIds = JsonSerializer.Deserialize<List<string>>(entity.ActiveQuestsJson)
+                ?? new List<string>();
+
+            dto.CompletedQuestIds = JsonSerializer.Deserialize<List<string>>(entity.CompletedQuestsJson)
+                ?? new List<string>();
+
+            dto.QuestProgress = JsonSerializer.Deserialize<Dictionary<string, int>>(entity.QuestProgressJson)
+                ?? new Dictionary<string, int>();
+
+            // 活动系统反序列化
+            dto.ActivitySlots = JsonSerializer.Deserialize<List<ActivitySlotDto>>(entity.ActivitySlotsJson)
+                ?? new List<ActivitySlotDto>();
+
+            // 离线记录反序列化
+            dto.LastOfflineRecord = JsonSerializer.Deserialize<OfflineRecordDto>(entity.OfflineRecordJson);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deserializing character data for character {CharacterId}", entity.Id);
+            // 继续使用默认值
+        }
+
+        return dto;
+    }
+
+    // 映射方法：DTO到实体
+    private CharacterEntity MapToCharacterEntity(CharacterStorageDto dto)
+    {
+        var entity = new CharacterEntity
+        {
+            Id = dto.Id,
+            Name = dto.Name,
+            Level = dto.Level,
+            Experience = dto.Experience,
+            Gold = dto.Gold,
+            IsOnline = dto.IsOnline,
+            CurrentRegionId = dto.CurrentRegionId,
+            LastActiveAt = dto.LastActiveAt,
+            PartyId = dto.PartyId,
+
+            // 生命值和法力值
+            Health = dto.Health,
+            MaxHealth = dto.MaxHealth,
+            Mana = dto.Mana,
+            MaxMana = dto.MaxMana,
+            IsDead = dto.IsDead,
+            DeathTime = dto.DeathTime,
+
+            // 基础属性
+            Strength = dto.Strength,
+            Agility = dto.Agility,
+            Intellect = dto.Intellect,
+            Spirit = dto.Spirit,
+            Stamina = dto.Stamina,
+            AttributePoints = dto.AttributePoints,
+
+            // 职业
+            ProfessionId = dto.ProfessionId,
+
+            // 时间属性
+            CreatedAt = dto.CreatedAt,
+            UpdatedAt = dto.UpdatedAt
+        };
+
+        try
+        {
+            // 序列化职业相关数据
+            entity.BattleProfessionsJson = JsonSerializer.Serialize(dto.BattleProfessions ?? new Dictionary<string, ProfessionLevelDto>());
+            entity.GatheringProfessionsJson = JsonSerializer.Serialize(dto.GatheringProfessions ?? new Dictionary<string, ProfessionLevelDto>());
+            entity.ProductionProfessionsJson = JsonSerializer.Serialize(dto.ProductionProfessions ?? new Dictionary<string, ProfessionLevelDto>());
+
+            // 序列化声望系统
+            entity.ReputationsJson = JsonSerializer.Serialize(dto.Reputations ?? new Dictionary<string, int>());
+
+            // 序列化背包和装备
+            entity.InventoryJson = JsonSerializer.Serialize(dto.Items ?? new List<InventoryItemDto>());
+            entity.EquipmentJson = JsonSerializer.Serialize(dto.EquippedItems ?? new Dictionary<string, string>());
+
+            // 序列化消耗品装载
+            entity.GeneralConsumableSlotsJson = JsonSerializer.Serialize(dto.GeneralConsumableSlots ?? new List<ConsumableSlotDto>());
+            entity.CombatConsumableSlotsJson = JsonSerializer.Serialize(dto.CombatConsumableSlots ?? new List<ConsumableSlotDto>());
+
+            // 序列化技能系统
+            entity.LearnedSkillsJson = JsonSerializer.Serialize(dto.LearnedSkills ?? new Dictionary<string, LearnedSkillDto>());
+            entity.EquippedSkillsJson = JsonSerializer.Serialize(dto.EquippedSkills ?? new Dictionary<string, List<string>>());
+
+            // 序列化任务系统
+            entity.ActiveQuestsJson = JsonSerializer.Serialize(dto.ActiveQuestIds ?? new List<string>());
+            entity.CompletedQuestsJson = JsonSerializer.Serialize(dto.CompletedQuestIds ?? new List<string>());
+            entity.QuestProgressJson = JsonSerializer.Serialize(dto.QuestProgress ?? new Dictionary<string, int>());
+
+            // 序列化活动系统
+            entity.ActivitySlotsJson = JsonSerializer.Serialize(dto.ActivitySlots ?? new List<ActivitySlotDto>());
+
+            // 序列化离线记录
+            entity.OfflineRecordJson = JsonSerializer.Serialize(dto.LastOfflineRecord);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error serializing character data for character {CharacterId}", dto.Id);
+        }
+
+        return entity;
     }
 
     #endregion
