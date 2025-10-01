@@ -2,6 +2,7 @@
 @using BlazorIdleGame.Client.Models.Core
 @using BlazorIdleGame.Client.Services.Core
 @using BlazorIdleGame.Client.Services.Auth
+@using BlazorIdleGame.Client.Components.Character
 @inject IGameSyncService GameSync
 @inject IAuthService AuthService
 @inject NavigationManager NavigationManager
@@ -46,6 +47,11 @@
             </div>
 
             <div class="main-content">
+                <!-- 添加角色花名册面板 -->
+                <div class="character-section">
+                    <CharacterRosterPanel />
+                </div>
+                
                 <h4>游戏主界面</h4>
                 <p>活动系统开发中...</p>
             </div>
