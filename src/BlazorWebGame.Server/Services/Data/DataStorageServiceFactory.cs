@@ -183,7 +183,7 @@ public class DataStorageServiceFactory : IDataStorageServiceFactory
             var service = CreateDataStorageService(storageType);
             var healthCheck = await service.HealthCheckAsync();
             
-            healthInfo["Status"] = healthCheck.Success ? "Healthy" : "Unhealthy";
+            healthInfo["Status"] = healthCheck.IsSuccess ? "Healthy" : "Unhealthy";
             healthInfo["ServiceHealth"] = healthCheck.Data;
             healthInfo["Message"] = healthCheck.Message;
         }

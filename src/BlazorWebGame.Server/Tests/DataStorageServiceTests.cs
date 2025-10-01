@@ -68,7 +68,7 @@ public static class DataStorageServiceTests
         
         // 保存玩家
         var saveResult = await dataStorage.SavePlayerAsync(testPlayer);
-        if (!saveResult.Success)
+        if (!saveResult.IsSuccess)
         {
             throw new Exception($"Failed to save player: {saveResult.Message}");
         }
@@ -88,7 +88,7 @@ public static class DataStorageServiceTests
         
         // 获取在线玩家列表
         var onlinePlayersResult = await dataStorage.GetOnlinePlayersAsync();
-        if (!onlinePlayersResult.Success || onlinePlayersResult.Data?.Count == 0)
+        if (!onlinePlayersResult.IsSuccess || onlinePlayersResult.Data?.Count == 0)
         {
             throw new Exception("Failed to get online players list");
         }
@@ -113,7 +113,7 @@ public static class DataStorageServiceTests
         
         // 保存队伍
         var saveResult = await dataStorage.SaveTeamAsync(testTeam);
-        if (!saveResult.Success)
+        if (!saveResult.IsSuccess)
         {
             throw new Exception($"Failed to save team: {saveResult.Message}");
         }
@@ -154,7 +154,7 @@ public static class DataStorageServiceTests
         
         // 保存动作目标
         var saveResult = await dataStorage.SaveActionTargetAsync(testActionTarget);
-        if (!saveResult.Success)
+        if (!saveResult.IsSuccess)
         {
             throw new Exception($"Failed to save action target: {saveResult.Message}");
         }
@@ -168,7 +168,7 @@ public static class DataStorageServiceTests
         
         // 完成动作目标
         var completeResult = await dataStorage.CompleteActionTargetAsync(testActionTarget.Id);
-        if (!completeResult.Success)
+        if (!completeResult.IsSuccess)
         {
             throw new Exception($"Failed to complete action target: {completeResult.Message}");
         }
@@ -195,7 +195,7 @@ public static class DataStorageServiceTests
         
         // 保存战斗记录
         var saveResult = await dataStorage.SaveBattleRecordAsync(testBattleRecord);
-        if (!saveResult.Success)
+        if (!saveResult.IsSuccess)
         {
             throw new Exception($"Failed to save battle record: {saveResult.Message}");
         }
@@ -214,7 +214,7 @@ public static class DataStorageServiceTests
             ["xpGained"] = 100 
         };
         var endResult = await dataStorage.EndBattleRecordAsync(testBattleRecord.BattleId, "Victory", results);
-        if (!endResult.Success)
+        if (!endResult.IsSuccess)
         {
             throw new Exception($"Failed to end battle record: {endResult.Message}");
         }
@@ -228,7 +228,7 @@ public static class DataStorageServiceTests
         
         // 获取存储统计信息
         var statsResult = await dataStorage.GetStorageStatsAsync();
-        if (!statsResult.Success || statsResult.Data == null)
+        if (!statsResult.IsSuccess || statsResult.Data == null)
         {
             throw new Exception($"Failed to get storage stats: {statsResult.Message}");
         }
@@ -245,7 +245,7 @@ public static class DataStorageServiceTests
         
         // 健康检查
         var healthResult = await dataStorage.HealthCheckAsync();
-        if (!healthResult.Success || healthResult.Data == null)
+        if (!healthResult.IsSuccess || healthResult.Data == null)
         {
             throw new Exception($"Health check failed: {healthResult.Message}");
         }

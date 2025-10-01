@@ -60,7 +60,7 @@ public class OfflineSettlementService
             {
                 return new ApiResponse<OfflineSettlementResultDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "玩家不存在"
                 };
             }
@@ -73,7 +73,7 @@ public class OfflineSettlementService
             {
                 return new ApiResponse<OfflineSettlementResultDto>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Message = "离线时间不足，无需结算",
                     Data = new OfflineSettlementResultDto
                     {
@@ -101,7 +101,7 @@ public class OfflineSettlementService
 
             return new ApiResponse<OfflineSettlementResultDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Message = "离线结算成功",
                 Data = settlementResult
             };
@@ -111,7 +111,7 @@ public class OfflineSettlementService
             _logger.LogError(ex, "处理玩家 {PlayerId} 离线结算时发生错误", SafeLogId(playerId));
             return new ApiResponse<OfflineSettlementResultDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = $"离线结算失败: {ex.Message}"
             };
         }
@@ -134,7 +134,7 @@ public class OfflineSettlementService
             {
                 return new ApiResponse<List<OfflineSettlementResultDto>>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "队伍不存在"
                 };
             }
@@ -148,7 +148,7 @@ public class OfflineSettlementService
             {
                 return new ApiResponse<List<OfflineSettlementResultDto>>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "队伍没有有效成员"
                 };
             }
@@ -170,7 +170,7 @@ public class OfflineSettlementService
 
             return new ApiResponse<List<OfflineSettlementResultDto>>
             {
-                Success = true,
+                IsSuccess = true,
                 Message = "队伍离线结算成功",
                 Data = settlementResults
             };
@@ -180,7 +180,7 @@ public class OfflineSettlementService
             _logger.LogError(ex, "处理队伍 {TeamId} 离线结算时发生错误", SafeLogId(teamId));
             return new ApiResponse<List<OfflineSettlementResultDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = $"队伍离线结算失败: {ex.Message}"
             };
         }
@@ -257,7 +257,7 @@ public class OfflineSettlementService
                 foreach (var member in members)
                 {
                     var memberResult = await ProcessPlayerOfflineSettlementAsync(member.Id);
-                    if (memberResult.Success && memberResult.Data != null)
+                    if (memberResult.IsSuccess && memberResult.Data != null)
                     {
                         settlementResults.Add(memberResult.Data);
                     }
@@ -552,7 +552,7 @@ public class OfflineSettlementService
             try
             {
                 var settlementResult = await ProcessPlayerOfflineSettlementAsync(playerId);
-                if (settlementResult.Success && settlementResult.Data != null)
+                if (settlementResult.IsSuccess && settlementResult.Data != null)
                 {
                     result.SuccessfulItems.Add(settlementResult.Data);
                     result.SuccessCount++;

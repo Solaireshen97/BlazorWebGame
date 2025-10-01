@@ -28,7 +28,7 @@ public class InventoryController : ControllerBase
             var inventory = _inventoryService.GetCharacterInventory(characterId);
             return Ok(new ApiResponse<InventoryDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = inventory
             });
         }
@@ -37,7 +37,7 @@ public class InventoryController : ControllerBase
             _logger.LogError(ex, "Error getting inventory for character {CharacterId}", characterId);
             return StatusCode(500, new ApiResponse<InventoryDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "获取库存时发生错误"
             });
         }
@@ -59,7 +59,7 @@ public class InventoryController : ControllerBase
             _logger.LogError(ex, "Error adding item for character {CharacterId}", request.CharacterId);
             return StatusCode(500, new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "添加物品时发生错误"
             });
         }
@@ -81,7 +81,7 @@ public class InventoryController : ControllerBase
             _logger.LogError(ex, "Error using item for character {CharacterId}", request.CharacterId);
             return StatusCode(500, new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "使用物品时发生错误"
             });
         }
@@ -103,7 +103,7 @@ public class InventoryController : ControllerBase
             _logger.LogError(ex, "Error equipping item for character {CharacterId}", request.CharacterId);
             return StatusCode(500, new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "装备物品时发生错误"
             });
         }
@@ -125,7 +125,7 @@ public class InventoryController : ControllerBase
             _logger.LogError(ex, "Error selling item for character {CharacterId}", request.CharacterId);
             return StatusCode(500, new ApiResponse<int>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "出售物品时发生错误"
             });
         }
@@ -147,7 +147,7 @@ public class InventoryController : ControllerBase
             _logger.LogError(ex, "Error syncing inventory for character {CharacterId}", inventory.CharacterId);
             return StatusCode(500, new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "同步库存时发生错误"
             });
         }

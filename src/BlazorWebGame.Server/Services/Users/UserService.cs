@@ -94,10 +94,10 @@ public class UserService
         {
             // 验证输入
             var validationResult = ValidateRegistrationInput(username, password, email);
-            if (!validationResult.Success)
+            if (!validationResult.IsSuccess)
                 return new ApiResponse<User>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = validationResult.Message
                 };
 
@@ -108,12 +108,12 @@ public class UserService
             var userDto = user.ToDto();
             var result = await _dataStorage.CreateUserAsync(userDto, password);
 
-            if (result.Success)
+            if (result.IsSuccess)
             {
                 _logger.LogInformation("User registered successfully: {Username}", username);
                 return new ApiResponse<User>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = result.Data.ToUser(),
                     Message = "用户注册成功"
                 };
@@ -122,7 +122,7 @@ public class UserService
             {
                 return new ApiResponse<User>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = result.Message
                 };
             }
@@ -132,7 +132,7 @@ public class UserService
             _logger.LogError(ex, "Error registering user: {Username}", username);
             return new ApiResponse<User>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "用户注册失败，请稍后重试"
             };
         }
@@ -158,7 +158,7 @@ public class UserService
             user.RecordLogin(ipAddress);
             var dto = user.ToDto();
             var result = await _dataStorage.UpdateUserAsync(dto);
-            return result.Success;
+            return result.IsSuccess;
         }
         return false;
     }
@@ -233,7 +233,7 @@ public class UserService
         {
             return new ApiResponse<User>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "用户名不能为空"
             };
         }
@@ -242,7 +242,7 @@ public class UserService
         {
             return new ApiResponse<User>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "用户名长度必须在3-20个字符之间"
             };
         }
@@ -251,7 +251,7 @@ public class UserService
         {
             return new ApiResponse<User>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "用户名只能包含字母、数字和下划线"
             };
         }
@@ -261,7 +261,7 @@ public class UserService
         {
             return new ApiResponse<User>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "密码不能为空"
             };
         }
@@ -270,7 +270,7 @@ public class UserService
         {
             return new ApiResponse<User>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "密码长度至少6个字符"
             };
         }
@@ -282,13 +282,13 @@ public class UserService
             {
                 return new ApiResponse<User>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "邮箱格式不正确"
                 };
             }
         }
 
-        return new ApiResponse<User> { Success = true };
+        return new ApiResponse<User> { IsSuccess = true };
     }
 
     /// <summary>
@@ -304,7 +304,7 @@ public class UserService
             {
                 return new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "当前密码错误"
                 };
             }
@@ -314,14 +314,14 @@ public class UserService
             {
                 return new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "新密码长度至少6个字符"
                 };
             }
 
             // 更新密码
             var result = await _dataStorage.UpdateUserPasswordAsync(userId, newPassword);
-            if (result.Success)
+            if (result.IsSuccess)
             {
                 // 更新用户的安全信息
                 var user = await GetUserByIdAsync(userId);
@@ -342,7 +342,7 @@ public class UserService
             _logger.LogError(ex, "Error updating password for user: {UserId}", userId);
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "更新密码失败，请稍后重试"
             };
         }
@@ -360,7 +360,7 @@ public class UserService
 
             // 更新密码
             var result = await _dataStorage.UpdateUserPasswordAsync(userId, newPassword);
-            if (result.Success)
+            if (result.IsSuccess)
             {
                 // 更新用户的安全信息
                 var user = await GetUserByIdAsync(userId);
@@ -375,7 +375,7 @@ public class UserService
 
                 return new ApiResponse<string>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = newPassword,
                     Message = "密码重置成功"
                 };
@@ -384,7 +384,7 @@ public class UserService
             {
                 return new ApiResponse<string>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = result.Message
                 };
             }
@@ -394,7 +394,7 @@ public class UserService
             _logger.LogError(ex, "Error resetting password for user: {UserId}", userId);
             return new ApiResponse<string>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "重置密码失败，请稍后重试"
             };
         }
@@ -412,7 +412,7 @@ public class UserService
             {
                 return new ApiResponse<User>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "未找到用户"
                 };
             }
@@ -422,12 +422,12 @@ public class UserService
             var dto = user.ToDto();
             var result = await _dataStorage.UpdateUserAsync(dto);
 
-            if (result.Success)
+            if (result.IsSuccess)
             {
                 _logger.LogInformation("Profile updated for user: {UserId}", userId);
                 return new ApiResponse<User>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = result.Data.ToUser(),
                     Message = "个人资料更新成功"
                 };
@@ -436,7 +436,7 @@ public class UserService
             {
                 return new ApiResponse<User>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = result.Message
                 };
             }
@@ -446,7 +446,7 @@ public class UserService
             _logger.LogError(ex, "Error updating profile for user: {UserId}", userId);
             return new ApiResponse<User>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "更新个人资料失败，请稍后重试"
             };
         }
@@ -463,7 +463,7 @@ public class UserService
             {
                 return new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "角色名称不能为空"
                 };
             }
@@ -473,7 +473,7 @@ public class UserService
             {
                 return new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "未找到用户"
                 };
             }
@@ -483,12 +483,12 @@ public class UserService
             var dto = user.ToDto();
             var result = await _dataStorage.UpdateUserAsync(dto);
 
-            if (result.Success)
+            if (result.IsSuccess)
             {
                 _logger.LogInformation("Role {Role} added to user: {UserId}", role, userId);
                 return new ApiResponse<bool>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = true,
                     Message = $"已成功添加角色: {role}"
                 };
@@ -497,7 +497,7 @@ public class UserService
             {
                 return new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = result.Message
                 };
             }
@@ -507,7 +507,7 @@ public class UserService
             _logger.LogError(ex, "Error adding role {Role} to user: {UserId}", role, userId);
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "添加角色失败，请稍后重试"
             };
         }
@@ -525,7 +525,7 @@ public class UserService
             {
                 return new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "未找到用户"
                 };
             }
@@ -535,12 +535,12 @@ public class UserService
             var dto = user.ToDto();
             var result = await _dataStorage.UpdateUserAsync(dto);
 
-            if (result.Success)
+            if (result.IsSuccess)
             {
                 _logger.LogInformation("Role {Role} removed from user: {UserId}", role, userId);
                 return new ApiResponse<bool>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = true,
                     Message = $"已成功移除角色: {role}"
                 };
@@ -549,7 +549,7 @@ public class UserService
             {
                 return new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = result.Message
                 };
             }
@@ -559,7 +559,7 @@ public class UserService
             _logger.LogError(ex, "Error removing role {Role} from user: {UserId}", role, userId);
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "移除角色失败，请稍后重试"
             };
         }
@@ -577,7 +577,7 @@ public class UserService
             {
                 return new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "未找到用户"
                 };
             }
@@ -587,12 +587,12 @@ public class UserService
             var dto = user.ToDto();
             var result = await _dataStorage.UpdateUserAsync(dto);
 
-            if (result.Success)
+            if (result.IsSuccess)
             {
                 _logger.LogInformation("Email verified for user: {UserId}", userId);
                 return new ApiResponse<bool>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = true,
                     Message = "邮箱验证成功"
                 };
@@ -601,7 +601,7 @@ public class UserService
             {
                 return new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = result.Message
                 };
             }
@@ -611,7 +611,7 @@ public class UserService
             _logger.LogError(ex, "Error verifying email for user: {UserId}", userId);
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "邮箱验证失败，请稍后重试"
             };
         }
@@ -629,7 +629,7 @@ public class UserService
             {
                 return new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "未找到用户"
                 };
             }
@@ -639,12 +639,12 @@ public class UserService
             var dto = user.ToDto();
             var result = await _dataStorage.UpdateUserAsync(dto);
 
-            if (result.Success)
+            if (result.IsSuccess)
             {
                 _logger.LogInformation("Account activated for user: {UserId}", userId);
                 return new ApiResponse<bool>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = true,
                     Message = "账户已激活"
                 };
@@ -653,7 +653,7 @@ public class UserService
             {
                 return new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = result.Message
                 };
             }
@@ -663,7 +663,7 @@ public class UserService
             _logger.LogError(ex, "Error activating account for user: {UserId}", userId);
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "激活账户失败，请稍后重试"
             };
         }
@@ -681,7 +681,7 @@ public class UserService
             {
                 return new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "未找到用户"
                 };
             }
@@ -691,12 +691,12 @@ public class UserService
             var dto = user.ToDto();
             var result = await _dataStorage.UpdateUserAsync(dto);
 
-            if (result.Success)
+            if (result.IsSuccess)
             {
                 _logger.LogInformation("Account deactivated for user: {UserId}", userId);
                 return new ApiResponse<bool>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = true,
                     Message = "账户已停用"
                 };
@@ -705,7 +705,7 @@ public class UserService
             {
                 return new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = result.Message
                 };
             }
@@ -715,7 +715,7 @@ public class UserService
             _logger.LogError(ex, "Error deactivating account for user: {UserId}", userId);
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "停用账户失败，请稍后重试"
             };
         }
@@ -729,7 +729,7 @@ public class UserService
         try
         {
             var result = await _dataStorage.UnlockUserAccountAsync(userId);
-            if (result.Success)
+            if (result.IsSuccess)
             {
                 // 更新用户安全信息
                 var user = await GetUserByIdAsync(userId);
@@ -743,7 +743,7 @@ public class UserService
                 _logger.LogInformation("Account unlocked for user: {UserId}", userId);
                 return new ApiResponse<bool>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = true,
                     Message = "账户已解锁"
                 };
@@ -758,7 +758,7 @@ public class UserService
             _logger.LogError(ex, "Error unlocking account for user: {UserId}", userId);
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "解锁账户失败，请稍后重试"
             };
         }
@@ -773,7 +773,7 @@ public class UserService
         {
             // 创建用户角色关联
             var result = await _dataStorage.CreateUserCharacterAsync(userId, characterId, characterName);
-            if (result.Success)
+            if (result.IsSuccess)
             {
                 // 更新用户的角色列表
                 var user = await GetUserByIdAsync(userId);
@@ -787,7 +787,7 @@ public class UserService
                 _logger.LogInformation("Character {CharacterId} added to user: {UserId}", characterId, userId);
                 return new ApiResponse<bool>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = true,
                     Message = $"已成功添加角色: {characterName}"
                 };
@@ -796,7 +796,7 @@ public class UserService
             {
                 return new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = result.Message
                 };
             }
@@ -806,7 +806,7 @@ public class UserService
             _logger.LogError(ex, "Error adding character {CharacterId} to user: {UserId}", characterId, userId);
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "添加角色失败，请稍后重试"
             };
         }
@@ -821,7 +821,7 @@ public class UserService
         {
             // 删除用户角色关联
             var result = await _dataStorage.DeleteUserCharacterAsync(userId, characterId);
-            if (result.Success)
+            if (result.IsSuccess)
             {
                 // 更新用户的角色列表
                 var user = await GetUserByIdAsync(userId);
@@ -835,7 +835,7 @@ public class UserService
                 _logger.LogInformation("Character {CharacterId} removed from user: {UserId}", characterId, userId);
                 return new ApiResponse<bool>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = true,
                     Message = "已成功移除角色"
                 };
@@ -850,7 +850,7 @@ public class UserService
             _logger.LogError(ex, "Error removing character {CharacterId} from user: {UserId}", characterId, userId);
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "移除角色失败，请稍后重试"
             };
         }
@@ -868,14 +868,14 @@ public class UserService
             {
                 return new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "用户不拥有该角色"
                 };
             }
 
             // 设置默认角色
             var result = await _dataStorage.SetDefaultCharacterAsync(userId, characterId);
-            if (result.Success)
+            if (result.IsSuccess)
             {
                 _logger.LogInformation("Default character set to {CharacterId} for user: {UserId}", characterId, userId);
                 return result;
@@ -890,7 +890,7 @@ public class UserService
             _logger.LogError(ex, "Error setting default character {CharacterId} for user: {UserId}", characterId, userId);
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "设置默认角色失败，请稍后重试"
             };
         }
@@ -904,7 +904,7 @@ public class UserService
         try
         {
             var result = await _dataStorage.GetUserCharactersAsync(userId);
-            if (result.Success)
+            if (result.IsSuccess)
             {
                 var characters = new List<UserCharacterRelation>();
                 foreach (var dto in result.Data)
@@ -917,7 +917,7 @@ public class UserService
 
                 return new ApiResponse<List<UserCharacterRelation>>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = characters,
                     Message = "获取角色列表成功"
                 };
@@ -926,7 +926,7 @@ public class UserService
             {
                 return new ApiResponse<List<UserCharacterRelation>>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = result.Message
                 };
             }
@@ -936,7 +936,7 @@ public class UserService
             _logger.LogError(ex, "Error getting characters for user: {UserId}", userId);
             return new ApiResponse<List<UserCharacterRelation>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "获取角色列表失败，请稍后重试"
             };
         }

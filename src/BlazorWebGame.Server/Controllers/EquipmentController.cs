@@ -33,7 +33,7 @@ public class EquipmentController : ControllerBase
             {
                 return BadRequest(new ApiResponse<EquipmentDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "装备名称不能为空"
                 });
             }
@@ -42,7 +42,7 @@ public class EquipmentController : ControllerBase
             {
                 return BadRequest(new ApiResponse<EquipmentDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "装备等级必须大于0"
                 });
             }
@@ -51,7 +51,7 @@ public class EquipmentController : ControllerBase
 
             return Ok(new ApiResponse<EquipmentDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Message = "装备生成成功",
                 Data = equipment
             });
@@ -61,7 +61,7 @@ public class EquipmentController : ControllerBase
             _logger.LogError(ex, "生成装备失败: {RequestName}", request.Name);
             return StatusCode(500, new ApiResponse<EquipmentDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "服务器内部错误"
             });
         }
@@ -79,7 +79,7 @@ public class EquipmentController : ControllerBase
 
             return Ok(new ApiResponse<int>
             {
-                Success = true,
+                IsSuccess = true,
                 Message = "价值计算成功",
                 Data = value
             });
@@ -89,7 +89,7 @@ public class EquipmentController : ControllerBase
             _logger.LogError(ex, "计算装备价值失败: {EquipmentName}", equipment.Name);
             return StatusCode(500, new ApiResponse<int>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "服务器内部错误"
             });
         }
@@ -107,7 +107,7 @@ public class EquipmentController : ControllerBase
 
             return Ok(new ApiResponse<string>
             {
-                Success = true,
+                IsSuccess = true,
                 Message = "武器类型猜测成功",
                 Data = weaponType
             });
@@ -117,7 +117,7 @@ public class EquipmentController : ControllerBase
             _logger.LogError(ex, "猜测武器类型失败: {WeaponName}", name);
             return StatusCode(500, new ApiResponse<string>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "服务器内部错误"
             });
         }
@@ -135,7 +135,7 @@ public class EquipmentController : ControllerBase
 
             return Ok(new ApiResponse<string>
             {
-                Success = true,
+                IsSuccess = true,
                 Message = "护甲类型猜测成功",
                 Data = armorType
             });
@@ -145,7 +145,7 @@ public class EquipmentController : ControllerBase
             _logger.LogError(ex, "猜测护甲类型失败: {ArmorName}", name);
             return StatusCode(500, new ApiResponse<string>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "服务器内部错误"
             });
         }
@@ -165,7 +165,7 @@ public class EquipmentController : ControllerBase
             {
                 return BadRequest(new ApiResponse<List<EquipmentDto>>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "批量生成数量不能超过50个"
                 });
             }
@@ -188,7 +188,7 @@ public class EquipmentController : ControllerBase
 
             return Ok(new ApiResponse<List<EquipmentDto>>
             {
-                Success = true,
+                IsSuccess = true,
                 Message = $"批量生成完成，成功生成 {equipments.Count} 件装备",
                 Data = equipments
             });
@@ -198,7 +198,7 @@ public class EquipmentController : ControllerBase
             _logger.LogError(ex, "批量生成装备失败");
             return StatusCode(500, new ApiResponse<List<EquipmentDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "服务器内部错误"
             });
         }
@@ -259,7 +259,7 @@ public class EquipmentController : ControllerBase
 
             return Ok(new ApiResponse<List<EquipmentDto>>
             {
-                Success = true,
+                IsSuccess = true,
                 Message = "示例装备生成成功",
                 Data = examples
             });
@@ -269,7 +269,7 @@ public class EquipmentController : ControllerBase
             _logger.LogError(ex, "生成示例装备失败");
             return StatusCode(500, new ApiResponse<List<EquipmentDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "服务器内部错误"
             });
         }

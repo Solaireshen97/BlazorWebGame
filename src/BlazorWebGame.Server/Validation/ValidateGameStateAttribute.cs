@@ -40,7 +40,7 @@ public class ValidateGameStateAttribute : ActionFilterAttribute
                 var errorMessage = GetErrorMessage(_validationType);
                 context.Result = new BadRequestObjectResult(new ApiResponse<object>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = errorMessage,
                     Timestamp = DateTime.UtcNow
                 });

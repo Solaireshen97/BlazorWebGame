@@ -105,7 +105,7 @@ namespace BlazorIdleGame.Client.Services.Auth
                 var response = await _communicationService.PostAsync<LoginRequest, ApiResponse<AuthenticationResponse>>(
                     "api/auth/login", loginRequest);
 
-                if (response == null || !response.Success || response.Data == null)
+                if (response == null || !response.IsSuccess || response.Data == null)
                 {
                     return new LoginResult
                     {
@@ -174,7 +174,7 @@ namespace BlazorIdleGame.Client.Services.Auth
                 var response = await _communicationService.PostAsync<RegisterRequest, ApiResponse<AuthenticationResponse>>(
                     "api/auth/register", registerRequest);
 
-                if (response == null || !response.Success)
+                if (response == null || !response.IsSuccess)
                 {
                     return new RegisterResult
                     {

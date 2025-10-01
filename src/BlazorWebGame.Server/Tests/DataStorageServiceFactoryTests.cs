@@ -133,10 +133,10 @@ public class DataStorageServiceFactoryTests : IDisposable
         
         // 测试服务功能
         var healthCheck = await service.HealthCheckAsync();
-        Console.WriteLine($"健康检查结果: {healthCheck.Success}");
+        Console.WriteLine($"健康检查结果: {healthCheck.IsSuccess}");
         Console.WriteLine($"存储类型: {healthCheck.Data?.GetValueOrDefault("StorageType", "Unknown")}");
         
-        if (!healthCheck.Success)
+        if (!healthCheck.IsSuccess)
         {
             throw new Exception($"内存数据存储服务健康检查失败: {healthCheck.Message}");
         }
@@ -162,11 +162,11 @@ public class DataStorageServiceFactoryTests : IDisposable
         
         // 测试服务功能
         var healthCheck = await service.HealthCheckAsync();
-        Console.WriteLine($"健康检查结果: {healthCheck.Success}");
+        Console.WriteLine($"健康检查结果: {healthCheck.IsSuccess}");
         Console.WriteLine($"存储类型: {healthCheck.Data?.GetValueOrDefault("StorageType", "Unknown")}");
         Console.WriteLine($"数据库连接: {healthCheck.Data?.GetValueOrDefault("DatabaseConnection", "Unknown")}");
         
-        if (!healthCheck.Success)
+        if (!healthCheck.IsSuccess)
         {
             throw new Exception($"SQLite数据存储服务健康检查失败: {healthCheck.Message}");
         }

@@ -37,7 +37,7 @@ public class DataStorageIntegrationService
             var playerDto = ConvertPlayerToStorageDto(player);
             var result = await _dataStorageService.SavePlayerAsync(playerDto);
             
-            if (result.Success)
+            if (result.IsSuccess)
             {
                 _logger.LogDebug("Player synced to storage successfully");
                 return true;
@@ -88,7 +88,7 @@ public class DataStorageIntegrationService
             var teamDto = ConvertPartyToTeamDto(party);
             var result = await _dataStorageService.SaveTeamAsync(teamDto);
             
-            if (result.Success)
+            if (result.IsSuccess)
             {
                 _logger.LogDebug("Party synced to storage successfully");
                 return true;
@@ -157,7 +157,7 @@ public class DataStorageIntegrationService
             };
 
             var result = await _dataStorageService.SaveBattleRecordAsync(battleRecord);
-            if (result.Success)
+            if (result.IsSuccess)
             {
                 _logger.LogInformation("Battle record created for battle ID: {BattleId}", battleId);
                 return battleRecord.Id;
@@ -186,7 +186,7 @@ public class DataStorageIntegrationService
             var battleResults = results ?? new Dictionary<string, object>();
             var result = await _dataStorageService.EndBattleRecordAsync(battleId, status, battleResults);
             
-            if (result.Success)
+            if (result.IsSuccess)
             {
                 _logger.LogInformation("Battle record ended for battle ID: {BattleId} with status: {Status}", battleId, status);
                 return true;
@@ -235,7 +235,7 @@ public class DataStorageIntegrationService
             };
 
             var result = await _dataStorageService.SaveActionTargetAsync(actionTarget);
-            if (result.Success)
+            if (result.IsSuccess)
             {
                 _logger.LogDebug("Action target set for player: {ActionType} -> {TargetName}", actionType, targetName);
                 return true;
@@ -259,7 +259,7 @@ public class DataStorageIntegrationService
         try
         {
             var result = await _dataStorageService.CancelActionTargetAsync(playerId);
-            if (result.Success)
+            if (result.IsSuccess)
             {
                 _logger.LogDebug("Action target cleared for player");
                 return true;
@@ -390,7 +390,7 @@ public class DataStorageIntegrationService
         try
         {
             var result = await _dataStorageService.GetStorageStatsAsync();
-            return result.Success ? result.Data : null;
+            return result.IsSuccess ? result.Data : null;
         }
         catch (Exception ex)
         {

@@ -81,7 +81,7 @@ public static class OfflineSettlementServiceTests
         };
 
         var result = await dataStorageService.SavePlayerAsync(testPlayer);
-        if (!result.Success)
+        if (!result.IsSuccess)
         {
             throw new Exception($"创建测试玩家失败: {result.Message}");
         }
@@ -98,7 +98,7 @@ public static class OfflineSettlementServiceTests
 
         var result = await service.ProcessPlayerOfflineSettlementAsync("test-player-001");
         
-        if (!result.Success)
+        if (!result.IsSuccess)
         {
             throw new Exception($"玩家离线结算失败: {result.Message}");
         }
@@ -170,7 +170,7 @@ public static class OfflineSettlementServiceTests
         // 执行队伍离线结算
         var result = await service.ProcessTeamOfflineSettlementAsync("test-team-001");
         
-        if (!result.Success)
+        if (!result.IsSuccess)
         {
             throw new Exception($"队伍离线结算失败: {result.Message}");
         }

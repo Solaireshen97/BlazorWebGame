@@ -41,7 +41,7 @@ namespace BlazorIdleGame.Client.Services.Character
                 var response = await _communication.GetAsync<ApiResponse<RosterDto>>(
                     "api/character/roster");
 
-                if (response?.Success == true && response.Data != null)
+                if (response?.IsSuccess == true && response.Data != null)
                 {
                     _currentRoster = response.Data;
                     RosterUpdated?.Invoke(this, response.Data);
@@ -71,7 +71,7 @@ namespace BlazorIdleGame.Client.Services.Character
                 var response = await _communication.PostAsync<object, ApiResponse<CharacterSlotDto>>(
                     $"api/character/roster/unlock/{slotIndex}", new { });
 
-                if (response?.Success == true && response.Data != null)
+                if (response?.IsSuccess == true && response.Data != null)
                 {
                     _logger.LogInformation("成功解锁槽位 {SlotIndex}", slotIndex);
                     SlotUnlocked?.Invoke(this, response.Data);
@@ -106,7 +106,7 @@ namespace BlazorIdleGame.Client.Services.Character
                 var response = await _communication.PostAsync<CreateCharacterRequestDto, ApiResponse<CharacterFullDto>>(
                     "api/character/create", request);
 
-                if (response?.Success == true && response.Data != null)
+                if (response?.IsSuccess == true && response.Data != null)
                 {
                     _logger.LogInformation("成功创建角色: {Name}", request.Name);
 
@@ -143,7 +143,7 @@ namespace BlazorIdleGame.Client.Services.Character
                 var response = await _communication.PostAsync<ValidateCharacterNameRequest, ApiResponse<ValidateCharacterNameResult>>(
                     "api/character/validate-name", request);
 
-                if (response?.Success == true && response.Data != null)
+                if (response?.IsSuccess == true && response.Data != null)
                 {
                     return response.Data;
                 }
@@ -172,7 +172,7 @@ namespace BlazorIdleGame.Client.Services.Character
                 var response = await _communication.PostAsync<object, ApiResponse<bool>>(
                     $"api/character/{characterId}/delete", new { });
 
-                if (response?.Success == true)
+                if (response?.IsSuccess == true)
                 {
                     _logger.LogInformation("成功删除角色: {CharacterId}", characterId);
 
@@ -208,7 +208,7 @@ namespace BlazorIdleGame.Client.Services.Character
                 var response = await _communication.PostAsync<SwitchCharacterRequest, ApiResponse<CharacterFullDto>>(
                     "api/character/switch", request);
 
-                if (response?.Success == true && response.Data != null)
+                if (response?.IsSuccess == true && response.Data != null)
                 {
                     _logger.LogInformation("成功切换角色: {CharacterId}", characterId);
 
@@ -261,7 +261,7 @@ namespace BlazorIdleGame.Client.Services.Character
                 var response = await _communication.GetAsync<ApiResponse<CharacterFullDto>>(
                     $"api/character/{characterId}/details");
 
-                if (response?.Success == true && response.Data != null)
+                if (response?.IsSuccess == true && response.Data != null)
                 {
                     // 更新缓存
                     _characterCache[characterId] = response.Data;
@@ -307,7 +307,7 @@ namespace BlazorIdleGame.Client.Services.Character
                 var response = await _communication.PostAsync<AllocateAttributePointsRequest, ApiResponse<CharacterAttributesDto>>(
                     $"api/character/{_activeCharacter.Id}/attributes/allocate", request);
 
-                if (response?.Success == true && response.Data != null)
+                if (response?.IsSuccess == true && response.Data != null)
                 {
                     _logger.LogInformation("成功分配属性点");
 
@@ -337,7 +337,7 @@ namespace BlazorIdleGame.Client.Services.Character
                 var response = await _communication.PostAsync<object, ApiResponse<CharacterAttributesDto>>(
                     $"api/character/{_activeCharacter.Id}/attributes/reset", new { });
 
-                if (response?.Success == true && response.Data != null)
+                if (response?.IsSuccess == true && response.Data != null)
                 {
                     _logger.LogInformation("成功重置属性点");
 
@@ -363,7 +363,7 @@ namespace BlazorIdleGame.Client.Services.Character
                 var response = await _communication.GetAsync<ApiResponse<OfflineProgressDto>>(
                     $"api/character/{characterId}/offline-progress");
 
-                if (response?.Success == true && response.Data != null)
+                if (response?.IsSuccess == true && response.Data != null)
                 {
                     return response.Data;
                 }

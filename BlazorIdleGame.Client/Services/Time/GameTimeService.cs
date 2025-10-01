@@ -80,7 +80,7 @@ namespace BlazorIdleGame.Client.Services.Time
             {
                 var response = await _communication.GetAsync<ApiResponse<GameTimeSnapshot>>("api/game/time");
 
-                if (response?.Success == true && response.Data != null)
+                if (response?.IsSuccess == true && response.Data != null)
                 {
                     lock (_timeLock)
                     {
@@ -112,7 +112,7 @@ namespace BlazorIdleGame.Client.Services.Time
                 var response = await _communication.PostAsync<TimeJumpRequest, ApiResponse<TimeJumpResult>>(
                     "api/game/time/jump", request);
 
-                if (response?.Success == true && response.Data != null)
+                if (response?.IsSuccess == true && response.Data != null)
                 {
                     // 立即重新同步时间
                     await SyncTimeAsync();

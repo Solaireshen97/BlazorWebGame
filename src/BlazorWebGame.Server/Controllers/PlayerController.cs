@@ -341,14 +341,14 @@ namespace BlazorWebGame.Server.Controllers
                 {
                     return NotFound(new ApiResponse<CharacterStateDto>
                     {
-                        Success = false,
+                        IsSuccess = false,
                         Message = "Character not found or no state available"
                     });
                 }
 
                 return Ok(new ApiResponse<CharacterStateDto>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = characterState,
                     Message = "Character state retrieved successfully"
                 });
@@ -358,7 +358,7 @@ namespace BlazorWebGame.Server.Controllers
                 _logger.LogError(ex, "Error getting character state for {CharacterId}", characterId);
                 return StatusCode(500, new ApiResponse<CharacterStateDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "Internal server error"
                 });
             }
@@ -377,7 +377,7 @@ namespace BlazorWebGame.Server.Controllers
                 {
                     return BadRequest(new ApiResponse<CharacterStatesResponse>
                     {
-                        Success = false,
+                        IsSuccess = false,
                         Message = "Character IDs are required"
                     });
                 }
@@ -386,7 +386,7 @@ namespace BlazorWebGame.Server.Controllers
 
                 return Ok(new ApiResponse<CharacterStatesResponse>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = response,
                     Message = $"Retrieved {response.Characters.Count} character states"
                 });
@@ -396,7 +396,7 @@ namespace BlazorWebGame.Server.Controllers
                 _logger.LogError(ex, "Error getting character states for batch request");
                 return StatusCode(500, new ApiResponse<CharacterStatesResponse>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "Internal server error"
                 });
             }
@@ -414,7 +414,7 @@ namespace BlazorWebGame.Server.Controllers
 
                 return Ok(new ApiResponse<List<CharacterStateDto>>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = activeStates,
                     Message = $"Retrieved {activeStates.Count} active character states"
                 });
@@ -424,7 +424,7 @@ namespace BlazorWebGame.Server.Controllers
                 _logger.LogError(ex, "Error getting all active character states");
                 return StatusCode(500, new ApiResponse<List<CharacterStateDto>>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "Internal server error"
                 });
             }
@@ -442,7 +442,7 @@ namespace BlazorWebGame.Server.Controllers
 
                 return Ok(new ApiResponse<BlazorWebGame.Shared.DTOs.CharacterStateServiceStats>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = new BlazorWebGame.Shared.DTOs.CharacterStateServiceStats
                     {
                         TotalStateQueries = stats.TotalStateQueries,
@@ -458,7 +458,7 @@ namespace BlazorWebGame.Server.Controllers
                 _logger.LogError(ex, "Error getting character state service stats");
                 return StatusCode(500, new ApiResponse<BlazorWebGame.Shared.DTOs.CharacterStateServiceStats>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "Internal server error"
                 });
             }
@@ -476,7 +476,7 @@ namespace BlazorWebGame.Server.Controllers
                 
                 return Ok(new ApiResponse<bool>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = isOnline,
                     Message = $"Character online status updated to {(isOnline ? "online" : "offline")}"
                 });
@@ -486,7 +486,7 @@ namespace BlazorWebGame.Server.Controllers
                 _logger.LogError(ex, "Error updating online status for character {CharacterId}", characterId);
                 return StatusCode(500, new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "Internal server error"
                 });
             }

@@ -53,7 +53,7 @@ public static class UserServiceTests
         
         // 测试成功注册
         var registrationResult = await userService.RegisterUserAsync("testuser", "password123", "test@example.com");
-        if (!registrationResult.Success)
+        if (!registrationResult.IsSuccess)
         {
             throw new Exception($"User registration failed: {registrationResult.Message}");
         }
@@ -66,7 +66,7 @@ public static class UserServiceTests
         
         // 测试重复用户名注册
         var duplicateResult = await userService.RegisterUserAsync("testuser", "password123", "test2@example.com");
-        if (duplicateResult.Success)
+        if (duplicateResult.IsSuccess)
         {
             throw new Exception("Duplicate username registration should have failed");
         }

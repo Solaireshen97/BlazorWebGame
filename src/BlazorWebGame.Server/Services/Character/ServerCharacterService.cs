@@ -106,12 +106,12 @@ namespace BlazorWebGame.Server.Services.Character
                 {
                     // 检查用户是否已有默认角色
                     var userCharacters = await _dataStorage.GetUserCharactersAsync(userId);
-                    var isFirstCharacter = !userCharacters.Success || userCharacters.Data?.Count == 0;
+                    var isFirstCharacter = !userCharacters.IsSuccess || userCharacters.Data?.Count == 0;
                     
                     var relationResult = await _dataStorage.CreateUserCharacterAsync(
                         userId, characterId, request.Name, isFirstCharacter);
                     
-                    if (relationResult.Success)
+                    if (relationResult.IsSuccess)
                     {
                         _logger.LogInformation($"Created user-character relationship: User {userId} -> Character {characterId} ({request.Name})");
                     }
@@ -156,7 +156,7 @@ namespace BlazorWebGame.Server.Services.Character
             try
             {
                 var userCharactersResult = await _dataStorage.GetUserCharactersAsync(userId);
-                if (!userCharactersResult.Success || userCharactersResult.Data == null)
+                if (!userCharactersResult.IsSuccess || userCharactersResult.Data == null)
                 {
                     return new List<CharacterDto>();
                 }

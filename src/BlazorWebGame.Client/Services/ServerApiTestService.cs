@@ -148,7 +148,7 @@ public class ServerApiTestService
             {
                 var content = await response.Content.ReadAsStringAsync();
                 var apiResponse = JsonSerializer.Deserialize<ApiResponse<List<CharacterDto>>>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                if (apiResponse?.Success == true)
+                if (apiResponse?.IsSuccess == true)
                 {
                     return $"✅ 角色列表获取成功: 找到 {apiResponse.Data?.Count ?? 0} 个角色";
                 }
@@ -173,7 +173,7 @@ public class ServerApiTestService
             {
                 var content = await response.Content.ReadAsStringAsync();
                 var apiResponse = JsonSerializer.Deserialize<ApiResponse<CharacterDto>>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                if (apiResponse?.Success == true)
+                if (apiResponse?.IsSuccess == true)
                 {
                     return $"✅ 角色创建成功: {apiResponse.Data?.Name} (ID: {apiResponse.Data?.Id})";
                 }
@@ -204,7 +204,7 @@ public class ServerApiTestService
             {
                 var content = await response.Content.ReadAsStringAsync();
                 var apiResponse = JsonSerializer.Deserialize<ApiResponse<BattleStateDto>>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                if (apiResponse?.Success == true)
+                if (apiResponse?.IsSuccess == true)
                 {
                     return $"✅ 战斗开始成功: 战斗ID {apiResponse.Data?.BattleId}";
                 }
@@ -228,7 +228,7 @@ public class ServerApiTestService
             {
                 var content = await response.Content.ReadAsStringAsync();
                 var apiResponse = JsonSerializer.Deserialize<ApiResponse<BattleStateDto>>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                if (apiResponse?.Success == true)
+                if (apiResponse?.IsSuccess == true)
                 {
                     var battle = apiResponse.Data;
                     return $"✅ 战斗状态获取成功: {(battle?.IsActive == true ? "进行中" : "已结束")} - 玩家血量: {battle?.PlayerHealth}/{battle?.PlayerMaxHealth}";
@@ -256,7 +256,7 @@ public class ServerApiTestService
             {
                 var content = await response.Content.ReadAsStringAsync();
                 var apiResponse = JsonSerializer.Deserialize<ApiResponse<PartyDto>>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                if (apiResponse?.Success == true)
+                if (apiResponse?.IsSuccess == true)
                 {
                     return $"✅ 组队创建成功: 队伍ID {apiResponse.Data?.Id}";
                 }
@@ -290,7 +290,7 @@ public class ServerApiTestService
             {
                 var content = await response.Content.ReadAsStringAsync();
                 var apiResponse = JsonSerializer.Deserialize<ApiResponse<EquipmentDto>>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                if (apiResponse?.Success == true)
+                if (apiResponse?.IsSuccess == true)
                 {
                     return $"✅ 装备生成成功: {apiResponse.Data?.Name} (伤害: {apiResponse.Data?.WeaponDamage})";
                 }
@@ -316,7 +316,7 @@ public class ServerApiTestService
             {
                 var content = await response.Content.ReadAsStringAsync();
                 var apiResponse = JsonSerializer.Deserialize<ApiResponse<InventoryDto>>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                if (apiResponse?.Success == true)
+                if (apiResponse?.IsSuccess == true)
                 {
                     var inventory = apiResponse.Data;
                     var itemCount = inventory?.Slots?.Where(s => !s.IsEmpty).Count() ?? 0;
@@ -344,7 +344,7 @@ public class ServerApiTestService
             {
                 var content = await response.Content.ReadAsStringAsync();
                 var apiResponse = JsonSerializer.Deserialize<ApiResponse<List<GatheringNodeDto>>>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                if (apiResponse?.Success == true)
+                if (apiResponse?.IsSuccess == true)
                 {
                     return $"✅ 采集节点获取成功: 找到 {apiResponse.Data?.Count ?? 0} 个节点";
                 }
@@ -370,7 +370,7 @@ public class ServerApiTestService
             {
                 var content = await response.Content.ReadAsStringAsync();
                 var apiResponse = JsonSerializer.Deserialize<ApiResponse<CharacterQuestStatusDto>>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                if (apiResponse?.Success == true)
+                if (apiResponse?.IsSuccess == true)
                 {
                     var quests = apiResponse.Data;
                     return $"✅ 任务状态获取成功: 活跃任务 {quests?.ActiveQuests?.Count ?? 0} 个, 可接受任务 {quests?.AvailableQuests?.Count ?? 0} 个";

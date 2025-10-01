@@ -63,7 +63,7 @@ public class ServerInventoryService
                     if (quantity <= 0)
                     {
                         OnInventoryChanged?.Invoke(characterId);
-                        return new ApiResponse<bool> { Success = true, Data = true };
+                        return new ApiResponse<bool> { IsSuccess = true, Data = true };
                     }
                 }
             }
@@ -76,7 +76,7 @@ public class ServerInventoryService
                 {
                     return new ApiResponse<bool>
                     {
-                        Success = false,
+                        IsSuccess = false,
                         Message = "库存已满"
                     };
                 }
@@ -92,14 +92,14 @@ public class ServerInventoryService
             OnInventoryChanged?.Invoke(characterId);
             _logger.LogInformation("Added {Quantity} of {ItemId} to character {CharacterId}", quantity, itemId, characterId);
             
-            return new ApiResponse<bool> { Success = true, Data = true };
+            return new ApiResponse<bool> { IsSuccess = true, Data = true };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error adding item {ItemId} to character {CharacterId}", itemId, characterId);
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "添加物品时发生错误"
             };
         }
@@ -116,7 +116,7 @@ public class ServerInventoryService
             {
                 return new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "参数无效"
                 };
             }
@@ -133,7 +133,7 @@ public class ServerInventoryService
             {
                 return new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "库存中物品数量不足"
                 };
             }
@@ -162,7 +162,7 @@ public class ServerInventoryService
 
             return new ApiResponse<bool>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = true,
                 Message = $"成功移除 {quantity - remainingToRemove} 个物品"
             };
@@ -172,7 +172,7 @@ public class ServerInventoryService
             _logger.LogError(ex, "Error removing item {ItemId} from character {CharacterId}", itemId, characterId);
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "移除物品时发生错误"
             };
         }
@@ -202,7 +202,7 @@ public class ServerInventoryService
             {
                 return new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "没有找到指定物品"
                 };
             }
@@ -219,14 +219,14 @@ public class ServerInventoryService
             OnInventoryChanged?.Invoke(characterId);
             _logger.LogInformation("Character {CharacterId} used item {ItemId}", characterId, itemId);
             
-            return new ApiResponse<bool> { Success = true, Data = true };
+            return new ApiResponse<bool> { IsSuccess = true, Data = true };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error using item {ItemId} for character {CharacterId}", itemId, characterId);
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "使用物品时发生错误"
             };
         }
@@ -250,7 +250,7 @@ public class ServerInventoryService
             {
                 return new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "库存中没有此物品"
                 };
             }
@@ -284,14 +284,14 @@ public class ServerInventoryService
             OnInventoryChanged?.Invoke(characterId);
             _logger.LogInformation("Character {CharacterId} equipped {ItemId} to {Slot}", characterId, itemId, equipmentSlot);
             
-            return new ApiResponse<bool> { Success = true, Data = true };
+            return new ApiResponse<bool> { IsSuccess = true, Data = true };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error equipping item {ItemId} for character {CharacterId}", itemId, characterId);
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "装备物品时发生错误"
             };
         }
@@ -338,8 +338,8 @@ public class ServerInventoryService
             }
 
             return new ApiResponse<int> 
-            { 
-                Success = totalSold > 0, 
+            {
+                IsSuccess = totalSold > 0, 
                 Data = totalValue,
                 Message = totalSold > 0 ? $"出售了 {totalSold} 个物品，获得 {totalValue} 金币" : "没有足够的物品出售"
             };
@@ -349,7 +349,7 @@ public class ServerInventoryService
             _logger.LogError(ex, "Error selling item {ItemId} for character {CharacterId}", itemId, characterId);
             return new ApiResponse<int>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "出售物品时发生错误"
             };
         }
@@ -401,14 +401,14 @@ public class ServerInventoryService
             OnInventoryChanged?.Invoke(characterId);
             
             _logger.LogInformation("Synced inventory for character {CharacterId}", characterId);
-            return new ApiResponse<bool> { Success = true, Data = true };
+            return new ApiResponse<bool> { IsSuccess = true, Data = true };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error syncing inventory for character {CharacterId}", characterId);
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "同步库存时发生错误"
             };
         }

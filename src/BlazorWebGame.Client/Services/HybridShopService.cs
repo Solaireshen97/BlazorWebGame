@@ -57,7 +57,7 @@ public class HybridShopService
         
         return new BlazorWebGame.Shared.DTOs.ApiResponse<bool>
         {
-            Success = false,
+            IsSuccess = false,
             Message = "商店功能待服务器API完善",
             Data = false
         };

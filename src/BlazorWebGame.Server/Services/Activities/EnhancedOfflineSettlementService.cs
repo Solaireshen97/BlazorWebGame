@@ -63,7 +63,7 @@ public class EnhancedOfflineSettlementService
             {
                 return new ApiResponse<EnhancedOfflineSettlementResultDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "玩家不存在"
                 };
             }
@@ -78,7 +78,7 @@ public class EnhancedOfflineSettlementService
             {
                 return new ApiResponse<EnhancedOfflineSettlementResultDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = securityCheck.ErrorMessage
                 };
             }
@@ -111,7 +111,7 @@ public class EnhancedOfflineSettlementService
             _logger.LogError(ex, "增强离线结算失败：玩家 {PlayerId}", SafeLogId(playerId));
             return new ApiResponse<EnhancedOfflineSettlementResultDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = $"离线结算失败: {ex.Message}"
             };
         }
@@ -152,7 +152,7 @@ public class EnhancedOfflineSettlementService
                                 options.UseEventDriven, 
                                 options.EnableTimeDecay);
 
-                            if (playerResult.Success && playerResult.Data != null)
+                            if (playerResult.IsSuccess && playerResult.Data != null)
                             {
                                 lock (result)
                                 {
@@ -217,7 +217,7 @@ public class EnhancedOfflineSettlementService
             {
                 return new ApiResponse<OfflineRevenueEstimateDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "玩家不存在"
                 };
             }
@@ -244,7 +244,7 @@ public class EnhancedOfflineSettlementService
 
             return new ApiResponse<OfflineRevenueEstimateDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = estimate,
                 Message = "离线收益预估完成"
             };
@@ -254,7 +254,7 @@ public class EnhancedOfflineSettlementService
             _logger.LogError(ex, "预估离线收益失败：玩家 {PlayerId}", SafeLogId(playerId));
             return new ApiResponse<OfflineRevenueEstimateDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = $"预估失败: {ex.Message}"
             };
         }
@@ -347,7 +347,7 @@ public class EnhancedOfflineSettlementService
         // 转换传统结果为新格式
         return new OfflineActivityResult
         {
-            Success = legacyResult.Success,
+            Success = legacyResult.IsSuccess,
             Message = legacyResult.Message ?? string.Empty,
             PlayerId = player.Id,
             ProcessedTime = timeAnalysis.EffectiveTime,
@@ -416,7 +416,7 @@ public class EnhancedOfflineSettlementService
 
         return new ApiResponse<EnhancedOfflineSettlementResultDto>
         {
-            Success = activityResult.Success,
+            IsSuccess = activityResult.Success,
             Data = enhancedResult,
             Message = activityResult.Success ? "增强离线结算完成" : activityResult.Message
         };
@@ -478,7 +478,7 @@ public class EnhancedOfflineSettlementService
     /// </summary>
     private async Task TriggerPostSettlementEvents(PlayerStorageDto player, ApiResponse<EnhancedOfflineSettlementResultDto> result)
     {
-        if (!result.Success || result.Data == null) return;
+        if (!result.IsSuccess || result.Data == null) return;
 
         try
         {

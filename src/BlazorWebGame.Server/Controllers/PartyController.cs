@@ -29,7 +29,7 @@ public class PartyController : ControllerBase
             {
                 return BadRequest(new ApiResponse<PartyDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "CharacterId is required"
                 });
             }
@@ -40,7 +40,7 @@ public class PartyController : ControllerBase
             {
                 return BadRequest(new ApiResponse<PartyDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "Character is already in a party or failed to create party"
                 });
             }
@@ -49,7 +49,7 @@ public class PartyController : ControllerBase
 
             return Ok(new ApiResponse<PartyDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = party,
                 Message = "Party created successfully"
             });
@@ -59,7 +59,7 @@ public class PartyController : ControllerBase
             _logger.LogError(ex, "Error creating party for character {CharacterId}", request.CharacterId);
             return StatusCode(500, new ApiResponse<PartyDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "Internal server error"
             });
         }
@@ -77,7 +77,7 @@ public class PartyController : ControllerBase
             {
                 return BadRequest(new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "CharacterId is required"
                 });
             }
@@ -88,7 +88,7 @@ public class PartyController : ControllerBase
             {
                 return Ok(new ApiResponse<bool>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = true,
                     Message = "Successfully joined party"
                 });
@@ -97,7 +97,7 @@ public class PartyController : ControllerBase
             {
                 return BadRequest(new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Data = false,
                     Message = "Failed to join party - party may be full or character already in a party"
                 });
@@ -108,7 +108,7 @@ public class PartyController : ControllerBase
             _logger.LogError(ex, "Error joining party for character {CharacterId}", request.CharacterId);
             return StatusCode(500, new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "Internal server error"
             });
         }
@@ -126,7 +126,7 @@ public class PartyController : ControllerBase
             {
                 return BadRequest(new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "CharacterId is required"
                 });
             }
@@ -135,7 +135,7 @@ public class PartyController : ControllerBase
 
             return Ok(new ApiResponse<bool>
             {
-                Success = success,
+                IsSuccess = success,
                 Data = success,
                 Message = success ? "Successfully left party" : "Character is not in any party"
             });
@@ -145,7 +145,7 @@ public class PartyController : ControllerBase
             _logger.LogError(ex, "Error leaving party for character {CharacterId}", request.CharacterId);
             return StatusCode(500, new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "Internal server error"
             });
         }
@@ -163,7 +163,7 @@ public class PartyController : ControllerBase
             {
                 return BadRequest(new ApiResponse<PartyDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "CharacterId is required"
                 });
             }
@@ -174,7 +174,7 @@ public class PartyController : ControllerBase
             {
                 return Ok(new ApiResponse<PartyDto>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = null,
                     Message = "Character is not in any party"
                 });
@@ -182,7 +182,7 @@ public class PartyController : ControllerBase
 
             return Ok(new ApiResponse<PartyDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = party
             });
         }
@@ -191,7 +191,7 @@ public class PartyController : ControllerBase
             _logger.LogError(ex, "Error getting party for character {CharacterId}", characterId);
             return StatusCode(500, new ApiResponse<PartyDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "Internal server error"
             });
         }
@@ -209,7 +209,7 @@ public class PartyController : ControllerBase
 
             return Ok(new ApiResponse<List<PartyDto>>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = parties
             });
         }
@@ -218,7 +218,7 @@ public class PartyController : ControllerBase
             _logger.LogError(ex, "Error getting all parties");
             return StatusCode(500, new ApiResponse<List<PartyDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "Internal server error"
             });
         }
@@ -238,14 +238,14 @@ public class PartyController : ControllerBase
             {
                 return NotFound(new ApiResponse<PartyDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "Party not found"
                 });
             }
 
             return Ok(new ApiResponse<PartyDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = party
             });
         }
@@ -254,7 +254,7 @@ public class PartyController : ControllerBase
             _logger.LogError(ex, "Error getting party {PartyId}", partyId);
             return StatusCode(500, new ApiResponse<PartyDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "Internal server error"
             });
         }
@@ -272,7 +272,7 @@ public class PartyController : ControllerBase
             {
                 return BadRequest(new ApiResponse<object>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "PartyId is required"
                 });
             }
@@ -284,7 +284,7 @@ public class PartyController : ControllerBase
             {
                 return BadRequest(new ApiResponse<object>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "Invalid PartyId format"
                 });
             }
@@ -294,7 +294,7 @@ public class PartyController : ControllerBase
             {
                 return NotFound(new ApiResponse<object>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "Party not found"
                 });
             }
@@ -306,7 +306,7 @@ public class PartyController : ControllerBase
 
             return Ok(new ApiResponse<object>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = new 
                 { 
                     Updated = true, 
@@ -321,7 +321,7 @@ public class PartyController : ControllerBase
             _logger.LogError(ex, "Error updating team progress for party {PartyId}", partyId);
             return StatusCode(500, new ApiResponse<object>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "更新队伍进度失败"
             });
         }

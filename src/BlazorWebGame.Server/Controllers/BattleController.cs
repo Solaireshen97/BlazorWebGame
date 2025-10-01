@@ -57,7 +57,7 @@ public class BattleController : ControllerBase
                 
                 return BadRequest(new ApiResponse<BattleStateDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "CharacterId and EnemyId are required",
                     Timestamp = DateTime.UtcNow
                 });
@@ -83,7 +83,7 @@ public class BattleController : ControllerBase
                     
                     return BadRequest(new ApiResponse<BattleStateDto>
                     {
-                        Success = false,
+                        IsSuccess = false,
                         Message = "Only party leader can start party battles, or character is not in the specified party",
                         Timestamp = DateTime.UtcNow
                     });
@@ -100,7 +100,7 @@ public class BattleController : ControllerBase
             
             return Ok(new ApiResponse<BattleStateDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = battleState,
                 Message = "Battle started successfully",
                 Timestamp = DateTime.UtcNow
@@ -111,7 +111,7 @@ public class BattleController : ControllerBase
             _logger.LogWarning(ex, "Invalid battle start request from user {UserId}: {Error}", userId, ex.Message);
             return BadRequest(new ApiResponse<BattleStateDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = ex.Message,
                 Timestamp = DateTime.UtcNow
             });
@@ -121,7 +121,7 @@ public class BattleController : ControllerBase
             _logger.LogWarning(ex, "Battle start failed for user {UserId}: {Error}", userId, ex.Message);
             return Conflict(new ApiResponse<BattleStateDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = ex.Message,
                 Timestamp = DateTime.UtcNow
             });
@@ -133,7 +133,7 @@ public class BattleController : ControllerBase
             
             return StatusCode(500, new ApiResponse<BattleStateDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "Internal server error",
                 Timestamp = DateTime.UtcNow
             });
@@ -160,7 +160,7 @@ public class BattleController : ControllerBase
                 
                 return NotFound(new ApiResponse<BattleStateDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "Battle not found",
                     Timestamp = DateTime.UtcNow
                 });
@@ -168,7 +168,7 @@ public class BattleController : ControllerBase
 
             return Ok(new ApiResponse<BattleStateDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = battleState,
                 Timestamp = DateTime.UtcNow
             });
@@ -178,7 +178,7 @@ public class BattleController : ControllerBase
             _logger.LogError(ex, "Error getting battle state for {BattleId} by user {UserId}", battleId, userId);
             return StatusCode(500, new ApiResponse<BattleStateDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "Internal server error",
                 Timestamp = DateTime.UtcNow
             });
@@ -204,7 +204,7 @@ public class BattleController : ControllerBase
                 
                 return BadRequest(new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "BattleId and PlayerId are required",
                     Timestamp = DateTime.UtcNow
                 });
@@ -228,7 +228,7 @@ public class BattleController : ControllerBase
                 
                 return Ok(new ApiResponse<bool>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = true,
                     Message = "Battle action executed successfully",
                     Timestamp = DateTime.UtcNow
@@ -241,7 +241,7 @@ public class BattleController : ControllerBase
                 
                 return BadRequest(new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Data = false,
                     Message = "Failed to execute battle action",
                     Timestamp = DateTime.UtcNow
@@ -255,7 +255,7 @@ public class BattleController : ControllerBase
             
             return StatusCode(500, new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Data = false,
                 Message = "Internal server error",
                 Timestamp = DateTime.UtcNow
@@ -288,7 +288,7 @@ public class BattleController : ControllerBase
             
             return Ok(new ApiResponse<bool>
             {
-                Success = success,
+                IsSuccess = success,
                 Data = success,
                 Message = success ? "Battle stopped successfully" : "Battle not found",
                 Timestamp = DateTime.UtcNow
@@ -299,7 +299,7 @@ public class BattleController : ControllerBase
             _logger.LogError(ex, "Error stopping battle {BattleId} by user {UserId}", battleId, userId);
             return StatusCode(500, new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "Internal server error",
                 Timestamp = DateTime.UtcNow
             });
@@ -327,7 +327,7 @@ public class BattleController : ControllerBase
 
             return Ok(new ApiResponse<List<BattleStateDto>>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = userBattles,
                 Message = $"Retrieved {userBattles.Count} active battles",
                 Timestamp = DateTime.UtcNow
@@ -338,7 +338,7 @@ public class BattleController : ControllerBase
             _logger.LogError(ex, "Error getting active battles for user {UserId}", userId);
             return StatusCode(500, new ApiResponse<List<BattleStateDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "Internal server error",
                 Timestamp = DateTime.UtcNow
             });

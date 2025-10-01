@@ -28,7 +28,7 @@ public class QuestController : ControllerBase
             var status = _questService.GetCharacterQuestStatus(characterId);
             return Ok(new ApiResponse<CharacterQuestStatusDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = status
             });
         }
@@ -37,7 +37,7 @@ public class QuestController : ControllerBase
             _logger.LogError(ex, "Error getting quest status for character {CharacterId}", characterId);
             return StatusCode(500, new ApiResponse<CharacterQuestStatusDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "获取任务状态时发生错误"
             });
         }
@@ -59,7 +59,7 @@ public class QuestController : ControllerBase
             _logger.LogError(ex, "Error getting daily quests for character {CharacterId}", characterId);
             return StatusCode(500, new ApiResponse<List<QuestDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "获取每日任务时发生错误"
             });
         }
@@ -81,7 +81,7 @@ public class QuestController : ControllerBase
             _logger.LogError(ex, "Error getting weekly quests for character {CharacterId}", characterId);
             return StatusCode(500, new ApiResponse<List<QuestDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "获取每周任务时发生错误"
             });
         }
@@ -103,7 +103,7 @@ public class QuestController : ControllerBase
             _logger.LogError(ex, "Error accepting quest for character {CharacterId}", request.CharacterId);
             return StatusCode(500, new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "接受任务时发生错误"
             });
         }
@@ -129,7 +129,7 @@ public class QuestController : ControllerBase
             _logger.LogError(ex, "Error updating quest progress for character {CharacterId}", request.CharacterId);
             return StatusCode(500, new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "更新任务进度时发生错误"
             });
         }
@@ -151,7 +151,7 @@ public class QuestController : ControllerBase
             _logger.LogError(ex, "Error completing quest for character {CharacterId}", request.CharacterId);
             return StatusCode(500, new ApiResponse<List<QuestRewardDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "完成任务时发生错误"
             });
         }
@@ -173,7 +173,7 @@ public class QuestController : ControllerBase
             _logger.LogError(ex, "Error syncing quest status for character {CharacterId}", status.CharacterId);
             return StatusCode(500, new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "同步任务状态时发生错误"
             });
         }

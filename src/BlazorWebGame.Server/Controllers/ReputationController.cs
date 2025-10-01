@@ -38,7 +38,7 @@ public class ReputationController : ControllerBase
             {
                 return BadRequest(new ApiResponse<ReputationDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "角色ID不能为空"
                 });
             }
@@ -47,7 +47,7 @@ public class ReputationController : ControllerBase
             
             return Ok(new ApiResponse<ReputationDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = reputation,
                 Message = "获取声望信息成功"
             });
@@ -57,7 +57,7 @@ public class ReputationController : ControllerBase
             _logger.LogWarning(ex, "Invalid character ID: {CharacterId}", characterId);
             return NotFound(new ApiResponse<ReputationDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = ex.Message
             });
         }
@@ -66,7 +66,7 @@ public class ReputationController : ControllerBase
             _logger.LogError(ex, "Error getting reputation for character {CharacterId}", characterId);
             return StatusCode(500, new ApiResponse<ReputationDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "获取声望信息时发生错误"
             });
         }
@@ -89,7 +89,7 @@ public class ReputationController : ControllerBase
             {
                 return BadRequest(new ApiResponse<ReputationDetailDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "角色ID和阵营名称不能为空"
                 });
             }
@@ -98,7 +98,7 @@ public class ReputationController : ControllerBase
             
             return Ok(new ApiResponse<ReputationDetailDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = detail,
                 Message = "获取声望详情成功"
             });
@@ -108,7 +108,7 @@ public class ReputationController : ControllerBase
             _logger.LogWarning(ex, "Invalid parameters: CharacterId={CharacterId}, FactionName={FactionName}", characterId, factionName);
             return NotFound(new ApiResponse<ReputationDetailDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = ex.Message
             });
         }
@@ -117,7 +117,7 @@ public class ReputationController : ControllerBase
             _logger.LogError(ex, "Error getting reputation detail for character {CharacterId}, faction {FactionName}", characterId, factionName);
             return StatusCode(500, new ApiResponse<ReputationDetailDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "获取声望详情时发生错误"
             });
         }
@@ -137,7 +137,7 @@ public class ReputationController : ControllerBase
             {
                 return BadRequest(new ApiResponse<System.Collections.Generic.List<ReputationDetailDto>>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "角色ID不能为空"
                 });
             }
@@ -146,7 +146,7 @@ public class ReputationController : ControllerBase
             
             return Ok(new ApiResponse<System.Collections.Generic.List<ReputationDetailDto>>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = details,
                 Message = "获取所有声望详情成功"
             });
@@ -156,7 +156,7 @@ public class ReputationController : ControllerBase
             _logger.LogWarning(ex, "Invalid character ID: {CharacterId}", characterId);
             return NotFound(new ApiResponse<System.Collections.Generic.List<ReputationDetailDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = ex.Message
             });
         }
@@ -165,7 +165,7 @@ public class ReputationController : ControllerBase
             _logger.LogError(ex, "Error getting all reputation details for character {CharacterId}", characterId);
             return StatusCode(500, new ApiResponse<System.Collections.Generic.List<ReputationDetailDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "获取声望详情时发生错误"
             });
         }
@@ -185,7 +185,7 @@ public class ReputationController : ControllerBase
             {
                 return BadRequest(new ApiResponse<ReputationDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "请求数据不能为空"
                 });
             }
@@ -194,7 +194,7 @@ public class ReputationController : ControllerBase
             {
                 return BadRequest(new ApiResponse<ReputationDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "角色ID和阵营名称不能为空"
                 });
             }
@@ -203,7 +203,7 @@ public class ReputationController : ControllerBase
             
             return Ok(new ApiResponse<ReputationDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = updatedReputation,
                 Message = $"成功更新 {request.FactionName} 声望 {request.Amount:+#;-#;0} 点"
             });
@@ -213,7 +213,7 @@ public class ReputationController : ControllerBase
             _logger.LogWarning(ex, "Invalid update request: {CharacterId}, {FactionName}", request?.CharacterId, request?.FactionName);
             return NotFound(new ApiResponse<ReputationDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = ex.Message
             });
         }
@@ -222,7 +222,7 @@ public class ReputationController : ControllerBase
             _logger.LogError(ex, "Error updating reputation for character {CharacterId}", request?.CharacterId);
             return StatusCode(500, new ApiResponse<ReputationDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "更新声望时发生错误"
             });
         }
@@ -242,7 +242,7 @@ public class ReputationController : ControllerBase
             {
                 return BadRequest(new ApiResponse<ReputationDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "请求数据或变更列表不能为空"
                 });
             }
@@ -251,7 +251,7 @@ public class ReputationController : ControllerBase
             {
                 return BadRequest(new ApiResponse<ReputationDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "角色ID不能为空"
                 });
             }
@@ -260,7 +260,7 @@ public class ReputationController : ControllerBase
             
             return Ok(new ApiResponse<ReputationDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = updatedReputation,
                 Message = $"成功批量更新 {request.Changes.Count} 个阵营的声望"
             });
@@ -270,7 +270,7 @@ public class ReputationController : ControllerBase
             _logger.LogWarning(ex, "Invalid batch update request: {CharacterId}", request?.CharacterId);
             return NotFound(new ApiResponse<ReputationDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = ex.Message
             });
         }
@@ -279,7 +279,7 @@ public class ReputationController : ControllerBase
             _logger.LogError(ex, "Error batch updating reputation for character {CharacterId}", request?.CharacterId);
             return StatusCode(500, new ApiResponse<ReputationDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "批量更新声望时发生错误"
             });
         }
@@ -299,7 +299,7 @@ public class ReputationController : ControllerBase
             {
                 return BadRequest(new ApiResponse<System.Collections.Generic.List<ReputationRewardDto>>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "请求数据或角色ID不能为空"
                 });
             }
@@ -308,7 +308,7 @@ public class ReputationController : ControllerBase
             
             return Ok(new ApiResponse<System.Collections.Generic.List<ReputationRewardDto>>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = rewards,
                 Message = "获取声望奖励信息成功"
             });
@@ -318,7 +318,7 @@ public class ReputationController : ControllerBase
             _logger.LogError(ex, "Error getting reputation rewards for character {CharacterId}", request?.CharacterId);
             return StatusCode(500, new ApiResponse<System.Collections.Generic.List<ReputationRewardDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "获取声望奖励时发生错误"
             });
         }
@@ -338,7 +338,7 @@ public class ReputationController : ControllerBase
             {
                 return BadRequest(new ApiResponse<System.Collections.Generic.List<ReputationRewardDto>>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "角色ID不能为空"
                 });
             }
@@ -347,7 +347,7 @@ public class ReputationController : ControllerBase
             
             return Ok(new ApiResponse<System.Collections.Generic.List<ReputationRewardDto>>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = rewards,
                 Message = "获取可用奖励信息成功"
             });
@@ -357,7 +357,7 @@ public class ReputationController : ControllerBase
             _logger.LogWarning(ex, "Invalid character ID: {CharacterId}", characterId);
             return NotFound(new ApiResponse<System.Collections.Generic.List<ReputationRewardDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = ex.Message
             });
         }
@@ -366,7 +366,7 @@ public class ReputationController : ControllerBase
             _logger.LogError(ex, "Error getting available rewards for character {CharacterId}", characterId);
             return StatusCode(500, new ApiResponse<System.Collections.Generic.List<ReputationRewardDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "获取可用奖励时发生错误"
             });
         }
@@ -386,7 +386,7 @@ public class ReputationController : ControllerBase
             {
                 return BadRequest(new ApiResponse<ReputationStatsDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "角色ID不能为空"
                 });
             }
@@ -395,7 +395,7 @@ public class ReputationController : ControllerBase
             
             return Ok(new ApiResponse<ReputationStatsDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = stats,
                 Message = "获取声望统计信息成功"
             });
@@ -405,7 +405,7 @@ public class ReputationController : ControllerBase
             _logger.LogWarning(ex, "Invalid character ID: {CharacterId}", characterId);
             return NotFound(new ApiResponse<ReputationStatsDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = ex.Message
             });
         }
@@ -414,7 +414,7 @@ public class ReputationController : ControllerBase
             _logger.LogError(ex, "Error getting reputation stats for character {CharacterId}", characterId);
             return StatusCode(500, new ApiResponse<ReputationStatsDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "获取声望统计时发生错误"
             });
         }

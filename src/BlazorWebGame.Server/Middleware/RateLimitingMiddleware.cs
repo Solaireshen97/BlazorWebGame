@@ -194,7 +194,7 @@ public class RateLimitingMiddleware
 
         var response = new ApiResponse<object>
         {
-            Success = false,
+            IsSuccess = false,
             Message = "Too many requests. Please try again later.",
             Errors = new List<string> { $"Rate limit exceeded for {limitType.ToLower()}" },
             Timestamp = DateTime.UtcNow
@@ -222,7 +222,7 @@ public class RateLimitingMiddleware
 
         var response = new ApiResponse<object>
         {
-            Success = false,
+            IsSuccess = false,
             Message = "Duplicate request detected. Please wait before retrying.",
             Errors = new List<string> { "Suspicious activity detected" },
             Timestamp = DateTime.UtcNow

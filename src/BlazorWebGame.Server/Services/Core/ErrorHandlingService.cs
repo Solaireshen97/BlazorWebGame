@@ -27,7 +27,7 @@ public class ErrorHandlingService
 
         return new ApiResponse<T>
         {
-            Success = false,
+            IsSuccess = false,
             Message = GetUserFriendlyMessage(ex),
             Errors = new List<string> { GetErrorCode(ex), $"ErrorId: {errorId}" }
         };

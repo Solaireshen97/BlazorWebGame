@@ -38,7 +38,7 @@ public class MonitoringController : ControllerBase
         
         return Ok(new ApiResponse<SystemPerformanceSnapshot>
         {
-            Success = true,
+            IsSuccess = true,
             Data = metrics,
             Message = "系统性能指标获取成功"
         });
@@ -56,7 +56,7 @@ public class MonitoringController : ControllerBase
         
         return Ok(new ApiResponse<Dictionary<string, PerformanceMetrics>>
         {
-            Success = true,
+            IsSuccess = true,
             Data = metrics,
             Message = $"获取到 {metrics.Count} 个操作的性能统计"
         });
@@ -91,7 +91,7 @@ public class MonitoringController : ControllerBase
         
         return Ok(new ApiResponse<GameServerStatus>
         {
-            Success = true,
+            IsSuccess = true,
             Data = status,
             Message = "游戏服务器状态获取成功"
         });
@@ -107,7 +107,7 @@ public class MonitoringController : ControllerBase
         {
             return BadRequest(new ApiResponse<string>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "此操作仅限开发环境使用"
             });
         }
@@ -127,7 +127,7 @@ public class MonitoringController : ControllerBase
         
         return Ok(new ApiResponse<string>
         {
-            Success = true,
+            IsSuccess = true,
             Data = $"垃圾回收完成。内存释放: {beforeMemory - afterMemory}MB",
             Message = "垃圾回收执行成功"
         });

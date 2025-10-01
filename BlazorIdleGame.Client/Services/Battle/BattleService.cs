@@ -52,7 +52,7 @@ namespace BlazorIdleGame.Client.Services.Battle
                 var response = await _communication.GetAsync<ApiResponse<BattleStateDto>>(
                     "api/battle/current");
 
-                if (response?.Success == true && response.Data != null)
+                if (response?.IsSuccess == true && response.Data != null)
                 {
                     var previousBattle = _currentBattle;
                     _currentBattle = response.Data;
@@ -108,7 +108,7 @@ namespace BlazorIdleGame.Client.Services.Battle
                 var response = await _communication.PostAsync<UseSkillRequest, ApiResponse<bool>>(
                     "api/battle/skill", request);
 
-                if (response?.Success == true)
+                if (response?.IsSuccess == true)
                 {
                     _logger.LogInformation("技能使用成功: {SkillId}", skillId);
 
@@ -136,7 +136,7 @@ namespace BlazorIdleGame.Client.Services.Battle
                 var response = await _communication.PostAsync<object, ApiResponse<bool>>(
                     "api/battle/auto", request);
 
-                if (response?.Success == true)
+                if (response?.IsSuccess == true)
                 {
                     _logger.LogInformation("自动战斗模式: {Enabled}", enabled);
                     return true;
@@ -161,7 +161,7 @@ namespace BlazorIdleGame.Client.Services.Battle
                 var response = await _communication.PostAsync<object, ApiResponse<bool>>(
                     "api/battle/flee", new { });
 
-                if (response?.Success == true)
+                if (response?.IsSuccess == true)
                 {
                     _logger.LogInformation("成功逃离战斗");
                     _currentBattle = null;
@@ -184,7 +184,7 @@ namespace BlazorIdleGame.Client.Services.Battle
                 var response = await _communication.GetAsync<ApiResponse<BattleResultDto>>(
                     $"api/battle/{battleId}/result");
 
-                if (response?.Success == true && response.Data != null)
+                if (response?.IsSuccess == true && response.Data != null)
                 {
                     BattleEnded?.Invoke(this, response.Data);
                 }

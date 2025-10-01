@@ -59,7 +59,7 @@ public class OfflineSettlementController : ControllerBase
             _logger.LogError(ex, "处理玩家 {PlayerId} 离线结算时发生错误", SafeLogId(playerId));
             return StatusCode(500, new ApiResponse<OfflineSettlementResultDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "内部服务器错误"
             });
         }
@@ -93,7 +93,7 @@ public class OfflineSettlementController : ControllerBase
             _logger.LogError(ex, "增强离线结算失败：玩家 {PlayerId}", SafeLogId(playerId));
             return StatusCode(500, new ApiResponse<EnhancedOfflineSettlementResultDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "内部服务器错误"
             });
         }
@@ -167,7 +167,7 @@ public class OfflineSettlementController : ControllerBase
             _logger.LogError(ex, "预估离线收益失败：玩家 {PlayerId}", SafeLogId(playerId));
             return StatusCode(500, new ApiResponse<OfflineRevenueEstimateDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "内部服务器错误"
             });
         }
@@ -202,7 +202,7 @@ public class OfflineSettlementController : ControllerBase
 
             return Ok(new ApiResponse<OfflineActivityProgressDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = progress,
                 Message = "获取离线活动进度成功"
             });
@@ -212,7 +212,7 @@ public class OfflineSettlementController : ControllerBase
             _logger.LogError(ex, "获取离线活动进度失败：玩家 {PlayerId}", SafeLogId(playerId));
             return StatusCode(500, new ApiResponse<OfflineActivityProgressDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "内部服务器错误"
             });
         }
@@ -251,7 +251,7 @@ public class OfflineSettlementController : ControllerBase
 
             return Ok(new ApiResponse<OfflineSettlementMetricsDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = metrics,
                 Message = "获取性能指标成功"
             });
@@ -261,7 +261,7 @@ public class OfflineSettlementController : ControllerBase
             _logger.LogError(ex, "获取离线结算性能指标失败");
             return StatusCode(500, new ApiResponse<OfflineSettlementMetricsDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "内部服务器错误"
             });
         }
@@ -286,7 +286,7 @@ public class OfflineSettlementController : ControllerBase
             _logger.LogError(ex, "处理队伍 {TeamId} 离线结算时发生错误", SafeLogId(teamId));
             return StatusCode(500, new ApiResponse<List<OfflineSettlementResultDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "内部服务器错误"
             });
         }
@@ -345,7 +345,7 @@ public class OfflineSettlementController : ControllerBase
             // 暂时返回基本信息
             return Ok(new ApiResponse<PlayerOfflineInfoDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Message = "获取离线信息成功",
                 Data = new PlayerOfflineInfoDto
                 {
@@ -367,7 +367,7 @@ public class OfflineSettlementController : ControllerBase
             _logger.LogError(ex, "获取玩家 {PlayerId} 离线信息时发生错误", SafeLogId(playerId));
             return StatusCode(500, new ApiResponse<PlayerOfflineInfoDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "内部服务器错误"
             });
         }
@@ -385,7 +385,7 @@ public class OfflineSettlementController : ControllerBase
             // 这里可以实现获取离线结算统计信息的逻辑
             return Ok(new ApiResponse<OfflineSettlementStatisticsDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Message = "获取统计信息成功",
                 Data = new OfflineSettlementStatisticsDto
                 {
@@ -403,7 +403,7 @@ public class OfflineSettlementController : ControllerBase
             _logger.LogError(ex, "获取离线结算统计信息时发生错误");
             return StatusCode(500, new ApiResponse<OfflineSettlementStatisticsDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "内部服务器错误"
             });
         }
@@ -426,7 +426,7 @@ public class OfflineSettlementController : ControllerBase
             {
                 return BadRequest(new ApiResponse<object>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "请求数据不能为空"
                 });
             }
@@ -454,7 +454,7 @@ public class OfflineSettlementController : ControllerBase
 
             return Ok(new ApiResponse<object>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = result,
                 Message = "离线战斗进度同步成功"
             });
@@ -464,7 +464,7 @@ public class OfflineSettlementController : ControllerBase
             _logger.LogError(ex, "同步玩家 {PlayerId} 离线战斗进度时发生错误", SafeLogId(playerId));
             return StatusCode(500, new ApiResponse<object>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "内部服务器错误"
             });
         }

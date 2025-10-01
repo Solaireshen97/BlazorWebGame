@@ -98,9 +98,9 @@ public class SqliteDataStorageServiceTests : IDisposable
         
         // 测试保存玩家
         var saveResult = await _service.SavePlayerAsync(testPlayer);
-        Console.WriteLine($"保存玩家结果: {saveResult.Success}, 消息: {saveResult.Message}");
+        Console.WriteLine($"保存玩家结果: {saveResult.IsSuccess}, 消息: {saveResult.Message}");
         
-        if (!saveResult.Success)
+        if (!saveResult.IsSuccess)
         {
             throw new Exception($"保存玩家失败: {saveResult.Message}");
         }
@@ -127,7 +127,7 @@ public class SqliteDataStorageServiceTests : IDisposable
         retrievedPlayer.Level = 6;
         retrievedPlayer.Experience = 1200;
         var updateResult = await _service.SavePlayerAsync(retrievedPlayer);
-        Console.WriteLine($"更新玩家结果: {updateResult.Success}");
+        Console.WriteLine($"更新玩家结果: {updateResult.IsSuccess}");
         
         // 测试获取在线玩家
         var onlinePlayersResult = await _service.GetOnlinePlayersAsync();
@@ -135,7 +135,7 @@ public class SqliteDataStorageServiceTests : IDisposable
         
         // 测试删除玩家
         var deleteResult = await _service.DeletePlayerAsync("test-player-1");
-        Console.WriteLine($"删除玩家结果: {deleteResult.Success}, 消息: {deleteResult.Message}");
+        Console.WriteLine($"删除玩家结果: {deleteResult.IsSuccess}, 消息: {deleteResult.Message}");
         
         Console.WriteLine("玩家数据操作测试完成");
     }
@@ -160,9 +160,9 @@ public class SqliteDataStorageServiceTests : IDisposable
         
         // 测试保存队伍
         var saveResult = await _service.SaveTeamAsync(testTeam);
-        Console.WriteLine($"保存队伍结果: {saveResult.Success}, 消息: {saveResult.Message}");
+        Console.WriteLine($"保存队伍结果: {saveResult.IsSuccess}, 消息: {saveResult.Message}");
         
-        if (!saveResult.Success)
+        if (!saveResult.IsSuccess)
         {
             throw new Exception($"保存队伍失败: {saveResult.Message}");
         }
@@ -185,7 +185,7 @@ public class SqliteDataStorageServiceTests : IDisposable
         
         // 测试删除队伍
         var deleteResult = await _service.DeleteTeamAsync("test-team-1");
-        Console.WriteLine($"删除队伍结果: {deleteResult.Success}");
+        Console.WriteLine($"删除队伍结果: {deleteResult.IsSuccess}");
         
         Console.WriteLine("队伍数据操作测试完成");
     }
@@ -219,7 +219,7 @@ public class SqliteDataStorageServiceTests : IDisposable
         
         // 测试保存动作目标
         var saveResult = await _service.SaveActionTargetAsync(testActionTarget);
-        Console.WriteLine($"保存动作目标结果: {saveResult.Success}");
+        Console.WriteLine($"保存动作目标结果: {saveResult.IsSuccess}");
         
         // 测试获取当前动作目标
         var currentTarget = await _service.GetCurrentActionTargetAsync("test-player-2");
@@ -227,7 +227,7 @@ public class SqliteDataStorageServiceTests : IDisposable
         
         // 测试完成动作目标
         var completeResult = await _service.CompleteActionTargetAsync("action-target-1");
-        Console.WriteLine($"完成动作目标结果: {completeResult.Success}");
+        Console.WriteLine($"完成动作目标结果: {completeResult.IsSuccess}");
         
         // 测试获取动作历史
         var historyResult = await _service.GetPlayerActionHistoryAsync("test-player-2", 10);
@@ -260,7 +260,7 @@ public class SqliteDataStorageServiceTests : IDisposable
         
         // 测试保存战斗记录
         var saveResult = await _service.SaveBattleRecordAsync(testBattleRecord);
-        Console.WriteLine($"保存战斗记录结果: {saveResult.Success}");
+        Console.WriteLine($"保存战斗记录结果: {saveResult.IsSuccess}");
         
         // 测试获取战斗记录
         var retrievedRecord = await _service.GetBattleRecordAsync("battle-123");
@@ -274,7 +274,7 @@ public class SqliteDataStorageServiceTests : IDisposable
             ["GoldGained"] = 75
         };
         var endResult = await _service.EndBattleRecordAsync("battle-123", "Victory", battleResults);
-        Console.WriteLine($"结束战斗结果: {endResult.Success}");
+        Console.WriteLine($"结束战斗结果: {endResult.IsSuccess}");
         
         // 测试获取玩家战斗历史
         var query = new DataStorageQueryDto { Page = 1, PageSize = 10 };
@@ -313,7 +313,7 @@ public class SqliteDataStorageServiceTests : IDisposable
         
         // 测试保存离线数据
         var saveResult = await _service.SaveOfflineDataAsync(testOfflineData);
-        Console.WriteLine($"保存离线数据结果: {saveResult.Success}");
+        Console.WriteLine($"保存离线数据结果: {saveResult.IsSuccess}");
         
         // 测试获取未同步的离线数据
         var unsyncedResult = await _service.GetUnsyncedOfflineDataAsync("test-player-3");
@@ -321,11 +321,11 @@ public class SqliteDataStorageServiceTests : IDisposable
         
         // 测试标记为已同步
         var markSyncedResult = await _service.MarkOfflineDataSyncedAsync(new List<string> { "offline-data-1" });
-        Console.WriteLine($"标记同步结果: {markSyncedResult.Success}");
+        Console.WriteLine($"标记同步结果: {markSyncedResult.IsSuccess}");
         
         // 测试清理已同步数据
         var cleanupResult = await _service.CleanupSyncedOfflineDataAsync(DateTime.UtcNow.AddDays(-7));
-        Console.WriteLine($"清理数据结果: {cleanupResult.Success}, 清理数量: {cleanupResult.Data}");
+        Console.WriteLine($"清理数据结果: {cleanupResult.IsSuccess}, 清理数量: {cleanupResult.Data}");
         
         Console.WriteLine("离线数据操作测试完成");
     }
@@ -339,9 +339,9 @@ public class SqliteDataStorageServiceTests : IDisposable
         
         // 测试获取统计信息
         var statsResult = await _service.GetStorageStatsAsync();
-        Console.WriteLine($"获取统计信息结果: {statsResult.Success}");
+        Console.WriteLine($"获取统计信息结果: {statsResult.IsSuccess}");
         
-        if (statsResult.Success && statsResult.Data != null)
+        if (statsResult.IsSuccess && statsResult.Data != null)
         {
             foreach (var stat in statsResult.Data)
             {
@@ -351,12 +351,12 @@ public class SqliteDataStorageServiceTests : IDisposable
         
         // 测试健康检查
         var healthResult = await _service.HealthCheckAsync();
-        Console.WriteLine($"健康检查结果: {healthResult.Success}");
+        Console.WriteLine($"健康检查结果: {healthResult.IsSuccess}");
         Console.WriteLine($"健康检查状态: {healthResult.Data?.GetValueOrDefault("Status", "Unknown")}");
         
         // 测试搜索玩家
         var searchResult = await _service.SearchPlayersAsync("测试", 5);
-        Console.WriteLine($"搜索玩家结果: {searchResult.Success}, 找到 {searchResult.Data?.Count ?? 0} 个玩家");
+        Console.WriteLine($"搜索玩家结果: {searchResult.IsSuccess}, 找到 {searchResult.Data?.Count ?? 0} 个玩家");
         
         Console.WriteLine("统计和健康检查测试完成");
     }

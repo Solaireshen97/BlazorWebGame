@@ -26,6 +26,7 @@ public class DataStorageService : IDataStorageService
     private readonly ConcurrentDictionary<string, BattleRecordEntity> _battleRecords = new();
     private readonly ConcurrentDictionary<string, OfflineDataEntity> _offlineData = new();
     private readonly ConcurrentDictionary<string, UserCharacterEntity> _userCharacters = new();
+    private readonly ConcurrentDictionary<string, BlazorWebGame.Shared.Models.Character> _characters = new();
 
     // 索引 - 提高查询性能
     private readonly ConcurrentDictionary<string, string> _usernameToUserId = new(); // username -> userId
@@ -105,7 +106,7 @@ public class DataStorageService : IDataStorageService
             {
                 return new ApiResponse<UserStorageDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "用户名和密码不能为空"
                 };
             }
@@ -115,7 +116,7 @@ public class DataStorageService : IDataStorageService
             {
                 return new ApiResponse<UserStorageDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "用户名已存在"
                 };
             }
@@ -127,7 +128,7 @@ public class DataStorageService : IDataStorageService
                 {
                     return new ApiResponse<UserStorageDto>
                     {
-                        Success = false,
+                        IsSuccess = false,
                         Message = "邮箱已被使用"
                     };
                 }
@@ -161,7 +162,7 @@ public class DataStorageService : IDataStorageService
 
             return new ApiResponse<UserStorageDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = MapToDto(entity),
                 Message = "用户创建成功"
             };
@@ -171,7 +172,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Error creating user: {Username}", user.Username);
             return new ApiResponse<UserStorageDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "用户创建失败"
             };
         }
@@ -185,7 +186,7 @@ public class DataStorageService : IDataStorageService
             {
                 return new ApiResponse<UserStorageDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "用户不存在"
                 };
             }
@@ -202,7 +203,7 @@ public class DataStorageService : IDataStorageService
 
             return new ApiResponse<UserStorageDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = MapToDto(entity),
                 Message = "用户更新成功"
             };
@@ -212,7 +213,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Error updating user: {SafeUserId}", SafeLogId(user.Id));
             return new ApiResponse<UserStorageDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "用户更新失败"
             };
         }
@@ -235,7 +236,7 @@ public class DataStorageService : IDataStorageService
             {
                 return new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "用户不存在"
                 };
             }
@@ -252,7 +253,7 @@ public class DataStorageService : IDataStorageService
 
             return await Task.FromResult(new ApiResponse<bool>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = true,
                 Message = "密码更新成功"
             });
@@ -262,7 +263,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Error updating password for user: {SafeUserId}", SafeLogId(userId));
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "密码更新失败"
             };
         }
@@ -292,7 +293,7 @@ public class DataStorageService : IDataStorageService
 
                 return await Task.FromResult(new ApiResponse<bool>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = true,
                     Message = "登录信息更新成功"
                 });
@@ -300,7 +301,7 @@ public class DataStorageService : IDataStorageService
 
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "用户不存在"
             };
         }
@@ -309,7 +310,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Error updating last login for user: {SafeUserId}", SafeLogId(userId));
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "登录信息更新失败"
             };
         }
@@ -329,7 +330,7 @@ public class DataStorageService : IDataStorageService
 
                 return await Task.FromResult(new ApiResponse<bool>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = true,
                     Message = "用户账户已锁定"
                 });
@@ -337,7 +338,7 @@ public class DataStorageService : IDataStorageService
 
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "用户不存在"
             };
         }
@@ -346,7 +347,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Error locking user account: {SafeUserId}", SafeLogId(userId));
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "账户锁定失败"
             };
         }
@@ -366,7 +367,7 @@ public class DataStorageService : IDataStorageService
 
                 return await Task.FromResult(new ApiResponse<bool>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = true,
                     Message = "用户账户已解锁"
                 });
@@ -374,7 +375,7 @@ public class DataStorageService : IDataStorageService
 
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "用户不存在"
             };
         }
@@ -383,7 +384,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Error unlocking user account: {SafeUserId}", SafeLogId(userId));
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "账户解锁失败"
             };
         }
@@ -415,7 +416,7 @@ public class DataStorageService : IDataStorageService
             
             return new ApiResponse<PlayerStorageDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = MapToDto(entity),
                 Message = "玩家数据保存成功"
             };
@@ -425,7 +426,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Failed to save player with ID: {SafePlayerId}", SafeLogId(player.Id));
             return new ApiResponse<PlayerStorageDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = $"保存玩家数据失败: {ex.Message}"
             };
         }
@@ -463,7 +464,7 @@ public class DataStorageService : IDataStorageService
             
             return new ApiResponse<bool>
             {
-                Success = removed,
+                IsSuccess = removed,
                 Data = removed,
                 Message = removed ? "玩家数据删除成功" : "玩家不存在"
             };
@@ -473,7 +474,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Failed to delete player with ID: {SafePlayerId}", SafeLogId(playerId));
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = $"删除玩家数据失败: {ex.Message}"
             };
         }
@@ -491,7 +492,7 @@ public class DataStorageService : IDataStorageService
             
             return Task.FromResult(new ApiResponse<List<PlayerStorageDto>>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = onlinePlayers,
                 Message = $"获取到 {onlinePlayers.Count} 名在线玩家"
             });
@@ -501,7 +502,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Failed to get online players");
             return Task.FromResult(new ApiResponse<List<PlayerStorageDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = $"获取在线玩家失败: {ex.Message}"
             });
         }
@@ -516,7 +517,7 @@ public class DataStorageService : IDataStorageService
             try
             {
                 var result = await SavePlayerAsync(player);
-                if (result.Success && result.Data != null)
+                if (result.IsSuccess && result.Data != null)
                 {
                     response.SuccessfulItems.Add(result.Data);
                     response.SuccessCount++;
@@ -590,7 +591,7 @@ public class DataStorageService : IDataStorageService
             
             return new ApiResponse<TeamStorageDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = MapToDto(entity),
                 Message = "队伍数据保存成功"
             };
@@ -600,7 +601,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Failed to save team with ID: {SafeTeamId}", SafeLogId(team.Id));
             return new ApiResponse<TeamStorageDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = $"保存队伍数据失败: {ex.Message}"
             };
         }
@@ -625,7 +626,7 @@ public class DataStorageService : IDataStorageService
                 
                 return new ApiResponse<bool>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = true,
                     Message = "队伍删除成功"
                 };
@@ -633,7 +634,7 @@ public class DataStorageService : IDataStorageService
             
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Data = false,
                 Message = "队伍不存在"
             };
@@ -643,7 +644,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Failed to delete team with ID: {SafeTeamId}", SafeLogId(teamId));
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = $"删除队伍失败: {ex.Message}"
             };
         }
@@ -661,7 +662,7 @@ public class DataStorageService : IDataStorageService
             
             return new ApiResponse<List<TeamStorageDto>>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = activeTeams,
                 Message = $"获取到 {activeTeams.Count} 支活跃队伍"
             };
@@ -671,7 +672,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Failed to get active teams");
             return new ApiResponse<List<TeamStorageDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = $"获取活跃队伍失败: {ex.Message}"
             };
         }
@@ -715,7 +716,7 @@ public class DataStorageService : IDataStorageService
             
             return new ApiResponse<ActionTargetStorageDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = MapToDto(entity),
                 Message = "动作目标保存成功"
             };
@@ -725,7 +726,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Failed to save action target with ID: {SafeActionTargetId}", SafeLogId(actionTarget.Id));
             return new ApiResponse<ActionTargetStorageDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = $"保存动作目标失败: {ex.Message}"
             };
         }
@@ -743,7 +744,7 @@ public class DataStorageService : IDataStorageService
                 
                 return new ApiResponse<bool>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = true,
                     Message = "动作目标完成"
                 };
@@ -751,7 +752,7 @@ public class DataStorageService : IDataStorageService
             
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Data = false,
                 Message = "动作目标不存在"
             };
@@ -761,7 +762,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Failed to complete action target with ID: {SafeActionTargetId}", SafeLogId(actionTargetId));
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = $"完成动作目标失败: {ex.Message}"
             };
         }
@@ -782,7 +783,7 @@ public class DataStorageService : IDataStorageService
                 
                 return new ApiResponse<bool>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = true,
                     Message = "动作目标已取消"
                 };
@@ -790,7 +791,7 @@ public class DataStorageService : IDataStorageService
             
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Data = false,
                 Message = "没有进行中的动作目标"
             };
@@ -800,7 +801,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Failed to cancel action target for player with ID: {SafePlayerId}", SafeLogId(playerId));
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = $"取消动作目标失败: {ex.Message}"
             };
         }
@@ -819,7 +820,7 @@ public class DataStorageService : IDataStorageService
             
             return new ApiResponse<List<ActionTargetStorageDto>>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = actionHistory,
                 Message = $"获取到 {actionHistory.Count} 条动作历史记录"
             };
@@ -829,7 +830,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Failed to get action history for player with ID: {SafePlayerId}", SafeLogId(playerId));
             return new ApiResponse<List<ActionTargetStorageDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = $"获取动作历史失败: {ex.Message}"
             };
         }
@@ -874,7 +875,7 @@ public class DataStorageService : IDataStorageService
             
             return new ApiResponse<BattleRecordStorageDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = MapToDto(entity),
                 Message = "战斗记录保存成功"
             };
@@ -884,7 +885,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Failed to save battle record with ID: {SafeBattleRecordId}", SafeLogId(battleRecord.Id));
             return new ApiResponse<BattleRecordStorageDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = $"保存战斗记录失败: {ex.Message}"
             };
         }
@@ -909,7 +910,7 @@ public class DataStorageService : IDataStorageService
                 
                 return new ApiResponse<bool>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = true,
                     Message = "战斗记录已结束"
                 };
@@ -917,7 +918,7 @@ public class DataStorageService : IDataStorageService
             
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Data = false,
                 Message = "战斗记录不存在"
             };
@@ -927,7 +928,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Failed to end battle record with ID: {SafeBattleId}", SafeLogId(battleId));
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = $"结束战斗记录失败: {ex.Message}"
             };
         }
@@ -964,7 +965,7 @@ public class DataStorageService : IDataStorageService
                 
                 return new ApiResponse<List<BattleRecordStorageDto>>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = result,
                     Message = $"获取到 {result.Count} 条战斗记录"
                 };
@@ -972,7 +973,7 @@ public class DataStorageService : IDataStorageService
             
             return new ApiResponse<List<BattleRecordStorageDto>>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = new List<BattleRecordStorageDto>(),
                 Message = "没有找到战斗记录"
             };
@@ -982,7 +983,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Failed to get battle history for player with ID: {SafePlayerId}", SafeLogId(playerId));
             return new ApiResponse<List<BattleRecordStorageDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = $"获取战斗历史失败: {ex.Message}"
             };
         }
@@ -1016,7 +1017,7 @@ public class DataStorageService : IDataStorageService
             
             return new ApiResponse<List<BattleRecordStorageDto>>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = result,
                 Message = $"获取到 {result.Count} 条队伍战斗记录"
             };
@@ -1026,7 +1027,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Failed to get battle history for team with ID: {SafeTeamId}", SafeLogId(teamId));
             return new ApiResponse<List<BattleRecordStorageDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = $"获取队伍战斗历史失败: {ex.Message}"
             };
         }
@@ -1044,7 +1045,7 @@ public class DataStorageService : IDataStorageService
             
             return new ApiResponse<List<BattleRecordStorageDto>>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = activeBattles,
                 Message = $"获取到 {activeBattles.Count} 场进行中的战斗"
             };
@@ -1054,7 +1055,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Failed to get active battle records");
             return new ApiResponse<List<BattleRecordStorageDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = $"获取进行中战斗失败: {ex.Message}"
             };
         }
@@ -1064,7 +1065,7 @@ public class DataStorageService : IDataStorageService
 
     #region 用户角色关联管理
 
-    public async Task<ApiResponse<UserCharacterStorageDto>> CreateUserCharacterAsync(string userId, string characterId, string characterName, bool isDefault = false)
+    public async Task<ApiResponse<UserCharacterStorageDto>> CreateUserCharacterAsync(string userId, string characterId, string characterName, bool isDefault = false, int slotIndex = 0)
     {
         try
         {
@@ -1073,21 +1074,13 @@ public class DataStorageService : IDataStorageService
             // 验证用户存在
             if (!_users.ContainsKey(userId))
             {
-                return new ApiResponse<UserCharacterStorageDto>
-                {
-                    Success = false,
-                    Message = "用户不存在"
-                };
+                return ApiResponse<UserCharacterStorageDto>.Failure("用户不存在");
             }
 
             // 检查角色是否已被其他用户关联
             if (_characterToUser.ContainsKey(characterId))
             {
-                return new ApiResponse<UserCharacterStorageDto>
-                {
-                    Success = false,
-                    Message = "该角色已被其他用户占用"
-                };
+                return ApiResponse<UserCharacterStorageDto>.Failure("该角色已被其他用户占用");
             }
 
             // 如果设置为默认角色，需要先取消其他默认角色
@@ -1096,12 +1089,29 @@ public class DataStorageService : IDataStorageService
                 var userCharacters = _userCharacters.Values
                     .Where(uc => uc.UserId == userId && uc.IsDefault)
                     .ToList();
-                
+
                 foreach (var uc in userCharacters)
                 {
                     uc.IsDefault = false;
                     uc.UpdatedAt = DateTime.UtcNow;
                 }
+            }
+
+            // 获取角色信息以存储职业和等级
+            string professionName = "Warrior";
+            int level = 1;
+
+            // 优先从角色字典中查找
+            if (_characters.TryGetValue(characterId, out var character))
+            {
+                professionName = character.Professions.SelectedBattleProfession;
+                level = character.Level;
+            }
+            // 如果角色字典中没有，则从玩家字典中查找 (向后兼容)
+            else if (_players.TryGetValue(characterId, out var player))
+            {
+                professionName = player.SelectedBattleProfession;
+                level = player.Level;
             }
 
             var userCharacter = new UserCharacterEntity
@@ -1112,40 +1122,74 @@ public class DataStorageService : IDataStorageService
                 CharacterName = characterName,
                 IsActive = true,
                 IsDefault = isDefault,
+                SlotIndex = slotIndex,
+                ProfessionName = professionName,
+                Level = level,
                 LastPlayedAt = DateTime.UtcNow,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
 
             _userCharacters.TryAdd(userCharacter.Id, userCharacter);
-            
+
             // 更新索引
             _characterToUser.TryAdd(characterId, userId);
-            _userToCharacters.AddOrUpdate(userId, 
+            _userToCharacters.AddOrUpdate(userId,
                 new List<string> { characterId },
-                (key, existing) => 
+                (key, existing) =>
                 {
                     existing.Add(characterId);
                     return existing;
                 });
 
-            _logger.LogInformation($"Created user-character relationship: {SafeLogId(userId)} -> {SafeLogId(characterId)}");
+            _logger.LogInformation($"Created user-character relationship: {SafeLogId(userId)} -> {SafeLogId(characterId)} at slot {slotIndex}");
 
-            return new ApiResponse<UserCharacterStorageDto>
-            {
-                Success = true,
-                Data = ConvertToUserCharacterDto(userCharacter),
-                Message = "用户角色关联创建成功"
-            };
+            return ApiResponse<UserCharacterStorageDto>.Success(ConvertToUserCharacterDto(userCharacter), "用户角色关联创建成功");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, $"Error creating user-character relationship: {SafeLogId(userId)} -> {SafeLogId(characterId)}");
-            return new ApiResponse<UserCharacterStorageDto>
+            return ApiResponse<UserCharacterStorageDto>.Failure("创建用户角色关联失败");
+        }
+    }
+    /// <summary>
+    /// 解锁角色槽位
+    /// </summary>
+    public async Task<ApiResponse<bool>> UnlockCharacterSlotAsync(string userId, int slotIndex)
+    {
+        try
+        {
+            await Task.Delay(1); // 模拟异步操作
+
+            // 在实际数据库实现中，这里应该记录用户已解锁的槽位
+            // 在内存实现中，我们简单地记录在用户的自定义属性中
+            if (_users.TryGetValue(userId, out var user))
             {
-                Success = false,
-                Message = "创建用户角色关联失败"
-            };
+                var profile = JsonSerializer.Deserialize<Dictionary<string, object>>(user.ProfileJson)
+                    ?? new Dictionary<string, object>();
+
+                var unlockedSlots = profile.GetValueOrDefault("UnlockedSlots", new List<int>()) as List<int>
+                    ?? new List<int>();
+
+                if (!unlockedSlots.Contains(slotIndex))
+                {
+                    unlockedSlots.Add(slotIndex);
+                    profile["UnlockedSlots"] = unlockedSlots;
+                    user.ProfileJson = JsonSerializer.Serialize(profile);
+                    user.UpdatedAt = DateTime.UtcNow;
+                }
+
+                _logger.LogInformation($"User {SafeLogId(userId)} unlocked character slot {slotIndex}");
+
+                return ApiResponse<bool>.Success(true, "角色槽位解锁成功");
+            }
+
+            return ApiResponse<bool>.Failure("用户不存在");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Error unlocking character slot: {SafeLogId(userId)}, slot: {slotIndex}");
+            return ApiResponse<bool>.Failure("解锁角色槽位失败");
         }
     }
 
@@ -1164,7 +1208,7 @@ public class DataStorageService : IDataStorageService
 
             return new ApiResponse<List<UserCharacterStorageDto>>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = userCharacters,
                 Message = "获取用户角色列表成功"
             };
@@ -1174,7 +1218,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, $"Error getting user characters: {SafeLogId(userId)}");
             return new ApiResponse<List<UserCharacterStorageDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "获取用户角色列表失败"
             };
         }
@@ -1234,7 +1278,7 @@ public class DataStorageService : IDataStorageService
             {
                 return new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "用户不拥有该角色"
                 };
             }
@@ -1256,7 +1300,7 @@ public class DataStorageService : IDataStorageService
 
             return new ApiResponse<bool>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = true,
                 Message = "设置默认角色成功"
             };
@@ -1266,7 +1310,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, $"Error setting default character: {SafeLogId(userId)} -> {SafeLogId(characterId)}");
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "设置默认角色失败"
             };
         }
@@ -1285,7 +1329,7 @@ public class DataStorageService : IDataStorageService
             {
                 return new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "用户角色关联不存在"
                 };
             }
@@ -1306,7 +1350,7 @@ public class DataStorageService : IDataStorageService
 
             return new ApiResponse<bool>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = true,
                 Message = "删除用户角色关联成功"
             };
@@ -1316,7 +1360,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, $"Error deleting user-character relationship: {SafeLogId(userId)} -> {SafeLogId(characterId)}");
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "删除用户角色关联失败"
             };
         }
@@ -1335,6 +1379,9 @@ public class DataStorageService : IDataStorageService
             CharacterName = entity.CharacterName,
             IsActive = entity.IsActive,
             IsDefault = entity.IsDefault,
+            SlotIndex = entity.SlotIndex,
+            ProfessionName = entity.ProfessionName,
+            Level = entity.Level,
             LastPlayedAt = entity.LastPlayedAt,
             CreatedAt = entity.CreatedAt,
             UpdatedAt = entity.UpdatedAt
@@ -1358,7 +1405,7 @@ public class DataStorageService : IDataStorageService
             
             return new ApiResponse<OfflineDataStorageDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = MapToDto(entity),
                 Message = "离线数据保存成功"
             };
@@ -1368,7 +1415,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Failed to save offline data with ID: {SafeOfflineDataId}", SafeLogId(offlineData.Id));
             return new ApiResponse<OfflineDataStorageDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = $"保存离线数据失败: {ex.Message}"
             };
         }
@@ -1386,7 +1433,7 @@ public class DataStorageService : IDataStorageService
             
             return new ApiResponse<List<OfflineDataStorageDto>>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = unsyncedData,
                 Message = $"获取到 {unsyncedData.Count} 条未同步的离线数据"
             };
@@ -1396,7 +1443,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Failed to get unsynced offline data for player with ID: {SafePlayerId}", SafeLogId(playerId));
             return new ApiResponse<List<OfflineDataStorageDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = $"获取未同步离线数据失败: {ex.Message}"
             };
         }
@@ -1422,7 +1469,7 @@ public class DataStorageService : IDataStorageService
             
             return new ApiResponse<bool>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = true,
                 Message = $"已标记 {syncedCount} 条离线数据为已同步"
             };
@@ -1432,7 +1479,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Failed to mark offline data as synced");
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = $"标记离线数据同步状态失败: {ex.Message}"
             };
         }
@@ -1459,7 +1506,7 @@ public class DataStorageService : IDataStorageService
             
             return new ApiResponse<int>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = removedCount,
                 Message = $"清理了 {removedCount} 条已同步的旧离线数据"
             };
@@ -1469,7 +1516,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Failed to cleanup synced offline data");
             return new ApiResponse<int>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = $"清理已同步离线数据失败: {ex.Message}"
             };
         }
@@ -1493,7 +1540,7 @@ public class DataStorageService : IDataStorageService
             
             return new ApiResponse<List<PlayerStorageDto>>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = searchResults,
                 Message = $"找到 {searchResults.Count} 个匹配的玩家"
             };
@@ -1503,7 +1550,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Failed to search players");
             return new ApiResponse<List<PlayerStorageDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = $"搜索玩家失败: {ex.Message}"
             };
         }
@@ -1530,7 +1577,7 @@ public class DataStorageService : IDataStorageService
             
             return new ApiResponse<Dictionary<string, object>>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = stats,
                 Message = "存储统计信息获取成功"
             };
@@ -1540,7 +1587,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Failed to get storage stats");
             return new ApiResponse<Dictionary<string, object>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = $"获取存储统计信息失败: {ex.Message}"
             };
         }
@@ -1574,7 +1621,7 @@ public class DataStorageService : IDataStorageService
             
             return new ApiResponse<Dictionary<string, object>>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = healthCheck,
                 Message = "数据存储服务健康检查通过"
             };
@@ -1584,7 +1631,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Health check failed");
             return new ApiResponse<Dictionary<string, object>>
             {
-                Success = false,
+                IsSuccess = false,
                 Data = new Dictionary<string, object>
                 {
                     ["Status"] = "Unhealthy",
@@ -1608,7 +1655,7 @@ public class DataStorageService : IDataStorageService
             {
                 return new ApiResponse<Dictionary<string, object>>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "玩家不存在"
                 };
             }
@@ -1626,7 +1673,7 @@ public class DataStorageService : IDataStorageService
             
             return new ApiResponse<Dictionary<string, object>>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = exportData,
                 Message = "玩家数据导出成功"
             };
@@ -1636,7 +1683,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Failed to export player data for ID: {SafePlayerId}", SafeLogId(playerId));
             return new ApiResponse<Dictionary<string, object>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = $"导出玩家数据失败: {ex.Message}"
             };
         }
@@ -1652,7 +1699,7 @@ public class DataStorageService : IDataStorageService
             
             return new ApiResponse<bool>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = true,
                 Message = "数据导入功能待实现"
             };
@@ -1662,7 +1709,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Failed to import player data for ID: {SafePlayerId}", SafeLogId(playerId));
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = $"导入玩家数据失败: {ex.Message}"
             };
         }
@@ -1677,7 +1724,7 @@ public class DataStorageService : IDataStorageService
             
             return new ApiResponse<string>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = backupId,
                 Message = $"数据备份已启动，备份ID: {backupId}"
             };
@@ -1687,7 +1734,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Failed to backup data");
             return new ApiResponse<string>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = $"数据备份失败: {ex.Message}"
             };
         }
@@ -1728,7 +1775,7 @@ public class DataStorageService : IDataStorageService
             
             // 清理已同步的旧离线数据
             var cleanupOfflineResult = await CleanupSyncedOfflineDataAsync(cutoffTime);
-            if (cleanupOfflineResult.Success)
+            if (cleanupOfflineResult.IsSuccess)
             {
                 cleanedCount += cleanupOfflineResult.Data;
             }
@@ -1737,7 +1784,7 @@ public class DataStorageService : IDataStorageService
             
             return new ApiResponse<int>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = cleanedCount,
                 Message = $"清理了 {cleanedCount} 条过期数据"
             };
@@ -1747,7 +1794,7 @@ public class DataStorageService : IDataStorageService
             _logger.LogError(ex, "Failed to cleanup expired data");
             return new ApiResponse<int>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = $"清理过期数据失败: {ex.Message}"
             };
         }

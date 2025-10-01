@@ -40,7 +40,7 @@ public class AuthController : ControllerBase
             {
                 return BadRequest(new ApiResponse<AuthenticationResponse>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "Username and password are required",
                     Timestamp = DateTime.UtcNow
                 });
@@ -55,7 +55,7 @@ public class AuthController : ControllerBase
 
                 return Unauthorized(new ApiResponse<AuthenticationResponse>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "Invalid username or password",
                     Timestamp = DateTime.UtcNow
                 });
@@ -73,7 +73,7 @@ public class AuthController : ControllerBase
 
             return Ok(new ApiResponse<AuthenticationResponse>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = new AuthenticationResponse
                 {
                     AccessToken = accessToken,
@@ -94,7 +94,7 @@ public class AuthController : ControllerBase
             _logger.LogError(ex, "Error during login for username: {Username}", request.Username);
             return StatusCode(500, new ApiResponse<AuthenticationResponse>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "Internal server error during login",
                 Timestamp = DateTime.UtcNow
             });
@@ -113,7 +113,7 @@ public class AuthController : ControllerBase
             return Unauthorized();
 
         var result = await _userService.UpdateUserProfileAsync(userId, request.DisplayName, request.Avatar);
-        if (!result.Success)
+        if (!result.IsSuccess)
             return BadRequest(result);
 
         // 返回更新后的用户信息
@@ -147,7 +147,7 @@ public class AuthController : ControllerBase
             return Unauthorized();
 
         var result = await _userService.GetUserCharactersAsync(userId);
-        if (!result.Success)
+        if (!result.IsSuccess)
             return BadRequest(result);
 
         // 转换为前端友好的DTO
@@ -159,7 +159,7 @@ public class AuthController : ControllerBase
 
         return Ok(new ApiResponse<List<CharacterListItemDto>>
         {
-            Success = true,
+            IsSuccess = true,
             Data = characters,
             Message = result.Message
         });
@@ -196,7 +196,7 @@ public class AuthController : ControllerBase
 
         return Ok(new ApiResponse<bool>
         {
-            Success = true,
+            IsSuccess = true,
             Data = true,
             Message = "验证邮件已发送，请检查您的邮箱"
         });
@@ -272,7 +272,7 @@ public class AuthController : ControllerBase
             {
                 return BadRequest(new ApiResponse<AuthenticationResponse>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "Username and password are required",
                     Timestamp = DateTime.UtcNow
                 });
@@ -282,7 +282,7 @@ public class AuthController : ControllerBase
             {
                 return BadRequest(new ApiResponse<AuthenticationResponse>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "Password must be at least 6 characters long",
                     Timestamp = DateTime.UtcNow
                 });
@@ -293,11 +293,11 @@ public class AuthController : ControllerBase
 
             // 注册用户
             var registrationResult = await _userService.RegisterUserAsync(request.Username, request.Password, request.Email);
-            if (!registrationResult.Success)
+            if (!registrationResult.IsSuccess)
             {
                 return BadRequest(new ApiResponse<AuthenticationResponse>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = registrationResult.Message,
                     Timestamp = DateTime.UtcNow
                 });
@@ -315,7 +315,7 @@ public class AuthController : ControllerBase
 
             return Ok(new ApiResponse<AuthenticationResponse>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = new AuthenticationResponse
                 {
                     AccessToken = accessToken,
@@ -336,7 +336,7 @@ public class AuthController : ControllerBase
             _logger.LogError(ex, "Error during registration for username: {Username}", request.Username);
             return StatusCode(500, new ApiResponse<AuthenticationResponse>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "Internal server error during registration",
                 Timestamp = DateTime.UtcNow
             });
@@ -355,7 +355,7 @@ public class AuthController : ControllerBase
             {
                 return BadRequest(new ApiResponse<AuthenticationResponse>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "Refresh token is required",
                     Timestamp = DateTime.UtcNow
                 });
@@ -366,7 +366,7 @@ public class AuthController : ControllerBase
             {
                 return BadRequest(new ApiResponse<AuthenticationResponse>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "User ID is required",
                     Timestamp = DateTime.UtcNow
                 });
@@ -377,7 +377,7 @@ public class AuthController : ControllerBase
             {
                 return Unauthorized(new ApiResponse<AuthenticationResponse>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "Invalid refresh token",
                     Timestamp = DateTime.UtcNow
                 });
@@ -392,7 +392,7 @@ public class AuthController : ControllerBase
 
             return Ok(new ApiResponse<AuthenticationResponse>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = new AuthenticationResponse
                 {
                     AccessToken = accessToken,
@@ -413,7 +413,7 @@ public class AuthController : ControllerBase
             _logger.LogError(ex, "Error during token refresh");
             return StatusCode(500, new ApiResponse<AuthenticationResponse>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "Internal server error during token refresh",
                 Timestamp = DateTime.UtcNow
             });
@@ -435,7 +435,7 @@ public class AuthController : ControllerBase
 
             return Ok(new ApiResponse<object>
             {
-                Success = true,
+                IsSuccess = true,
                 Message = "Logout successful",
                 Timestamp = DateTime.UtcNow
             });
@@ -445,7 +445,7 @@ public class AuthController : ControllerBase
             _logger.LogError(ex, "Error during logout");
             return StatusCode(500, new ApiResponse<object>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "Internal server error during logout",
                 Timestamp = DateTime.UtcNow
             });
@@ -466,7 +466,7 @@ public class AuthController : ControllerBase
             {
                 return Unauthorized(new ApiResponse<UserInfo>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "Invalid token",
                     Timestamp = DateTime.UtcNow
                 });
@@ -478,7 +478,7 @@ public class AuthController : ControllerBase
             {
                 return NotFound(new ApiResponse<UserInfo>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "User not found",
                     Timestamp = DateTime.UtcNow
                 });
@@ -486,7 +486,7 @@ public class AuthController : ControllerBase
 
             return Ok(new ApiResponse<UserInfo>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = new UserInfo
                 {
                     UserId = user.Id,
@@ -508,7 +508,7 @@ public class AuthController : ControllerBase
             _logger.LogError(ex, "Error getting current user information");
             return StatusCode(500, new ApiResponse<UserInfo>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "Internal server error",
                 Timestamp = DateTime.UtcNow
             });

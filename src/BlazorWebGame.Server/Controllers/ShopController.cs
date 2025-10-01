@@ -42,7 +42,7 @@ public class ShopController : ControllerBase
             
             return Ok(new ApiResponse<List<ShopItemDto>>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = items,
                 Message = $"成功获取 {items.Count} 个商店物品"
             });
@@ -52,7 +52,7 @@ public class ShopController : ControllerBase
             _logger.LogError(ex, "获取商店物品时发生错误");
             return StatusCode(500, new ApiResponse<List<ShopItemDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "服务器内部错误",
                 Errors = { ex.Message }
             });
@@ -72,7 +72,7 @@ public class ShopController : ControllerBase
             {
                 return BadRequest(new ApiResponse<List<ShopItemDto>>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "分类名称不能为空"
                 });
             }
@@ -81,7 +81,7 @@ public class ShopController : ControllerBase
             
             return Ok(new ApiResponse<List<ShopItemDto>>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = items,
                 Message = $"成功获取分类 '{category}' 的 {items.Count} 个物品"
             });
@@ -91,7 +91,7 @@ public class ShopController : ControllerBase
             _logger.LogError(ex, "获取分类 {Category} 的商店物品时发生错误", category);
             return StatusCode(500, new ApiResponse<List<ShopItemDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "服务器内部错误",
                 Errors = { ex.Message }
             });
@@ -111,7 +111,7 @@ public class ShopController : ControllerBase
             
             return Ok(new ApiResponse<List<ShopCategoryDto>>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = categories,
                 Message = $"成功获取 {categories.Count} 个商店分类"
             });
@@ -121,7 +121,7 @@ public class ShopController : ControllerBase
             _logger.LogError(ex, "获取商店分类时发生错误");
             return StatusCode(500, new ApiResponse<List<ShopCategoryDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "服务器内部错误",
                 Errors = { ex.Message }
             });
@@ -142,7 +142,7 @@ public class ShopController : ControllerBase
             {
                 return BadRequest(new ApiResponse<PurchaseResponseDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "请求数据无效",
                     Errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList()
                 });
@@ -164,7 +164,7 @@ public class ShopController : ControllerBase
                 
                 return Ok(new ApiResponse<PurchaseResponseDto>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = result,
                     Message = result.Message
                 });
@@ -173,7 +173,7 @@ public class ShopController : ControllerBase
             {
                 return BadRequest(new ApiResponse<PurchaseResponseDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Data = result,
                     Message = result.Message
                 });
@@ -186,7 +186,7 @@ public class ShopController : ControllerBase
             
             return StatusCode(500, new ApiResponse<PurchaseResponseDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "服务器内部错误",
                 Errors = { ex.Message }
             });
@@ -207,7 +207,7 @@ public class ShopController : ControllerBase
             {
                 return BadRequest(new ApiResponse<SellResponseDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "请求数据无效",
                     Errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList()
                 });
@@ -229,7 +229,7 @@ public class ShopController : ControllerBase
                 
                 return Ok(new ApiResponse<SellResponseDto>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = result,
                     Message = result.Message
                 });
@@ -238,7 +238,7 @@ public class ShopController : ControllerBase
             {
                 return BadRequest(new ApiResponse<SellResponseDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Data = result,
                     Message = result.Message
                 });
@@ -251,7 +251,7 @@ public class ShopController : ControllerBase
             
             return StatusCode(500, new ApiResponse<SellResponseDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "服务器内部错误",
                 Errors = { ex.Message }
             });

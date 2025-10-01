@@ -39,7 +39,7 @@ namespace BlazorWebGame.Server.Controllers
                 {
                     return Unauthorized(new ApiResponse<List<CharacterDto>>
                     {
-                        Success = false,
+                        IsSuccess = false,
                         Message = "用户未认证"
                     });
                 }
@@ -47,7 +47,7 @@ namespace BlazorWebGame.Server.Controllers
                 var characters = await _characterService.GetUserCharactersAsync(userId);
                 return Ok(new ApiResponse<List<CharacterDto>>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = characters,
                     Message = "用户角色列表获取成功"
                 });
@@ -57,7 +57,7 @@ namespace BlazorWebGame.Server.Controllers
                 _logger.LogError(ex, "Failed to get user characters");
                 return StatusCode(500, new ApiResponse<List<CharacterDto>>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "获取用户角色列表失败"
                 });
             }
@@ -74,7 +74,7 @@ namespace BlazorWebGame.Server.Controllers
                 var characters = await _characterService.GetCharactersAsync();
                 return Ok(new ApiResponse<List<CharacterDto>>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = characters,
                     Message = "角色列表获取成功"
                 });
@@ -84,7 +84,7 @@ namespace BlazorWebGame.Server.Controllers
                 _logger.LogError(ex, "Failed to get characters");
                 return StatusCode(500, new ApiResponse<List<CharacterDto>>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "获取角色列表失败"
                 });
             }
@@ -104,7 +104,7 @@ namespace BlazorWebGame.Server.Controllers
                 {
                     return Unauthorized(new ApiResponse<CharacterDetailsDto>
                     {
-                        Success = false,
+                        IsSuccess = false,
                         Message = "用户未认证"
                     });
                 }
@@ -121,14 +121,14 @@ namespace BlazorWebGame.Server.Controllers
                 {
                     return NotFound(new ApiResponse<CharacterDetailsDto>
                     {
-                        Success = false,
+                        IsSuccess = false,
                         Message = "角色不存在"
                     });
                 }
 
                 return Ok(new ApiResponse<CharacterDetailsDto>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = character,
                     Message = "角色详情获取成功"
                 });
@@ -138,7 +138,7 @@ namespace BlazorWebGame.Server.Controllers
                 _logger.LogError(ex, "Failed to get character details for {CharacterId}", characterId);
                 return StatusCode(500, new ApiResponse<CharacterDetailsDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "获取角色详情失败"
                 });
             }
@@ -157,7 +157,7 @@ namespace BlazorWebGame.Server.Controllers
                 {
                     return BadRequest(new ApiResponse<CharacterDto>
                     {
-                        Success = false,
+                        IsSuccess = false,
                         Message = "角色名称不能为空"
                     });
                 }
@@ -167,7 +167,7 @@ namespace BlazorWebGame.Server.Controllers
                 {
                     return Unauthorized(new ApiResponse<CharacterDto>
                     {
-                        Success = false,
+                        IsSuccess = false,
                         Message = "用户未认证"
                     });
                 }
@@ -175,7 +175,7 @@ namespace BlazorWebGame.Server.Controllers
                 var character = await _characterService.CreateCharacterAsync(request, userId);
                 return Ok(new ApiResponse<CharacterDto>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = character,
                     Message = "角色创建成功"
                 });
@@ -185,7 +185,7 @@ namespace BlazorWebGame.Server.Controllers
                 _logger.LogError(ex, "Failed to create character");
                 return StatusCode(500, new ApiResponse<CharacterDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "创建角色失败"
                 });
             }
@@ -206,14 +206,14 @@ namespace BlazorWebGame.Server.Controllers
                 {
                     return NotFound(new ApiResponse<bool>
                     {
-                        Success = false,
+                        IsSuccess = false,
                         Message = "角色不存在或专业类型无效"
                     });
                 }
 
                 return Ok(new ApiResponse<bool>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = true,
                     Message = "经验值添加成功"
                 });
@@ -223,7 +223,7 @@ namespace BlazorWebGame.Server.Controllers
                 _logger.LogError(ex, "Failed to add experience for character {CharacterId}", characterId);
                 return StatusCode(500, new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "添加经验值失败"
                 });
             }
@@ -244,14 +244,14 @@ namespace BlazorWebGame.Server.Controllers
                 {
                     return NotFound(new ApiResponse<bool>
                     {
-                        Success = false,
+                        IsSuccess = false,
                         Message = "角色不存在"
                     });
                 }
 
                 return Ok(new ApiResponse<bool>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = true,
                     Message = "角色状态更新成功"
                 });
@@ -261,7 +261,7 @@ namespace BlazorWebGame.Server.Controllers
                 _logger.LogError(ex, "Failed to update character status for {CharacterId}", characterId);
                 return StatusCode(500, new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "更新角色状态失败"
                 });
             }
@@ -291,14 +291,14 @@ namespace BlazorWebGame.Server.Controllers
                 {
                     return NotFound(new ApiResponse<object>
                     {
-                        Success = false,
+                        IsSuccess = false,
                         Message = "角色不存在"
                     });
                 }
 
                 return Ok(new ApiResponse<object>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Data = new { Updated = true },
                     Message = "角色数据更新成功"
                 });
@@ -308,7 +308,7 @@ namespace BlazorWebGame.Server.Controllers
                 _logger.LogError(ex, "Failed to update character for offline sync {CharacterId}", characterId);
                 return StatusCode(500, new ApiResponse<object>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "更新角色数据失败"
                 });
             }

@@ -61,45 +61,51 @@ public interface IDataStorageService
     /// 解锁用户账户
     /// </summary>
     Task<ApiResponse<bool>> UnlockUserAccountAsync(string userId);
-    
+
     #endregion
 
     #region 用户角色关联管理
-    
+
     /// <summary>
     /// 创建用户角色关联
     /// </summary>
-    Task<ApiResponse<UserCharacterStorageDto>> CreateUserCharacterAsync(string userId, string characterId, string characterName, bool isDefault = false);
-    
+    Task<ApiResponse<UserCharacterStorageDto>> CreateUserCharacterAsync(string userId, string characterId, string characterName, bool isDefault = false, int slotIndex = 0);
+
     /// <summary>
     /// 获取用户的所有角色
     /// </summary>
     Task<ApiResponse<List<UserCharacterStorageDto>>> GetUserCharactersAsync(string userId);
-    
+
     /// <summary>
     /// 获取角色的拥有者
     /// </summary>
     Task<UserCharacterStorageDto?> GetCharacterOwnerAsync(string characterId);
-    
+
     /// <summary>
     /// 验证用户是否拥有指定角色
     /// </summary>
     Task<bool> UserOwnsCharacterAsync(string userId, string characterId);
-    
+
     /// <summary>
     /// 设置用户的默认角色
     /// </summary>
     Task<ApiResponse<bool>> SetDefaultCharacterAsync(string userId, string characterId);
-    
+
     /// <summary>
     /// 删除用户角色关联
     /// </summary>
     Task<ApiResponse<bool>> DeleteUserCharacterAsync(string userId, string characterId);
-    
+
+    /// <summary>
+    /// 解锁角色槽位
+    /// </summary>
+    Task<ApiResponse<bool>> UnlockCharacterSlotAsync(string userId, int slotIndex);
+
+
     #endregion
 
     #region 玩家数据管理
-    
+
     /// <summary>
     /// 获取玩家数据
     /// </summary>

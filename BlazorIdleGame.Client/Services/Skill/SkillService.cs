@@ -99,7 +99,7 @@ namespace BlazorIdleGame.Client.Services.Skill
                 var skillsResponse = await _communication.GetAsync<ApiResponse<List<SkillDefinitionDto>>>(
                     "api/skill/available");
 
-                if (skillsResponse?.Success == true && skillsResponse.Data != null)
+                if (skillsResponse?.IsSuccess == true && skillsResponse.Data != null)
                 {
                     _availableSkills = skillsResponse.Data;
                 }
@@ -108,7 +108,7 @@ namespace BlazorIdleGame.Client.Services.Skill
                 var learnedResponse = await _communication.GetAsync<ApiResponse<List<LearnedSkillDto>>>(
                     "api/skill/learned");
 
-                if (learnedResponse?.Success == true && learnedResponse.Data != null)
+                if (learnedResponse?.IsSuccess == true && learnedResponse.Data != null)
                 {
                     _learnedSkills = learnedResponse.Data.ToDictionary(s => s.SkillId);
                 }
@@ -117,7 +117,7 @@ namespace BlazorIdleGame.Client.Services.Skill
                 var barResponse = await _communication.GetAsync<ApiResponse<SkillBarDto>>(
                     "api/skill/bar");
 
-                if (barResponse?.Success == true && barResponse.Data != null)
+                if (barResponse?.IsSuccess == true && barResponse.Data != null)
                 {
                     _currentSkillBar = barResponse.Data;
                     SkillBarUpdated?.Invoke(this, barResponse.Data);
@@ -127,7 +127,7 @@ namespace BlazorIdleGame.Client.Services.Skill
                 var cooldownResponse = await _communication.GetAsync<ApiResponse<List<SkillCooldownDto>>>(
                     "api/skill/cooldowns");
 
-                if (cooldownResponse?.Success == true && cooldownResponse.Data != null)
+                if (cooldownResponse?.IsSuccess == true && cooldownResponse.Data != null)
                 {
                     _cooldowns = cooldownResponse.Data.ToDictionary(c => c.SkillId);
                 }
@@ -152,7 +152,7 @@ namespace BlazorIdleGame.Client.Services.Skill
                 var response = await _communication.PostAsync<LearnSkillRequest, ApiResponse<LearnedSkillDto>>(
                     "api/skill/learn", request);
 
-                if (response?.Success == true && response.Data != null)
+                if (response?.IsSuccess == true && response.Data != null)
                 {
                     _learnedSkills[skillId] = response.Data;
                     SkillLearned?.Invoke(this, response.Data);
@@ -191,7 +191,7 @@ namespace BlazorIdleGame.Client.Services.Skill
                 var response = await _communication.PostAsync<UpgradeSkillRequest, ApiResponse<LearnedSkillDto>>(
                     "api/skill/upgrade", request);
 
-                if (response?.Success == true && response.Data != null)
+                if (response?.IsSuccess == true && response.Data != null)
                 {
                     _learnedSkills[skillId] = response.Data;
                     SkillUpgraded?.Invoke(this, response.Data);
@@ -230,7 +230,7 @@ namespace BlazorIdleGame.Client.Services.Skill
                 var response = await _communication.PostAsync<EquipSkillRequest, ApiResponse<SkillBarDto>>(
                     "api/skill/equip", request);
 
-                if (response?.Success == true && response.Data != null)
+                if (response?.IsSuccess == true && response.Data != null)
                 {
                     _currentSkillBar = response.Data;
                     SkillBarUpdated?.Invoke(this, response.Data);
@@ -257,7 +257,7 @@ namespace BlazorIdleGame.Client.Services.Skill
                 var response = await _communication.PostAsync<object, ApiResponse<SkillBarDto>>(
                     "api/skill/unequip", request);
 
-                if (response?.Success == true && response.Data != null)
+                if (response?.IsSuccess == true && response.Data != null)
                 {
                     _currentSkillBar = response.Data;
                     SkillBarUpdated?.Invoke(this, response.Data);
@@ -296,7 +296,7 @@ namespace BlazorIdleGame.Client.Services.Skill
                 var response = await _communication.PostAsync<UseSkillRequest, ApiResponse<SkillUseResult>>(
                     "api/skill/use", request);
 
-                if (response?.Success == true && response.Data != null)
+                if (response?.IsSuccess == true && response.Data != null)
                 {
                     // 更新冷却
                     if (response.Data.Cooldown != null)
@@ -332,7 +332,7 @@ namespace BlazorIdleGame.Client.Services.Skill
                 var response = await _communication.PostAsync<ConfigureSkillBarRequest, ApiResponse<SkillBarDto>>(
                     "api/skill/bar/configure", request);
 
-                if (response?.Success == true && response.Data != null)
+                if (response?.IsSuccess == true && response.Data != null)
                 {
                     _currentSkillBar = response.Data;
                     SkillBarUpdated?.Invoke(this, response.Data);
@@ -357,7 +357,7 @@ namespace BlazorIdleGame.Client.Services.Skill
                 var response = await _communication.PostAsync<object, ApiResponse<bool>>(
                     "api/skill/autocast", request);
 
-                return response?.Success == true;
+                return response?.IsSuccess == true;
             }
             catch (Exception ex)
             {
@@ -373,7 +373,7 @@ namespace BlazorIdleGame.Client.Services.Skill
                 var response = await _communication.GetAsync<ApiResponse<List<SkillTreeDto>>>(
                     "api/skill/trees");
 
-                if (response?.Success == true && response.Data != null)
+                if (response?.IsSuccess == true && response.Data != null)
                 {
                     _skillTrees = response.Data;
                     return response.Data;
@@ -397,7 +397,7 @@ namespace BlazorIdleGame.Client.Services.Skill
                 var response = await _communication.PostAsync<object, ApiResponse<SkillTreeDto>>(
                     "api/skill/tree/invest", request);
 
-                if (response?.Success == true && response.Data != null)
+                if (response?.IsSuccess == true && response.Data != null)
                 {
                     // 更新对应的技能树
                     var index = _skillTrees.FindIndex(t => t.TreeId == treeId);
@@ -427,7 +427,7 @@ namespace BlazorIdleGame.Client.Services.Skill
                 var response = await _communication.PostAsync<ResetSkillPointsRequest, ApiResponse<List<SkillTreeDto>>>(
                     "api/skill/tree/reset", request);
 
-                if (response?.Success == true && response.Data != null)
+                if (response?.IsSuccess == true && response.Data != null)
                 {
                     _skillTrees = response.Data;
                     return true;

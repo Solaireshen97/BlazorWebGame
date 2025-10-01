@@ -193,7 +193,7 @@ else
         {
             var result = await ShopService.BuyItemAsync(_selectedItem.Id, 1);
             
-            if (result.Success)
+            if (result.IsSuccess)
             {
                 _purchaseMessage = result.Message;
                 _purchaseMessageCssClass = "success";

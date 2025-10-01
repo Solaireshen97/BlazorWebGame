@@ -44,7 +44,7 @@ public class ApiDocumentationController : ControllerBase
 
         return Ok(new ApiResponse<ServerApiOverview>
         {
-            Success = true,
+            IsSuccess = true,
             Data = overview,
             Message = "API概述获取成功"
         });
@@ -62,7 +62,7 @@ public class ApiDocumentationController : ControllerBase
 
         return Ok(new ApiResponse<List<ApiEndpointInfo>>
         {
-            Success = true,
+            IsSuccess = true,
             Data = endpoints,
             Message = $"找到 {endpoints.Count} 个API端点"
         });
@@ -80,7 +80,7 @@ public class ApiDocumentationController : ControllerBase
 
         return Ok(new ApiResponse<Dictionary<string, FeatureStatus>>
         {
-            Success = true,
+            IsSuccess = true,
             Data = features,
             Message = "功能状态获取成功"
         });
@@ -114,7 +114,7 @@ public class ApiDocumentationController : ControllerBase
 
         return Ok(new ApiResponse<ServerDetailInfo>
         {
-            Success = true,
+            IsSuccess = true,
             Data = serverInfo,
             Message = "服务器详细信息获取成功"
         });

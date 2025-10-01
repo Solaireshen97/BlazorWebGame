@@ -142,6 +142,17 @@ public class UserCharacterStorageDto
     public string CharacterName { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
     public bool IsDefault { get; set; } = false;
+
+    // 新增: 角色槽位索引
+    public int SlotIndex { get; set; } = 0;
+
+    // 新增: 记录角色所在职业
+    public string ProfessionName { get; set; } = "Warrior";
+
+    // 新增: 角色等级，用于显示在角色选择界面
+    public int Level { get; set; } = 1;
+
+    // 时间相关信息
     public DateTime LastPlayedAt { get; set; } = DateTime.UtcNow;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

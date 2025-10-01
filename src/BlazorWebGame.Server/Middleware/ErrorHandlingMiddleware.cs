@@ -70,7 +70,7 @@ public class ErrorHandlingMiddleware
                 HttpStatusCode.BadRequest,
                 new ApiResponse<object>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "Invalid request parameters",
                     Errors = _environment.IsDevelopment() ? new List<string> { exception.Message } : new List<string>(),
                     Timestamp = DateTime.UtcNow
@@ -80,7 +80,7 @@ public class ErrorHandlingMiddleware
                 HttpStatusCode.Unauthorized,
                 new ApiResponse<object>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "Unauthorized access",
                     Errors = new List<string>(),
                     Timestamp = DateTime.UtcNow
@@ -90,7 +90,7 @@ public class ErrorHandlingMiddleware
                 HttpStatusCode.NotFound,
                 new ApiResponse<object>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "Resource not found",
                     Errors = new List<string>(),
                     Timestamp = DateTime.UtcNow
@@ -100,7 +100,7 @@ public class ErrorHandlingMiddleware
                 HttpStatusCode.Conflict,
                 new ApiResponse<object>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "Operation cannot be performed at this time",
                     Errors = _environment.IsDevelopment() ? new List<string> { exception.Message } : new List<string>(),
                     Timestamp = DateTime.UtcNow
@@ -110,7 +110,7 @@ public class ErrorHandlingMiddleware
                 HttpStatusCode.RequestTimeout,
                 new ApiResponse<object>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "Request timeout",
                     Errors = new List<string>(),
                     Timestamp = DateTime.UtcNow
@@ -120,7 +120,7 @@ public class ErrorHandlingMiddleware
                 HttpStatusCode.InternalServerError,
                 new ApiResponse<object>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "An internal server error occurred",
                     Errors = _environment.IsDevelopment() 
                         ? new List<string> { $"[{requestId}] {exception.Message}", exception.StackTrace ?? string.Empty }

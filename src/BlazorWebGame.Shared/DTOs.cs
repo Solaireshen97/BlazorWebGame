@@ -6,13 +6,44 @@ namespace BlazorWebGame.Shared.DTOs;
 /// <summary>
 /// API响应基类
 /// </summary>
+/// <summary>
+/// API响应基类
+/// </summary>
 public class ApiResponse<T>
 {
-    public bool Success { get; set; }
+    public bool IsSuccess { get; set; }
     public string Message { get; set; } = string.Empty;
     public T? Data { get; set; }
     public List<string> Errors { get; set; } = new();
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// 创建成功响应
+    /// </summary>
+    public static ApiResponse<T> Success(T data, string message = "操作成功")
+    {
+        return new ApiResponse<T>
+        {
+            IsSuccess = true,
+            Message = message,
+            Data = data,
+            Timestamp = DateTime.UtcNow
+        };
+    }
+
+    /// <summary>
+    /// 创建失败响应
+    /// </summary>
+    public static ApiResponse<T> Failure(string message, List<string>? errors = null)
+    {
+        return new ApiResponse<T>
+        {
+            IsSuccess = false,
+            Message = message,
+            Errors = errors ?? new List<string> { message },
+            Timestamp = DateTime.UtcNow
+        };
+    }
 }
 
 /// <summary>

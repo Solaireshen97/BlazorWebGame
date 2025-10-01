@@ -44,7 +44,7 @@ public class DataStorageController : ControllerBase
     public async Task<ActionResult<ApiResponse<PlayerStorageDto>>> SavePlayer([FromBody] PlayerStorageDto player)
     {
         var result = await _dataStorageService.SavePlayerAsync(player);
-        if (!result.Success)
+        if (!result.IsSuccess)
         {
             return BadRequest(result);
         }
@@ -144,7 +144,7 @@ public class DataStorageController : ControllerBase
     public async Task<ActionResult<ApiResponse<TeamStorageDto>>> SaveTeam([FromBody] TeamStorageDto team)
     {
         var result = await _dataStorageService.SaveTeamAsync(team);
-        if (!result.Success)
+        if (!result.IsSuccess)
         {
             return BadRequest(result);
         }
@@ -196,7 +196,7 @@ public class DataStorageController : ControllerBase
     public async Task<ActionResult<ApiResponse<ActionTargetStorageDto>>> SaveActionTarget([FromBody] ActionTargetStorageDto actionTarget)
     {
         var result = await _dataStorageService.SaveActionTargetAsync(actionTarget);
-        if (!result.Success)
+        if (!result.IsSuccess)
         {
             return BadRequest(result);
         }
@@ -258,7 +258,7 @@ public class DataStorageController : ControllerBase
     public async Task<ActionResult<ApiResponse<BattleRecordStorageDto>>> SaveBattleRecord([FromBody] BattleRecordStorageDto battleRecord)
     {
         var result = await _dataStorageService.SaveBattleRecordAsync(battleRecord);
-        if (!result.Success)
+        if (!result.IsSuccess)
         {
             return BadRequest(result);
         }
@@ -316,7 +316,7 @@ public class DataStorageController : ControllerBase
     public async Task<ActionResult<ApiResponse<OfflineDataStorageDto>>> SaveOfflineData([FromBody] OfflineDataStorageDto offlineData)
     {
         var result = await _dataStorageService.SaveOfflineDataAsync(offlineData);
-        if (!result.Success)
+        if (!result.IsSuccess)
         {
             return BadRequest(result);
         }

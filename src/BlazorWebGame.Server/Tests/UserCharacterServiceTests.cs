@@ -78,7 +78,7 @@ public static class UserCharacterServiceTests
         
         // 创建用户
         var registrationResult = await userService.RegisterUserAsync("gameuser", "password123", "gameuser@example.com");
-        if (!registrationResult.Success)
+        if (!registrationResult.IsSuccess)
         {
             throw new Exception($"User registration failed: {registrationResult.Message}");
         }
@@ -136,7 +136,7 @@ public static class UserCharacterServiceTests
         
         // 测试其他用户不拥有该角色
         var otherUserResult = await userService.RegisterUserAsync("otheruser", "password123", "other@example.com");
-        if (!otherUserResult.Success)
+        if (!otherUserResult.IsSuccess)
         {
             throw new Exception($"Other user registration failed: {otherUserResult.Message}");
         }
@@ -202,7 +202,7 @@ public static class UserCharacterServiceTests
         };
         
         var userCreateResult = await dataStorage.CreateUserAsync(testUser, "password123");
-        if (!userCreateResult.Success)
+        if (!userCreateResult.IsSuccess)
         {
             throw new Exception($"Failed to create test user: {userCreateResult.Message}");
         }
@@ -211,27 +211,27 @@ public static class UserCharacterServiceTests
         
         // Create test user-character relationships
         var createResult = await dataStorage.CreateUserCharacterAsync(testUserId, "char1", "Character1", true);
-        if (!createResult.Success)
+        if (!createResult.IsSuccess)
         {
             throw new Exception($"Failed to create user-character relationship: {createResult.Message}");
         }
         
         var createResult2 = await dataStorage.CreateUserCharacterAsync(testUserId, "char2", "Character2", false);
-        if (!createResult2.Success)
+        if (!createResult2.IsSuccess)
         {
             throw new Exception($"Failed to create second user-character relationship: {createResult2.Message}");
         }
         
         // 设置第二个角色为默认
         var setDefaultResult = await dataStorage.SetDefaultCharacterAsync(testUserId, "char2");
-        if (!setDefaultResult.Success)
+        if (!setDefaultResult.IsSuccess)
         {
             throw new Exception($"Failed to set default character: {setDefaultResult.Message}");
         }
         
         // 验证默认角色已更改
         var userCharactersResult = await dataStorage.GetUserCharactersAsync(testUserId);
-        if (!userCharactersResult.Success)
+        if (!userCharactersResult.IsSuccess)
         {
             throw new Exception("Failed to get user characters");
         }
@@ -257,7 +257,7 @@ public static class UserCharacterServiceTests
         
         // 创建管理员用户
         var adminResult = await userService.RegisterUserAsync("adminuser", "admin123", "admin@example.com");
-        if (!adminResult.Success)
+        if (!adminResult.IsSuccess)
         {
             throw new Exception($"Admin user registration failed: {adminResult.Message}");
         }

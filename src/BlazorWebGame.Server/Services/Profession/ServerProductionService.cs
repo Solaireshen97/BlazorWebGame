@@ -137,7 +137,7 @@ public class ServerProductionService
             {
                 return new ApiResponse<GatheringStateDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "采集节点不存在"
                 };
             }
@@ -147,7 +147,7 @@ public class ServerProductionService
             {
                 return new ApiResponse<GatheringStateDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "玩家已经在进行采集活动"
                 };
             }
@@ -174,7 +174,7 @@ public class ServerProductionService
 
             return new ApiResponse<GatheringStateDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Message = "采集开始",
                 Data = newState
             };
@@ -184,7 +184,7 @@ public class ServerProductionService
             _logger.LogError(ex, "Error starting gathering for player {CharacterId}", request.CharacterId);
             return new ApiResponse<GatheringStateDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "开始采集时发生错误"
             };
         }
@@ -206,14 +206,14 @@ public class ServerProductionService
 
                 return new ApiResponse<string>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Message = "采集已停止"
                 };
             }
 
             return new ApiResponse<string>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "玩家当前未在进行采集"
             };
         }
@@ -222,7 +222,7 @@ public class ServerProductionService
             _logger.LogError(ex, "Error stopping gathering for player {CharacterId}", request.CharacterId);
             return new ApiResponse<string>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "停止采集时发生错误"
             };
         }
@@ -515,7 +515,7 @@ public class ServerProductionService
             {
                 return new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "配方不存在"
                 };
             }
@@ -525,7 +525,7 @@ public class ServerProductionService
             {
                 return new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "玩家已经在进行制作活动"
                 };
             }
@@ -556,7 +556,7 @@ public class ServerProductionService
 
             return new ApiResponse<bool>
             {
-                Success = true,
+                IsSuccess = true,
                 Message = "开始制作成功"
             };
         }
@@ -565,7 +565,7 @@ public class ServerProductionService
             _logger.LogError(ex, "Error starting crafting for character {CharacterId}", characterId);
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "开始制作时发生错误"
             };
         }
@@ -586,7 +586,7 @@ public class ServerProductionService
                 {
                     return new ApiResponse<bool>
                     {
-                        Success = false,
+                        IsSuccess = false,
                         Message = $"配方 {item.RecipeId} 不存在"
                     };
                 }
@@ -597,7 +597,7 @@ public class ServerProductionService
             {
                 return new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "玩家已经在进行制作活动"
                 };
             }
@@ -607,7 +607,7 @@ public class ServerProductionService
 
             return new ApiResponse<bool>
             {
-                Success = true,
+                IsSuccess = true,
                 Message = "批量制作暂未实现，请使用单个制作"
             };
         }
@@ -616,7 +616,7 @@ public class ServerProductionService
             _logger.LogError(ex, "Error starting batch crafting for character {CharacterId}", characterId);
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "开始批量制作时发生错误"
             };
         }
@@ -633,7 +633,7 @@ public class ServerProductionService
             {
                 return new ApiResponse<CraftingResultDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "玩家当前未在制作"
                 };
             }
@@ -653,7 +653,7 @@ public class ServerProductionService
 
             return new ApiResponse<CraftingResultDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Message = "停止制作成功",
                 Data = result
             };
@@ -663,7 +663,7 @@ public class ServerProductionService
             _logger.LogError(ex, "Error stopping crafting for character {CharacterId}", characterId);
             return new ApiResponse<CraftingResultDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "停止制作时发生错误"
             };
         }

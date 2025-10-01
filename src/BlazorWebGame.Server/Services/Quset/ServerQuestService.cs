@@ -58,7 +58,7 @@ public class ServerQuestService
 
             return new ApiResponse<List<QuestDto>>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = availableQuests
             };
         }
@@ -67,7 +67,7 @@ public class ServerQuestService
             _logger.LogError(ex, "Error getting daily quests for character {CharacterId}", characterId);
             return new ApiResponse<List<QuestDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "获取每日任务时发生错误"
             };
         }
@@ -95,7 +95,7 @@ public class ServerQuestService
 
             return new ApiResponse<List<QuestDto>>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = availableQuests
             };
         }
@@ -104,7 +104,7 @@ public class ServerQuestService
             _logger.LogError(ex, "Error getting weekly quests for character {CharacterId}", characterId);
             return new ApiResponse<List<QuestDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "获取每周任务时发生错误"
             };
         }
@@ -124,7 +124,7 @@ public class ServerQuestService
             {
                 return new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "任务不存在或不可接受"
                 };
             }
@@ -134,7 +134,7 @@ public class ServerQuestService
             {
                 return new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "活跃任务数量已达上限"
                 };
             }
@@ -147,14 +147,14 @@ public class ServerQuestService
             OnQuestStatusChanged?.Invoke(characterId);
             _logger.LogInformation("Character {CharacterId} accepted quest {QuestId}", characterId, questId);
 
-            return new ApiResponse<bool> { Success = true, Data = true };
+            return new ApiResponse<bool> { IsSuccess = true, Data = true };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error accepting quest {QuestId} for character {CharacterId}", questId, characterId);
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "接受任务时发生错误"
             };
         }
@@ -174,7 +174,7 @@ public class ServerQuestService
             {
                 return new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "任务不存在或未激活"
                 };
             }
@@ -184,7 +184,7 @@ public class ServerQuestService
             {
                 return new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "任务目标不存在"
                 };
             }
@@ -202,14 +202,14 @@ public class ServerQuestService
             _logger.LogInformation("Updated quest progress for character {CharacterId}, quest {QuestId}, objective {ObjectiveId}", 
                 characterId, questId, objectiveId);
 
-            return new ApiResponse<bool> { Success = true, Data = true };
+            return new ApiResponse<bool> { IsSuccess = true, Data = true };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating quest progress for character {CharacterId}", characterId);
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "更新任务进度时发生错误"
             };
         }
@@ -229,7 +229,7 @@ public class ServerQuestService
             {
                 return new ApiResponse<List<QuestRewardDto>>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "任务不存在或未激活"
                 };
             }
@@ -240,7 +240,7 @@ public class ServerQuestService
             {
                 return new ApiResponse<List<QuestRewardDto>>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "任务条件未满足"
                 };
             }
@@ -266,7 +266,7 @@ public class ServerQuestService
 
             return new ApiResponse<List<QuestRewardDto>>
             {
-                Success = true,
+                IsSuccess = true,
                 Data = rewards,
                 Message = "任务完成！"
             };
@@ -276,7 +276,7 @@ public class ServerQuestService
             _logger.LogError(ex, "Error completing quest {QuestId} for character {CharacterId}", questId, characterId);
             return new ApiResponse<List<QuestRewardDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "完成任务时发生错误"
             };
         }
@@ -506,14 +506,14 @@ public class ServerQuestService
             OnQuestStatusChanged?.Invoke(characterId);
             
             _logger.LogInformation("Synced quest status for character {CharacterId}", characterId);
-            return new ApiResponse<bool> { Success = true, Data = true };
+            return new ApiResponse<bool> { IsSuccess = true, Data = true };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error syncing quest status for character {CharacterId}", characterId);
             return new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "同步任务状态时发生错误"
             };
         }

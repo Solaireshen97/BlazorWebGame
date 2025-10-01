@@ -31,7 +31,7 @@ public class ProductionController : ControllerBase
             var nodes = _productionService.GetAvailableNodes(profession);
             return Ok(new ApiResponse<List<GatheringNodeDto>>
             {
-                Success = true,
+                IsSuccess = true,
                 Message = "获取采集节点成功",
                 Data = nodes
             });
@@ -41,7 +41,7 @@ public class ProductionController : ControllerBase
             _logger.LogError(ex, "Error getting available gathering nodes");
             return StatusCode(500, new ApiResponse<List<GatheringNodeDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "获取采集节点时发生错误"
             });
         }
@@ -60,14 +60,14 @@ public class ProductionController : ControllerBase
             {
                 return NotFound(new ApiResponse<GatheringNodeDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "采集节点不存在"
                 });
             }
 
             return Ok(new ApiResponse<GatheringNodeDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Message = "获取采集节点成功",
                 Data = node
             });
@@ -77,7 +77,7 @@ public class ProductionController : ControllerBase
             _logger.LogError(ex, "Error getting gathering node {NodeId}", nodeId);
             return StatusCode(500, new ApiResponse<GatheringNodeDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "获取采集节点时发生错误"
             });
         }
@@ -95,14 +95,14 @@ public class ProductionController : ControllerBase
             {
                 return BadRequest(new ApiResponse<GatheringStateDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "角色ID和节点ID不能为空"
                 });
             }
 
             var result = await _productionService.StartGatheringAsync(request);
             
-            if (result.Success)
+            if (result.IsSuccess)
             {
                 return Ok(result);
             }
@@ -116,7 +116,7 @@ public class ProductionController : ControllerBase
             _logger.LogError(ex, "Error starting gathering for character {CharacterId}", request.CharacterId);
             return StatusCode(500, new ApiResponse<GatheringStateDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "开始采集时发生错误"
             });
         }
@@ -134,14 +134,14 @@ public class ProductionController : ControllerBase
             {
                 return BadRequest(new ApiResponse<string>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "角色ID不能为空"
                 });
             }
 
             var result = await _productionService.StopGatheringAsync(request);
             
-            if (result.Success)
+            if (result.IsSuccess)
             {
                 return Ok(result);
             }
@@ -155,7 +155,7 @@ public class ProductionController : ControllerBase
             _logger.LogError(ex, "Error stopping gathering for character {CharacterId}", request.CharacterId);
             return StatusCode(500, new ApiResponse<string>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "停止采集时发生错误"
             });
         }
@@ -173,7 +173,7 @@ public class ProductionController : ControllerBase
             {
                 return BadRequest(new ApiResponse<GatheringStateDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "角色ID不能为空"
                 });
             }
@@ -182,7 +182,7 @@ public class ProductionController : ControllerBase
             
             return Ok(new ApiResponse<GatheringStateDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Message = state != null ? "获取采集状态成功" : "玩家当前未在采集",
                 Data = state
             });
@@ -192,7 +192,7 @@ public class ProductionController : ControllerBase
             _logger.LogError(ex, "Error getting gathering state for character {CharacterId}", characterId);
             return StatusCode(500, new ApiResponse<GatheringStateDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "获取采集状态时发生错误"
             });
         }
@@ -209,7 +209,7 @@ public class ProductionController : ControllerBase
             var states = _productionService.GetAllActiveGatheringStates();
             return Ok(new ApiResponse<List<GatheringStateDto>>
             {
-                Success = true,
+                IsSuccess = true,
                 Message = "获取活跃采集状态成功",
                 Data = states
             });
@@ -219,7 +219,7 @@ public class ProductionController : ControllerBase
             _logger.LogError(ex, "Error getting active gathering states");
             return StatusCode(500, new ApiResponse<List<GatheringStateDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "获取活跃采集状态时发生错误"
             });
         }
@@ -239,7 +239,7 @@ public class ProductionController : ControllerBase
             {
                 return BadRequest(new ApiResponse<List<RecipeDto>>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "角色ID不能为空"
                 });
             }
@@ -247,7 +247,7 @@ public class ProductionController : ControllerBase
             var recipes = _productionService.GetAvailableRecipes(request.CharacterId, request.Profession, request.MaxLevel);
             return Ok(new ApiResponse<List<RecipeDto>>
             {
-                Success = true,
+                IsSuccess = true,
                 Message = "获取配方列表成功",
                 Data = recipes
             });
@@ -257,7 +257,7 @@ public class ProductionController : ControllerBase
             _logger.LogError(ex, "Error getting recipes for character {CharacterId}", request.CharacterId);
             return StatusCode(500, new ApiResponse<List<RecipeDto>>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "获取配方列表时发生错误"
             });
         }
@@ -276,14 +276,14 @@ public class ProductionController : ControllerBase
             {
                 return NotFound(new ApiResponse<RecipeDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "配方不存在"
                 });
             }
 
             return Ok(new ApiResponse<RecipeDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Message = "获取配方信息成功",
                 Data = recipe
             });
@@ -293,7 +293,7 @@ public class ProductionController : ControllerBase
             _logger.LogError(ex, "Error getting recipe {RecipeId}", recipeId);
             return StatusCode(500, new ApiResponse<RecipeDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "获取配方信息时发生错误"
             });
         }
@@ -311,18 +311,18 @@ public class ProductionController : ControllerBase
             {
                 return BadRequest(new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "角色ID和配方ID不能为空"
                 });
             }
 
             var result = await _productionService.StartCraftingAsync(request.CharacterId, request.RecipeId, request.Quantity);
             
-            if (result.Success)
+            if (result.IsSuccess)
             {
                 return Ok(new ApiResponse<bool>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Message = "开始制作成功",
                     Data = true
                 });
@@ -331,7 +331,7 @@ public class ProductionController : ControllerBase
             {
                 return BadRequest(new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = result.Message,
                     Data = false
                 });
@@ -342,7 +342,7 @@ public class ProductionController : ControllerBase
             _logger.LogError(ex, "Error starting crafting for character {CharacterId}", request.CharacterId);
             return StatusCode(500, new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "开始制作时发生错误",
                 Data = false
             });
@@ -361,18 +361,18 @@ public class ProductionController : ControllerBase
             {
                 return BadRequest(new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "角色ID和制作项目不能为空"
                 });
             }
 
             var result = await _productionService.StartBatchCraftingAsync(request.CharacterId, request.Items);
             
-            if (result.Success)
+            if (result.IsSuccess)
             {
                 return Ok(new ApiResponse<bool>
                 {
-                    Success = true,
+                    IsSuccess = true,
                     Message = "开始批量制作成功",
                     Data = true
                 });
@@ -381,7 +381,7 @@ public class ProductionController : ControllerBase
             {
                 return BadRequest(new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = result.Message,
                     Data = false
                 });
@@ -392,7 +392,7 @@ public class ProductionController : ControllerBase
             _logger.LogError(ex, "Error starting batch crafting for character {CharacterId}", request.CharacterId);
             return StatusCode(500, new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "开始批量制作时发生错误",
                 Data = false
             });
@@ -411,7 +411,7 @@ public class ProductionController : ControllerBase
             {
                 return BadRequest(new ApiResponse<CraftingResultDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "角色ID不能为空"
                 });
             }
@@ -420,9 +420,9 @@ public class ProductionController : ControllerBase
             
             return Ok(new ApiResponse<CraftingResultDto>
             {
-                Success = result.Success,
+                IsSuccess = result.IsSuccess,
                 Message = result.Message,
-                Data = result.Success ? result.Data : null
+                Data = result.IsSuccess ? result.Data : null
             });
         }
         catch (Exception ex)
@@ -430,7 +430,7 @@ public class ProductionController : ControllerBase
             _logger.LogError(ex, "Error stopping crafting for character {CharacterId}", request.CharacterId);
             return StatusCode(500, new ApiResponse<CraftingResultDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "停止制作时发生错误"
             });
         }
@@ -448,7 +448,7 @@ public class ProductionController : ControllerBase
             {
                 return BadRequest(new ApiResponse<CraftingStateDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "角色ID不能为空"
                 });
             }
@@ -457,7 +457,7 @@ public class ProductionController : ControllerBase
             
             return Ok(new ApiResponse<CraftingStateDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Message = state != null ? "获取制作状态成功" : "玩家当前未在制作",
                 Data = state
             });
@@ -467,7 +467,7 @@ public class ProductionController : ControllerBase
             _logger.LogError(ex, "Error getting crafting state for character {CharacterId}", characterId);
             return StatusCode(500, new ApiResponse<CraftingStateDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "获取制作状态时发生错误"
             });
         }
@@ -485,7 +485,7 @@ public class ProductionController : ControllerBase
             {
                 return BadRequest(new ApiResponse<NodeUnlockStatusDto>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "角色ID和节点ID不能为空"
                 });
             }
@@ -493,7 +493,7 @@ public class ProductionController : ControllerBase
             var status = _productionService.CheckNodeUnlockStatus(request.CharacterId, request.NodeId);
             return Ok(new ApiResponse<NodeUnlockStatusDto>
             {
-                Success = true,
+                IsSuccess = true,
                 Message = "检查节点解锁状态成功",
                 Data = status
             });
@@ -503,7 +503,7 @@ public class ProductionController : ControllerBase
             _logger.LogError(ex, "Error checking node unlock status for character {CharacterId}, node {NodeId}", request.CharacterId, request.NodeId);
             return StatusCode(500, new ApiResponse<NodeUnlockStatusDto>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "检查节点解锁状态时发生错误"
             });
         }
@@ -521,7 +521,7 @@ public class ProductionController : ControllerBase
             {
                 return BadRequest(new ApiResponse<bool>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "角色ID和配方ID不能为空"
                 });
             }
@@ -529,7 +529,7 @@ public class ProductionController : ControllerBase
             var hasMaterials = _productionService.CheckCraftingMaterials(characterId, recipeId, quantity);
             return Ok(new ApiResponse<bool>
             {
-                Success = true,
+                IsSuccess = true,
                 Message = hasMaterials ? "材料充足" : "材料不足",
                 Data = hasMaterials
             });
@@ -539,7 +539,7 @@ public class ProductionController : ControllerBase
             _logger.LogError(ex, "Error checking crafting materials for character {CharacterId}, recipe {RecipeId}", characterId, recipeId);
             return StatusCode(500, new ApiResponse<bool>
             {
-                Success = false,
+                IsSuccess = false,
                 Message = "检查制作材料时发生错误"
             });
         }

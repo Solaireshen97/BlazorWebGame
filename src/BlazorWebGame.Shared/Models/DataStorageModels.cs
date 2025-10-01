@@ -117,14 +117,23 @@ public class BattleRecordEntity : BaseEntity
 /// <summary>
 /// 用户角色关联实体 - 建立用户与游戏角色的关系
 /// </summary>
-public class UserCharacterEntity : BaseEntity
+public class UserCharacterEntity
 {
+    public string Id { get; set; } = string.Empty;
     public string UserId { get; set; } = string.Empty;
     public string CharacterId { get; set; } = string.Empty;
     public string CharacterName { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
-    public bool IsDefault { get; set; } = false; // 是否为用户的默认角色
+    public bool IsDefault { get; set; } = false;
+
+    // 新增字段
+    public int SlotIndex { get; set; } = 0;
+    public string ProfessionName { get; set; } = "Warrior";
+    public int Level { get; set; } = 1;
+
     public DateTime LastPlayedAt { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
 
 /// <summary>

@@ -35,7 +35,7 @@ public class ValidateResourceOwnershipAttribute : ActionFilterAttribute
                 logger.LogWarning("Resource ownership validation failed: No user ID found in claims");
                 context.Result = new UnauthorizedObjectResult(new ApiResponse<object>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "Authentication required",
                     Timestamp = DateTime.UtcNow
                 });
@@ -62,7 +62,7 @@ public class ValidateResourceOwnershipAttribute : ActionFilterAttribute
                 logger.LogWarning("Resource ownership validation failed: No resource ID found for parameter {ParameterName}", _resourceIdParameterName);
                 context.Result = new BadRequestObjectResult(new ApiResponse<object>
                 {
-                    Success = false,
+                    IsSuccess = false,
                     Message = "Resource ID is required",
                     Timestamp = DateTime.UtcNow
                 });

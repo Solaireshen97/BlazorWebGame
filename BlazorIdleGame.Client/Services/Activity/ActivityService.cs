@@ -47,7 +47,7 @@ namespace BlazorIdleGame.Client.Services.Activity
                 var response = await _communication.GetAsync<ApiResponse<ActivitySystemDto>>(
                     "api/activity/system");
 
-                if (response?.Success == true && response.Data != null)
+                if (response?.IsSuccess == true && response.Data != null)
                 {
                     _currentSystem = response.Data;
                     SystemUpdated?.Invoke(this, response.Data);
@@ -74,7 +74,7 @@ namespace BlazorIdleGame.Client.Services.Activity
                 var response = await _communication.PostAsync<CreateActivityPlanRequest, ApiResponse<ActivityPlanDto>>(
                     "api/activity/start", request);
 
-                if (response?.Success == true)
+                if (response?.IsSuccess == true)
                 {
                     _logger.LogInformation("活动已启动: {ActivityId} in Slot {Slot}",
                         request.ActivityId, request.SlotIndex);
@@ -107,7 +107,7 @@ namespace BlazorIdleGame.Client.Services.Activity
                 var response = await _communication.PostAsync<CancelActivityRequest, ApiResponse<bool>>(
                     "api/activity/cancel", request);
 
-                if (response?.Success == true)
+                if (response?.IsSuccess == true)
                 {
                     _logger.LogInformation("活动已取消: {PlanId}", planId);
                     await GetActivitySystemAsync();
@@ -132,7 +132,7 @@ namespace BlazorIdleGame.Client.Services.Activity
                 var response = await _communication.PostAsync<object, ApiResponse<bool>>(
                     "api/activity/move", request);
 
-                if (response?.Success == true)
+                if (response?.IsSuccess == true)
                 {
                     await GetActivitySystemAsync();
                     return true;
