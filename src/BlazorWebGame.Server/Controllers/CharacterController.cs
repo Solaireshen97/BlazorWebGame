@@ -1,317 +1,323 @@
-using BlazorWebGame.Shared.DTOs;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
 using BlazorWebGame.Server.Services.Character;
-using BlazorWebGame.Server.Services.Users;
+using BlazorWebGame.Shared.DTOs;
+using BlazorWebGame.Shared.DTOs.Character;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace BlazorWebGame.Server.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
-    public class CharacterController : ControllerBase
+    [Route("api/character")]
+    public class EnhancedCharacterController : ControllerBase
     {
-        private readonly ServerCharacterService _characterService;
-        private readonly UserService _userService;
-        private readonly ILogger<CharacterController> _logger;
+        private readonly EnhancedServerCharacterService _characterService;
+        private readonly ILogger<EnhancedCharacterController> _logger;
 
-        public CharacterController(
-            ServerCharacterService characterService, 
-            UserService userService,
-            ILogger<CharacterController> logger)
+        public EnhancedCharacterController(
+            EnhancedServerCharacterService characterService,
+            ILogger<EnhancedCharacterController> logger)
         {
             _characterService = characterService;
-            _userService = userService;
             _logger = logger;
         }
 
         /// <summary>
-        /// è·å–å½“å‰ç”¨æˆ·çš„è§’è‰²åˆ—è¡¨
+        /// »ñÈ¡½ÇÉ«»¨Ãû²á
         /// </summary>
-        [HttpGet("my")]
+        [HttpGet("roster")]
         [Authorize]
-        public async Task<ActionResult<ApiResponse<List<CharacterDto>>>> GetMyCharacters()
+        public async Task<ActionResult<ApiResponse<RosterDto>>> GetRoster()
         {
             try
             {
                 var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 if (string.IsNullOrEmpty(userId))
                 {
-                    return Unauthorized(new ApiResponse<List<CharacterDto>>
-                    {
-                        IsSuccess = false,
-                        Message = "ç”¨æˆ·æœªè®¤è¯"
-                    });
+                    return Unauthorized(ApiResponse<RosterDto>.Failure("ÓÃ»§Î´ÈÏÖ¤"));
                 }
 
-                var characters = await _characterService.GetUserCharactersAsync(userId);
-                return Ok(new ApiResponse<List<CharacterDto>>
-                {
-                    IsSuccess = true,
-                    Data = characters,
-                    Message = "ç”¨æˆ·è§’è‰²åˆ—è¡¨è·å–æˆåŠŸ"
-                });
+                var roster = await _characterService.GetUserRosterAsync(userId);
+                return Ok(ApiResponse<RosterDto>.Success(roster, "»ñÈ¡½ÇÉ«»¨Ãû²á³É¹¦"));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to get user characters");
-                return StatusCode(500, new ApiResponse<List<CharacterDto>>
-                {
-                    IsSuccess = false,
-                    Message = "è·å–ç”¨æˆ·è§’è‰²åˆ—è¡¨å¤±è´¥"
-                });
+                _logger.LogError(ex, "»ñÈ¡½ÇÉ«»¨Ãû²áÊ§°Ü");
+                return StatusCode(500, ApiResponse<RosterDto>.Failure("»ñÈ¡½ÇÉ«»¨Ãû²áÊ§°Ü"));
             }
         }
 
         /// <summary>
-        /// è·å–æ‰€æœ‰è§’è‰²ï¼ˆç®¡ç†å‘˜ä½¿ç”¨ï¼‰
+        /// ½âËø½ÇÉ«²ÛÎ»
         /// </summary>
-        [HttpGet]
-        public async Task<ActionResult<ApiResponse<List<CharacterDto>>>> GetCharacters()
-        {
-            try
-            {
-                var characters = await _characterService.GetCharactersAsync();
-                return Ok(new ApiResponse<List<CharacterDto>>
-                {
-                    IsSuccess = true,
-                    Data = characters,
-                    Message = "è§’è‰²åˆ—è¡¨è·å–æˆåŠŸ"
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to get characters");
-                return StatusCode(500, new ApiResponse<List<CharacterDto>>
-                {
-                    IsSuccess = false,
-                    Message = "è·å–è§’è‰²åˆ—è¡¨å¤±è´¥"
-                });
-            }
-        }
-
-        /// <summary>
-        /// è·å–è§’è‰²è¯¦ç»†ä¿¡æ¯
-        /// </summary>
-        [HttpGet("{characterId}")]
+        [HttpPost("roster/unlock/{slotIndex}")]
         [Authorize]
-        public async Task<ActionResult<ApiResponse<CharacterDetailsDto>>> GetCharacterDetails(string characterId)
+        public async Task<ActionResult<ApiResponse<CharacterSlotDto>>> UnlockSlot(int slotIndex)
         {
             try
             {
                 var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 if (string.IsNullOrEmpty(userId))
                 {
-                    return Unauthorized(new ApiResponse<CharacterDetailsDto>
-                    {
-                        IsSuccess = false,
-                        Message = "ç”¨æˆ·æœªè®¤è¯"
-                    });
+                    return Unauthorized(ApiResponse<CharacterSlotDto>.Failure("ÓÃ»§Î´ÈÏÖ¤"));
                 }
 
-                // éªŒè¯ç”¨æˆ·æ˜¯å¦æ‹¥æœ‰è¯¥è§’è‰²
-                var ownsCharacter = await _characterService.UserOwnsCharacterAsync(userId, characterId);
+                var result = await _characterService.UnlockSlotAsync(userId, slotIndex);
+                if (!result.IsSuccess)
+                {
+                    return BadRequest(result);
+                }
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "½âËø½ÇÉ«²ÛÎ»Ê§°Ü {SlotIndex}", slotIndex);
+                return StatusCode(500, ApiResponse<CharacterSlotDto>.Failure("½âËø½ÇÉ«²ÛÎ»Ê§°Ü"));
+            }
+        }
+
+        /// <summary>
+        /// ´´½¨½ÇÉ«
+        /// </summary>
+        [HttpPost("create")]
+        [Authorize]
+        public async Task<ActionResult<ApiResponse<CharacterFullDto>>> CreateCharacter(CreateCharacterRequestDto request)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized(ApiResponse<CharacterFullDto>.Failure("ÓÃ»§Î´ÈÏÖ¤"));
+                }
+
+                var result = await _characterService.CreateCharacterAsync(userId, request);
+                if (!result.IsSuccess)
+                {
+                    return BadRequest(result);
+                }
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "´´½¨½ÇÉ«Ê§°Ü {Name}", request.Name);
+                return StatusCode(500, ApiResponse<CharacterFullDto>.Failure("´´½¨½ÇÉ«Ê§°Ü"));
+            }
+        }
+
+        /// <summary>
+        /// ÑéÖ¤½ÇÉ«Ãû³Æ
+        /// </summary>
+        [HttpPost("validate-name")]
+        public ActionResult<ApiResponse<ValidateCharacterNameResult>> ValidateName(ValidateCharacterNameRequest request)
+        {
+            try
+            {
+                var result = _characterService.ValidateCharacterName(request.Name);
+                return Ok(ApiResponse<ValidateCharacterNameResult>.Success(result));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "ÑéÖ¤½ÇÉ«Ãû³ÆÊ§°Ü {Name}", request.Name);
+                return StatusCode(500, ApiResponse<ValidateCharacterNameResult>.Failure("ÑéÖ¤½ÇÉ«Ãû³ÆÊ§°Ü"));
+            }
+        }
+
+        /// <summary>
+        /// É¾³ı½ÇÉ«
+        /// </summary>
+        [HttpPost("{characterId}/delete")]
+        [Authorize]
+        public async Task<ActionResult<ApiResponse<bool>>> DeleteCharacter(string characterId)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized(ApiResponse<bool>.Failure("ÓÃ»§Î´ÈÏÖ¤"));
+                }
+
+                var result = await _characterService.DeleteCharacterAsync(userId, characterId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "É¾³ı½ÇÉ«Ê§°Ü {CharacterId}", characterId);
+                return StatusCode(500, ApiResponse<bool>.Failure("É¾³ı½ÇÉ«Ê§°Ü"));
+            }
+        }
+
+        /// <summary>
+        /// ÇĞ»»½ÇÉ«
+        /// </summary>
+        [HttpPost("switch")]
+        [Authorize]
+        public async Task<ActionResult<ApiResponse<CharacterFullDto>>> SwitchCharacter(SwitchCharacterRequest request)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized(ApiResponse<CharacterFullDto>.Failure("ÓÃ»§Î´ÈÏÖ¤"));
+                }
+
+                var result = await _characterService.SwitchCharacterAsync(userId, request.CharacterId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "ÇĞ»»½ÇÉ«Ê§°Ü {CharacterId}", request.CharacterId);
+                return StatusCode(500, ApiResponse<CharacterFullDto>.Failure("ÇĞ»»½ÇÉ«Ê§°Ü"));
+            }
+        }
+
+        /// <summary>
+        /// »ñÈ¡½ÇÉ«ÏêÇé
+        /// </summary>
+        [HttpGet("{characterId}/details")]
+        [Authorize]
+        public async Task<ActionResult<ApiResponse<CharacterFullDto>>> GetCharacterDetails(string characterId)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized(ApiResponse<CharacterFullDto>.Failure("ÓÃ»§Î´ÈÏÖ¤"));
+                }
+
+                // ÑéÖ¤ÓÃ»§ÊÇ·ñÓµÓĞ¸Ã½ÇÉ«
+                bool ownsCharacter = await _characterService.UserOwnsCharacterAsync(userId, characterId);
                 if (!ownsCharacter)
                 {
                     return Forbid();
                 }
 
-                var character = await _characterService.GetCharacterDetailsAsync(characterId);
-                if (character == null)
-                {
-                    return NotFound(new ApiResponse<CharacterDetailsDto>
-                    {
-                        IsSuccess = false,
-                        Message = "è§’è‰²ä¸å­˜åœ¨"
-                    });
-                }
-
-                return Ok(new ApiResponse<CharacterDetailsDto>
-                {
-                    IsSuccess = true,
-                    Data = character,
-                    Message = "è§’è‰²è¯¦æƒ…è·å–æˆåŠŸ"
-                });
+                var result = _characterService.GetCharacterDetails(characterId);
+                return Ok(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to get character details for {CharacterId}", characterId);
-                return StatusCode(500, new ApiResponse<CharacterDetailsDto>
-                {
-                    IsSuccess = false,
-                    Message = "è·å–è§’è‰²è¯¦æƒ…å¤±è´¥"
-                });
+                _logger.LogError(ex, "»ñÈ¡½ÇÉ«ÏêÇéÊ§°Ü {CharacterId}", characterId);
+                return StatusCode(500, ApiResponse<CharacterFullDto>.Failure("»ñÈ¡½ÇÉ«ÏêÇéÊ§°Ü"));
             }
         }
 
         /// <summary>
-        /// åˆ›å»ºæ–°è§’è‰²
+        /// ·ÖÅäÊôĞÔµã
         /// </summary>
-        [HttpPost("create")]
+        [HttpPost("{characterId}/attributes/allocate")]
         [Authorize]
-        public async Task<ActionResult<ApiResponse<CharacterDto>>> CreateCharacter(CreateCharacterRequest request)
+        public async Task<ActionResult<ApiResponse<CharacterAttributesDto>>> AllocateAttributePoints(
+            string characterId, AllocateAttributePointsRequest request)
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(request.Name))
-                {
-                    return BadRequest(new ApiResponse<CharacterDto>
-                    {
-                        IsSuccess = false,
-                        Message = "è§’è‰²åç§°ä¸èƒ½ä¸ºç©º"
-                    });
-                }
-
                 var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 if (string.IsNullOrEmpty(userId))
                 {
-                    return Unauthorized(new ApiResponse<CharacterDto>
-                    {
-                        IsSuccess = false,
-                        Message = "ç”¨æˆ·æœªè®¤è¯"
-                    });
+                    return Unauthorized(ApiResponse<CharacterAttributesDto>.Failure("ÓÃ»§Î´ÈÏÖ¤"));
                 }
 
-                var character = await _characterService.CreateCharacterAsync(request, userId);
-                return Ok(new ApiResponse<CharacterDto>
+                // ÑéÖ¤ÓÃ»§ÊÇ·ñÓµÓĞ¸Ã½ÇÉ«
+                bool ownsCharacter = await _characterService.UserOwnsCharacterAsync(userId, characterId);
+                if (!ownsCharacter)
                 {
-                    IsSuccess = true,
-                    Data = character,
-                    Message = "è§’è‰²åˆ›å»ºæˆåŠŸ"
-                });
+                    return Forbid();
+                }
+
+                var result = _characterService.AllocateAttributePointsAsync(characterId, request);
+                return Ok(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to create character");
-                return StatusCode(500, new ApiResponse<CharacterDto>
-                {
-                    IsSuccess = false,
-                    Message = "åˆ›å»ºè§’è‰²å¤±è´¥"
-                });
+                _logger.LogError(ex, "·ÖÅäÊôĞÔµãÊ§°Ü {CharacterId}", characterId);
+                return StatusCode(500, ApiResponse<CharacterAttributesDto>.Failure("·ÖÅäÊôĞÔµãÊ§°Ü"));
             }
         }
 
         /// <summary>
-        /// æ·»åŠ ç»éªŒå€¼
+        /// ÖØÖÃÊôĞÔµã
         /// </summary>
-        [HttpPost("{characterId}/experience")]
-        public async Task<ActionResult<ApiResponse<bool>>> AddExperience(string characterId, AddExperienceRequest request)
+        [HttpPost("{characterId}/attributes/reset")]
+        [Authorize]
+        public async Task<ActionResult<ApiResponse<CharacterAttributesDto>>> ResetAttributes(string characterId)
         {
             try
             {
-                request.CharacterId = characterId;
-                var success = await _characterService.AddExperienceAsync(request);
-                
-                if (!success)
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId))
                 {
-                    return NotFound(new ApiResponse<bool>
-                    {
-                        IsSuccess = false,
-                        Message = "è§’è‰²ä¸å­˜åœ¨æˆ–ä¸“ä¸šç±»å‹æ— æ•ˆ"
-                    });
+                    return Unauthorized(ApiResponse<CharacterAttributesDto>.Failure("ÓÃ»§Î´ÈÏÖ¤"));
                 }
 
-                return Ok(new ApiResponse<bool>
+                // ÑéÖ¤ÓÃ»§ÊÇ·ñÓµÓĞ¸Ã½ÇÉ«
+                bool ownsCharacter = await _characterService.UserOwnsCharacterAsync(userId, characterId);
+                if (!ownsCharacter)
                 {
-                    IsSuccess = true,
-                    Data = true,
-                    Message = "ç»éªŒå€¼æ·»åŠ æˆåŠŸ"
-                });
+                    return Forbid();
+                }
+
+                var result = _characterService.ResetAttributesAsync(characterId);
+                return Ok(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to add experience for character {CharacterId}", characterId);
-                return StatusCode(500, new ApiResponse<bool>
-                {
-                    IsSuccess = false,
-                    Message = "æ·»åŠ ç»éªŒå€¼å¤±è´¥"
-                });
+                _logger.LogError(ex, "ÖØÖÃÊôĞÔµãÊ§°Ü {CharacterId}", characterId);
+                return StatusCode(500, ApiResponse<CharacterAttributesDto>.Failure("ÖØÖÃÊôĞÔµãÊ§°Ü"));
             }
         }
 
         /// <summary>
-        /// æ›´æ–°è§’è‰²çŠ¶æ€
+        /// »ñÈ¡ÀëÏß½ø¶È
         /// </summary>
-        [HttpPut("{characterId}/status")]
-        public async Task<ActionResult<ApiResponse<bool>>> UpdateCharacterStatus(string characterId, UpdateCharacterStatusRequest request)
+        [HttpGet("{characterId}/offline-progress")]
+        [Authorize]
+        public async Task<ActionResult<ApiResponse<OfflineProgressDto>>> GetOfflineProgress(string characterId)
         {
             try
             {
-                request.CharacterId = characterId;
-                var success = await _characterService.UpdateCharacterStatusAsync(request);
-                
-                if (!success)
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId))
                 {
-                    return NotFound(new ApiResponse<bool>
-                    {
-                        IsSuccess = false,
-                        Message = "è§’è‰²ä¸å­˜åœ¨"
-                    });
+                    return Unauthorized(ApiResponse<OfflineProgressDto>.Failure("ÓÃ»§Î´ÈÏÖ¤"));
                 }
 
-                return Ok(new ApiResponse<bool>
+                // ÑéÖ¤ÓÃ»§ÊÇ·ñÓµÓĞ¸Ã½ÇÉ«
+                bool ownsCharacter = await _characterService.UserOwnsCharacterAsync(userId, characterId);
+                if (!ownsCharacter)
                 {
-                    IsSuccess = true,
-                    Data = true,
-                    Message = "è§’è‰²çŠ¶æ€æ›´æ–°æˆåŠŸ"
-                });
+                    return Forbid();
+                }
+
+                var result = await _characterService.GetOfflineProgressAsync(characterId);
+                return Ok(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to update character status for {CharacterId}", characterId);
-                return StatusCode(500, new ApiResponse<bool>
-                {
-                    IsSuccess = false,
-                    Message = "æ›´æ–°è§’è‰²çŠ¶æ€å¤±è´¥"
-                });
+                _logger.LogError(ex, "»ñÈ¡ÀëÏß½ø¶ÈÊ§°Ü {CharacterId}", characterId);
+                return StatusCode(500, ApiResponse<OfflineProgressDto>.Failure("»ñÈ¡ÀëÏß½ø¶ÈÊ§°Ü"));
             }
         }
+    }
 
-        /// <summary>
-        /// æ›´æ–°è§’è‰²æ•°æ®ï¼ˆç¦»çº¿åŒæ­¥ä¸“ç”¨ï¼‰
-        /// </summary>
-        [HttpPut("{characterId}/update")]
-        public async Task<ActionResult<ApiResponse<object>>> UpdateCharacter(string characterId, CharacterUpdateRequest request)
-        {
-            try
-            {
-                request.CharacterId = characterId;
-                
-                // ä½¿ç”¨ç°æœ‰çš„UpdateCharacterStatusAsyncæ–¹æ³•æ¥å¤„ç†æ›´æ–°
-                var statusRequest = new UpdateCharacterStatusRequest
-                {
-                    CharacterId = characterId,
-                    Action = "OfflineSync",
-                    Data = request.Updates
-                };
-                
-                var success = await _characterService.UpdateCharacterStatusAsync(statusRequest);
-                
-                if (!success)
-                {
-                    return NotFound(new ApiResponse<object>
-                    {
-                        IsSuccess = false,
-                        Message = "è§’è‰²ä¸å­˜åœ¨"
-                    });
-                }
+    /// <summary>
+    /// ½ÇÉ«Ãû³ÆÑéÖ¤ÇëÇó
+    /// </summary>
+    public class ValidateCharacterNameRequest
+    {
+        public string Name { get; set; } = string.Empty;
+    }
 
-                return Ok(new ApiResponse<object>
-                {
-                    IsSuccess = true,
-                    Data = new { Updated = true },
-                    Message = "è§’è‰²æ•°æ®æ›´æ–°æˆåŠŸ"
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to update character for offline sync {CharacterId}", characterId);
-                return StatusCode(500, new ApiResponse<object>
-                {
-                    IsSuccess = false,
-                    Message = "æ›´æ–°è§’è‰²æ•°æ®å¤±è´¥"
-                });
-            }
-        }
+    /// <summary>
+    /// ÇĞ»»½ÇÉ«ÇëÇó
+    /// </summary>
+    public class SwitchCharacterRequest
+    {
+        public string CharacterId { get; set; } = string.Empty;
     }
 }

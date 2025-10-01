@@ -6,294 +6,293 @@ using BlazorWebGame.Shared.DTOs;
 namespace BlazorWebGame.Shared.Interfaces;
 
 /// <summary>
-/// æ•°æ®å­˜å‚¨æœåŠ¡æ¥å£ - æ”¯æŒç¦»çº¿æˆ˜æ–—æ¸¸æˆçš„æ•°æ®ç®¡ç†
+/// Êı¾İ´æ´¢·şÎñ½Ó¿Ú - Ö§³ÖÀëÏß»ØºÏÖÆÓÎÏ·µÄÊı¾İ¹ÜÀí
 /// </summary>
 public interface IDataStorageService
 {
-    #region ç”¨æˆ·è´¦å·ç®¡ç†
-    
+    #region ÓÃ»§ÕËºÅ¹ÜÀí
+
     /// <summary>
-    /// æ ¹æ®ç”¨æˆ·åè·å–ç”¨æˆ·æ•°æ®
+    /// ¸ù¾İÓÃ»§Ãû»ñÈ¡ÓÃ»§Êı¾İ
     /// </summary>
     Task<UserStorageDto?> GetUserByUsernameAsync(string username);
-    
+
     /// <summary>
-    /// æ ¹æ®IDè·å–ç”¨æˆ·æ•°æ®
+    /// ¸ù¾İID»ñÈ¡ÓÃ»§Êı¾İ
     /// </summary>
     Task<UserStorageDto?> GetUserByIdAsync(string userId);
-    
+
     /// <summary>
-    /// æ ¹æ®é‚®ç®±è·å–ç”¨æˆ·æ•°æ®
+    /// ¸ù¾İÓÊÏä»ñÈ¡ÓÃ»§Êı¾İ
     /// </summary>
     Task<UserStorageDto?> GetUserByEmailAsync(string email);
-    
+
     /// <summary>
-    /// åˆ›å»ºæ–°ç”¨æˆ·è´¦å·
+    /// ´´½¨ĞÂÓÃ»§ÕËºÅ
     /// </summary>
     Task<ApiResponse<UserStorageDto>> CreateUserAsync(UserStorageDto user, string password);
-    
+
     /// <summary>
-    /// æ›´æ–°ç”¨æˆ·æ•°æ®
+    /// ¸üĞÂÓÃ»§Êı¾İ
     /// </summary>
     Task<ApiResponse<UserStorageDto>> UpdateUserAsync(UserStorageDto user);
-    
+
     /// <summary>
-    /// éªŒè¯ç”¨æˆ·å¯†ç 
+    /// ÑéÖ¤ÓÃ»§ÃÜÂë
     /// </summary>
     Task<bool> ValidateUserPasswordAsync(string userId, string password);
-    
+
     /// <summary>
-    /// æ›´æ–°ç”¨æˆ·å¯†ç 
+    /// ¸üĞÂÓÃ»§ÃÜÂë
     /// </summary>
     Task<ApiResponse<bool>> UpdateUserPasswordAsync(string userId, string newPassword);
-    
+
     /// <summary>
-    /// æ›´æ–°ç”¨æˆ·æœ€åç™»å½•ä¿¡æ¯
+    /// ¸üĞÂÓÃ»§×îºóµÇÂ¼ĞÅÏ¢
     /// </summary>
     Task<ApiResponse<bool>> UpdateUserLastLoginAsync(string userId, string ipAddress);
-    
+
     /// <summary>
-    /// é”å®šç”¨æˆ·è´¦æˆ·
+    /// Ëø¶¨ÓÃ»§ÕËºÅ
     /// </summary>
     Task<ApiResponse<bool>> LockUserAccountAsync(string userId, DateTime lockUntil);
-    
+
     /// <summary>
-    /// è§£é”ç”¨æˆ·è´¦æˆ·
+    /// ½âËøÓÃ»§ÕËºÅ
     /// </summary>
     Task<ApiResponse<bool>> UnlockUserAccountAsync(string userId);
 
     #endregion
 
-    #region ç”¨æˆ·è§’è‰²å…³è”ç®¡ç†
+    #region ÓÃ»§½ÇÉ«¹ØÁª¹ÜÀí
 
     /// <summary>
-    /// åˆ›å»ºç”¨æˆ·è§’è‰²å…³è”
+    /// ´´½¨ÓÃ»§½ÇÉ«¹ØÁª
     /// </summary>
     Task<ApiResponse<UserCharacterStorageDto>> CreateUserCharacterAsync(string userId, string characterId, string characterName, bool isDefault = false, int slotIndex = 0);
 
     /// <summary>
-    /// è·å–ç”¨æˆ·çš„æ‰€æœ‰è§’è‰²
+    /// »ñÈ¡ÓÃ»§µÄËùÓĞ½ÇÉ«
     /// </summary>
     Task<ApiResponse<List<UserCharacterStorageDto>>> GetUserCharactersAsync(string userId);
 
     /// <summary>
-    /// è·å–è§’è‰²çš„æ‹¥æœ‰è€…
+    /// »ñÈ¡½ÇÉ«µÄÓµÓĞÕß
     /// </summary>
     Task<UserCharacterStorageDto?> GetCharacterOwnerAsync(string characterId);
 
     /// <summary>
-    /// éªŒè¯ç”¨æˆ·æ˜¯å¦æ‹¥æœ‰æŒ‡å®šè§’è‰²
+    /// ÑéÖ¤ÓÃ»§ÊÇ·ñÓµÓĞÖ¸¶¨½ÇÉ«
     /// </summary>
     Task<bool> UserOwnsCharacterAsync(string userId, string characterId);
 
     /// <summary>
-    /// è®¾ç½®ç”¨æˆ·çš„é»˜è®¤è§’è‰²
+    /// ÉèÖÃÓÃ»§µÄÄ¬ÈÏ½ÇÉ«
     /// </summary>
     Task<ApiResponse<bool>> SetDefaultCharacterAsync(string userId, string characterId);
 
     /// <summary>
-    /// åˆ é™¤ç”¨æˆ·è§’è‰²å…³è”
+    /// É¾³ıÓÃ»§½ÇÉ«¹ØÁª
     /// </summary>
     Task<ApiResponse<bool>> DeleteUserCharacterAsync(string userId, string characterId);
 
     /// <summary>
-    /// è§£é”è§’è‰²æ§½ä½
+    /// ½âËø½ÇÉ«²ÛÎ»
     /// </summary>
     Task<ApiResponse<bool>> UnlockCharacterSlotAsync(string userId, int slotIndex);
 
-
     #endregion
 
-    #region ç©å®¶æ•°æ®ç®¡ç†
+    #region Íæ¼ÒÊı¾İ¹ÜÀí
 
     /// <summary>
-    /// è·å–ç©å®¶æ•°æ®
+    /// »ñÈ¡Íæ¼ÒÊı¾İ
     /// </summary>
     Task<PlayerStorageDto?> GetPlayerAsync(string playerId);
-    
+
     /// <summary>
-    /// åˆ›å»ºæˆ–æ›´æ–°ç©å®¶æ•°æ®
+    /// ´´½¨»ò¸üĞÂÍæ¼ÒÊı¾İ
     /// </summary>
     Task<ApiResponse<PlayerStorageDto>> SavePlayerAsync(PlayerStorageDto player);
-    
+
     /// <summary>
-    /// åˆ é™¤ç©å®¶æ•°æ®
+    /// É¾³ıÍæ¼ÒÊı¾İ
     /// </summary>
     Task<ApiResponse<bool>> DeletePlayerAsync(string playerId);
-    
+
     /// <summary>
-    /// è·å–æ‰€æœ‰åœ¨çº¿ç©å®¶
+    /// »ñÈ¡ËùÓĞÔÚÏßÍæ¼Ò
     /// </summary>
     Task<ApiResponse<List<PlayerStorageDto>>> GetOnlinePlayersAsync();
-    
+
     /// <summary>
-    /// æ‰¹é‡ä¿å­˜ç©å®¶æ•°æ®
+    /// ÅúÁ¿±£´æÍæ¼ÒÊı¾İ
     /// </summary>
     Task<BatchOperationResponseDto<PlayerStorageDto>> SavePlayersAsync(List<PlayerStorageDto> players);
-    
+
     #endregion
 
-    #region é˜Ÿä¼æ•°æ®ç®¡ç†
-    
+    #region ¶ÓÎéÊı¾İ¹ÜÀí
+
     /// <summary>
-    /// è·å–é˜Ÿä¼æ•°æ®
+    /// »ñÈ¡¶ÓÎéÊı¾İ
     /// </summary>
     Task<TeamStorageDto?> GetTeamAsync(string teamId);
-    
+
     /// <summary>
-    /// æ ¹æ®é˜Ÿé•¿IDè·å–é˜Ÿä¼
+    /// ¸ù¾İ¶Ó³¤ID»ñÈ¡¶ÓÎé
     /// </summary>
     Task<TeamStorageDto?> GetTeamByCaptainAsync(string captainId);
-    
+
     /// <summary>
-    /// æ ¹æ®ç©å®¶IDè·å–å…¶æ‰€åœ¨é˜Ÿä¼
+    /// ¸ù¾İÍæ¼ÒID»ñÈ¡ÆäËùÔÚ¶ÓÎé
     /// </summary>
     Task<TeamStorageDto?> GetTeamByPlayerAsync(string playerId);
-    
+
     /// <summary>
-    /// åˆ›å»ºæˆ–æ›´æ–°é˜Ÿä¼æ•°æ®
+    /// ´´½¨»ò¸üĞÂ¶ÓÎéÊı¾İ
     /// </summary>
     Task<ApiResponse<TeamStorageDto>> SaveTeamAsync(TeamStorageDto team);
-    
+
     /// <summary>
-    /// åˆ é™¤é˜Ÿä¼æ•°æ®
+    /// É¾³ı¶ÓÎéÊı¾İ
     /// </summary>
     Task<ApiResponse<bool>> DeleteTeamAsync(string teamId);
-    
+
     /// <summary>
-    /// è·å–æ´»è·ƒé˜Ÿä¼åˆ—è¡¨
+    /// »ñÈ¡»îÔ¾¶ÓÎéÁĞ±í
     /// </summary>
     Task<ApiResponse<List<TeamStorageDto>>> GetActiveTeamsAsync();
-    
+
     #endregion
 
-    #region åŠ¨ä½œç›®æ ‡ç®¡ç†
-    
+    #region ĞĞ¶¯Ä¿±ê¹ÜÀí
+
     /// <summary>
-    /// è·å–ç©å®¶å½“å‰åŠ¨ä½œç›®æ ‡
+    /// »ñÈ¡Íæ¼Òµ±Ç°ĞĞ¶¯Ä¿±ê
     /// </summary>
     Task<ActionTargetStorageDto?> GetCurrentActionTargetAsync(string playerId);
-    
+
     /// <summary>
-    /// ä¿å­˜åŠ¨ä½œç›®æ ‡æ•°æ®
+    /// ±£´æĞĞ¶¯Ä¿±êÊı¾İ
     /// </summary>
     Task<ApiResponse<ActionTargetStorageDto>> SaveActionTargetAsync(ActionTargetStorageDto actionTarget);
-    
+
     /// <summary>
-    /// å®ŒæˆåŠ¨ä½œç›®æ ‡
+    /// Íê³ÉĞĞ¶¯Ä¿±ê
     /// </summary>
     Task<ApiResponse<bool>> CompleteActionTargetAsync(string actionTargetId);
-    
+
     /// <summary>
-    /// å–æ¶ˆåŠ¨ä½œç›®æ ‡
+    /// È¡ÏûĞĞ¶¯Ä¿±ê
     /// </summary>
     Task<ApiResponse<bool>> CancelActionTargetAsync(string playerId);
-    
+
     /// <summary>
-    /// è·å–ç©å®¶å†å²åŠ¨ä½œç›®æ ‡
+    /// »ñÈ¡Íæ¼ÒÀúÊ·ĞĞ¶¯Ä¿±ê
     /// </summary>
     Task<ApiResponse<List<ActionTargetStorageDto>>> GetPlayerActionHistoryAsync(string playerId, int limit = 50);
-    
+
     #endregion
 
-    #region æˆ˜æ–—è®°å½•ç®¡ç†
-    
+    #region Õ½¶·¼ÇÂ¼¹ÜÀí
+
     /// <summary>
-    /// è·å–æˆ˜æ–—è®°å½•
+    /// »ñÈ¡Õ½¶·¼ÇÂ¼
     /// </summary>
     Task<BattleRecordStorageDto?> GetBattleRecordAsync(string battleId);
-    
+
     /// <summary>
-    /// ä¿å­˜æˆ˜æ–—è®°å½•
+    /// ±£´æÕ½¶·¼ÇÂ¼
     /// </summary>
     Task<ApiResponse<BattleRecordStorageDto>> SaveBattleRecordAsync(BattleRecordStorageDto battleRecord);
-    
+
     /// <summary>
-    /// ç»“æŸæˆ˜æ–—è®°å½•
+    /// ½áÊøÕ½¶·¼ÇÂ¼
     /// </summary>
     Task<ApiResponse<bool>> EndBattleRecordAsync(string battleId, string status, Dictionary<string, object> results);
-    
+
     /// <summary>
-    /// è·å–ç©å®¶æˆ˜æ–—å†å²
+    /// »ñÈ¡Íæ¼ÒÕ½¶·ÀúÊ·
     /// </summary>
     Task<ApiResponse<List<BattleRecordStorageDto>>> GetPlayerBattleHistoryAsync(string playerId, DataStorageQueryDto query);
-    
+
     /// <summary>
-    /// è·å–é˜Ÿä¼æˆ˜æ–—å†å²
+    /// »ñÈ¡¶ÓÎéÕ½¶·ÀúÊ·
     /// </summary>
     Task<ApiResponse<List<BattleRecordStorageDto>>> GetTeamBattleHistoryAsync(string teamId, DataStorageQueryDto query);
-    
+
     /// <summary>
-    /// è·å–è¿›è¡Œä¸­çš„æˆ˜æ–—è®°å½•
+    /// »ñÈ¡½øĞĞÖĞµÄÕ½¶·¼ÇÂ¼
     /// </summary>
     Task<ApiResponse<List<BattleRecordStorageDto>>> GetActiveBattleRecordsAsync();
-    
+
     #endregion
 
-    #region ç¦»çº¿æ•°æ®ç®¡ç†
-    
+    #region ÀëÏßÊı¾İ¹ÜÀí
+
     /// <summary>
-    /// ä¿å­˜ç¦»çº¿æ•°æ®
+    /// ±£´æÀëÏßÊı¾İ
     /// </summary>
     Task<ApiResponse<OfflineDataStorageDto>> SaveOfflineDataAsync(OfflineDataStorageDto offlineData);
-    
+
     /// <summary>
-    /// è·å–æœªåŒæ­¥çš„ç¦»çº¿æ•°æ®
+    /// »ñÈ¡Î´Í¬²½µÄÀëÏßÊı¾İ
     /// </summary>
     Task<ApiResponse<List<OfflineDataStorageDto>>> GetUnsyncedOfflineDataAsync(string playerId);
-    
+
     /// <summary>
-    /// æ ‡è®°ç¦»çº¿æ•°æ®ä¸ºå·²åŒæ­¥
+    /// ±ê¼ÇÀëÏßÊı¾İÎªÒÑÍ¬²½
     /// </summary>
     Task<ApiResponse<bool>> MarkOfflineDataSyncedAsync(List<string> offlineDataIds);
-    
+
     /// <summary>
-    /// æ¸…ç†å·²åŒæ­¥çš„æ—§ç¦»çº¿æ•°æ®
+    /// ÇåÀíÒÑÍ¬²½µÄ¾ÉÀëÏßÊı¾İ
     /// </summary>
     Task<ApiResponse<int>> CleanupSyncedOfflineDataAsync(DateTime olderThan);
-    
+
     #endregion
 
-    #region æ•°æ®æŸ¥è¯¢å’Œç»Ÿè®¡
-    
+    #region Êı¾İ²éÑ¯ºÍÍ³¼Æ
+
     /// <summary>
-    /// æœç´¢ç©å®¶
+    /// ËÑË÷Íæ¼Ò
     /// </summary>
     Task<ApiResponse<List<PlayerStorageDto>>> SearchPlayersAsync(string searchTerm, int limit = 20);
-    
+
     /// <summary>
-    /// è·å–æ•°æ®å­˜å‚¨ç»Ÿè®¡ä¿¡æ¯
+    /// »ñÈ¡Êı¾İ´æ´¢Í³¼ÆĞÅÏ¢
     /// </summary>
     Task<ApiResponse<Dictionary<string, object>>> GetStorageStatsAsync();
-    
+
     /// <summary>
-    /// æ•°æ®å¥åº·æ£€æŸ¥
+    /// Êı¾İ½¡¿µ¼ì²é
     /// </summary>
     Task<ApiResponse<Dictionary<string, object>>> HealthCheckAsync();
-    
+
     #endregion
 
-    #region æ•°æ®åŒæ­¥å’Œå¤‡ä»½
-    
+    #region Êı¾İÍ¬²½ºÍ±¸·İ
+
     /// <summary>
-    /// å¯¼å‡ºç©å®¶æ•°æ®
+    /// µ¼³öÍæ¼ÒÊı¾İ
     /// </summary>
     Task<ApiResponse<Dictionary<string, object>>> ExportPlayerDataAsync(string playerId);
-    
+
     /// <summary>
-    /// å¯¼å…¥ç©å®¶æ•°æ®
+    /// µ¼ÈëÍæ¼ÒÊı¾İ
     /// </summary>
     Task<ApiResponse<bool>> ImportPlayerDataAsync(string playerId, Dictionary<string, object> data);
-    
+
     /// <summary>
-    /// æ•°æ®å¤‡ä»½
+    /// Êı¾İ±¸·İ
     /// </summary>
     Task<ApiResponse<string>> BackupDataAsync();
-    
+
     /// <summary>
-    /// æ•°æ®æ¸…ç† - åˆ é™¤è¿‡æœŸæ•°æ®
+    /// Êı¾İÇåÀí - É¾³ı¹ıÆÚÊı¾İ
     /// </summary>
     Task<ApiResponse<int>> CleanupExpiredDataAsync(TimeSpan olderThan);
-    
+
     #endregion
 }

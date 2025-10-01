@@ -510,6 +510,27 @@ namespace BlazorWebGame.Server.Services.Character
         }
 
         /// <summary>
+        /// 检查用户是否拥有指定的角色
+        /// </summary>
+        /// <param name="userId">用户ID</param>
+        /// <param name="characterId">角色ID</param>
+        /// <returns>如果用户拥有该角色，返回true；否则返回false</returns>
+        public async Task<bool> UserOwnsCharacterAsync(string userId, string characterId)
+        {
+            try
+            {
+                // 通过数据存储服务检查用户角色关联
+                bool ownsCharacter = await _dataStorage.UserOwnsCharacterAsync(userId, characterId);
+                return ownsCharacter;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"检查用户是否拥有角色失败: 用户 {userId}, 角色 {characterId}");
+                return false;
+            }
+        }
+
+        /// <summary>
         /// 获取离线进度
         /// </summary>
         public async Task<ApiResponse<OfflineProgressDto>> GetOfflineProgressAsync(string characterId)
