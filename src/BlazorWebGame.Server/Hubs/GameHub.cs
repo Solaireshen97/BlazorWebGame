@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.SignalR;
-using BlazorWebGame.Server.Services;
+using BlazorWebGame.Server.Services.System;
 
 namespace BlazorWebGame.Server.Hubs;
 

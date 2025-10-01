@@ -1,7 +1,7 @@
-using BlazorWebGame.Server.Services;
 using BlazorWebGame.Shared.DTOs;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using BlazorWebGame.Server.Services.Party;
 
 namespace BlazorWebGame.Server.Tests;
 

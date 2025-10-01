@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using BlazorWebGame.Server.Security;
-using BlazorWebGame.Server.Services;
 using BlazorWebGame.Shared.DTOs;
+using BlazorWebGame.Server.Services.Core;
 
 namespace BlazorWebGame.Server.Validation;
 

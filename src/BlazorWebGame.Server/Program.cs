@@ -1,5 +1,4 @@
 using BlazorWebGame.Server.Hubs;
-using BlazorWebGame.Server.Services;
 using BlazorWebGame.Server.Security;
 using BlazorWebGame.Server.Middleware;
 using BlazorWebGame.Server.Configuration;
@@ -14,6 +13,21 @@ using System.Text;
 using Serilog;
 using Microsoft.Extensions.Options;
 using BlazorWebGame.Server.Tests;
+using BlazorWebGame.Server.Services.Core;
+using BlazorWebGame.Server.Services.Battle;
+using BlazorWebGame.Server.Services.Character;
+using BlazorWebGame.Server.Services.Equipments;
+using BlazorWebGame.Server.Services.Inventory;
+using BlazorWebGame.Server.Services.Party;
+using BlazorWebGame.Server.Services.Profession;
+using BlazorWebGame.Server.Services.Activities;
+using BlazorWebGame.Server.Services.System;
+using BlazorWebGame.Server.Services.Quset;
+using BlazorWebGame.Server.Services.Data;
+using BlazorWebGame.Server.Services.Users;
+using BlazorWebGame.Server.Services.Reputation;
+using BlazorWebGame.Server.Services.Shop;
+using BlazorWebGame.Server.Services.Skill;
 
 var builder = WebApplication.CreateBuilder(args);
 

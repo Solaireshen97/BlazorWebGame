@@ -1,4 +1,5 @@
-using BlazorWebGame.Server.Services;
+using BlazorWebGame.Server.Services.Character;
+using BlazorWebGame.Server.Services.Profession;
 using BlazorWebGame.Shared.DTOs;
 using Microsoft.AspNetCore.Mvc;
 

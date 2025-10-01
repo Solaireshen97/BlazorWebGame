@@ -1,4 +1,4 @@
-using BlazorWebGame.Server.Services;
+using BlazorWebGame.Server.Services.Party;
 using BlazorWebGame.Shared.DTOs;
 using Microsoft.AspNetCore.Mvc;
 

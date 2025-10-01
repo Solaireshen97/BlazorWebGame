@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
-using BlazorWebGame.Server.Services;
+using BlazorWebGame.Server.Services.Activities;
 using BlazorWebGame.Shared.DTOs;
 using Microsoft.AspNetCore.Mvc;
 

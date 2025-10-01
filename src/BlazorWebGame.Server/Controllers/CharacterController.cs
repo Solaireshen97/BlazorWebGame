@@ -1,8 +1,9 @@
 using BlazorWebGame.Shared.DTOs;
-using BlazorWebGame.Server.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using BlazorWebGame.Server.Services.Character;
+using BlazorWebGame.Server.Services.Users;
 
 namespace BlazorWebGame.Server.Controllers
 {

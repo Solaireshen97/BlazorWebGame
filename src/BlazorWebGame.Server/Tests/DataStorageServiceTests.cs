@@ -1,10 +1,10 @@
 using Microsoft.Extensions.Logging;
-using BlazorWebGame.Server.Services;
 using BlazorWebGame.Shared.DTOs;
 using BlazorWebGame.Shared.Interfaces;
 using System;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using BlazorWebGame.Server.Services.Data;
 
 namespace BlazorWebGame.Server.Tests;
 

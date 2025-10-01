@@ -1,4 +1,5 @@
-using BlazorWebGame.Server.Services;
+using BlazorWebGame.Server.Services.Battle;
+using BlazorWebGame.Server.Services.Skill;
 using BlazorWebGame.Shared.DTOs;
 using BlazorWebGame.Shared.Models;
 using Microsoft.Extensions.Logging;

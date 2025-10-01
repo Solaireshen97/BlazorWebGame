@@ -1,7 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using BlazorWebGame.Server.Services;
+using BlazorWebGame.Server.Services.Activities;
+using BlazorWebGame.Server.Services.Data;
 using BlazorWebGame.Shared.DTOs;
 using BlazorWebGame.Shared.Interfaces;
 using Microsoft.Extensions.Logging;

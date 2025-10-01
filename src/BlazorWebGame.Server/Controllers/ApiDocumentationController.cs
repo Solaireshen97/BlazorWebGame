@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using BlazorWebGame.Shared.DTOs;
 using System.Reflection;
-using BlazorWebGame.Server.Services;
+using BlazorWebGame.Server.Services.System;
 
 namespace BlazorWebGame.Server.Controllers;
 

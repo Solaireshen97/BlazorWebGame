@@ -1,5 +1,5 @@
 using BlazorWebGame.Server.Security;
-using BlazorWebGame.Server.Services;
+using BlazorWebGame.Server.Services.Users;
 using BlazorWebGame.Shared.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

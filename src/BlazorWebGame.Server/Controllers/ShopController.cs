@@ -1,9 +1,9 @@
-using BlazorWebGame.Server.Services;
 using BlazorWebGame.Server.Security;
 using BlazorWebGame.Server.Validation;
 using BlazorWebGame.Shared.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using BlazorWebGame.Server.Services.Shop;
 
 namespace BlazorWebGame.Server.Controllers;
 

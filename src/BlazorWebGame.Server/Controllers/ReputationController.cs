@@ -1,4 +1,4 @@
-using BlazorWebGame.Server.Services;
+using BlazorWebGame.Server.Services.Reputation;
 using BlazorWebGame.Shared.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
