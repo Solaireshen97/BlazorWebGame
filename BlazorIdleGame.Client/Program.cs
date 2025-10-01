@@ -46,7 +46,6 @@ builder.Services.AddScoped<IGameCommunicationService, GameCommunicationService>(
 builder.Services.AddScoped<IGameSyncService, GameSyncService>();
 builder.Services.AddScoped<LocalStorageService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<ICharacterService, CharacterService>();
 builder.Services.AddScoped<IEnhancedCharacterService, EnhancedCharacterService>();
 // 技能服务
 builder.Services.AddScoped<ISkillService, SkillService>();
