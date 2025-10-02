@@ -51,6 +51,17 @@
                 <div class="character-section">
                     <CharacterRosterPanel />
                 </div>
+                                <!-- 添加战斗测试组件 -->
+                <div class="battle-section mt-4">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">战斗系统测试</h5>
+                        </div>
+                        <div class="card-body">
+                            <BattleTestComponent />
+                        </div>
+                    </div>
+                </div>
                 
                 <h4>游戏主界面</h4>
                 <p>活动系统开发中...</p>
@@ -71,13 +82,13 @@
         {
             return; // 未认证，显示欢迎页面
         }
-        
+
         // 已认证，初始化游戏
         await GameSync.InitializeAsync();
-        
+
         // 使用认证服务中的玩家信息
         _playerInfo = AuthService.CurrentPlayer;
-        
+
         // 临时使用假数据
         _resources = new Resources
         {
@@ -88,12 +99,12 @@
 
         _isLoaded = true;
     }
-    
+
     private void NavigateToLogin()
     {
         NavigationManager.NavigateTo("/login");
     }
-    
+
     private void NavigateToRegister()
     {
         NavigationManager.NavigateTo("/register");

@@ -107,4 +107,93 @@ namespace BlazorWebGame.Shared.DTOs.Battles
         public double? Value { get; set; }
         public string Description { get; set; } = string.Empty;
     }
+
+    // 在文件末尾添加以下DTO类
+
+    /// <summary>
+    /// 战斗DTO - 用于创建和开始战斗时返回
+    /// </summary>
+    public class BattleDto
+    {
+        public string Id { get; set; } = string.Empty;
+        public string BattleType { get; set; } = string.Empty;
+        public List<CombatantDto> Players { get; set; } = new();
+        public List<CombatantDto> Enemies { get; set; } = new();
+        public string Status { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+        public int CurrentRound { get; set; }
+        public string? CurrentTurnEntityId { get; set; }
+    }
+
+    /// <summary>
+    /// 战斗状态DTO - 用于获取战斗状态
+    /// </summary>
+    public class BattleStatusDto
+    {
+        public string State { get; set; } = string.Empty;
+        public int CurrentRound { get; set; }
+        public string CurrentTurnEntityId { get; set; } = string.Empty;
+        public List<BattleEntityStatusDto> Entities { get; set; } = new();
+        public bool IsEnded { get; set; }
+        public string? WinnerSide { get; set; }
+    }
+
+    /// <summary>
+    /// 战斗实体状态DTO - 用于表示战场上的实体状态
+    /// </summary>
+    public class BattleEntityStatusDto
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public int CurrentHp { get; set; }
+        public int MaxHp { get; set; }
+        public bool IsAlive { get; set; }
+        public List<ActiveBuffDto> Buffs { get; set; } = new();
+        public string Side { get; set; } = string.Empty; // Player/Enemy
+    }
+
+    /// <summary>
+    /// 战斗行动结果DTO - 用于技能使用结果
+    /// </summary>
+    public class BattleActionResultDto
+    {
+        public string SkillName { get; set; } = string.Empty;
+        public List<BattleEffectDto> Effects { get; set; } = new();
+        public bool BattleEnded { get; set; }
+        public string? BattleResult { get; set; }
+    }
+
+    /// <summary>
+    /// 战斗效果DTO - 用于表示技能效果
+    /// </summary>
+    public class BattleEffectDto
+    {
+        public string Type { get; set; } = string.Empty; // Damage/Healing/Buff/Debuff
+        public string Target { get; set; } = string.Empty;
+        public double Value { get; set; }
+        public bool IsCritical { get; set; }
+        public string? BuffId { get; set; }
+        public double? Duration { get; set; }
+    }
+
+    /// <summary>
+    /// 创建战斗请求
+    /// </summary>
+    public class CreateBattleRequest
+    {
+        public string CharacterId { get; set; } = string.Empty;
+        public string EnemyId { get; set; } = string.Empty;
+        public string? BattleType { get; set; }
+        public string? RegionId { get; set; }
+    }
+
+    /// <summary>
+    /// 使用技能请求
+    /// </summary>
+    public class UseSkillRequest
+    {
+        public string CasterId { get; set; } = string.Empty;
+        public string SkillId { get; set; } = string.Empty;
+        public string? TargetId { get; set; }
+    }
 }

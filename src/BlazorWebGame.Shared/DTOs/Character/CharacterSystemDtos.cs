@@ -165,6 +165,36 @@ namespace BlazorWebGame.Shared.DTOs.Character
         public List<SkillSlotDto> ActiveSkills { get; set; } = new();
         public List<SkillSlotDto> PassiveSkills { get; set; } = new();
         public int AvailableSkillPoints { get; set; }
+
+        // 添加此属性以兼容战斗测试页面
+        public List<AvailableSkillDto> Available
+        {
+            get
+            {
+                // 从已装备的主动技能中提取可用技能信息
+                return ActiveSkills
+                    .Where(s => s.SkillId != null && s.IsUnlocked)
+                    .Select(s => new AvailableSkillDto
+                    {
+                        Id = s.SkillId!,
+                        Name = s.SkillName ?? "未命名技能",
+                        Icon = s.SkillIcon ?? "",
+                        Level = s.SkillLevel
+                    })
+                    .ToList();
+            }
+        }
+    }
+
+    /// <summary>
+    /// 可用技能DTO
+    /// </summary>
+    public class AvailableSkillDto
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string Icon { get; set; } = string.Empty;
+        public int Level { get; set; }
     }
 
     /// <summary>

@@ -1,0 +1,499 @@
+@using BlazorIdleGame.Client.Services.Battle
+@using BlazorIdleGame.Client.Services.Character
+@using BlazorWebGame.Shared.DTOs
+@using BlazorWebGame.Shared.DTOs.Battles
+@using BlazorWebGame.Shared.DTOs.Character
+@inject IBattleService BattleService
+@inject IEnhancedCharacterService CharacterService
+@inject ILogger<BattleTestComponent> Logger
+
+<div class="battle-test-container">
+    <h2>战斗测试</h2>
+    
+    @if (ErrorMessage != null)
+    {
+        <div class="alert alert-danger">@ErrorMessage</div>
+    }
+    
+    @if (CharacterService.ActiveCharacter == null)
+    {
+        <div class="alert alert-warning">请先选择一个角色</div>
+    }
+    else if (BattleService.CurrentBattle == null)
+    {
+        <div class="card">
+            <div class="card-header">创建战斗</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label>敌人ID:</label>
+                    <input class="form-control" @bind="EnemyId" />
+                </div>
+                <div class="mb-3">
+                    <label>战斗类型:</label>
+                    <select class="form-control" @bind="BattleType">
+                        <option value="Normal">普通战斗</option>
+                        <option value="Boss">Boss战斗</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" @onclick="CreateBattle" disabled="@IsLoading">
+                    @if (IsLoading)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span> 创建中...</span>
+                    }
+                    else
+                    {
+                        <span>创建战斗</span>
+                    }
+                </button>
+            </div>
+        </div>
+    }
+    else if (BattleService.CurrentBattleStatus == null)
+    {
+        <div class="card">
+            <div class="card-header">战斗准备</div>
+            <div class="card-body">
+                <p>战斗ID: @BattleService.CurrentBattle.Id</p>
+                <p>状态: @BattleService.CurrentBattle.Status</p>
+                <button class="btn btn-success" @onclick="StartBattle" disabled="@IsLoading">
+                    @if (IsLoading)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span> 开始中...</span>
+                    }
+                    else
+                    {
+                        <span>开始战斗</span>
+                    }
+                </button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="battle-area">
+            <div class="card">
+                <div class="card-header">战斗状态</div>
+                <div class="card-body">
+                    <p>回合: @BattleService.CurrentBattleStatus.CurrentRound</p>
+                    <p>当前行动者: @BattleService.CurrentBattleStatus.CurrentTurnEntityId</p>
+                    <p>战斗状态: @BattleService.CurrentBattleStatus.State</p>
+                    
+                    @if (BattleService.CurrentBattleStatus.IsEnded)
+                    {
+                        <div class="alert @(BattleService.CurrentBattleStatus.WinnerSide == "Player" ? "alert-success" : "alert-danger")">
+                            战斗结束! 胜利方: @BattleService.CurrentBattleStatus.WinnerSide
+                        </div>
+                        <button class="btn btn-primary" @onclick="ResetBattle">重新开始</button>
+                    }
+                    else
+                    {
+                        <div class="battle-actions">
+                            <h4>技能</h4>
+                            <div class="skill-buttons">
+                                <button class="btn btn-outline-primary m-1" @onclick='() => UseSkill("attack")'>
+                                    普通攻击
+                                </button>
+                                <button class="btn btn-outline-danger m-1" @onclick='() => UseSkill("fireball")'>
+                                    火球术
+                                </button>
+                                <button class="btn btn-outline-success m-1" @onclick='() => UseSkill("heal")'>
+                                    治疗术
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+            
+            <div class="combatants-area">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h4>玩家方</h4>
+                        @foreach (var entity in BattleService.CurrentBattleStatus.Entities.Where(e => e.Side == "Player"))
+                        {
+                            <div class="card mb-2 @(!entity.IsAlive ? "text-muted bg-light" : "")">
+                                <div class="card-body">
+                                    <h5 class="card-title">@entity.Name</h5>
+                                    <div class="progress mb-2">
+                                        <div class="progress-bar bg-danger" role="progressbar" 
+                                            style="width: @(entity.CurrentHp * 100 / Math.Max(1, entity.MaxHp))%">
+                                            @entity.CurrentHp / @entity.MaxHp HP
+                                        </div>
+                                    </div>
+                                    <p class="card-text">
+                                        <small>@(entity.IsAlive ? "存活" : "已阵亡")</small>
+                                    </p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    <div class="col-md-6">
+                        <h4>敌人方</h4>
+                        @foreach (var entity in BattleService.CurrentBattleStatus.Entities.Where(e => e.Side == "Enemy"))
+                        {
+                            <div class="card mb-2 @(!entity.IsAlive ? "text-muted bg-light" : "")"
+                                 @onclick="() => SelectTarget(entity.Id)">
+                                <div class="card-body">
+                                    <h5 class="card-title">@entity.Name</h5>
+                                    <div class="progress mb-2">
+                                        <div class="progress-bar bg-danger" role="progressbar" 
+                                            style="width: @(entity.CurrentHp * 100 / Math.Max(1, entity.MaxHp))%">
+                                            @entity.CurrentHp / @entity.MaxHp HP
+                                        </div>
+                                    </div>
+                                    <p class="card-text">
+                                        <small>
+                                            @(entity.IsAlive ? "存活" : "已阵亡") 
+                                            @(SelectedTargetId == entity.Id ? "(已选择)" : "")
+                                        </small>
+                                    </p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+            
+            <div class="battle-log">
+                <h4>战斗日志</h4>
+                <div class="log-container">
+                    @foreach (var log in BattleLogs.OrderByDescending(l => l.Time))
+                    {
+                        <div class="log-entry">
+                            <small class="text-muted">[@log.Time.ToString("HH:mm:ss")]</small> @log.Message
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="battle-debug">
+                <h4>调试信息</h4>
+                <div class="debug-container">
+                    <button class="btn btn-sm btn-info" @onclick="RefreshBattleStatus">刷新状态</button>
+                    <div class="raw-json mt-2">
+                        <h6>原始战斗数据:</h6>
+                        <pre>@RawBattleData</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .battle-test-container {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+    .battle-area {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+    .combatants-area {
+        background-color: #f8f9fa;
+        border-radius: 5px;
+        padding: 15px;
+    }
+    .battle-log {
+        height: 200px;
+        overflow-y: auto;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 10px;
+        background-color: #f8f9fa;
+    }
+    .log-container {
+        display: flex;
+        flex-direction: column;
+    }
+    .log-entry {
+        padding: 4px 0;
+        border-bottom: 1px solid #eee;
+    }
+    .skill-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+
+    .battle-debug {
+        margin-top: 20px;
+        border: 1px dashed #ccc;
+        padding: 10px;
+        background-color: #f8f9fa;
+    }
+
+    .raw-json {
+        max-height: 200px;
+        overflow-y: auto;
+        font-size: 12px;
+        background-color: #eee;
+        padding: 10px;
+        border-radius: 5px;
+    }
+</style>
+
+@code {
+    private string EnemyId { get; set; } = "enemy1";
+    private string BattleType { get; set; } = "Normal";
+    private string? ErrorMessage { get; set; }
+    private bool IsLoading { get; set; } = false;
+    private string? SelectedTargetId { get; set; }
+    private List<BattleLogEntry> BattleLogs { get; set; } = new List<BattleLogEntry>();
+    private string RawBattleData { get; set; } = string.Empty;
+    
+    protected override void OnInitialized()
+    {
+        BattleService.BattleCreated += OnBattleCreated;
+        BattleService.BattleStarted += OnBattleStarted;
+        BattleService.BattleStatusUpdated += OnBattleStatusUpdated;
+        BattleService.ActionPerformed += OnActionPerformed;
+        BattleService.BattleError += OnBattleError;
+        BattleService.BattleEnded += OnBattleEnded;
+    }
+    
+    public void Dispose()
+    {
+        BattleService.BattleCreated -= OnBattleCreated;
+        BattleService.BattleStarted -= OnBattleStarted;
+        BattleService.BattleStatusUpdated -= OnBattleStatusUpdated;
+        BattleService.ActionPerformed -= OnActionPerformed;
+        BattleService.BattleError -= OnBattleError;
+        BattleService.BattleEnded -= OnBattleEnded;
+    }
+    
+    private void OnBattleCreated(object? sender, BattleDto battle)
+    {
+        AddBattleLog($"战斗已创建: {battle.Id}");
+        StateHasChanged();
+    }
+    
+    private void OnBattleStarted(object? sender, BattleDto battle)
+    {
+        AddBattleLog($"战斗已开始!");
+        StateHasChanged();
+    }
+
+    private async Task RefreshBattleStatus()
+    {
+        if (BattleService.CurrentBattle != null)
+        {
+            try
+            {
+                var status = await BattleService.RefreshBattleStatusAsync();
+                if (status != null)
+                {
+                    RawBattleData = Newtonsoft.Json.JsonConvert.SerializeObject(status, Newtonsoft.Json.Formatting.Indented);
+                }
+                else
+                {
+                    RawBattleData = "获取战斗状态失败";
+                }
+            }
+            catch (Exception ex)
+            {
+                RawBattleData = $"刷新异常: {ex.Message}";
+            }
+        }
+    }
+    
+    private void OnBattleStatusUpdated(object? sender, BattleStatusDto status)
+    {
+        // 更新原始JSON数据显示
+        RawBattleData = Newtonsoft.Json.JsonConvert.SerializeObject(status, Newtonsoft.Json.Formatting.Indented);
+
+        // 确保至少有一个目标被选中
+        if (string.IsNullOrEmpty(SelectedTargetId))
+        {
+            var enemy = status.Entities.FirstOrDefault(e => e.Side == "Enemy" && e.IsAlive);
+            if (enemy != null)
+            {
+                SelectedTargetId = enemy.Id;
+            }
+        }
+
+        StateHasChanged();
+    }
+    
+    private void OnActionPerformed(object? sender, BattleActionResultDto result)
+    {
+        AddBattleLog($"使用了技能: {result.SkillName}");
+        
+        foreach (var effect in result.Effects)
+        {
+            string effectType = effect.Type switch
+            {
+                "Damage" => "伤害",
+                "Healing" => "治疗",
+                "Buff" => "增益",
+                "Debuff" => "减益",
+                _ => effect.Type
+            };
+            
+            AddBattleLog($"{effectType} {effect.Value} 对 {effect.Target}{(effect.IsCritical ? " (暴击!)" : "")}");
+        }
+        
+        StateHasChanged();
+    }
+    
+    private void OnBattleError(object? sender, string error)
+    {
+        ErrorMessage = error;
+        StateHasChanged();
+    }
+    
+    private void OnBattleEnded(object? sender, BattleStatusDto status)
+    {
+        string result = status.WinnerSide == "Player" ? "胜利!" : "失败!";
+        AddBattleLog($"战斗结束: {result}");
+        StateHasChanged();
+    }
+    
+    private async Task CreateBattle()
+    {
+        if (CharacterService.ActiveCharacter == null)
+        {
+            ErrorMessage = "请先选择一个角色";
+            return;
+        }
+        
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = null;
+            
+            var battle = await BattleService.CreateBattleAsync(
+                CharacterService.ActiveCharacter.Id,
+                EnemyId,
+                BattleType);
+                
+            if (battle == null)
+            {
+                ErrorMessage = "创建战斗失败";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"创建战斗错误: {ex.Message}";
+            Logger.LogError(ex, "创建战斗时发生异常");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+    
+    private async Task StartBattle()
+    {
+        if (BattleService.CurrentBattle == null)
+        {
+            ErrorMessage = "没有当前战斗";
+            return;
+        }
+        
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = null;
+            
+            bool result = await BattleService.StartBattleAsync(BattleService.CurrentBattle.Id);
+            
+            if (!result)
+            {
+                ErrorMessage = "开始战斗失败";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"开始战斗错误: {ex.Message}";
+            Logger.LogError(ex, "开始战斗时发生异常");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+    
+    private async Task UseSkill(string skillId)
+    {
+        if (BattleService.CurrentBattle == null || BattleService.CurrentBattleStatus == null)
+        {
+            ErrorMessage = "没有当前战斗";
+            return;
+        }
+        
+        if (BattleService.CurrentBattleStatus.IsEnded)
+        {
+            ErrorMessage = "战斗已结束";
+            return;
+        }
+        
+        if (CharacterService.ActiveCharacter == null)
+        {
+            ErrorMessage = "没有活跃角色";
+            return;
+        }
+        
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = null;
+            
+            var result = await BattleService.UseSkillAsync(
+                BattleService.CurrentBattle.Id,
+                CharacterService.ActiveCharacter.Id,
+                skillId,
+                SelectedTargetId);
+                
+            if (result == null)
+            {
+                ErrorMessage = "使用技能失败";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"使用技能错误: {ex.Message}";
+            Logger.LogError(ex, "使用技能时发生异常");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+    
+    private void SelectTarget(string targetId)
+    {
+        SelectedTargetId = targetId;
+    }
+    
+    private void ResetBattle()
+    {
+        BattleService.ResetCurrentBattle();
+        ErrorMessage = null;
+        BattleLogs.Clear();
+        SelectedTargetId = null;
+    }
+    
+    private void AddBattleLog(string message)
+    {
+        BattleLogs.Add(new BattleLogEntry
+        {
+            Time = DateTime.Now,
+            Message = message
+        });
+        
+        // 限制日志数量
+        if (BattleLogs.Count > 100)
+        {
+            BattleLogs.RemoveAt(0);
+        }
+    }
+    
+    private class BattleLogEntry
+    {
+        public DateTime Time { get; set; }
+        public string Message { get; set; } = string.Empty;
+    }
+}

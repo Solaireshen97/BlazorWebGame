@@ -254,6 +254,12 @@ namespace BlazorIdleGame.Client.Services.Character
                     // 如果缓存数据不超过30秒，直接返回
                     if ((DateTime.UtcNow - cached.LastActiveAt).TotalSeconds < 30)
                     {
+                        // 修复：如果没有活跃角色但当前角色是花名册中的活跃角色，设置为活跃角色
+                        if (_activeCharacter == null && _currentRoster?.ActiveCharacterId == characterId)
+                        {
+                            _activeCharacter = cached;
+                            ActiveCharacterUpdated?.Invoke(this, cached);
+                        }
                         return cached;
                     }
                 }
@@ -266,8 +272,9 @@ namespace BlazorIdleGame.Client.Services.Character
                     // 更新缓存
                     _characterCache[characterId] = response.Data;
 
-                    // 如果是活跃角色，更新活跃角色信息
-                    if (_activeCharacter?.Id == characterId)
+                    // 修复：如果是活跃角色或者应该成为活跃角色，更新活跃角色信息
+                    if (_activeCharacter?.Id == characterId ||
+                        (_activeCharacter == null && _currentRoster?.ActiveCharacterId == characterId))
                     {
                         _activeCharacter = response.Data;
                         ActiveCharacterUpdated?.Invoke(this, response.Data);

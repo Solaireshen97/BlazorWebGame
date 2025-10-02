@@ -41,7 +41,7 @@ builder.Services.AddSingleton<IGameTimeService, GameTimeService>();
 // 活动服务
 builder.Services.AddScoped<IActivityService, ActivityService>();
 // 战斗服务
-builder.Services.AddScoped<IBattleService, BattleService>();
+builder.Services.AddScoped<IBattleService, EnhancedBattleService>();
 builder.Services.AddScoped<IGameCommunicationService, GameCommunicationService>();
 builder.Services.AddScoped<IGameSyncService, GameSyncService>();
 builder.Services.AddScoped<LocalStorageService>();
@@ -49,7 +49,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEnhancedCharacterService, EnhancedCharacterService>();
 // 技能服务
 builder.Services.AddScoped<ISkillService, SkillService>();
-
+builder.Services.AddScoped<BlazorIdleGame.Client.Services.Battle.IBattleService, BlazorIdleGame.Client.Services.Battle.EnhancedBattleService>();
 // 设置日志级别（帮助调试）
 builder.Logging.SetMinimumLevel(LogLevel.Debug);
 
