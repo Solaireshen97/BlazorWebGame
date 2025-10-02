@@ -1013,6 +1013,781 @@ public class SqliteDataStorageService : IDataStorageService
 
     #endregion
 
+    #region 增强版战斗系统方法
+
+    /// <summary>
+    /// 创建战斗记录
+    /// </summary>
+    public async Task<ApiResponse<EnhancedBattleEntity>> CreateBattleAsync(EnhancedBattleEntity battle)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+
+            // 确保ID已设置
+            if (string.IsNullOrEmpty(battle.Id))
+            {
+                battle.Id = Guid.NewGuid().ToString();
+            }
+
+            // 设置创建和更新时间
+            battle.CreatedAt = DateTime.UtcNow;
+            battle.UpdatedAt = DateTime.UtcNow;
+
+            await context.EnhancedBattles.AddAsync(battle);
+            await context.SaveChangesAsync();
+
+            _logger.LogInformation("Battle created successfully with ID: {SafeBattleId}", SafeLogId(battle.Id));
+
+            return new ApiResponse<EnhancedBattleEntity>
+            {
+                IsSuccess = true,
+                Data = battle,
+                Message = "战斗创建成功"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create battle record");
+            return new ApiResponse<EnhancedBattleEntity>
+            {
+                IsSuccess = false,
+                Message = $"创建战斗记录失败: {ex.Message}"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 获取战斗记录
+    /// </summary>
+    public async Task<ApiResponse<EnhancedBattleEntity>> GetBattleByIdAsync(string battleId)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var battle = await context.EnhancedBattles.FindAsync(battleId);
+
+            if (battle == null)
+            {
+                return new ApiResponse<EnhancedBattleEntity>
+                {
+                    IsSuccess = false,
+                    Message = "战斗记录不存在"
+                };
+            }
+
+            return new ApiResponse<EnhancedBattleEntity>
+            {
+                IsSuccess = true,
+                Data = battle,
+                Message = "获取战斗记录成功"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get battle record with ID: {SafeBattleId}", SafeLogId(battleId));
+            return new ApiResponse<EnhancedBattleEntity>
+            {
+                IsSuccess = false,
+                Message = $"获取战斗记录失败: {ex.Message}"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 更新战斗记录
+    /// </summary>
+    public async Task<ApiResponse<EnhancedBattleEntity>> UpdateBattleAsync(EnhancedBattleEntity battle)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var existingBattle = await context.EnhancedBattles.FindAsync(battle.Id);
+
+            if (existingBattle == null)
+            {
+                return new ApiResponse<EnhancedBattleEntity>
+                {
+                    IsSuccess = false,
+                    Message = "战斗记录不存在"
+                };
+            }
+
+            // 更新时间戳
+            battle.UpdatedAt = DateTime.UtcNow;
+            battle.CreatedAt = existingBattle.CreatedAt; // 保持创建时间不变
+
+            // 更新实体
+            context.Entry(existingBattle).CurrentValues.SetValues(battle);
+            await context.SaveChangesAsync();
+
+            _logger.LogDebug("Battle updated successfully with ID: {SafeBattleId}", SafeLogId(battle.Id));
+
+            return new ApiResponse<EnhancedBattleEntity>
+            {
+                IsSuccess = true,
+                Data = battle,
+                Message = "战斗记录更新成功"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update battle record with ID: {SafeBattleId}", SafeLogId(battle.Id));
+            return new ApiResponse<EnhancedBattleEntity>
+            {
+                IsSuccess = false,
+                Message = $"更新战斗记录失败: {ex.Message}"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 保存战斗参与者
+    /// </summary>
+    public async Task<ApiResponse<EnhancedBattleParticipantEntity>> SaveBattleParticipantAsync(EnhancedBattleParticipantEntity participant)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+
+            // 确保ID已设置
+            if (string.IsNullOrEmpty(participant.Id))
+            {
+                participant.Id = Guid.NewGuid().ToString();
+            }
+
+            var existingParticipant = await context.EnhancedBattleParticipants.FindAsync(participant.Id);
+
+            if (existingParticipant != null)
+            {
+                // 更新实体
+                participant.UpdatedAt = DateTime.UtcNow;
+                participant.CreatedAt = existingParticipant.CreatedAt; // 保持创建时间不变
+                context.Entry(existingParticipant).CurrentValues.SetValues(participant);
+            }
+            else
+            {
+                // 创建新实体
+                participant.CreatedAt = DateTime.UtcNow;
+                participant.UpdatedAt = DateTime.UtcNow;
+                await context.EnhancedBattleParticipants.AddAsync(participant);
+            }
+
+            await context.SaveChangesAsync();
+
+            _logger.LogDebug("Battle participant saved with ID: {SafeParticipantId} for battle: {SafeBattleId}",
+                SafeLogId(participant.Id), SafeLogId(participant.BattleId));
+
+            return new ApiResponse<EnhancedBattleParticipantEntity>
+            {
+                IsSuccess = true,
+                Data = participant,
+                Message = "战斗参与者保存成功"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save battle participant with ID: {SafeParticipantId}", SafeLogId(participant.Id));
+            return new ApiResponse<EnhancedBattleParticipantEntity>
+            {
+                IsSuccess = false,
+                Message = $"保存战斗参与者失败: {ex.Message}"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 获取战斗参与者列表
+    /// </summary>
+    public async Task<ApiResponse<List<EnhancedBattleParticipantEntity>>> GetBattleParticipantsAsync(string battleId)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var participants = await context.EnhancedBattleParticipants
+                .Where(p => p.BattleId == battleId)
+                .OrderBy(p => p.Team)
+                .ThenBy(p => p.Position)
+                .ToListAsync();
+
+            return new ApiResponse<List<EnhancedBattleParticipantEntity>>
+            {
+                IsSuccess = true,
+                Data = participants,
+                Message = $"获取到 {participants.Count} 名战斗参与者"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get battle participants for battle ID: {SafeBattleId}", SafeLogId(battleId));
+            return new ApiResponse<List<EnhancedBattleParticipantEntity>>
+            {
+                IsSuccess = false,
+                Message = $"获取战斗参与者失败: {ex.Message}"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 更新战斗参与者
+    /// </summary>
+    public async Task<ApiResponse<EnhancedBattleParticipantEntity>> UpdateBattleParticipantAsync(EnhancedBattleParticipantEntity participant)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var existingParticipant = await context.EnhancedBattleParticipants.FindAsync(participant.Id);
+
+            if (existingParticipant == null)
+            {
+                return new ApiResponse<EnhancedBattleParticipantEntity>
+                {
+                    IsSuccess = false,
+                    Message = "战斗参与者不存在"
+                };
+            }
+
+            // 更新时间戳
+            participant.UpdatedAt = DateTime.UtcNow;
+            participant.CreatedAt = existingParticipant.CreatedAt; // 保持创建时间不变
+
+            // 更新实体
+            context.Entry(existingParticipant).CurrentValues.SetValues(participant);
+            await context.SaveChangesAsync();
+
+            _logger.LogDebug("Battle participant updated with ID: {SafeParticipantId}", SafeLogId(participant.Id));
+
+            return new ApiResponse<EnhancedBattleParticipantEntity>
+            {
+                IsSuccess = true,
+                Data = participant,
+                Message = "战斗参与者更新成功"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update battle participant with ID: {SafeParticipantId}", SafeLogId(participant.Id));
+            return new ApiResponse<EnhancedBattleParticipantEntity>
+            {
+                IsSuccess = false,
+                Message = $"更新战斗参与者失败: {ex.Message}"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 保存战斗事件
+    /// </summary>
+    public async Task<ApiResponse<EnhancedBattleEventEntity>> SaveBattleEventAsync(EnhancedBattleEventEntity battleEvent)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+
+            // 确保ID已设置
+            if (string.IsNullOrEmpty(battleEvent.Id))
+            {
+                battleEvent.Id = Guid.NewGuid().ToString();
+            }
+
+            // 确保时间戳已设置
+            if (battleEvent.Timestamp == default)
+            {
+                battleEvent.Timestamp = DateTime.UtcNow;
+            }
+
+            var existingEvent = await context.EnhancedBattleEvents.FindAsync(battleEvent.Id);
+
+            if (existingEvent != null)
+            {
+                // 更新实体
+                battleEvent.UpdatedAt = DateTime.UtcNow;
+                battleEvent.CreatedAt = existingEvent.CreatedAt; // 保持创建时间不变
+                context.Entry(existingEvent).CurrentValues.SetValues(battleEvent);
+            }
+            else
+            {
+                // 创建新实体
+                battleEvent.CreatedAt = DateTime.UtcNow;
+                battleEvent.UpdatedAt = DateTime.UtcNow;
+                await context.EnhancedBattleEvents.AddAsync(battleEvent);
+            }
+
+            await context.SaveChangesAsync();
+
+            _logger.LogDebug("Battle event saved with ID: {SafeEventId} for battle: {SafeBattleId}",
+                SafeLogId(battleEvent.Id), SafeLogId(battleEvent.BattleId));
+
+            return new ApiResponse<EnhancedBattleEventEntity>
+            {
+                IsSuccess = true,
+                Data = battleEvent,
+                Message = "战斗事件保存成功"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save battle event with ID: {SafeEventId}", SafeLogId(battleEvent.Id));
+            return new ApiResponse<EnhancedBattleEventEntity>
+            {
+                IsSuccess = false,
+                Message = $"保存战斗事件失败: {ex.Message}"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 获取战斗事件列表
+    /// </summary>
+    public async Task<ApiResponse<List<EnhancedBattleEventEntity>>> GetBattleEventsAsync(string battleId)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var events = await context.EnhancedBattleEvents
+                .Where(e => e.BattleId == battleId)
+                .OrderBy(e => e.TurnNumber)
+                .ThenBy(e => e.SequenceOrder)
+                .ToListAsync();
+
+            return new ApiResponse<List<EnhancedBattleEventEntity>>
+            {
+                IsSuccess = true,
+                Data = events,
+                Message = $"获取到 {events.Count} 条战斗事件"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get battle events for battle ID: {SafeBattleId}", SafeLogId(battleId));
+            return new ApiResponse<List<EnhancedBattleEventEntity>>
+            {
+                IsSuccess = false,
+                Message = $"获取战斗事件失败: {ex.Message}"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 保存战斗结果
+    /// </summary>
+    public async Task<ApiResponse<EnhancedBattleResultEntity>> SaveBattleResultAsync(EnhancedBattleResultEntity battleResult)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+
+            // 确保ID已设置
+            if (string.IsNullOrEmpty(battleResult.Id))
+            {
+                battleResult.Id = Guid.NewGuid().ToString();
+            }
+
+            var existingResult = await context.EnhancedBattleResults
+                .FirstOrDefaultAsync(r => r.BattleId == battleResult.BattleId);
+
+            if (existingResult != null)
+            {
+                // 更新实体
+                battleResult.UpdatedAt = DateTime.UtcNow;
+                battleResult.CreatedAt = existingResult.CreatedAt; // 保持创建时间不变
+
+                // 使用ID更新，确保不会出现多个结果
+                battleResult.Id = existingResult.Id;
+
+                context.Entry(existingResult).CurrentValues.SetValues(battleResult);
+            }
+            else
+            {
+                // 创建新实体
+                battleResult.CreatedAt = DateTime.UtcNow;
+                battleResult.UpdatedAt = DateTime.UtcNow;
+                await context.EnhancedBattleResults.AddAsync(battleResult);
+            }
+
+            await context.SaveChangesAsync();
+
+            _logger.LogDebug("Battle result saved with ID: {SafeResultId} for battle: {SafeBattleId}",
+                SafeLogId(battleResult.Id), SafeLogId(battleResult.BattleId));
+
+            return new ApiResponse<EnhancedBattleResultEntity>
+            {
+                IsSuccess = true,
+                Data = battleResult,
+                Message = "战斗结果保存成功"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save battle result for battle ID: {SafeBattleId}", SafeLogId(battleResult.BattleId));
+            return new ApiResponse<EnhancedBattleResultEntity>
+            {
+                IsSuccess = false,
+                Message = $"保存战斗结果失败: {ex.Message}"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 获取战斗结果
+    /// </summary>
+    public async Task<ApiResponse<EnhancedBattleResultEntity>> GetBattleResultAsync(string battleId)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var result = await context.EnhancedBattleResults
+                .FirstOrDefaultAsync(r => r.BattleId == battleId);
+
+            if (result == null)
+            {
+                return new ApiResponse<EnhancedBattleResultEntity>
+                {
+                    IsSuccess = false,
+                    Message = "战斗结果不存在"
+                };
+            }
+
+            return new ApiResponse<EnhancedBattleResultEntity>
+            {
+                IsSuccess = true,
+                Data = result,
+                Message = "获取战斗结果成功"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get battle result for battle ID: {SafeBattleId}", SafeLogId(battleId));
+            return new ApiResponse<EnhancedBattleResultEntity>
+            {
+                IsSuccess = false,
+                Message = $"获取战斗结果失败: {ex.Message}"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 获取进行中的战斗列表
+    /// </summary>
+    public async Task<ApiResponse<List<EnhancedBattleEntity>>> GetActiveBattlesAsync()
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var activeBattles = await context.EnhancedBattles
+                .Where(b => b.Status == "InProgress" || b.Status == "Preparing")
+                .OrderByDescending(b => b.StartTime)
+                .ToListAsync();
+
+            return new ApiResponse<List<EnhancedBattleEntity>>
+            {
+                IsSuccess = true,
+                Data = activeBattles,
+                Message = $"获取到 {activeBattles.Count} 场进行中的战斗"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get active battles");
+            return new ApiResponse<List<EnhancedBattleEntity>>
+            {
+                IsSuccess = false,
+                Message = $"获取进行中的战斗失败: {ex.Message}"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 获取角色参与的进行中战斗
+    /// </summary>
+    public async Task<ApiResponse<EnhancedBattleEntity>> GetCharacterActiveBattleAsync(string characterId)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+
+            // 首先查找角色是否是战斗参与者
+            var participant = await context.EnhancedBattleParticipants
+                .FirstOrDefaultAsync(p => p.SourceId == characterId && p.ParticipantType == "Player");
+
+            if (participant == null)
+            {
+                return new ApiResponse<EnhancedBattleEntity>
+                {
+                    IsSuccess = false,
+                    Message = "角色未参与任何战斗"
+                };
+            }
+
+            // 查找关联的进行中战斗
+            var battle = await context.EnhancedBattles
+                .FirstOrDefaultAsync(b => b.Id == participant.BattleId &&
+                                   (b.Status == "InProgress" || b.Status == "Preparing"));
+
+            if (battle == null)
+            {
+                return new ApiResponse<EnhancedBattleEntity>
+                {
+                    IsSuccess = false,
+                    Message = "未找到进行中的战斗"
+                };
+            }
+
+            return new ApiResponse<EnhancedBattleEntity>
+            {
+                IsSuccess = true,
+                Data = battle,
+                Message = "获取角色战斗成功"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get active battle for character ID: {SafeCharacterId}", SafeLogId(characterId));
+            return new ApiResponse<EnhancedBattleEntity>
+            {
+                IsSuccess = false,
+                Message = $"获取角色战斗失败: {ex.Message}"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 获取队伍参与的进行中战斗
+    /// </summary>
+    public async Task<ApiResponse<EnhancedBattleEntity>> GetTeamActiveBattleAsync(string teamId)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+
+            // 查找关联的进行中战斗
+            var battle = await context.EnhancedBattles
+                .FirstOrDefaultAsync(b => b.PartyId == teamId &&
+                                   (b.Status == "InProgress" || b.Status == "Preparing"));
+
+            if (battle == null)
+            {
+                return new ApiResponse<EnhancedBattleEntity>
+                {
+                    IsSuccess = false,
+                    Message = "队伍未参与任何战斗"
+                };
+            }
+
+            return new ApiResponse<EnhancedBattleEntity>
+            {
+                IsSuccess = true,
+                Data = battle,
+                Message = "获取队伍战斗成功"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get active battle for team ID: {SafeTeamId}", SafeLogId(teamId));
+            return new ApiResponse<EnhancedBattleEntity>
+            {
+                IsSuccess = false,
+                Message = $"获取队伍战斗失败: {ex.Message}"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 清理过期战斗记录和事件
+    /// </summary>
+    public async Task<ApiResponse<int>> CleanupBattleDataAsync(TimeSpan olderThan)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var cutoffTime = DateTime.UtcNow - olderThan;
+            int cleanedCount = 0;
+
+            // 获取过期已完成战斗的ID
+            var oldBattleIds = await context.EnhancedBattles
+                .Where(b => b.Status == "Completed" && b.EndTime.HasValue && b.EndTime.Value < cutoffTime)
+                .Select(b => b.Id)
+                .ToListAsync();
+
+            if (oldBattleIds.Count == 0)
+            {
+                return new ApiResponse<int>
+                {
+                    IsSuccess = true,
+                    Data = 0,
+                    Message = "没有需要清理的战斗数据"
+                };
+            }
+
+            // 删除关联的战斗事件
+            var events = await context.EnhancedBattleEvents
+                .Where(e => oldBattleIds.Contains(e.BattleId))
+                .ToListAsync();
+
+            context.EnhancedBattleEvents.RemoveRange(events);
+            cleanedCount += events.Count;
+
+            // 删除关联的战斗参与者
+            var participants = await context.EnhancedBattleParticipants
+                .Where(p => oldBattleIds.Contains(p.BattleId))
+                .ToListAsync();
+
+            context.EnhancedBattleParticipants.RemoveRange(participants);
+            cleanedCount += participants.Count;
+
+            // 删除战斗结果
+            var results = await context.EnhancedBattleResults
+                .Where(r => oldBattleIds.Contains(r.BattleId))
+                .ToListAsync();
+
+            context.EnhancedBattleResults.RemoveRange(results);
+            cleanedCount += results.Count;
+
+            // 删除战斗实体
+            var battles = await context.EnhancedBattles
+                .Where(b => oldBattleIds.Contains(b.Id))
+                .ToListAsync();
+
+            context.EnhancedBattles.RemoveRange(battles);
+            cleanedCount += battles.Count;
+
+            await context.SaveChangesAsync();
+
+            _logger.LogInformation("Cleaned up {CleanedCount} battle-related records older than {CutoffTime}",
+                cleanedCount, cutoffTime);
+
+            return new ApiResponse<int>
+            {
+                IsSuccess = true,
+                Data = cleanedCount,
+                Message = $"清理了 {cleanedCount} 条战斗相关数据"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to cleanup battle data");
+            return new ApiResponse<int>
+            {
+                IsSuccess = false,
+                Message = $"清理战斗数据失败: {ex.Message}"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 获取战斗系统配置
+    /// </summary>
+    public async Task<ApiResponse<EnhancedBattleSystemConfigEntity>> GetBattleSystemConfigAsync(string configType, string? battleTypeReference = null)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+
+            EnhancedBattleSystemConfigEntity? config;
+
+            if (!string.IsNullOrEmpty(battleTypeReference))
+            {
+                // 获取指定战斗类型的配置
+                config = await context.EnhancedBattleSystemConfigs
+                    .Where(c => c.ConfigType == configType &&
+                           c.BattleTypeReference == battleTypeReference &&
+                           c.IsActive)
+                    .OrderByDescending(c => c.Version)
+                    .FirstOrDefaultAsync();
+            }
+            else
+            {
+                // 获取全局配置
+                config = await context.EnhancedBattleSystemConfigs
+                    .Where(c => c.ConfigType == configType && c.IsActive)
+                    .OrderByDescending(c => c.Version)
+                    .FirstOrDefaultAsync();
+            }
+
+            if (config == null)
+            {
+                return new ApiResponse<EnhancedBattleSystemConfigEntity>
+                {
+                    IsSuccess = false,
+                    Message = "未找到战斗系统配置"
+                };
+            }
+
+            return new ApiResponse<EnhancedBattleSystemConfigEntity>
+            {
+                IsSuccess = true,
+                Data = config,
+                Message = "获取战斗系统配置成功"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get battle system config of type: {ConfigType}", configType);
+            return new ApiResponse<EnhancedBattleSystemConfigEntity>
+            {
+                IsSuccess = false,
+                Message = $"获取战斗系统配置失败: {ex.Message}"
+            };
+        }
+    }
+
+    /// <summary>
+    /// 保存战斗系统配置
+    /// </summary>
+    public async Task<ApiResponse<EnhancedBattleSystemConfigEntity>> SaveBattleSystemConfigAsync(EnhancedBattleSystemConfigEntity config)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+
+            // 确保ID已设置
+            if (string.IsNullOrEmpty(config.Id))
+            {
+                config.Id = Guid.NewGuid().ToString();
+            }
+
+            var existingConfig = await context.EnhancedBattleSystemConfigs.FindAsync(config.Id);
+
+            if (existingConfig != null)
+            {
+                // 更新实体
+                config.UpdatedAt = DateTime.UtcNow;
+                config.CreatedAt = existingConfig.CreatedAt; // 保持创建时间不变
+                context.Entry(existingConfig).CurrentValues.SetValues(config);
+            }
+            else
+            {
+                // 创建新实体
+                config.CreatedAt = DateTime.UtcNow;
+                config.UpdatedAt = DateTime.UtcNow;
+                await context.EnhancedBattleSystemConfigs.AddAsync(config);
+            }
+
+            await context.SaveChangesAsync();
+
+            _logger.LogDebug("Battle system config saved with ID: {SafeConfigId}, Type: {ConfigType}",
+                SafeLogId(config.Id), config.ConfigType);
+
+            return new ApiResponse<EnhancedBattleSystemConfigEntity>
+            {
+                IsSuccess = true,
+                Data = config,
+                Message = "战斗系统配置保存成功"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save battle system config with ID: {SafeConfigId}", SafeLogId(config.Id));
+            return new ApiResponse<EnhancedBattleSystemConfigEntity>
+            {
+                IsSuccess = false,
+                Message = $"保存战斗系统配置失败: {ex.Message}"
+            };
+        }
+    }
+
+    #endregion
+
     #region 玩家数据管理
 
     public async Task<PlayerStorageDto?> GetPlayerAsync(string playerId)

@@ -28,6 +28,9 @@ using BlazorWebGame.Server.Services.Users;
 using BlazorWebGame.Server.Services.Reputation;
 using BlazorWebGame.Server.Services.Shop;
 using BlazorWebGame.Server.Services.Skill;
+using BlazorWebGame.Server.Services.Battle;
+using BlazorWebGame.Server.Events;
+using BlazorWebGame.Shared.Events;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -271,8 +274,22 @@ builder.Services.AddSingleton<ServerBattleManager>(serviceProvider =>
 
 builder.Services.AddHostedService<GameLoopService>();
 builder.Services.AddHostedService<ServerOptimizationService>();
+builder.Services.AddSingleton<BlazorWebGame.Shared.Events.UnifiedEventQueueConfig>();
+builder.Services.AddSingleton<UnifiedEventQueue>();
+builder.Services.AddSingleton<EventDispatcher>();
+builder.Services.AddSingleton<DomainEventAdapter>();
+builder.Services.AddScoped<IBattleService, EnhancedBattleService>();
+
+// 注册战斗事件处理器
+builder.Services.AddSingleton<BattleEventProcessor>();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var battleEventProcessor = scope.ServiceProvider.GetRequiredService<BattleEventProcessor>();
+    // 处理器会在构造函数中自动注册事件处理函数
+}
 
 // 确保数据库已创建和数据存储服务健康检查
 using (var scope = app.Services.CreateScope())

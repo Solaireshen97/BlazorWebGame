@@ -1,7 +1,8 @@
+using BlazorWebGame.Shared.DTOs;
+using BlazorWebGame.Shared.Models;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using BlazorWebGame.Shared.DTOs;
 
 namespace BlazorWebGame.Shared.Interfaces;
 
@@ -119,6 +120,90 @@ public interface IDataStorageService
     /// 获取一段时间内活跃的角色列表
     /// </summary>
     Task<ApiResponse<List<CharacterStorageDto>>> GetRecentActiveCharactersAsync(TimeSpan activeWithin);
+
+    #endregion
+
+    #region 增强版战斗系统管理
+
+    /// <summary>
+    /// 创建战斗记录
+    /// </summary>
+    Task<ApiResponse<EnhancedBattleEntity>> CreateBattleAsync(EnhancedBattleEntity battle);
+
+    /// <summary>
+    /// 获取战斗记录
+    /// </summary>
+    Task<ApiResponse<EnhancedBattleEntity>> GetBattleByIdAsync(string battleId);
+
+    /// <summary>
+    /// 更新战斗记录
+    /// </summary>
+    Task<ApiResponse<EnhancedBattleEntity>> UpdateBattleAsync(EnhancedBattleEntity battle);
+
+    /// <summary>
+    /// 保存战斗参与者
+    /// </summary>
+    Task<ApiResponse<EnhancedBattleParticipantEntity>> SaveBattleParticipantAsync(EnhancedBattleParticipantEntity participant);
+
+    /// <summary>
+    /// 更新战斗参与者
+    /// </summary>
+    Task<ApiResponse<EnhancedBattleParticipantEntity>> UpdateBattleParticipantAsync(EnhancedBattleParticipantEntity participant);
+
+    /// <summary>
+    /// 获取战斗参与者列表
+    /// </summary>
+    Task<ApiResponse<List<EnhancedBattleParticipantEntity>>> GetBattleParticipantsAsync(string battleId);
+
+    /// <summary>
+    /// 保存战斗事件
+    /// </summary>
+    Task<ApiResponse<EnhancedBattleEventEntity>> SaveBattleEventAsync(EnhancedBattleEventEntity battleEvent);
+
+    /// <summary>
+    /// 获取战斗事件列表
+    /// </summary>
+    Task<ApiResponse<List<EnhancedBattleEventEntity>>> GetBattleEventsAsync(string battleId);
+
+    /// <summary>
+    /// 保存战斗结果
+    /// </summary>
+    Task<ApiResponse<EnhancedBattleResultEntity>> SaveBattleResultAsync(EnhancedBattleResultEntity battleResult);
+
+    /// <summary>
+    /// 获取战斗结果
+    /// </summary>
+    Task<ApiResponse<EnhancedBattleResultEntity>> GetBattleResultAsync(string battleId);
+
+    /// <summary>
+    /// 获取进行中的战斗列表
+    /// </summary>
+    Task<ApiResponse<List<EnhancedBattleEntity>>> GetActiveBattlesAsync();
+
+    /// <summary>
+    /// 获取角色参与的进行中战斗
+    /// </summary>
+    Task<ApiResponse<EnhancedBattleEntity>> GetCharacterActiveBattleAsync(string characterId);
+
+    /// <summary>
+    /// 获取队伍参与的进行中战斗
+    /// </summary>
+    Task<ApiResponse<EnhancedBattleEntity>> GetTeamActiveBattleAsync(string teamId);
+
+    /// <summary>
+    /// 清理过期战斗记录和事件
+    /// </summary>
+    Task<ApiResponse<int>> CleanupBattleDataAsync(TimeSpan olderThan);
+
+    /// <summary>
+    /// 获取战斗系统配置
+    /// </summary>
+    Task<ApiResponse<EnhancedBattleSystemConfigEntity>> GetBattleSystemConfigAsync(string configType, string? battleTypeReference = null);
+
+    /// <summary>
+    /// 保存战斗系统配置
+    /// </summary>
+    Task<ApiResponse<EnhancedBattleSystemConfigEntity>> SaveBattleSystemConfigAsync(EnhancedBattleSystemConfigEntity config);
 
     #endregion
 

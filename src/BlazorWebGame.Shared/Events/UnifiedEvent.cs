@@ -15,6 +15,17 @@ namespace BlazorWebGame.Shared.Events
     }
 
     /// <summary>
+    /// 战斗结束事件数据
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct BattleEndedEventData
+    {
+        public byte Victory;      // 1 byte - 是否胜利 (0=失败, 1=胜利)
+        public ulong BattleIdHash; // 8 bytes - 战斗ID的哈希值
+        // Total: 9 bytes (fits in 28-byte limit)
+    }
+
+    /// <summary>
     /// 统一事件结构体 - 64字节对齐以优化缓存性能
     /// </summary>
     [StructLayout(LayoutKind.Sequential, Pack = 8)]
