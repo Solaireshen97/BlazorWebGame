@@ -7,10 +7,12 @@ using BlazorWebGame.Shared.Interfaces;
 using BlazorWebGame.Shared.Models;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using BattleEndedEventData = BlazorWebGame.Shared.Events.BattleEndedEventData;
 
 namespace BlazorWebGame.Server.Services.Battle
 {
@@ -25,6 +27,7 @@ namespace BlazorWebGame.Server.Services.Battle
         private readonly DomainEventAdapter _eventAdapter;
         private readonly GameClock _gameClock;
         private readonly EnhancedServerCharacterService _characterService;
+        private readonly BattleAttackCooldownManager _cooldownManager = new();
 
         // 内存中的活跃战斗缓存
         private readonly Dictionary<string, BattleInstance> _activeBattles = new();
@@ -177,12 +180,57 @@ namespace BlazorWebGame.Server.Services.Battle
         }
 
         /// <summary>
-        /// 处理战斗Tick
+        /// 战斗攻击冷却管理器
+        /// </summary>
+        public class BattleAttackCooldownManager
+        {
+            private readonly ConcurrentDictionary<string, DateTime> _lastAttackTimes = new();
+
+            /// <summary>
+            /// 检查参与者是否可以攻击
+            /// </summary>
+            public bool CanAttack(string participantId, double attacksPerSecond, DateTime currentTime)
+            {
+                if (attacksPerSecond <= 0)
+                    return false;
+
+                var attackInterval = TimeSpan.FromSeconds(1.0 / attacksPerSecond);
+
+                if (_lastAttackTimes.TryGetValue(participantId, out var lastAttackTime))
+                {
+                    return currentTime >= lastAttackTime.Add(attackInterval);
+                }
+
+                return true; // 第一次攻击
+            }
+
+            /// <summary>
+            /// 记录攻击时间
+            /// </summary>
+            public void RecordAttack(string participantId, DateTime attackTime)
+            {
+                _lastAttackTimes[participantId] = attackTime;
+            }
+
+            /// <summary>
+            /// 清理战斗的攻击记录
+            /// </summary>
+            public void ClearBattleRecords(string battleId)
+            {
+                // 实际实现中可能需要根据battleId来清理相关的参与者记录
+                _lastAttackTimes.Clear();
+            }
+        }
+
+        /// <summary>
+        /// 处理战斗Tick - 修复版
         /// </summary>
         public async Task ProcessBattleTickAsync(string battleId)
         {
             try
             {
+                _logger.LogDebug("ProcessBattleTickAsync开始: {BattleId}", battleId);
+
                 // 获取战斗实例
                 BattleInstance? battleInstance;
                 lock (_battleLock)
@@ -198,12 +246,14 @@ namespace BlazorWebGame.Server.Services.Battle
                 var battleResult = await _dataStorage.GetBattleByIdAsync(battleId);
                 if (!battleResult.IsSuccess || battleResult.Data == null)
                 {
+                    _logger.LogWarning("无法获取战斗数据: {BattleId}", battleId);
                     return;
                 }
 
                 var battleEntity = battleResult.Data;
                 if (battleEntity.Status != "InProgress")
                 {
+                    _logger.LogDebug("战斗状态不是进行中: {Status}", battleEntity.Status);
                     return;
                 }
 
@@ -211,20 +261,28 @@ namespace BlazorWebGame.Server.Services.Battle
                 var participantsResult = await _dataStorage.GetBattleParticipantsAsync(battleId);
                 if (!participantsResult.IsSuccess || participantsResult.Data == null)
                 {
+                    _logger.LogWarning("无法获取战斗参与者");
                     return;
                 }
 
                 var participants = participantsResult.Data.ToList();
+                _logger.LogDebug("战斗参与者数量: {Count}, 存活: {AliveCount}",
+                    participants.Count, participants.Count(p => p.IsAlive));
 
                 // 处理每个存活参与者的行动
+                bool anyActionPerformed = false;
                 foreach (var participant in participants.Where(p => p.IsAlive))
                 {
-                    await ProcessParticipantAction(battleEntity, participant, participants);
+                    if (await ProcessParticipantActionFixed(battleEntity, participant, participants))
+                    {
+                        anyActionPerformed = true;
+                    }
                 }
 
                 // 检查战斗是否结束
                 if (CheckBattleEnd(participants))
                 {
+                    _logger.LogInformation("战斗即将结束: {BattleId}", battleId);
                     await EndBattleAsync(battleId, participants);
                     return;
                 }
@@ -240,13 +298,49 @@ namespace BlazorWebGame.Server.Services.Battle
 
                 await _dataStorage.UpdateBattleAsync(battleEntity);
 
-                // 调度下一个tick（100ms后）
+                // 调度下一个tick
+                _logger.LogDebug("调度下一个战斗Tick: {BattleId}, Turn: {Turn}",
+                    battleId, battleEntity.CurrentTurn);
                 ScheduleBattleTickDelayed(battleId, 100);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "处理战斗Tick失败: {BattleId}", battleId);
             }
+        }
+
+        /// <summary>
+        /// 处理参与者行动 - 修复版
+        /// </summary>
+        private async Task<bool> ProcessParticipantActionFixed(
+            EnhancedBattleEntity battle,
+            EnhancedBattleParticipantEntity actor,
+            List<EnhancedBattleParticipantEntity> allParticipants)
+        {
+            // 解析战斗属性
+            var combatStats = ParseCombatStats(actor.CombatStatsJson);
+
+            // 检查攻击冷却
+            if (!_cooldownManager.CanAttack(actor.Id, combatStats.AttacksPerSecond, _gameClock.CurrentTime))
+            {
+                return false;
+            }
+
+            // 选择目标
+            var target = SelectTarget(actor, allParticipants);
+            if (target == null)
+            {
+                _logger.LogDebug("参与者 {ActorName} 没有可攻击的目标", actor.Name);
+                return false;
+            }
+
+            // 执行攻击
+            await ExecuteAttackAsync(battle, actor, target);
+
+            // 记录攻击时间
+            _cooldownManager.RecordAttack(actor.Id, _gameClock.CurrentTime);
+
+            return true;
         }
 
         /// <summary>
@@ -275,7 +369,7 @@ namespace BlazorWebGame.Server.Services.Battle
         }
 
         /// <summary>
-        /// 执行攻击
+        /// 执行攻击 - 增强版
         /// </summary>
         private async Task ExecuteAttackAsync(
             EnhancedBattleEntity battle,
@@ -284,25 +378,44 @@ namespace BlazorWebGame.Server.Services.Battle
         {
             // 解析战斗属性
             var combatStats = ParseCombatStats(attacker.CombatStatsJson);
+            var targetStats = ParseCombatStats(target.CombatStatsJson);
+
+            // 计算命中
+            var random = new Random();
+            if (!combatStats.CheckHit(random, targetStats.DodgeChance))
+            {
+                _logger.LogDebug("攻击未命中: {Attacker} -> {Target}", attacker.Name, target.Name);
+
+                // 发布未命中事件
+                PublishMissEvent(attacker.Id, target.Id);
+                return;
+            }
 
             // 计算伤害
-            var random = new Random();
             var baseDamage = combatStats.AttackPower;
             var isCritical = random.NextDouble() < combatStats.CriticalChance;
             var damage = isCritical ? (int)(baseDamage * combatStats.CriticalMultiplier) : baseDamage;
 
+            // 应用目标防御
+            damage = targetStats.CalculateReceivedDamage(damage, random);
+
             // 应用伤害
+            var previousHealth = target.Health;
             target.Health = Math.Max(0, target.Health - damage);
-            if (target.Health <= 0)
+            var isDead = false;
+
+            if (target.Health <= 0 && target.IsAlive)
             {
                 target.IsAlive = false;
                 target.DeathTime = _gameClock.CurrentTime;
+                isDead = true;
+                _logger.LogInformation("{TargetName} 被 {AttackerName} 击败！", target.Name, attacker.Name);
             }
 
             // 更新参与者数据
             await _dataStorage.UpdateBattleParticipantAsync(target);
 
-            // 创建战斗事件
+            // 创建详细的战斗事件
             var battleEvent = new EnhancedBattleEventEntity
             {
                 Id = Guid.NewGuid().ToString(),
@@ -321,18 +434,62 @@ namespace BlazorWebGame.Server.Services.Battle
                     TargetName = target.Name,
                     AttackerHealth = attacker.Health,
                     TargetHealth = target.Health,
+                    PreviousHealth = previousHealth,
                     BaseDamage = baseDamage,
-                    FinalDamage = damage
+                    FinalDamage = damage,
+                    IsDead = isDead
                 })
             };
 
             await _dataStorage.SaveBattleEventAsync(battleEvent);
 
-            // 发布攻击事件到统一事件队列
-            PublishAttackEvent(attacker.Id, target.Id, damage, isCritical);
+            // 发布攻击事件到统一事件队列（包含更多信息）
+            PublishDetailedAttackEvent(attacker, target, damage, isCritical);
 
-            _logger.LogDebug("攻击执行: {Attacker} 对 {Target} 造成 {Damage} 点伤害 (暴击: {Critical})",
-                attacker.Name, target.Name, damage, isCritical);
+            _logger.LogDebug("攻击执行: {Attacker}({AttackerHP}) 对 {Target}({TargetHP}) 造成 {Damage} 点伤害 (暴击: {Critical})",
+                attacker.Name, attacker.Health, target.Name, target.Health, damage, isCritical);
+        }
+
+        /// <summary>
+        /// 发布详细的攻击事件
+        /// </summary>
+        private void PublishDetailedAttackEvent(
+            EnhancedBattleParticipantEntity attacker,
+            EnhancedBattleParticipantEntity target,
+            int damage,
+            bool isCritical)
+        {
+            var data = new BattleAttackEventData
+            {
+                BaseDamage = damage,
+                ActualDamage = damage,
+                IsCritical = (byte)(isCritical ? 1 : 0),
+                AttackType = 0, // Physical
+                CritMultiplier = isCritical ? 1.5f : 1.0f,
+                RemainingHealth = target.Health,
+                StatusEffect = target.IsAlive ? (ushort)0 : (ushort)1 // 1 = Dead
+            };
+
+            _eventQueue.EnqueueEvent(
+                GameEventTypes.BATTLE_ATTACK,
+                data,
+                EventPriority.Gameplay,
+                ParseStringToUlong(attacker.Id),
+                ParseStringToUlong(target.Id)
+            );
+        }
+
+        /// <summary>
+        /// 发布未命中事件
+        /// </summary>
+        private void PublishMissEvent(string attackerId, string targetId)
+        {
+            _eventQueue.EnqueueEvent(
+                GameEventTypes.ATTACK_MISSED,
+                EventPriority.Gameplay,
+                ParseStringToUlong(attackerId),
+                ParseStringToUlong(targetId)
+            );
         }
 
         /// <summary>
@@ -484,16 +641,32 @@ namespace BlazorWebGame.Server.Services.Battle
             );
         }
 
+
         /// <summary>
-        /// 延迟调度战斗Tick
+        /// 调度战斗Tick延迟 - 改进版
         /// </summary>
         private void ScheduleBattleTickDelayed(string battleId, int delayMs)
         {
-            // 使用Task.Delay来实现延迟
             Task.Run(async () =>
             {
                 await Task.Delay(delayMs);
-                ScheduleBattleTick(battleId);
+
+                // 发布Tick事件
+                var tickData = new BattleTickEventData
+                {
+                    BattleId = ParseStringToUlong(battleId),
+                    TurnNumber = 0, // 可以从战斗实例获取
+                    AliveCount = 0  // 可以从参与者列表获取
+                };
+
+                _eventQueue.EnqueueEvent(
+                    GameEventTypes.BATTLE_TICK,
+                    tickData,
+                    EventPriority.Gameplay,
+                    tickData.BattleId
+                );
+
+                _logger.LogDebug("已调度战斗Tick事件: {BattleId}", battleId);
             });
         }
 

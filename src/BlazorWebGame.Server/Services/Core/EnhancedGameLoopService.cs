@@ -14,7 +14,7 @@ namespace BlazorWebGame.Server.Services.Core;
 public class EnhancedGameLoopService : BackgroundService
 {
     private readonly UnifiedEventService _eventService;
-    private readonly EventDrivenBattleEngine _battleEngine;
+    private readonly EventDrivenBattleEngineold _battleEngine;
     private readonly EventDrivenProfessionService _professionService;
     private readonly IHubContext<GameHub> _hubContext;
     private readonly ILogger<EnhancedGameLoopService> _logger;
@@ -31,7 +31,7 @@ public class EnhancedGameLoopService : BackgroundService
 
     public EnhancedGameLoopService(
         UnifiedEventService eventService,
-        EventDrivenBattleEngine battleEngine,
+        EventDrivenBattleEngineold battleEngine,
         EventDrivenProfessionService professionService,
         IHubContext<GameHub> hubContext,
         ILogger<EnhancedGameLoopService> logger)

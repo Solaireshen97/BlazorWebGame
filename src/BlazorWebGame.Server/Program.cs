@@ -250,7 +250,7 @@ builder.Services.AddSingleton<EnhancedServerCharacterService>();
 builder.Services.AddSingleton<ServerEventService>();
 
 // 注册事件驱动的服务系统
-builder.Services.AddSingleton<EventDrivenBattleEngine>();
+builder.Services.AddSingleton<EventDrivenBattleEngineold>();
 builder.Services.AddSingleton<EventDrivenProfessionService>();
 
 // 注册角色状态管理服务

@@ -125,6 +125,9 @@ namespace BlazorWebGame.Shared.Events
         public const ushort BATTLE_HEAL = 10;
         public const ushort BATTLE_BUFF_APPLIED = 11;
         public const ushort BATTLE_DEBUFF_APPLIED = 12;
+        // 添加缺失的事件类型
+        public const ushort ATTACK_MISSED = 13;     // 攻击未命中
+        public const ushort BATTLE_PARTICIPANT_DIED = 14;  // 参与者死亡
 
         // 角色相关事件 (100-199)
         public const ushort CHARACTER_CREATED = 100;
