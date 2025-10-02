@@ -253,19 +253,18 @@ builder.Services.AddSingleton<EventDrivenProfessionService>();
 // 注册角色状态管理服务
 builder.Services.AddSingleton<CharacterStateService>();
 
-// 注册战斗管理器 - 需要初始化玩家列表
+// 注册战斗管理器 - 使用重构后的版本，使用Character领域模型
 builder.Services.AddSingleton<ServerBattleManager>(serviceProvider =>
 {
-    var allCharacters = new List<ServerBattlePlayer>(); // TODO: 从数据库或服务中获取
     return new ServerBattleManager(
-        allCharacters,
+        serviceProvider.GetRequiredService<EnhancedServerCharacterService>(),
         serviceProvider.GetRequiredService<ServerCombatEngine>(),
         serviceProvider.GetRequiredService<ServerBattleFlowService>(),
-        serviceProvider.GetRequiredService<ServerCharacterService>(),
         serviceProvider.GetRequiredService<ServerSkillSystem>(),
         serviceProvider.GetRequiredService<ServerLootService>(),
         serviceProvider.GetRequiredService<ILogger<ServerBattleManager>>(),
-        serviceProvider.GetRequiredService<IHubContext<GameHub>>()
+        serviceProvider.GetRequiredService<IHubContext<GameHub>>(),
+        serviceProvider.GetRequiredService<GameClock>()
     );
 });
 
