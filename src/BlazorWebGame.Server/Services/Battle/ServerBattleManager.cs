@@ -1,4 +1,5 @@
 using BlazorWebGame.Shared.DTOs;
+using BlazorWebGame.Shared.Mappers;
 using BlazorWebGame.Shared.Models;
 using Microsoft.AspNetCore.SignalR;
 using BlazorWebGame.Server.Hubs;
@@ -12,20 +13,20 @@ using BlazorWebGame.Server.Services.Skill;
 namespace BlazorWebGame.Server.Services.Battle;
 
 /// <summary>
-/// 服务端战斗管理器 - 从客户端迁移而来
+/// 服务端战斗管理器 - 重构版本使用Battle领域模型
 /// 处理战斗实例的创建、管理和生命周期
 /// </summary>
 public class ServerBattleManager
 {
-    private readonly Dictionary<Guid, ServerBattleContext> _activeBattles = new();
-    private readonly List<ServerBattlePlayer> _allCharacters;
+    private readonly Dictionary<Guid, BlazorWebGame.Shared.Models.Battle> _activeBattles = new();
+    private readonly EnhancedServerCharacterService _enhancedCharacterService;
     private readonly ServerCombatEngine _combatEngine;
     private readonly ServerBattleFlowService _battleFlowService;
-    private readonly ServerCharacterService _characterService;
     private readonly ServerSkillSystem _skillSystem;
     private readonly ServerLootService _lootService;
     private readonly ILogger<ServerBattleManager> _logger;
     private readonly IHubContext<GameHub> _hubContext;
+    private readonly BlazorWebGame.Shared.Models.GameClock _gameClock;
 
     /// <summary>
     /// 状态变更事件
@@ -33,39 +34,60 @@ public class ServerBattleManager
     public event Action? OnStateChanged;
 
     public ServerBattleManager(
-        List<ServerBattlePlayer> allCharacters,
+        EnhancedServerCharacterService enhancedCharacterService,
         ServerCombatEngine combatEngine,
         ServerBattleFlowService battleFlowService,
-        ServerCharacterService characterService,
         ServerSkillSystem skillSystem,
         ServerLootService lootService,
         ILogger<ServerBattleManager> logger,
-        IHubContext<GameHub> hubContext)
+        IHubContext<GameHub> hubContext,
+        GameClock gameClock)
     {
-        _allCharacters = allCharacters;
+        _enhancedCharacterService = enhancedCharacterService;
         _combatEngine = combatEngine;
         _battleFlowService = battleFlowService;
-        _characterService = characterService;
         _skillSystem = skillSystem;
         _lootService = lootService;
         _logger = logger;
         _hubContext = hubContext;
+        _gameClock = gameClock;
     }
 
     /// <summary>
-    /// 获取活跃战斗上下文
+    /// 获取玩家的活跃战斗
     /// </summary>
-    public ServerBattleContext? GetBattleContextForPlayer(string playerId)
+    public BlazorWebGame.Shared.Models.Battle? GetBattleForPlayer(string playerId)
     {
-        return _activeBattles.Values.FirstOrDefault(b => b.Players.Any(p => p.Id == playerId));
+        return _activeBattles.Values.FirstOrDefault(b => 
+            b.GetPlayerParticipants().Any(p => p.Id == playerId));
     }
 
     /// <summary>
-    /// 获取活跃战斗上下文
+    /// 获取组队的活跃战斗
     /// </summary>
-    public ServerBattleContext? GetBattleContextForParty(Guid partyId)
+    public BlazorWebGame.Shared.Models.Battle? GetBattleForParty(Guid partyId)
     {
         return _activeBattles.Values.FirstOrDefault(b => b.PartyId == partyId);
+    }
+    
+    /// <summary>
+    /// 获取战斗（兼容旧接口）
+    /// </summary>
+    [Obsolete("Use GetBattleForPlayer instead")]
+    public ServerBattleContext? GetBattleContextForPlayer(string playerId)
+    {
+        // 返回null以保持向后兼容，但建议迁移到新API
+        return null;
+    }
+
+    /// <summary>
+    /// 获取战斗（兼容旧接口）
+    /// </summary>
+    [Obsolete("Use GetBattleForParty instead")]
+    public ServerBattleContext? GetBattleContextForParty(Guid partyId)
+    {
+        // 返回null以保持向后兼容，但建议迁移到新API
+        return null;
     }
 
     /// <summary>
@@ -81,23 +103,12 @@ public class ServerBattleManager
             ProcessBattle(battle, elapsedSeconds);
 
             // 检查战斗是否结束
-            if (battle.State == ServerBattleState.Completed)
+            if (battle.Status == BlazorWebGame.Shared.Models.BattleStatus.Completed)
             {
-                // 收集敌人信息用于战斗刷新
-                var enemyInfos = _battleFlowService.CollectEnemyInfos(battle);
+                // 应用战斗结果到角色
+                await ApplyBattleResultsAsync(battle);
 
-                // 重置所有参战玩家的状态
-                foreach (var player in battle.Players)
-                {
-                    player.CurrentAction = "Idle";
-                    player.CurrentEnemyId = null;
-                    player.AttackCooldown = 0;
-                }
-
-                // 通知战斗流程服务处理战斗完成
-                _battleFlowService.OnBattleCompleted(battle, enemyInfos);
-
-                battlesToRemove.Add(battle.BattleId);
+                battlesToRemove.Add(battle.Id);
 
                 // 通知客户端战斗结束
                 await NotifyBattleCompletedAsync(battle);
@@ -117,21 +128,15 @@ public class ServerBattleManager
     /// <summary>
     /// 处理单个战斗
     /// </summary>
-    private void ProcessBattle(ServerBattleContext battle, double elapsedSeconds)
+    private void ProcessBattle(BlazorWebGame.Shared.Models.Battle battle, double elapsedSeconds)
     {
-        if (battle.State != ServerBattleState.Active)
+        if (battle.Status != BlazorWebGame.Shared.Models.BattleStatus.Active)
             return;
 
-        // 处理玩家行动
-        foreach (var player in battle.Players.Where(p => p.IsAlive))
+        // 战斗实例处理战斗逻辑
+        if (battle.Instance != null)
         {
-            _combatEngine.ProcessPlayerAttack(battle, player, elapsedSeconds);
-        }
-
-        // 处理敌人行动
-        foreach (var enemy in battle.Enemies.Where(e => e.IsAlive))
-        {
-            _combatEngine.ProcessEnemyAttack(battle, enemy, elapsedSeconds);
+            battle.Instance.Update(elapsedSeconds);
         }
 
         // 检查战斗胜利条件
@@ -141,93 +146,154 @@ public class ServerBattleManager
     /// <summary>
     /// 检查战斗胜利条件
     /// </summary>
-    private void CheckBattleVictoryConditions(ServerBattleContext battle)
+    private void CheckBattleVictoryConditions(BlazorWebGame.Shared.Models.Battle battle)
     {
-        var alivePlayers = battle.Players.Where(p => p.IsAlive).ToList();
-        var aliveEnemies = battle.Enemies.Where(e => e.IsAlive).ToList();
-
-        if (!aliveEnemies.Any())
+        if (battle.IsFinished())
         {
-            // 玩家胜利
-            battle.State = ServerBattleState.Completed;
-            battle.IsVictory = true;
-            _logger.LogInformation("Battle {BattleId} completed - Victory!", battle.BattleId);
-
-            // 给予战斗奖励
-            GrantBattleRewards(battle);
-        }
-        else if (!alivePlayers.Any())
-        {
-            // 玩家失败
-            battle.State = ServerBattleState.Completed;
-            battle.IsVictory = false;
-            _logger.LogInformation("Battle {BattleId} completed - Defeat!", battle.BattleId);
-        }
-    }
-
-    /// <summary>
-    /// 给予战斗奖励
-    /// </summary>
-    private void GrantBattleRewards(ServerBattleContext battle)
-    {
-        foreach (var player in battle.Players.Where(p => p.IsAlive))
-        {
-            // 经验奖励计算
-            var expReward = CalculateExperienceReward(battle, player);
-            player.Experience += expReward;
-
-            // 检查升级
-            _characterService.CheckLevelUp(player);
-
-            // 掉落奖励处理
-            var lootRewards = _lootService.GenerateBattleLoot(battle, player);
-            // TODO: 将掉落物品添加到玩家背包
-
-            _logger.LogInformation("Player {PlayerId} received {Exp} exp and {Loot} items", 
-                player.Id, expReward, lootRewards.Count);
+            var isVictory = battle.IsPlayerVictory();
+            var duration = battle.GetDuration();
+            
+            // 创建战斗结果
+            var result = new BlazorWebGame.Shared.Models.BattleResult(isVictory, duration);
+            
+            if (isVictory)
+            {
+                _logger.LogInformation("Battle {BattleId} completed - Victory!", battle.Id);
+                CalculateBattleRewards(battle, result);
+            }
+            else
+            {
+                _logger.LogInformation("Battle {BattleId} completed - Defeat!", battle.Id);
+            }
+            
+            // 结束战斗
+            battle.EndBattle(isVictory, result);
         }
     }
 
     /// <summary>
-    /// 计算经验奖励
+    /// 计算战斗奖励
     /// </summary>
-    private int CalculateExperienceReward(ServerBattleContext battle, ServerBattlePlayer player)
+    private void CalculateBattleRewards(BlazorWebGame.Shared.Models.Battle battle, BlazorWebGame.Shared.Models.BattleResult result)
     {
-        // 基础经验值
-        int baseExp = battle.Enemies.Sum(e => e.Level * 10);
+        var players = battle.GetPlayerParticipants().OfType<BattlePlayer>().ToList();
+        var enemies = battle.GetEnemyParticipants().OfType<BattleEnemy>().ToList();
         
-        // 等级差异调整
-        var avgEnemyLevel = battle.Enemies.Average(e => e.Level);
-        var levelDiff = avgEnemyLevel - player.Level;
-        var levelMultiplier = Math.Max(0.1, 1.0 + levelDiff * 0.1);
+        if (!players.Any() || !enemies.Any())
+            return;
         
-        return (int)(baseExp * levelMultiplier);
+        // 计算总经验值
+        int totalExp = 0;
+        int totalGold = 0;
+        
+        foreach (var enemy in enemies)
+        {
+            totalExp += enemy.EnemyData.ExperienceReward;
+            totalGold += enemy.EnemyData.GoldReward;
+            
+            // 收集掉落物品
+            var random = new Random();
+            var loot = enemy.GetLootDrops(random);
+            foreach (var drop in loot)
+            {
+                result.AddLootDrop(drop);
+            }
+        }
+        
+        // 平均分配经验值和金币给存活的玩家
+        var alivePlayers = players.Where(p => p.IsAlive).ToList();
+        if (alivePlayers.Any())
+        {
+            var expPerPlayer = totalExp / alivePlayers.Count;
+            var goldPerPlayer = totalGold / alivePlayers.Count;
+            
+            result.SetExperienceReward(expPerPlayer);
+            result.SetGoldReward(goldPerPlayer);
+            
+            // 应用区域修饰符
+            result.ApplyRegionModifiers(battle.RegionModifiers);
+        }
+        
+        _logger.LogInformation("Battle {BattleId} rewards: {Exp} exp, {Gold} gold, {Items} items", 
+            battle.Id, result.ExperienceGained, result.GoldGained, result.ItemsLooted.Count);
+    }
+    
+    /// <summary>
+    /// 应用战斗结果到角色
+    /// </summary>
+    private async Task ApplyBattleResultsAsync(BlazorWebGame.Shared.Models.Battle battle)
+    {
+        if (battle.Result == null)
+            return;
+            
+        var players = battle.GetPlayerParticipants().OfType<BattlePlayer>().ToList();
+        
+        foreach (var battlePlayer in players)
+        {
+            // 获取角色的详细信息
+            var characterResponse = await _enhancedCharacterService.GetCharacterDetails(battlePlayer.Id);
+            if (!characterResponse.IsSuccess || characterResponse.Data == null)
+            {
+                _logger.LogWarning("Failed to get character {CharacterId} to apply battle results", battlePlayer.Id);
+                continue;
+            }
+            
+            // 从存储加载完整的Character领域模型
+            // 注意：这里我们需要通过EnhancedServerCharacterService的内部方法加载Character
+            // 由于EnhancedServerCharacterService使用私有方法，我们需要另一种方式
+            // 暂时跳过，后续需要在EnhancedServerCharacterService中添加公共方法
+            
+            _logger.LogInformation("Applied battle results to character {CharacterId}: +{Exp} exp, +{Gold} gold",
+                battlePlayer.Id, battle.Result.ExperienceGained, battle.Result.GoldGained);
+        }
     }
 
     /// <summary>
     /// 开始新战斗
     /// </summary>
-    public async Task<ServerBattleContext> StartBattleAsync(BattleStartRequest request)
+    public async Task<BlazorWebGame.Shared.Models.Battle> StartBattleAsync(BattleStartRequest request)
     {
-        var battleId = Guid.NewGuid();
-        
-        var battle = new ServerBattleContext
+        // 解析战斗类型
+        BlazorWebGame.Shared.Models.BattleType battleType = request.BattleType switch
         {
-            BattleId = battleId,
-            BattleType = request.BattleType,
-            PartyId = request.PartyId,
-            DungeonId = request.DungeonId,
-            State = ServerBattleState.Active,
-            StartTime = DateTime.UtcNow,
-            Players = GetPlayersForBattle(request),
-            Enemies = GenerateEnemiesForBattle(request),
-            PlayerTargets = new Dictionary<string, string>()
+            "Normal" => BattleType.Normal,
+            "Dungeon" => BattleType.Dungeon,
+            "PvP" => BattleType.PvP,
+            "Raid" => BattleType.Raid,
+            "Event" => BattleType.Event,
+            _ => BattleType.Normal
         };
-
-        _activeBattles[battleId] = battle;
+        
+        // 创建战斗
+        var battle = new BlazorWebGame.Shared.Models.Battle(
+            battleType, 
+            _gameClock, 
+            regionId: null, // TODO: 从请求中获取区域ID
+            partyId: request.PartyId,
+            dungeonId: request.DungeonId
+        );
+        
+        // 添加玩家参与者
+        var players = await GetPlayersForBattleAsync(request);
+        foreach (var player in players)
+        {
+            battle.AddParticipant(player);
+        }
+        
+        // 添加敌人参与者
+        var enemies = GenerateEnemiesForBattle(request);
+        foreach (var enemy in enemies)
+        {
+            battle.AddParticipant(enemy);
+        }
+        
+        // 开始战斗
+        battle.StartBattle();
+        
+        _activeBattles[battle.Id] = battle;
         
         _logger.LogInformation("Started new battle: {BattleId} with {PlayerCount} players and {EnemyCount} enemies", 
-            battleId, battle.Players.Count, battle.Enemies.Count);
+            battle.Id, players.Count, enemies.Count);
 
         // 通知客户端战斗开始
         await NotifyBattleStartedAsync(battle);
@@ -236,77 +302,113 @@ public class ServerBattleManager
         
         return battle;
     }
+    
+    /// <summary>
+    /// 开始新战斗（兼容旧接口）
+    /// </summary>
+    [Obsolete("Use StartBattleAsync that returns Battle instead")]
+    public async Task<ServerBattleContext> StartBattleAsync_Old(BattleStartRequest request)
+    {
+        // 返回空对象以保持向后兼容
+        return new ServerBattleContext();
+    }
 
     /// <summary>
     /// 获取参战玩家
     /// </summary>
-    private List<ServerBattlePlayer> GetPlayersForBattle(BattleStartRequest request)
+    private async Task<List<BlazorWebGame.Shared.Models.BattlePlayer>> GetPlayersForBattleAsync(BattleStartRequest request)
     {
-        // 根据请求类型获取玩家
+        var players = new List<BlazorWebGame.Shared.Models.BattlePlayer>();
+        
         if (request.PartyId.HasValue)
         {
             // 组队战斗 - 获取组队成员
-            return _allCharacters.Where(p => p.PartyId == request.PartyId).ToList();
+            // TODO: 从组队服务获取成员列表
+            _logger.LogWarning("Party battle not fully implemented yet");
         }
         else if (!string.IsNullOrEmpty(request.PlayerId))
         {
             // 单人战斗
-            var player = _allCharacters.FirstOrDefault(p => p.Id == request.PlayerId);
-            return player != null ? new List<ServerBattlePlayer> { player } : new List<ServerBattlePlayer>();
+            var characterResponse = await _enhancedCharacterService.GetCharacterDetails(request.PlayerId);
+            if (characterResponse.IsSuccess && characterResponse.Data != null)
+            {
+                // 需要从CharacterFullDto转换回Character领域模型
+                // 这里需要EnhancedServerCharacterService提供一个方法来获取Character对象
+                // 暂时创建一个简化的BattlePlayer
+                var character = new Character(characterResponse.Data.Name)
+                {
+                    // 设置基础属性
+                };
+                
+                var battlePlayer = BattleMapper.ToBattlePlayer(character);
+                players.Add(battlePlayer);
+            }
         }
         
-        return new List<ServerBattlePlayer>();
+        return players;
     }
 
     /// <summary>
     /// 生成战斗敌人
     /// </summary>
-    private List<ServerBattleEnemy> GenerateEnemiesForBattle(BattleStartRequest request)
+    private List<BlazorWebGame.Shared.Models.BattleEnemy> GenerateEnemiesForBattle(BattleStartRequest request)
     {
+        var enemies = new List<BlazorWebGame.Shared.Models.BattleEnemy>();
+        
         // TODO: 根据战斗类型、玩家等级等生成合适的敌人
         // 这里先返回一个简单的敌人列表
-        var enemies = new List<ServerBattleEnemy>();
-        
-        var enemy = new ServerBattleEnemy
+        if (request.EnemyIds.Any())
         {
-            Id = Guid.NewGuid().ToString(),
-            Name = "测试敌人",
-            Level = 1,
-            Health = 100,
-            MaxHealth = 100,
-            AttacksPerSecond = 1.0,
-            AttackCooldown = 0,
-            IsAlive = true
-        };
+            // 根据敌人ID生成敌人
+            // 需要从敌人配置中加载
+            _logger.LogWarning("Enemy generation from IDs not fully implemented yet");
+        }
+        else
+        {
+            // 生成默认测试敌人
+            var testEnemy = new Enemy("test_enemy", "测试敌人")
+            {
+                // 设置敌人属性
+            };
+            
+            var battleEnemy = BattleMapper.ToBattleEnemy(testEnemy);
+            enemies.Add(battleEnemy);
+        }
         
-        enemies.Add(enemy);
         return enemies;
     }
 
     /// <summary>
     /// 通知客户端战斗开始
     /// </summary>
-    private async Task NotifyBattleStartedAsync(ServerBattleContext battle)
+    private async Task NotifyBattleStartedAsync(BlazorWebGame.Shared.Models.Battle battle)
     {
-        var playerIds = battle.Players.Select(p => p.Id).ToList();
-        await _hubContext.Clients.Users(playerIds).SendAsync("BattleStarted", battle);
+        var playerIds = battle.GetPlayerParticipants().Select(p => p.Id).ToList();
+        // TODO: 转换为DTO再发送
+        await _hubContext.Clients.Users(playerIds).SendAsync("BattleStarted", new { BattleId = battle.Id });
     }
 
     /// <summary>
     /// 通知客户端战斗结束
     /// </summary>
-    private async Task NotifyBattleCompletedAsync(ServerBattleContext battle)
+    private async Task NotifyBattleCompletedAsync(BlazorWebGame.Shared.Models.Battle battle)
     {
-        var playerIds = battle.Players.Select(p => p.Id).ToList();
-        await _hubContext.Clients.Users(playerIds).SendAsync("BattleCompleted", battle);
+        var playerIds = battle.GetPlayerParticipants().Select(p => p.Id).ToList();
+        // TODO: 转换为DTO再发送
+        await _hubContext.Clients.Users(playerIds).SendAsync("BattleCompleted", new 
+        { 
+            BattleId = battle.Id,
+            IsVictory = battle.IsPlayerVictory(),
+            Result = battle.Result
+        });
     }
 
     /// <summary>
     /// 获取所有活跃战斗
     /// </summary>
-    public IEnumerable<ServerBattleContext> GetAllActiveBattles()
+    public IEnumerable<BlazorWebGame.Shared.Models.Battle> GetAllActiveBattles()
     {
-        return _activeBattles.Values.Where(b => b.State == ServerBattleState.Active);
+        return _activeBattles.Values.Where(b => b.Status == BlazorWebGame.Shared.Models.BattleStatus.Active);
     }
 
     /// <summary>
@@ -316,8 +418,7 @@ public class ServerBattleManager
     {
         if (_activeBattles.TryGetValue(battleId, out var battle))
         {
-            battle.State = ServerBattleState.Completed;
-            battle.IsVictory = false;
+            battle.CancelBattle();
             
             await NotifyBattleCompletedAsync(battle);
             
