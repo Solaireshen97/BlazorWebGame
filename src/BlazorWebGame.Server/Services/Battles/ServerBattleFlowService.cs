@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using BlazorWebGame.Server.Services.Core;
 
-namespace BlazorWebGame.Server.Services.Battle;
+namespace BlazorWebGame.Server.Services.Battles;
 
 /// <summary>
 /// 服务端战斗流程管理服务 - 从客户端迁移而来

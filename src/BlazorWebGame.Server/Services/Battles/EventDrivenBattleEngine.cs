@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.SignalR;
 using BlazorWebGame.Server.Services.GameSystem;
 using System.Runtime.InteropServices;
 
-namespace BlazorWebGame.Server.Services.Battle;
+namespace BlazorWebGame.Server.Services.Battles;
 
 /// <summary>
 /// 基于事件队列的服务端战斗引擎

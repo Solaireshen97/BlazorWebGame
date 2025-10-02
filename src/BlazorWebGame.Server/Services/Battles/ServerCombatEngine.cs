@@ -6,7 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace BlazorWebGame.Server.Services.Battle;
+namespace BlazorWebGame.Server.Services.Battles;
 
 /// <summary>
 /// 服务端战斗引擎 - 从客户端战斗逻辑迁移而来

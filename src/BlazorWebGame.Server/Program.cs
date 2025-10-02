@@ -14,7 +14,7 @@ using Serilog;
 using Microsoft.Extensions.Options;
 using BlazorWebGame.Server.Tests;
 using BlazorWebGame.Server.Services.Core;
-using BlazorWebGame.Server.Services.Battle;
+using BlazorWebGame.Server.Services.Battles;
 using BlazorWebGame.Server.Services.Character;
 using BlazorWebGame.Server.Services.Equipments;
 using BlazorWebGame.Server.Services.Inventory;

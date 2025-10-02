@@ -9,7 +9,7 @@ using BlazorWebGame.Server.Services.Character;
 using BlazorWebGame.Server.Services.Equipments;
 using BlazorWebGame.Server.Services.Skill;
 
-namespace BlazorWebGame.Server.Services.Battle;
+namespace BlazorWebGame.Server.Services.Battles;
 
 /// <summary>
 /// 服务端战斗管理器 - 从客户端迁移而来

@@ -8,7 +8,7 @@ using BlazorWebGame.Shared.DTOs;
 using BlazorWebGame.Shared.Events;
 using Microsoft.Extensions.Logging;
 
-namespace BlazorWebGame.Server.Services.Battle;
+namespace BlazorWebGame.Server.Services.Battles;
 
 /// <summary>
 /// 战斗事件处理器 - 基于事件队列的离线战斗推进

@@ -1,7 +1,7 @@
 using BlazorWebGame.Shared.Events;
 using BlazorWebGame.Server.Hubs;
 using Microsoft.AspNetCore.SignalR;
-using BlazorWebGame.Server.Services.Battle;
+using BlazorWebGame.Server.Services.Battles;
 using BlazorWebGame.Server.Services.Profession;
 using BlazorWebGame.Server.Services.GameSystem;
 

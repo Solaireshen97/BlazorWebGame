@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace BlazorWebGame.Shared.DTOs.Battle
+namespace BlazorWebGame.Shared.DTOs.Battles
 {
     /// <summary>
     /// 战斗状态DTO

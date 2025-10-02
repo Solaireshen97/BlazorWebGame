@@ -20,6 +20,13 @@ public class GameDbContext : DbContext
     public DbSet<UserCharacterEntity> UserCharacters { get; set; }
     public DbSet<CharacterEntity> Characters { get; set; } = null!;
 
+    // 增强版战斗实体表
+    public DbSet<EnhancedBattleEntity> EnhancedBattles { get; set; } = null!;
+    public DbSet<EnhancedBattleParticipantEntity> EnhancedBattleParticipants { get; set; } = null!;
+    public DbSet<EnhancedBattleEventEntity> EnhancedBattleEvents { get; set; } = null!;
+    public DbSet<EnhancedBattleResultEntity> EnhancedBattleResults { get; set; } = null!;
+    public DbSet<EnhancedBattleSystemConfigEntity> EnhancedBattleSystemConfigs { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -87,6 +94,144 @@ public class GameDbContext : DbContext
             entity.Property(e => e.GeneralConsumableSlotsJson).HasColumnType("TEXT").HasDefaultValue("[]");
             entity.Property(e => e.CombatConsumableSlotsJson).HasColumnType("TEXT").HasDefaultValue("[]");
             entity.Property(e => e.ActivitySlotsJson).HasColumnType("TEXT").HasDefaultValue("[]");
+        });
+
+        // 配置增强版战斗实体
+        modelBuilder.Entity<EnhancedBattleEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasMaxLength(100);
+            entity.Property(e => e.BattleType).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Status).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.PartyId).HasMaxLength(100);
+            entity.Property(e => e.DungeonId).HasMaxLength(100);
+            entity.Property(e => e.RegionId).HasMaxLength(100);
+            entity.Property(e => e.BattleModeType).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.DifficultyLevel).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.EnvironmentType).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.CurrentActorId).HasMaxLength(100);
+            entity.Property(e => e.InviteCode).HasMaxLength(20);
+
+            // JSON字段
+            entity.Property(e => e.BattleRulesJson).HasColumnType("TEXT").HasDefaultValue("{}");
+            entity.Property(e => e.WeatherEffectsJson).HasColumnType("TEXT").HasDefaultValue("{}");
+            entity.Property(e => e.TerrainEffectsJson).HasColumnType("TEXT").HasDefaultValue("{}");
+            entity.Property(e => e.ParticipantsJson).HasColumnType("TEXT").HasDefaultValue("[]");
+            entity.Property(e => e.EventsJson).HasColumnType("TEXT").HasDefaultValue("[]");
+            entity.Property(e => e.StateJson).HasColumnType("TEXT").HasDefaultValue("{}");
+            entity.Property(e => e.ResultJson).HasColumnType("TEXT");
+
+            // 索引
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.StartTime);
+            entity.HasIndex(e => e.PartyId);
+            entity.HasIndex(e => e.DungeonId);
+            entity.HasIndex(e => e.IsPrivate);
+        });
+
+        modelBuilder.Entity<EnhancedBattleParticipantEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasMaxLength(100);
+            entity.Property(e => e.BattleId).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.ParticipantType).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.SourceId).HasMaxLength(100);
+
+            // JSON字段
+            entity.Property(e => e.CombatStatsJson).HasColumnType("TEXT").HasDefaultValue("{}");
+            entity.Property(e => e.SkillsJson).HasColumnType("TEXT").HasDefaultValue("[]");
+            entity.Property(e => e.BuffsJson).HasColumnType("TEXT").HasDefaultValue("[]");
+            entity.Property(e => e.DebuffsJson).HasColumnType("TEXT").HasDefaultValue("[]");
+            entity.Property(e => e.EquipmentEffectsJson).HasColumnType("TEXT").HasDefaultValue("{}");
+            entity.Property(e => e.CooldownsJson).HasColumnType("TEXT").HasDefaultValue("{}");
+            entity.Property(e => e.ResourcesJson).HasColumnType("TEXT").HasDefaultValue("{}");
+            entity.Property(e => e.AIStrategyJson).HasColumnType("TEXT");
+
+            // 索引
+            entity.HasIndex(e => e.BattleId);
+            entity.HasIndex(e => e.SourceId);
+            entity.HasIndex(e => e.IsAlive);
+            entity.HasIndex(e => new { e.BattleId, e.Team });
+        });
+
+        modelBuilder.Entity<EnhancedBattleEventEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasMaxLength(100);
+            entity.Property(e => e.BattleId).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.EventType).HasMaxLength(30).IsRequired();
+            entity.Property(e => e.ActorId).HasMaxLength(100);
+            entity.Property(e => e.TargetId).HasMaxLength(100);
+            entity.Property(e => e.SkillId).HasMaxLength(50);
+            entity.Property(e => e.ItemId).HasMaxLength(50);
+            entity.Property(e => e.DamageType).HasMaxLength(20);
+
+            // JSON字段
+            entity.Property(e => e.TargetsJson).HasColumnType("TEXT");
+            entity.Property(e => e.EffectsAppliedJson).HasColumnType("TEXT");
+            entity.Property(e => e.EventDetailsJson).HasColumnType("TEXT");
+            entity.Property(e => e.VisualEffectsJson).HasColumnType("TEXT");
+            entity.Property(e => e.AnimationData).HasColumnType("TEXT");
+
+            // 索引
+            entity.HasIndex(e => e.BattleId);
+            entity.HasIndex(e => new { e.BattleId, e.TurnNumber });
+            entity.HasIndex(e => e.Timestamp);
+            entity.HasIndex(e => e.ActorId);
+        });
+
+        modelBuilder.Entity<EnhancedBattleResultEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasMaxLength(100);
+            entity.Property(e => e.BattleId).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Outcome).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.WinningTeam).HasMaxLength(20);
+            entity.Property(e => e.MVPId).HasMaxLength(100);
+
+            // JSON字段
+            entity.Property(e => e.SurvivorIdsJson).HasColumnType("TEXT").HasDefaultValue("[]");
+            entity.Property(e => e.RewardsJson).HasColumnType("TEXT").HasDefaultValue("{}");
+            entity.Property(e => e.ExperienceDistributionJson).HasColumnType("TEXT").HasDefaultValue("{}");
+            entity.Property(e => e.ItemDropsJson).HasColumnType("TEXT").HasDefaultValue("[]");
+            entity.Property(e => e.SpecialRewardsJson).HasColumnType("TEXT").HasDefaultValue("[]");
+            entity.Property(e => e.BattleStatisticsJson).HasColumnType("TEXT").HasDefaultValue("{}");
+            entity.Property(e => e.PlayerPerformanceJson).HasColumnType("TEXT").HasDefaultValue("{}");
+            entity.Property(e => e.StoryProgressionJson).HasColumnType("TEXT");
+            entity.Property(e => e.UnlockedContentJson).HasColumnType("TEXT");
+
+            // 索引
+            entity.HasIndex(e => e.BattleId).IsUnique();
+            entity.HasIndex(e => e.Outcome);
+            entity.HasIndex(e => e.CompletedAt);
+        });
+
+        modelBuilder.Entity<EnhancedBattleSystemConfigEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasMaxLength(100);
+            entity.Property(e => e.ConfigType).HasMaxLength(30).IsRequired();
+            entity.Property(e => e.BattleTypeReference).HasMaxLength(50);
+            entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Description).HasMaxLength(500);
+
+            // JSON字段
+            entity.Property(e => e.TurnMechanicsJson).HasColumnType("TEXT").HasDefaultValue("{}");
+            entity.Property(e => e.AIMechanicsJson).HasColumnType("TEXT").HasDefaultValue("{}");
+            entity.Property(e => e.DamageFormulaJson).HasColumnType("TEXT").HasDefaultValue("{}");
+            entity.Property(e => e.HealingFormulaJson).HasColumnType("TEXT").HasDefaultValue("{}");
+            entity.Property(e => e.StatusEffectRulesJson).HasColumnType("TEXT").HasDefaultValue("{}");
+            entity.Property(e => e.BattleBalanceSettingsJson).HasColumnType("TEXT").HasDefaultValue("{}");
+            entity.Property(e => e.DifficultyScalingJson).HasColumnType("TEXT").HasDefaultValue("{}");
+            entity.Property(e => e.RewardCalculationRulesJson).HasColumnType("TEXT").HasDefaultValue("{}");
+            entity.Property(e => e.SpecialMechanicsJson).HasColumnType("TEXT").HasDefaultValue("{}");
+
+            // 索引
+            entity.HasIndex(e => e.ConfigType);
+            entity.HasIndex(e => e.IsActive);
+            entity.HasIndex(e => e.Version);
+            entity.HasIndex(e => new { e.ConfigType, e.IsActive });
         });
 
         // 配置玩家实体

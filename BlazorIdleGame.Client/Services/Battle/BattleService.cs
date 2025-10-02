@@ -2,10 +2,9 @@
 using System.Threading.Tasks;
 using BlazorIdleGame.Client.Services.Core;
 using BlazorWebGame.Shared.DTOs;
-using BlazorWebGame.Shared.DTOs.Battle;
 using Microsoft.Extensions.Logging;
-using BattleStateDto = BlazorWebGame.Shared.DTOs.Battle.BattleStateDto;
-using CombatEventDto = BlazorWebGame.Shared.DTOs.Battle.CombatEventDto;
+using BattleStateDto = BlazorWebGame.Shared.DTOs.Battles.BattleStateDto;
+using CombatEventDto = BlazorWebGame.Shared.DTOs.Battles.CombatEventDto;
 
 namespace BlazorIdleGame.Client.Services.Battle
 {

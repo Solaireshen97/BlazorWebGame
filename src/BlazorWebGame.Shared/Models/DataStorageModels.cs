@@ -90,6 +90,143 @@ public class CharacterEntity : BaseEntity
 }
 
 /// <summary>
+/// 增强版战斗实体 - 用于战斗数据存储
+/// </summary>
+public class EnhancedBattleEntity : BaseEntity
+{
+    public string BattleType { get; set; } = "Normal"; // Normal, Boss, Dungeon, Raid, PvP, Event
+    public string Status { get; set; } = "Preparing"; // Preparing, InProgress, Completed, Abandoned
+    public DateTime StartTime { get; set; }
+    public DateTime? EndTime { get; set; }
+    public string? PartyId { get; set; }
+    public string? DungeonId { get; set; }
+    public string? RegionId { get; set; }
+    public int WaveNumber { get; set; } = 0;
+    public int CurrentTurn { get; set; } = 0;
+    public string? CurrentActorId { get; set; }
+    public string BattleModeType { get; set; } = "RealTime"; // RealTime, TurnBased, Hybrid
+    public string DifficultyLevel { get; set; } = "Normal"; // Easy, Normal, Hard, Heroic
+    public string EnvironmentType { get; set; } = "Default"; // 战斗环境，可影响战斗效果
+    public string? BattleRulesJson { get; set; } = "{}"; // 特殊规则设置
+    public string? WeatherEffectsJson { get; set; } = "{}"; // 天气效果
+    public string? TerrainEffectsJson { get; set; } = "{}"; // 地形效果
+    public bool IsPrivate { get; set; } = false; // 是否为私人战斗
+    public string? InviteCode { get; set; } // 邀请码（用于私人战斗）
+    public string? ParticipantsJson { get; set; } = "[]"; // 参与者信息
+    public string? EventsJson { get; set; } = "[]"; // 战斗事件记录
+    public string? StateJson { get; set; } = "{}"; // 战斗状态
+    public string? ResultJson { get; set; } // 战斗结果
+}
+
+/// <summary>
+/// 增强版战斗参与者实体
+/// </summary>
+public class EnhancedBattleParticipantEntity : BaseEntity
+{
+    public string BattleId { get; set; } = string.Empty;
+    public string ParticipantType { get; set; } = "Player"; // Player, Enemy, NPC, Summon, Pet
+    public string Name { get; set; } = string.Empty;
+    public string? SourceId { get; set; } // 关联的角色/怪物ID
+    public int Team { get; set; } = 0; // 0=玩家方，1=敌方，可扩展更多队伍
+    public int Position { get; set; } = 0; // 战场位置
+    public int Level { get; set; } = 1;
+    public int Health { get; set; } = 100;
+    public int MaxHealth { get; set; } = 100;
+    public int Mana { get; set; } = 100;
+    public int MaxMana { get; set; } = 100;
+    public int Shield { get; set; } = 0; // 护盾值
+    public bool IsAlive { get; set; } = true;
+    public DateTime? DeathTime { get; set; }
+    public int TurnOrder { get; set; } = 0; // 行动顺序
+    public int Initiative { get; set; } = 0; // 先攻值
+    public bool HasActedThisTurn { get; set; } = false;
+    public string? CombatStatsJson { get; set; } = "{}"; // 战斗属性
+    public string? SkillsJson { get; set; } = "[]"; // 可用技能
+    public string? BuffsJson { get; set; } = "[]"; // BUFF状态
+    public string? DebuffsJson { get; set; } = "[]"; // DEBUFF状态
+    public string? EquipmentEffectsJson { get; set; } = "{}"; // 装备效果
+    public string? CooldownsJson { get; set; } = "{}"; // 技能冷却
+    public string? ResourcesJson { get; set; } = "{}"; // 战斗资源（怒气、能量等）
+    public string? AIStrategyJson { get; set; } // AI行为策略
+}
+
+/// <summary>
+/// 增强版战斗事件实体
+/// </summary>
+public class EnhancedBattleEventEntity : BaseEntity
+{
+    public string BattleId { get; set; } = string.Empty;
+    public string EventType { get; set; } = string.Empty; // Attack, Skill, Item, Status, Movement, Environment
+    public DateTime Timestamp { get; set; }
+    public string? ActorId { get; set; }
+    public string? TargetId { get; set; }
+    public string? TargetsJson { get; set; } // 多目标
+    public int TurnNumber { get; set; } = 0;
+    public int SequenceOrder { get; set; } = 0; // 同一回合内的顺序
+    public string? SkillId { get; set; }
+    public string? ItemId { get; set; }
+    public int? Damage { get; set; }
+    public int? Healing { get; set; }
+    public string? DamageType { get; set; } // Physical, Magical, True
+    public bool IsCritical { get; set; } = false;
+    public bool IsEvaded { get; set; } = false;
+    public bool IsBlocked { get; set; } = false;
+    public bool IsInterrupted { get; set; } = false;
+    public string? EffectsAppliedJson { get; set; } // 应用的效果
+    public string? EventDetailsJson { get; set; } // 事件详情
+    public string? VisualEffectsJson { get; set; } // 视觉效果
+    public string? AnimationData { get; set; } // 动画数据
+}
+
+/// <summary>
+/// 增强版战斗结果实体
+/// </summary>
+public class EnhancedBattleResultEntity : BaseEntity
+{
+    public string BattleId { get; set; } = string.Empty;
+    public string Outcome { get; set; } = "Undecided"; // Victory, Defeat, Draw, Abandoned
+    public int Duration { get; set; } = 0; // 战斗时长（秒）
+    public int TotalTurns { get; set; } = 0; // 总回合数
+    public string WinningTeam { get; set; } = string.Empty;
+    public string? SurvivorIdsJson { get; set; } = "[]"; // 幸存者
+    public string? MVPId { get; set; } // 最有价值玩家
+    public DateTime CompletedAt { get; set; }
+    public string? RewardsJson { get; set; } = "{}"; // 战斗奖励
+    public string? ExperienceDistributionJson { get; set; } = "{}"; // 经验分配
+    public string? ItemDropsJson { get; set; } = "[]"; // 物品掉落
+    public string? SpecialRewardsJson { get; set; } = "[]"; // 特殊奖励
+    public string? BattleStatisticsJson { get; set; } = "{}"; // 战斗统计
+    public string? PlayerPerformanceJson { get; set; } = "{}"; // 玩家表现评分
+    public string? StoryProgressionJson { get; set; } // 故事进展
+    public string? UnlockedContentJson { get; set; } // 解锁的内容
+    public bool SavedForReplay { get; set; } = false; // 是否保存战斗回放
+}
+
+/// <summary>
+/// 增强版战斗系统配置实体
+/// </summary>
+public class EnhancedBattleSystemConfigEntity : BaseEntity
+{
+    public string ConfigType { get; set; } = "Global"; // Global, BattleType, SpecialEvent
+    public string? BattleTypeReference { get; set; } // 适用于特定战斗类型
+    public string Name { get; set; } = "Default Configuration";
+    public bool IsActive { get; set; } = true;
+    public int Version { get; set; } = 1;
+    public string? TurnMechanicsJson { get; set; } = "{}"; // 回合机制设置
+    public string? AIMechanicsJson { get; set; } = "{}"; // AI机制
+    public string? DamageFormulaJson { get; set; } = "{}"; // 伤害公式
+    public string? HealingFormulaJson { get; set; } = "{}"; // 治疗公式
+    public string? StatusEffectRulesJson { get; set; } = "{}"; // 状态效果规则
+    public string? BattleBalanceSettingsJson { get; set; } = "{}"; // 平衡设置
+    public string? DifficultyScalingJson { get; set; } = "{}"; // 难度缩放
+    public string? RewardCalculationRulesJson { get; set; } = "{}"; // 奖励计算规则
+    public string? SpecialMechanicsJson { get; set; } = "{}"; // 特殊机制
+    public DateTime ValidFrom { get; set; } = DateTime.UtcNow;
+    public DateTime? ValidUntil { get; set; }
+    public string? Description { get; set; }
+}
+
+/// <summary>
 /// 玩家实体 - 用于数据存储
 /// </summary>
 public class PlayerEntity : BaseEntity
