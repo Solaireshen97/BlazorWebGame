@@ -12,14 +12,14 @@ using ReputationDto = BlazorWebGame.Shared.DTOs.Character.ReputationDto;
 namespace BlazorWebGame.Server.Services.Character
 {
     /// <summary>
-    /// ÔöÇ¿°æ·þÎñ¶Ë½ÇÉ«¹ÜÀí·þÎñ - Ê¹ÓÃÁìÓòÄ£ÐÍ
+    /// ï¿½ï¿½Ç¿ï¿½ï¿½ï¿½ï¿½ï¿½Ë½ï¿½É«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ - Ê¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä£ï¿½ï¿½
     /// </summary>
     public class EnhancedServerCharacterService
     {
-        // Ê¹ÓÃÄÚ´æ»º´æ+¹ýÆÚ²ßÂÔ
+        // Ê¹ï¿½ï¿½ï¿½Ú´æ»ºï¿½ï¿½+ï¿½ï¿½ï¿½Ú²ï¿½ï¿½ï¿½
         private readonly ConcurrentDictionary<string, Tuple<BlazorWebGame.Shared.Models.Character, DateTime>> _characterCache = new();
 
-        // »º´æ¹ýÆÚÊ±¼ä£¨ÀýÈç30·ÖÖÓ²»»îÔ¾¾Í´ÓÄÚ´æÖÐÒÆ³ý£©
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ä£¨ï¿½ï¿½ï¿½ï¿½30ï¿½ï¿½ï¿½Ó²ï¿½ï¿½ï¿½Ô¾ï¿½Í´ï¿½ï¿½Ú´ï¿½ï¿½ï¿½ï¿½Æ³ï¿½ï¿½ï¿½
         private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(30);
 
         private readonly ConcurrentDictionary<string, BlazorWebGame.Shared.Models.Character> _characters = new();
@@ -48,53 +48,53 @@ namespace BlazorWebGame.Server.Services.Character
             _dataStorage = dataStorage;
             _gameClock = gameClock;
             
-            // ³õÊ¼»¯²âÊÔ½ÇÉ«
+            // ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½Ô½ï¿½É«
             InitializeTestCharacters();
 
-            // Ìí¼Ó¶¨Ê±ÈÎÎñ£¬¶¨ÆÚÇåÀí¹ýÆÚµÄ½ÇÉ«»º´æ
+            // ï¿½ï¿½ï¿½Ó¶ï¿½Ê±ï¿½ï¿½ï¿½ñ£¬¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÚµÄ½ï¿½É«ï¿½ï¿½ï¿½ï¿½
             StartCacheCleanupTask();
         }
 
-        // »ñÈ¡½ÇÉ« - Èç¹û²»ÔÚ»º´æÖÐÔò´ÓÊý¾Ý¿â¼ÓÔØ
+        // ï¿½ï¿½È¡ï¿½ï¿½É« - ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý¿ï¿½ï¿½ï¿½ï¿½
         private async Task<BlazorWebGame.Shared.Models.Character?> GetOrLoadCharacterAsync(string characterId)
         {
-            // ¼ì²é»º´æ
+            // ï¿½ï¿½é»ºï¿½ï¿½
             if (_characterCache.TryGetValue(characterId, out var cachedData))
             {
-                // ¸üÐÂ×îºó·ÃÎÊÊ±¼ä
+                // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½
                 _characterCache[characterId] = new Tuple<BlazorWebGame.Shared.Models.Character, DateTime>(
                     cachedData.Item1, DateTime.UtcNow);
                 return cachedData.Item1;
             }
 
-            // ´ÓÊý¾Ý¿â¼ÓÔØ
+            // ï¿½ï¿½ï¿½ï¿½ï¿½Ý¿ï¿½ï¿½ï¿½ï¿½
             var response = await _dataStorage.GetCharacterByIdAsync(characterId);
             if (!response.IsSuccess || response.Data == null)
             {
                 return null;
             }
 
-            // ×ª»»ÎªÁìÓòÄ£ÐÍ
+            // ×ªï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½Ä£ï¿½ï¿½
             var character = ConvertToDomainModel(response.Data);
 
-            // Ìí¼Óµ½»º´æ
+            // ï¿½ï¿½ï¿½Óµï¿½ï¿½ï¿½ï¿½ï¿½
             _characterCache[characterId] = new Tuple<BlazorWebGame.Shared.Models.Character, DateTime>(
                 character, DateTime.UtcNow);
 
             return character;
         }
 
-        // ±£´æ½ÇÉ«µ½Êý¾Ý¿â
+        // ï¿½ï¿½ï¿½ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½ï¿½Ý¿ï¿½
         private async Task SaveCharacterToStorageAsync(BlazorWebGame.Shared.Models.Character character)
         {
-            // Ê¹ÓÃCharacterMapper×ª»»ÎªDTO
+            // Ê¹ï¿½ï¿½CharacterMapper×ªï¿½ï¿½ÎªDTO
             var dto = BlazorWebGame.Shared.Mappers.CharacterMapper.ToDto(character);
-            // µ÷ÓÃÊý¾Ý´æ´¢·þÎñ±£´æ½ÇÉ«
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý´æ´¢ï¿½ï¿½ï¿½ñ±£´ï¿½ï¿½É«
             await _dataStorage.SaveCharacterAsync(dto);
         }
 
 
-        // ¶¨ÆÚÇåÀí»º´æ
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         private void StartCacheCleanupTask()
         {
             Task.Run(async () =>
@@ -107,16 +107,16 @@ namespace BlazorWebGame.Server.Services.Character
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "ÇåÀí½ÇÉ«»º´æÊ±³ö´í");
+                        _logger.LogError(ex, "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½");
                     }
 
-                    // Ã¿5·ÖÖÓÖ´ÐÐÒ»´ÎÇåÀí
+                    // Ã¿5ï¿½ï¿½ï¿½ï¿½Ö´ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                     await Task.Delay(TimeSpan.FromMinutes(5));
                 }
             });
         }
 
-        // ÇåÀí¹ýÆÚ»º´æ
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú»ï¿½ï¿½ï¿½
         private void CleanupExpiredCacheEntries()
         {
             var now = DateTime.UtcNow;
@@ -128,17 +128,17 @@ namespace BlazorWebGame.Server.Services.Character
             foreach (var key in expiredKeys)
             {
                 _characterCache.TryRemove(key, out _);
-                _logger.LogInformation("ÒÑ´ÓÄÚ´æÖÐÒÆ³ý³¤Ê±¼äÎ´»î¶¯µÄ½ÇÉ«: {CharacterId}", key);
+                _logger.LogInformation("ï¿½Ñ´ï¿½ï¿½Ú´ï¿½ï¿½ï¿½ï¿½Æ³ï¿½ï¿½ï¿½Ê±ï¿½ï¿½Î´ï¿½î¶¯ï¿½Ä½ï¿½É«: {CharacterId}", key);
             }
         }
 
-        // ÏÔÊ½´ÓÄÚ´æÖÐÒÆ³ý½ÇÉ«
+        // ï¿½ï¿½Ê½ï¿½ï¿½ï¿½Ú´ï¿½ï¿½ï¿½ï¿½Æ³ï¿½ï¿½ï¿½É«
         public void RemoveCharacterFromCache(string characterId)
         {
             _characterCache.TryRemove(characterId, out _);
         }
 
-        // ÓÃ»§ÀëÏßÊ±£¬ÒÆ³ý¸ÃÓÃ»§µÄËùÓÐ½ÇÉ«»º´æ
+        // ï¿½Ã»ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½Æ³ï¿½ï¿½ï¿½ï¿½Ã»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð½ï¿½É«ï¿½ï¿½ï¿½ï¿½
         public async Task RemoveUserCharactersFromCacheAsync(string userId)
         {
             var response = await _dataStorage.GetUserCharactersAsync(userId);
@@ -152,10 +152,10 @@ namespace BlazorWebGame.Server.Services.Character
         }
 
         /// <summary>
-        /// »ñÈ¡ÓÃ»§µÄ½ÇÉ«»¨Ãû²á
+        /// ï¿½ï¿½È¡ï¿½Ã»ï¿½ï¿½Ä½ï¿½É«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         /// </summary>
         /// <summary>
-        /// »ñÈ¡ÓÃ»§µÄ½ÇÉ«»¨Ãû²á
+        /// ï¿½ï¿½È¡ï¿½Ã»ï¿½ï¿½Ä½ï¿½É«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         /// </summary>
         public async Task<RosterDto> GetUserRosterAsync(string userId)
         {
@@ -177,19 +177,19 @@ namespace BlazorWebGame.Server.Services.Character
                     ActiveCharacterId = activeUserCharacters.FirstOrDefault(uc => uc.IsDefault)?.CharacterId
                 };
 
-                // Ô¤¼ÓÔØËùÓÐ½ÇÉ«Êý¾Ýµ½ÄÚ´æÖÐ
+                // Ô¤ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð½ï¿½É«ï¿½ï¿½ï¿½Ýµï¿½ï¿½Ú´ï¿½ï¿½ï¿½
                 foreach (var userChar in activeUserCharacters)
                 {
-                    // Ê¹ÓÃGetOrLoadCharacterAsyncÈ·±£½ÇÉ«Êý¾Ý±»¼ÓÔØµ½ÄÚ´æÖÐ
+                    // Ê¹ï¿½ï¿½GetOrLoadCharacterAsyncÈ·ï¿½ï¿½ï¿½ï¿½É«ï¿½ï¿½ï¿½Ý±ï¿½ï¿½ï¿½ï¿½Øµï¿½ï¿½Ú´ï¿½ï¿½ï¿½
                     var character = await GetOrLoadCharacterAsync(userChar.CharacterId);
                     if (character != null)
                     {
-                        // È·±£½ÇÉ«Ò²Ìí¼Óµ½_characters×ÖµäÖÐ(GetOrLoadCharacterAsyncÒÑ¾­Ìí¼Óµ½_characterCache)
+                        // È·ï¿½ï¿½ï¿½ï¿½É«Ò²ï¿½ï¿½ï¿½Óµï¿½_charactersï¿½Öµï¿½ï¿½ï¿½(GetOrLoadCharacterAsyncï¿½Ñ¾ï¿½ï¿½ï¿½ï¿½Óµï¿½_characterCache)
                         _characters.TryAdd(character.Id, character);
                     }
                 }
 
-                // Ìî³äÒÑ½âËø²ÛÎ»
+                // ï¿½ï¿½ï¿½ï¿½Ñ½ï¿½ï¿½ï¿½ï¿½ï¿½Î»
                 for (int i = 0; i < roster.UnlockedSlots; i++)
                 {
                     var userChar = activeUserCharacters.FirstOrDefault(uc => uc.SlotIndex == i);
@@ -219,14 +219,14 @@ namespace BlazorWebGame.Server.Services.Character
                     roster.Slots.Add(slot);
                 }
 
-                // Ìî³äÊ£Óà²ÛÎ»
+                // ï¿½ï¿½ï¿½Ê£ï¿½ï¿½ï¿½Î»
                 for (int i = roster.UnlockedSlots; i < roster.MaxSlots; i++)
                 {
                     roster.Slots.Add(new CharacterSlotDto
                     {
                         SlotIndex = i,
                         State = "Locked",
-                        UnlockCondition = i < 3 ? "Íê³ÉÐÂÊÖ½Ì³Ì" : $"½ÇÉ«´ïµ½{i * 10}¼¶",
+                        UnlockCondition = i < 3 ? "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö½Ì³ï¿½" : $"ï¿½ï¿½É«ï¿½ïµ½{i * 10}ï¿½ï¿½",
                         Character = null
                     });
                 }
@@ -235,44 +235,44 @@ namespace BlazorWebGame.Server.Services.Character
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"»ñÈ¡ÓÃ»§»¨Ãû²áÊ§°Ü£º{userId}");
+                _logger.LogError(ex, $"ï¿½ï¿½È¡ï¿½Ã»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê§ï¿½Ü£ï¿½{userId}");
                 return CreateEmptyRoster(userId);
             }
         }
 
         /// <summary>
-        /// ½âËø½ÇÉ«²ÛÎ»
+        /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É«ï¿½ï¿½Î»
         /// </summary>
         public async Task<ApiResponse<CharacterSlotDto>> UnlockSlotAsync(string userId, int slotIndex)
         {
             try
             {
-                // »ñÈ¡ÓÃ»§µ±Ç°»¨Ãû²á
+                // ï¿½ï¿½È¡ï¿½Ã»ï¿½ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                 var roster = await GetUserRosterAsync(userId);
                 
-                // ¼ì²é²ÛÎ»ÊÇ·ñÒÑ½âËø
+                // ï¿½ï¿½ï¿½ï¿½Î»ï¿½Ç·ï¿½ï¿½Ñ½ï¿½ï¿½ï¿½
                 if (slotIndex < 0 || slotIndex >= roster.MaxSlots)
                 {
-                    return ApiResponse<CharacterSlotDto>.Failure("ÎÞÐ§µÄ²ÛÎ»Ë÷Òý");
+                    return ApiResponse<CharacterSlotDto>.Failure("ï¿½ï¿½Ð§ï¿½Ä²ï¿½Î»ï¿½ï¿½ï¿½ï¿½");
                 }
                 
                 if (slotIndex < roster.UnlockedSlots)
                 {
-                    return ApiResponse<CharacterSlotDto>.Failure("¸Ã²ÛÎ»ÒÑ½âËø");
+                    return ApiResponse<CharacterSlotDto>.Failure("ï¿½Ã²ï¿½Î»ï¿½Ñ½ï¿½ï¿½ï¿½");
                 }
 
-                // ¼ì²é½âËøÌõ¼þ
+                // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                 bool canUnlock = false;
                 
-                // Ä£Äâ½âËøÌõ¼þ¼ì²é
+                // Ä£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                 if (slotIndex < 3)
                 {
-                    // Ç°Èý¸ö²ÛÎ»Ö»ÐèÍê³ÉÐÂÊÖ½Ì³Ì
+                    // Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î»Ö»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö½Ì³ï¿½
                     canUnlock = true;
                 }
                 else
                 {
-                    // ÆäËû²ÛÎ»ÐèÒª½ÇÉ«´ïµ½Ò»¶¨µÈ¼¶
+                    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î»ï¿½ï¿½Òªï¿½ï¿½É«ï¿½ïµ½Ò»ï¿½ï¿½ï¿½È¼ï¿½
                     var requiredLevel = slotIndex * 10;
                     var userCharacters = await _dataStorage.GetUserCharactersAsync(userId);
                     if (userCharacters.IsSuccess && userCharacters.Data != null)
@@ -291,13 +291,13 @@ namespace BlazorWebGame.Server.Services.Character
 
                 if (!canUnlock)
                 {
-                    return ApiResponse<CharacterSlotDto>.Failure($"Î´Âú×ã½âËøÌõ¼þ£º{roster.Slots[slotIndex].UnlockCondition}");
+                    return ApiResponse<CharacterSlotDto>.Failure($"Î´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½{roster.Slots[slotIndex].UnlockCondition}");
                 }
 
-                // ¸üÐÂÊý¾Ý¿âÖÐµÄ²ÛÎ»×´Ì¬
+                // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý¿ï¿½ï¿½ÐµÄ²ï¿½Î»×´Ì¬
                 await _dataStorage.UnlockCharacterSlotAsync(userId, slotIndex);
 
-                // ´´½¨ÐÂµÄ²ÛÎ»ÐÅÏ¢
+                // ï¿½ï¿½ï¿½ï¿½ï¿½ÂµÄ²ï¿½Î»ï¿½ï¿½Ï¢
                 var newSlot = new CharacterSlotDto
                 {
                     SlotIndex = slotIndex,
@@ -305,61 +305,61 @@ namespace BlazorWebGame.Server.Services.Character
                     Character = null
                 };
 
-                _logger.LogInformation($"ÓÃ»§ {userId} ½âËøÁË²ÛÎ» {slotIndex}");
+                _logger.LogInformation($"ï¿½Ã»ï¿½ {userId} ï¿½ï¿½ï¿½ï¿½ï¿½Ë²ï¿½Î» {slotIndex}");
 
                 return ApiResponse<CharacterSlotDto>.Success(newSlot);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"½âËø²ÛÎ»Ê§°Ü£ºÓÃ»§ {userId}, ²ÛÎ» {slotIndex}");
-                return ApiResponse<CharacterSlotDto>.Failure("½âËø²ÛÎ»Ê±·¢Éú´íÎó");
+                _logger.LogError(ex, $"ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î»Ê§ï¿½Ü£ï¿½ï¿½Ã»ï¿½ {userId}, ï¿½ï¿½Î» {slotIndex}");
+                return ApiResponse<CharacterSlotDto>.Failure("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î»Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½");
             }
         }
 
         /// <summary>
-        /// ´´½¨½ÇÉ«
+        /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É«
         /// </summary>
         public async Task<ApiResponse<CharacterFullDto>> CreateCharacterAsync(string userId, CreateCharacterRequestDto request)
         {
             try
             {
-                // ÑéÖ¤Ãû³Æ
+                // ï¿½ï¿½Ö¤ï¿½ï¿½ï¿½ï¿½
                 var nameValidation = ValidateCharacterName(request.Name);
                 if (!nameValidation.IsValid)
                 {
                     return ApiResponse<CharacterFullDto>.Failure(nameValidation.Reason!);
                 }
 
-                // ÑéÖ¤²ÛÎ»ÊÇ·ñ¿ÉÓÃ
+                // ï¿½ï¿½Ö¤ï¿½ï¿½Î»ï¿½Ç·ï¿½ï¿½ï¿½ï¿½
                 var roster = await GetUserRosterAsync(userId);
                 if (request.SlotIndex < 0 || request.SlotIndex >= roster.UnlockedSlots)
                 {
-                    return ApiResponse<CharacterFullDto>.Failure("ÎÞÐ§µÄ²ÛÎ»Ë÷Òý");
+                    return ApiResponse<CharacterFullDto>.Failure("ï¿½ï¿½Ð§ï¿½Ä²ï¿½Î»ï¿½ï¿½ï¿½ï¿½");
                 }
 
                 if (roster.Slots[request.SlotIndex].State == "Occupied")
                 {
-                    return ApiResponse<CharacterFullDto>.Failure("¸Ã²ÛÎ»ÒÑ±»Õ¼ÓÃ");
+                    return ApiResponse<CharacterFullDto>.Failure("ï¿½Ã²ï¿½Î»ï¿½Ñ±ï¿½Õ¼ï¿½ï¿½");
                 }
 
-                // ´´½¨ÐÂ½ÇÉ«
+                // ï¿½ï¿½ï¿½ï¿½ï¿½Â½ï¿½É«
                 var character = new BlazorWebGame.Shared.Models.Character(request.Name);
 
-                // ÉèÖÃÖ°Òµ
+                // ï¿½ï¿½ï¿½ï¿½Ö°Òµ
                 var profession = !string.IsNullOrEmpty(request.StartingProfessionId)
                     ? request.StartingProfessionId
                     : "Warrior";
 
                 character.Professions.SelectBattleProfession(profession);
 
-                // ±£´æµ½ÄÚ´æ
+                // ï¿½ï¿½ï¿½æµ½ï¿½Ú´ï¿½
                 _characters.TryAdd(character.Id, character);
                 var characterDto = ConvertToStorageDto(character);
 
-                // ±£´æ½ÇÉ«µ½Êý¾Ý¿â
+                // ï¿½ï¿½ï¿½ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½ï¿½Ý¿ï¿½
                 await _dataStorage.SaveCharacterAsync(characterDto);
 
-                // ´´½¨ÓÃ»§-½ÇÉ«¹ØÁª
+                // ï¿½ï¿½ï¿½ï¿½ï¿½Ã»ï¿½-ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½
                 var isFirstCharacter = roster.Slots.All(s => s.Character == null);
                 var relationResult = await _dataStorage.CreateUserCharacterAsync(
                     userId, character.Id, request.Name, isFirstCharacter, request.SlotIndex);
@@ -367,57 +367,57 @@ namespace BlazorWebGame.Server.Services.Character
                 if (!relationResult.IsSuccess)
                 {
                     _characters.TryRemove(character.Id, out _);
-                    return ApiResponse<CharacterFullDto>.Failure($"´´½¨½ÇÉ«¹ØÁªÊ§°Ü£º{relationResult.Message}");
+                    return ApiResponse<CharacterFullDto>.Failure($"ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½Ê§ï¿½Ü£ï¿½{relationResult.Message}");
                 }
 
-                // ´¥·¢½ÇÉ«´´½¨ÊÂ¼þ
+                // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½ï¿½Â¼ï¿½
                 _eventManager.Raise(new GameEventArgs(GameEventType.CharacterCreated, character.Id));
 
-                _logger.LogInformation($"ÓÃ»§ {userId} ´´½¨ÁË½ÇÉ« {request.Name}£¬ID£º{character.Id}");
+                _logger.LogInformation($"ï¿½Ã»ï¿½ {userId} ï¿½ï¿½ï¿½ï¿½ï¿½Ë½ï¿½É« {request.Name}ï¿½ï¿½IDï¿½ï¿½{character.Id}");
 
-                // ½«½ÇÉ«×ª»»ÎªDTO
+                // ï¿½ï¿½ï¿½ï¿½É«×ªï¿½ï¿½ÎªDTO
                 var characterFullDto = ConvertToFullDto(character);
                 return ApiResponse<CharacterFullDto>.Success(characterFullDto);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"´´½¨½ÇÉ«Ê§°Ü£º{request.Name}");
-                return ApiResponse<CharacterFullDto>.Failure("´´½¨½ÇÉ«Ê±·¢Éú´íÎó");
+                _logger.LogError(ex, $"ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É«Ê§ï¿½Ü£ï¿½{request.Name}");
+                return ApiResponse<CharacterFullDto>.Failure("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É«Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½");
             }
         }
 
         /// <summary>
-        /// ÑéÖ¤½ÇÉ«Ãû³Æ
+        /// ï¿½ï¿½Ö¤ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½
         /// </summary>
         public ValidateCharacterNameResult ValidateCharacterName(string name)
         {
-            // ¼ì²éÃû³Æ³¤¶È
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ³ï¿½ï¿½ï¿½
             if (string.IsNullOrWhiteSpace(name) || name.Length < 2 || name.Length > 20)
             {
                 return new ValidateCharacterNameResult 
                 { 
                     IsValid = false, 
-                    Reason = "Ãû³Æ³¤¶ÈÓ¦Îª2-20¸ö×Ö·û" 
+                    Reason = "ï¿½ï¿½ï¿½Æ³ï¿½ï¿½ï¿½Ó¦Îª2-20ï¿½ï¿½ï¿½Ö·ï¿½" 
                 };
             }
 
-            // ¼ì²éÌØÊâ×Ö·û
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö·ï¿½
             if (name.Any(c => !char.IsLetterOrDigit(c) && !char.IsWhiteSpace(c)))
             {
                 return new ValidateCharacterNameResult 
                 { 
                     IsValid = false, 
-                    Reason = "Ãû³ÆÖ»ÄÜ°üº¬×ÖÄ¸¡¢Êý×ÖºÍ¿Õ¸ñ" 
+                    Reason = "ï¿½ï¿½ï¿½ï¿½Ö»ï¿½Ü°ï¿½ï¿½ï¿½ï¿½ï¿½Ä¸ï¿½ï¿½ï¿½ï¿½ï¿½ÖºÍ¿Õ¸ï¿½" 
                 };
             }
 
-            // ¼ì²éÖØ¸´Ãû³Æ
+            // ï¿½ï¿½ï¿½ï¿½Ø¸ï¿½ï¿½ï¿½ï¿½ï¿½
             if (_characters.Values.Any(c => c.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
             {
                 return new ValidateCharacterNameResult 
                 { 
                     IsValid = false, 
-                    Reason = "¸ÃÃû³ÆÒÑ±»Ê¹ÓÃ" 
+                    Reason = "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ñ±ï¿½Ê¹ï¿½ï¿½" 
                 };
             }
 
@@ -425,7 +425,7 @@ namespace BlazorWebGame.Server.Services.Character
         }
 
         /// <summary>
-        /// »ñÈ¡½ÇÉ«ÏêÇé
+        /// ï¿½ï¿½È¡ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½
         /// </summary>
         public async Task<ApiResponse<CharacterFullDto>> GetCharacterDetails(string characterId)
         {
@@ -434,52 +434,52 @@ namespace BlazorWebGame.Server.Services.Character
                 var character = await GetOrLoadCharacterAsync(characterId);
                 if (character == null)
                 {
-                    return ApiResponse<CharacterFullDto>.Failure("½ÇÉ«²»´æÔÚ");
+                    return ApiResponse<CharacterFullDto>.Failure("ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½");
                 }
 
                 return ApiResponse<CharacterFullDto>.Success(ConvertToFullDto(character));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "»ñÈ¡½ÇÉ«ÏêÇéÊ§°Ü {CharacterId}", characterId);
-                return ApiResponse<CharacterFullDto>.Failure($"»ñÈ¡½ÇÉ«ÏêÇéÊ§°Ü£º{ex.Message}");
+                _logger.LogError(ex, "ï¿½ï¿½È¡ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½Ê§ï¿½ï¿½ {CharacterId}", characterId);
+                return ApiResponse<CharacterFullDto>.Failure($"ï¿½ï¿½È¡ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½Ê§ï¿½Ü£ï¿½{ex.Message}");
             }
         }
 
         /// <summary>
-        /// ÇÐ»»½ÇÉ«
+        /// ï¿½Ð»ï¿½ï¿½ï¿½É«
         /// </summary>
         public async Task<ApiResponse<CharacterFullDto>> SwitchCharacterAsync(string userId, string characterId)
         {
             try
             {
-                // ÑéÖ¤ÓÃ»§ÊÇ·ñÓµÓÐ¸Ã½ÇÉ«
+                // ï¿½ï¿½Ö¤ï¿½Ã»ï¿½ï¿½Ç·ï¿½Óµï¿½Ð¸Ã½ï¿½É«
                 bool ownsCharacter = await _dataStorage.UserOwnsCharacterAsync(userId, characterId);
                 if (!ownsCharacter)
                 {
-                    return ApiResponse<CharacterFullDto>.Failure("ÓÃ»§²»ÓµÓÐ¸Ã½ÇÉ«");
+                    return ApiResponse<CharacterFullDto>.Failure("ï¿½Ã»ï¿½ï¿½ï¿½Óµï¿½Ð¸Ã½ï¿½É«");
                 }
 
-                // »ñÈ¡½ÇÉ«
+                // ï¿½ï¿½È¡ï¿½ï¿½É«
                 if (!_characters.TryGetValue(characterId, out var character))
                 {
-                    return ApiResponse<CharacterFullDto>.Failure("½ÇÉ«²»´æÔÚ");
+                    return ApiResponse<CharacterFullDto>.Failure("ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½");
                 }
 
-                // ÉèÖÃ½ÇÉ«Îª»îÔ¾×´Ì¬
+                // ï¿½ï¿½ï¿½Ã½ï¿½É«Îªï¿½ï¿½Ô¾×´Ì¬
                 character.GoOnline();
                 
-                // ¸üÐÂÄ¬ÈÏ½ÇÉ«
+                // ï¿½ï¿½ï¿½ï¿½Ä¬ï¿½Ï½ï¿½É«
                 await _dataStorage.SetDefaultCharacterAsync(userId, characterId);
 
-                //// ¼ÆËãÀëÏß½ø¶È
+                //// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ß½ï¿½ï¿½ï¿½
                 //var offlineProgress = await CalculateOfflineProgressAsync(character);
                 //if (offlineProgress != null)
                 //{
-                //    // Ó¦ÓÃÀëÏß½ø¶È
+                //    // Ó¦ï¿½ï¿½ï¿½ï¿½ï¿½ß½ï¿½ï¿½ï¿½
                 //    ApplyOfflineProgress(character, offlineProgress);
 
-                //    // ´¥·¢ÀëÏß½ø¶ÈÊÂ¼þ
+                //    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ß½ï¿½ï¿½ï¿½ï¿½Â¼ï¿½
                 //    _eventManager.Raise(new GameEventArgs(
                 //        GameEventType.OfflineProgressCalculated, 
                 //        character.Id,
@@ -491,13 +491,13 @@ namespace BlazorWebGame.Server.Services.Character
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"ÇÐ»»½ÇÉ«Ê§°Ü£º{characterId}");
-                return ApiResponse<CharacterFullDto>.Failure("ÇÐ»»½ÇÉ«Ê±·¢Éú´íÎó");
+                _logger.LogError(ex, $"ï¿½Ð»ï¿½ï¿½ï¿½É«Ê§ï¿½Ü£ï¿½{characterId}");
+                return ApiResponse<CharacterFullDto>.Failure("ï¿½Ð»ï¿½ï¿½ï¿½É«Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½");
             }
         }
 
         /// <summary>
-        /// ¼ì²éÓÃ»§ÊÇ·ñÓµÓÐ½ÇÉ«
+        /// ï¿½ï¿½ï¿½ï¿½Ã»ï¿½ï¿½Ç·ï¿½Óµï¿½Ð½ï¿½É«
         /// </summary>
         public async Task<bool> UserOwnsCharacterAsync(string userId, string characterId)
         {
@@ -507,63 +507,63 @@ namespace BlazorWebGame.Server.Services.Character
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "¼ì²éÓÃ»§½ÇÉ«ËùÓÐÈ¨Ê§°Ü {UserId} -> {CharacterId}", userId, characterId);
+                _logger.LogError(ex, "ï¿½ï¿½ï¿½ï¿½Ã»ï¿½ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½È¨Ê§ï¿½ï¿½ {UserId} -> {CharacterId}", userId, characterId);
                 return false;
             }
         }
 
         /// <summary>
-        /// É¾³ý½ÇÉ«
+        /// É¾ï¿½ï¿½ï¿½ï¿½É«
         /// </summary>
         public async Task<ApiResponse<bool>> DeleteCharacterAsync(string userId, string characterId)
         {
             try
             {
-                // ÑéÖ¤ÓÃ»§ÊÇ·ñÓµÓÐ¸Ã½ÇÉ«
+                // ï¿½ï¿½Ö¤ï¿½Ã»ï¿½ï¿½Ç·ï¿½Óµï¿½Ð¸Ã½ï¿½É«
                 bool ownsCharacter = await _dataStorage.UserOwnsCharacterAsync(userId, characterId);
                 if (!ownsCharacter)
                 {
-                    return ApiResponse<bool>.Failure("ÓÃ»§²»ÓµÓÐ¸Ã½ÇÉ«");
+                    return ApiResponse<bool>.Failure("ï¿½Ã»ï¿½ï¿½ï¿½Óµï¿½Ð¸Ã½ï¿½É«");
                 }
 
-                // »ñÈ¡ÓÃ»§ËùÓÐ½ÇÉ«
+                // ï¿½ï¿½È¡ï¿½Ã»ï¿½ï¿½ï¿½ï¿½Ð½ï¿½É«
                 var userCharactersResult = await _dataStorage.GetUserCharactersAsync(userId);
                 if (!userCharactersResult.IsSuccess || userCharactersResult.Data == null)
                 {
-                    return ApiResponse<bool>.Failure("»ñÈ¡ÓÃ»§½ÇÉ«Ê§°Ü");
+                    return ApiResponse<bool>.Failure("ï¿½ï¿½È¡ï¿½Ã»ï¿½ï¿½ï¿½É«Ê§ï¿½ï¿½");
                 }
 
-                // ¼ì²éÊÇ·ñÊÇÎ¨Ò»½ÇÉ«
+                // ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½Î¨Ò»ï¿½ï¿½É«
                 if (userCharactersResult.Data.Count(uc => uc.IsActive) == 1)
                 {
-                    return ApiResponse<bool>.Failure("ÎÞ·¨É¾³ýÎ¨Ò»½ÇÉ«");
+                    return ApiResponse<bool>.Failure("ï¿½Þ·ï¿½É¾ï¿½ï¿½Î¨Ò»ï¿½ï¿½É«");
                 }
 
-                // ´ÓÊý¾Ý¿âÖÐÉ¾³ý½ÇÉ«¹ØÁª
+                // ï¿½ï¿½ï¿½ï¿½ï¿½Ý¿ï¿½ï¿½ï¿½É¾ï¿½ï¿½ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½
                 var result = await _dataStorage.DeleteUserCharacterAsync(userId, characterId);
                 if (!result.IsSuccess)
                 {
-                    return ApiResponse<bool>.Failure($"É¾³ý½ÇÉ«Ê§°Ü£º{result.Message}");
+                    return ApiResponse<bool>.Failure($"É¾ï¿½ï¿½ï¿½ï¿½É«Ê§ï¿½Ü£ï¿½{result.Message}");
                 }
 
-                // ´ÓÄÚ´æÖÐÉ¾³ý½ÇÉ«
+                // ï¿½ï¿½ï¿½Ú´ï¿½ï¿½ï¿½É¾ï¿½ï¿½ï¿½ï¿½É«
                 _characters.TryRemove(characterId, out var character);
 
-                // ´¥·¢½ÇÉ«É¾³ýÊÂ¼þ
+                // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É«É¾ï¿½ï¿½ï¿½Â¼ï¿½
                 _eventManager.Raise(new GameEventArgs(GameEventType.CharacterDeleted, characterId));
 
-                _logger.LogInformation($"ÓÃ»§ {userId} É¾³ýÁË½ÇÉ« {characterId}");
+                _logger.LogInformation($"ï¿½Ã»ï¿½ {userId} É¾ï¿½ï¿½ï¿½Ë½ï¿½É« {characterId}");
                 return ApiResponse<bool>.Success(true);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"É¾³ý½ÇÉ«Ê§°Ü£º{characterId}");
-                return ApiResponse<bool>.Failure("É¾³ý½ÇÉ«Ê±·¢Éú´íÎó");
+                _logger.LogError(ex, $"É¾ï¿½ï¿½ï¿½ï¿½É«Ê§ï¿½Ü£ï¿½{characterId}");
+                return ApiResponse<bool>.Failure("É¾ï¿½ï¿½ï¿½ï¿½É«Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½");
             }
         }
 
         /// <summary>
-        /// ·ÖÅäÊôÐÔµã
+        /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ôµï¿½
         /// </summary>
         public async Task<ApiResponse<CharacterAttributesDto>> AllocateAttributePointsAsync(string characterId, AllocateAttributePointsRequest request)
         {
@@ -572,17 +572,17 @@ namespace BlazorWebGame.Server.Services.Character
                 var character = await GetOrLoadCharacterAsync(characterId);
                 if (character == null)
                 {
-                    return ApiResponse<CharacterAttributesDto>.Failure("½ÇÉ«²»´æÔÚ");
+                    return ApiResponse<CharacterAttributesDto>.Failure("ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½");
                 }
 
-                // ÑéÖ¤×ÜµãÊýÊÇ·ñ³¬¹ý¿ÉÓÃµãÊý
+                // ï¿½ï¿½Ö¤ï¿½Üµï¿½ï¿½ï¿½ï¿½Ç·ñ³¬¹ï¿½ï¿½ï¿½ï¿½Ãµï¿½ï¿½ï¿½
                 var totalPoints = request.Points.Values.Sum();
                 if (totalPoints > character.Attributes.AttributePoints)
                 {
-                    return ApiResponse<CharacterAttributesDto>.Failure("·ÖÅäµÄÊôÐÔµã³¬¹ý¿ÉÓÃµãÊý");
+                    return ApiResponse<CharacterAttributesDto>.Failure("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ôµã³¬ï¿½ï¿½ï¿½ï¿½ï¿½Ãµï¿½ï¿½ï¿½");
                 }
 
-                // ·ÖÅäÊôÐÔµã
+                // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ôµï¿½
                 foreach (var kvp in request.Points)
                 {
                     if (kvp.Value <= 0) continue;
@@ -590,17 +590,17 @@ namespace BlazorWebGame.Server.Services.Character
                     bool success = character.Attributes.AllocateAttribute(kvp.Key, kvp.Value);
                     if (!success)
                     {
-                        return ApiResponse<CharacterAttributesDto>.Failure($"·ÖÅäÊôÐÔµãÊ§°Ü£º{kvp.Key}");
+                        return ApiResponse<CharacterAttributesDto>.Failure($"ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ôµï¿½Ê§ï¿½Ü£ï¿½{kvp.Key}");
                     }
                 }
 
-                // ¸üÐÂÉúÃüÖµºÍ·¨Á¦ÖµÉÏÏÞ
+                // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµï¿½Í·ï¿½ï¿½ï¿½Öµï¿½ï¿½ï¿½ï¿½
                 character.Vitals.RecalculateMaxValues(character.Attributes);
 
-                // ±£´æ¸üÐÂºóµÄ½ÇÉ«Êý¾Ýµ½Êý¾Ý¿â
+                // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Âºï¿½Ä½ï¿½É«ï¿½ï¿½ï¿½Ýµï¿½ï¿½ï¿½ï¿½Ý¿ï¿½
                 await SaveCharacterToStorageAsync(character);
 
-                // ×ª»»ÎªDTO
+                // ×ªï¿½ï¿½ÎªDTO
                 var attributesDto = new CharacterAttributesDto
                 {
                     Strength = character.Attributes.Strength,
@@ -610,7 +610,7 @@ namespace BlazorWebGame.Server.Services.Character
                     Stamina = character.Attributes.Stamina,
                     AvailablePoints = character.Attributes.AttributePoints,
 
-                    // ÑÜÉúÊôÐÔ
+                    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                     AttackPower = CalculateAttackPower(character),
                     SpellPower = CalculateSpellPower(character),
                     CriticalChance = CalculateCritChance(character),
@@ -625,13 +625,13 @@ namespace BlazorWebGame.Server.Services.Character
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "·ÖÅäÊôÐÔµãÊ§°Ü {CharacterId}", characterId);
-                return ApiResponse<CharacterAttributesDto>.Failure($"·ÖÅäÊôÐÔµãÊ§°Ü£º{ex.Message}");
+                _logger.LogError(ex, "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ôµï¿½Ê§ï¿½ï¿½ {CharacterId}", characterId);
+                return ApiResponse<CharacterAttributesDto>.Failure($"ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ôµï¿½Ê§ï¿½Ü£ï¿½{ex.Message}");
             }
         }
 
         /// <summary>
-        /// ÖØÖÃÊôÐÔµã
+        /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ôµï¿½
         /// </summary>
         public async Task<ApiResponse<CharacterAttributesDto>> ResetAttributesAsync(string characterId)
         {
@@ -640,19 +640,19 @@ namespace BlazorWebGame.Server.Services.Character
                 var character = await GetOrLoadCharacterAsync(characterId);
                 if (character == null)
                 {
-                    return ApiResponse<CharacterAttributesDto>.Failure("½ÇÉ«²»´æÔÚ");
+                    return ApiResponse<CharacterAttributesDto>.Failure("ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½");
                 }
 
-                // ÖØÖÃÊôÐÔ
+                // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                 character.Attributes.ResetAttributes();
 
-                // ¸üÐÂÉúÃüÖµºÍ·¨Á¦ÖµÉÏÏÞ
+                // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµï¿½Í·ï¿½ï¿½ï¿½Öµï¿½ï¿½ï¿½ï¿½
                 character.Vitals.RecalculateMaxValues(character.Attributes);
 
-                // ±£´æ¸üÐÂºóµÄ½ÇÉ«Êý¾Ýµ½Êý¾Ý¿â
+                // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Âºï¿½Ä½ï¿½É«ï¿½ï¿½ï¿½Ýµï¿½ï¿½ï¿½ï¿½Ý¿ï¿½
                 await SaveCharacterToStorageAsync(character);
 
-                // ×ª»»ÎªDTO
+                // ×ªï¿½ï¿½ÎªDTO
                 var attributesDto = new CharacterAttributesDto
                 {
                     Strength = character.Attributes.Strength,
@@ -662,7 +662,7 @@ namespace BlazorWebGame.Server.Services.Character
                     Stamina = character.Attributes.Stamina,
                     AvailablePoints = character.Attributes.AttributePoints,
 
-                    // ÑÜÉúÊôÐÔ
+                    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                     AttackPower = CalculateAttackPower(character),
                     SpellPower = CalculateSpellPower(character),
                     CriticalChance = CalculateCritChance(character),
@@ -677,34 +677,68 @@ namespace BlazorWebGame.Server.Services.Character
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "ÖØÖÃÊôÐÔµãÊ§°Ü {CharacterId}", characterId);
-                return ApiResponse<CharacterAttributesDto>.Failure($"ÖØÖÃÊôÐÔµãÊ§°Ü£º{ex.Message}");
+                _logger.LogError(ex, "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ôµï¿½Ê§ï¿½ï¿½ {CharacterId}", characterId);
+                return ApiResponse<CharacterAttributesDto>.Failure($"ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ôµï¿½Ê§ï¿½Ü£ï¿½{ex.Message}");
             }
         }
 
         /// <summary>
-        /// »ñÈ¡ÀëÏß½ø¶È
+        /// ï¿½ï¿½È¡ï¿½ï¿½ï¿½ß½ï¿½ï¿½ï¿½
         /// </summary>
         public async Task<ApiResponse<OfflineProgressDto>> GetOfflineProgressAsync(string characterId)
         {
             if (!_characters.TryGetValue(characterId, out var character))
             {
-                return ApiResponse<OfflineProgressDto>.Failure("½ÇÉ«²»´æÔÚ");
+                return ApiResponse<OfflineProgressDto>.Failure("ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½");
             }
 
             var offlineProgress = await CalculateOfflineProgressAsync(character);
             if (offlineProgress == null)
             {
-                return ApiResponse<OfflineProgressDto>.Failure("Ã»ÓÐÀëÏß½ø¶È");
+                return ApiResponse<OfflineProgressDto>.Failure("Ã»ï¿½ï¿½ï¿½ï¿½ï¿½ß½ï¿½ï¿½ï¿½");
             }
 
             return ApiResponse<OfflineProgressDto>.Success(offlineProgress);
         }
 
-        #region Ë½ÓÐ¸¨Öú·½·¨
+        /// <summary>
+        /// ï¿½ï¿½È¡Characterï¿½ï¿½ï¿½ï¿½Ä£ï¿½Í£ï¿½ï¿½ï¿½Ú½ï¿½Õ½ï¿½ï¿½Í³ï¿½ï¿½ï¿½ï¿½ÒªÖ±ï¿½Ó²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä£ï¿½ÍµÄ³ï¿½ï¿½ï¿½ï¿½
+        /// </summary>
+        public async Task<BlazorWebGame.Shared.Models.Character?> GetCharacterDomainModelAsync(string characterId)
+        {
+            return await GetOrLoadCharacterAsync(characterId);
+        }
 
         /// <summary>
-        /// ¼ÆËã¹¥»÷Á¦
+        /// ï¿½ï¿½ï¿½ï¿½Characterï¿½ï¿½ï¿½ï¿½Ä£ï¿½Í£ï¿½ï¿½ï¿½Ú½ï¿½Õ½ï¿½ï¿½ï¿½ï¿½ó±£´ï¿½ï¿½ï¿½É«×´Ì¬ï¿½ï¿½
+        /// </summary>
+        public async Task<bool> SaveCharacterDomainModelAsync(BlazorWebGame.Shared.Models.Character character)
+        {
+            try
+            {
+                if (character == null)
+                    return false;
+
+                // ï¿½ï¿½ï¿½Â»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä½ï¿½É«ï¿½ï¿½ï¿½ï¿½
+                _characterCache[character.Id] = new Tuple<BlazorWebGame.Shared.Models.Character, DateTime>(
+                    character, DateTime.UtcNow);
+                
+                // ï¿½ï¿½ï¿½ï¿½ï¿½æµ½ï¿½æ´¢
+                await SaveCharacterToStorageAsync(character);
+                
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "ï¿½ï¿½ï¿½ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½Ä£ï¿½ï¿½Ê§ï¿½ï¿½ {CharacterId}", character?.Id);
+                return false;
+            }
+        }
+
+        #region Ë½ï¿½Ð¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+
+        /// <summary>
+        /// ï¿½ï¿½ï¿½ã¹¥ï¿½ï¿½ï¿½ï¿½
         /// </summary>
         private double CalculateAttackPower(BlazorWebGame.Shared.Models.Character character)
         {
@@ -719,7 +753,7 @@ namespace BlazorWebGame.Server.Services.Character
         }
 
         /// <summary>
-        /// ¼ÆËã·¨ÊõÇ¿¶È
+        /// ï¿½ï¿½ï¿½ã·¨ï¿½ï¿½Ç¿ï¿½ï¿½
         /// </summary>
         private double CalculateSpellPower(BlazorWebGame.Shared.Models.Character character)
         {
@@ -734,25 +768,25 @@ namespace BlazorWebGame.Server.Services.Character
         }
 
         /// <summary>
-        /// ¼ÆËã±©»÷ÂÊ
+        /// ï¿½ï¿½ï¿½ã±©ï¿½ï¿½ï¿½ï¿½
         /// </summary>
         private double CalculateCritChance(BlazorWebGame.Shared.Models.Character character)
         {
-            double baseChance = 5.0; // »ù´¡±©»÷ÂÊ5%
+            double baseChance = 5.0; // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½5%
             return baseChance + character.Attributes.Agility * 0.1;
         }
 
         /// <summary>
-        /// ¼ÆËã±©»÷ÉËº¦
+        /// ï¿½ï¿½ï¿½ã±©ï¿½ï¿½ï¿½Ëºï¿½
         /// </summary>
         private double CalculateCritDamage(BlazorWebGame.Shared.Models.Character character)
         {
-            double baseDamage = 150.0; // »ù´¡±©»÷ÉËº¦150%
+            double baseDamage = 150.0; // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ëºï¿½150%
             return baseDamage + character.Attributes.Strength * 0.2;
         }
 
         /// <summary>
-        /// ¼ÆËã»¤¼×Öµ
+        /// ï¿½ï¿½ï¿½ã»¤ï¿½ï¿½Öµ
         /// </summary>
         private double CalculateArmor(BlazorWebGame.Shared.Models.Character character)
         {
@@ -760,7 +794,7 @@ namespace BlazorWebGame.Server.Services.Character
         }
 
         /// <summary>
-        /// ¼ÆËãÄ§·¨¿¹ÐÔ
+        /// ï¿½ï¿½ï¿½ï¿½Ä§ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         /// </summary>
         private double CalculateMagicResistance(BlazorWebGame.Shared.Models.Character character)
         {
@@ -768,7 +802,7 @@ namespace BlazorWebGame.Server.Services.Character
         }
 
         /// <summary>
-        /// ¼ÆËãÀëÏß½ø¶È
+        /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ß½ï¿½ï¿½ï¿½
         /// </summary>
         private async Task<OfflineProgressDto?> CalculateOfflineProgressAsync(BlazorWebGame.Shared.Models.Character character)
         {
@@ -776,44 +810,44 @@ namespace BlazorWebGame.Server.Services.Character
         }
 
         /// <summary>
-        /// Ó¦ÓÃÀëÏß½ø¶È
+        /// Ó¦ï¿½ï¿½ï¿½ï¿½ï¿½ß½ï¿½ï¿½ï¿½
         /// </summary>
         private void ApplyOfflineProgress(BlazorWebGame.Shared.Models.Character character, OfflineProgressDto progress)
         {
-            //// Ó¦ÓÃ¾­ÑéÖµ
+            //// Ó¦ï¿½Ã¾ï¿½ï¿½ï¿½Öµ
             //if (progress.ExperienceGained > 0)
             //{
             //    character.GainExperience(progress.ExperienceGained);
             //}
 
-            //// Ó¦ÓÃ½ð±Ò
+            //// Ó¦ï¿½Ã½ï¿½ï¿½
             //if (progress.GoldGained > 0)
             //{
             //    character.GainGold(progress.GoldGained);
             //}
 
-            //// Ó¦ÓÃ×ÊÔ´
+            //// Ó¦ï¿½ï¿½ï¿½ï¿½Ô´
             //foreach (var resource in progress.ResourcesGained)
             //{
-            //    // ÕâÀïÓ¦¸ÃÌí¼Ó×ÊÔ´µ½½ÇÉ«±³°ü
+            //    // ï¿½ï¿½ï¿½ï¿½Ó¦ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô´ï¿½ï¿½ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½
             //    character.Inventory.AddItem(resource.Key, resource.Value);
             //}
 
-            //// Ó¦ÓÃÎïÆ·
+            //// Ó¦ï¿½ï¿½ï¿½ï¿½Æ·
             //foreach (var item in progress.LootedItems)
             //{
             //    character.Inventory.AddItem(item);
             //}
 
-            //// Çå³ýÀëÏß¼ÇÂ¼
+            //// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ß¼ï¿½Â¼
             //character.LastOfflineRecord = null;
 
-            //// ¸üÐÂ½ÇÉ«»îÔ¾Ê±¼ä
+            //// ï¿½ï¿½ï¿½Â½ï¿½É«ï¿½ï¿½Ô¾Ê±ï¿½ï¿½
             //character.UpdateActivity();
         }
 
         /// <summary>
-        /// ´´½¨¿Õ»¨Ãû²á
+        /// ï¿½ï¿½ï¿½ï¿½ï¿½Õ»ï¿½ï¿½ï¿½ï¿½ï¿½
         /// </summary>
         private RosterDto CreateEmptyRoster(string userId)
         {
@@ -826,7 +860,7 @@ namespace BlazorWebGame.Server.Services.Character
                 ActiveCharacterId = null
             };
 
-            // Ìí¼ÓÒ»¸ö½âËøµÄ²ÛÎ»
+            // ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä²ï¿½Î»
             roster.Slots.Add(new CharacterSlotDto
             {
                 SlotIndex = 0,
@@ -835,7 +869,7 @@ namespace BlazorWebGame.Server.Services.Character
                 UnlockCondition = null
             });
 
-            // Ìí¼ÓËø¶¨µÄ²ÛÎ»
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä²ï¿½Î»
             for (int i = 1; i < roster.MaxSlots; i++)
             {
                 roster.Slots.Add(new CharacterSlotDto
@@ -843,29 +877,29 @@ namespace BlazorWebGame.Server.Services.Character
                     SlotIndex = i,
                     State = "Locked",
                     Character = null,
-                    UnlockCondition = i < 3 ? "Íê³ÉÐÂÊÖ½Ì³Ì" : $"½ÇÉ«´ïµ½{i * 10}¼¶"
+                    UnlockCondition = i < 3 ? "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö½Ì³ï¿½" : $"ï¿½ï¿½É«ï¿½ïµ½{i * 10}ï¿½ï¿½"
                 });
             }
 
             return roster;
         }
 
-        // ½«´æ´¢DTO×ª»»ÎªÁìÓòÄ£ÐÍ
+        // ï¿½ï¿½ï¿½æ´¢DTO×ªï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½Ä£ï¿½ï¿½
         private BlazorWebGame.Shared.Models.Character ConvertToDomainModel(CharacterStorageDto dto)
         {
-            // Ê¹ÓÃCharacterMapperµÄToCharacter·½·¨
+            // Ê¹ï¿½ï¿½CharacterMapperï¿½ï¿½ToCharacterï¿½ï¿½ï¿½ï¿½
             return BlazorWebGame.Shared.Mappers.CharacterMapper.ToCharacter(dto);
         }
 
-        // ½«ÁìÓòÄ£ÐÍ×ª»»Îª´æ´¢DTO
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä£ï¿½ï¿½×ªï¿½ï¿½Îªï¿½æ´¢DTO
         private CharacterStorageDto ConvertToStorageDto(BlazorWebGame.Shared.Models.Character character)
         {
-            // Ê¹ÓÃCharacterMapperµÄToDto·½·¨
+            // Ê¹ï¿½ï¿½CharacterMapperï¿½ï¿½ToDtoï¿½ï¿½ï¿½ï¿½
             return BlazorWebGame.Shared.Mappers.CharacterMapper.ToDto(character);
         }
 
         /// <summary>
-        /// ½«ÁìÓòÄ£ÐÍ×ª»»ÎªDTO
+        /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä£ï¿½ï¿½×ªï¿½ï¿½ÎªDTO
         /// </summary>
         private CharacterFullDto ConvertToFullDto(BlazorWebGame.Shared.Models.Character character)
         {
@@ -878,7 +912,7 @@ namespace BlazorWebGame.Server.Services.Character
                 ExperienceToNextLevel = character.GetRequiredExperienceForNextLevel(),
                 Gold = character.Gold,
                 
-                // ÉúÃüÖµ
+                // ï¿½ï¿½ï¿½ï¿½Öµ
                 Vitals = new CharacterVitalsDto
                 {
                     Health = character.Vitals.Health,
@@ -889,7 +923,7 @@ namespace BlazorWebGame.Server.Services.Character
                     ManaRegen = character.Attributes.Spirit * 0.2
                 },
                 
-                // ÊôÐÔ
+                // ï¿½ï¿½ï¿½ï¿½
                 Attributes = new CharacterAttributesDto
                 {
                     Strength = character.Attributes.Strength,
@@ -908,7 +942,7 @@ namespace BlazorWebGame.Server.Services.Character
                     MagicResistance = CalculateMagicResistance(character)
                 },
                 
-                // Ö°ÒµÐÅÏ¢
+                // Ö°Òµï¿½ï¿½Ï¢
                 Profession = new ProfessionInfoDto
                 {
                     Id = character.Professions.SelectedBattleProfession,
@@ -916,20 +950,20 @@ namespace BlazorWebGame.Server.Services.Character
                     Description = GetProfessionDescription(character.Professions.SelectedBattleProfession),
                     Icon = $"images/professions/{character.Professions.SelectedBattleProfession.ToLower()}.png",
                     Level = character.Professions.GetProfessionLevel("Battle", character.Professions.SelectedBattleProfession),
-                    Experience = 0, // ÐèÒª´Ócharacter.Professions.BattleProfessions»ñÈ¡
-                    ExperienceToNextLevel = 1000, // Í¬ÉÏ
+                    Experience = 0, // ï¿½ï¿½Òªï¿½ï¿½character.Professions.BattleProfessionsï¿½ï¿½È¡
+                    ExperienceToNextLevel = 1000, // Í¬ï¿½ï¿½
                     Specializations = new List<string>(),
                     ActiveSpecialization = null
                 },
                 
-                // ×°±¸
+                // ×°ï¿½ï¿½
                 Equipment = new EquipmentDto
                 {
                     TotalGearScore = 0,
                     ActiveSetBonuses = new List<string>()
                 },
                 
-                // ¼¼ÄÜ
+                // ï¿½ï¿½ï¿½ï¿½
                 Skills = new SkillSystemDto
                 {
                     ActiveSkills = new List<SkillSlotDto>(),
@@ -937,11 +971,11 @@ namespace BlazorWebGame.Server.Services.Character
                     AvailableSkillPoints = 0
                 },
                 
-                // µ±Ç°ÇøÓò
+                // ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½
                 CurrentRegionId = character.CurrentRegionId,
                 CurrentRegionName = GetRegionName(character.CurrentRegionId),
                 
-                // ÉùÍû
+                // ï¿½ï¿½ï¿½ï¿½
                 Reputations = character.Reputations.ToDictionary(
                     kvp => kvp.Key,
                     kvp => new ReputationDto
@@ -953,7 +987,7 @@ namespace BlazorWebGame.Server.Services.Character
                         Level = GetReputationLevel(kvp.Value)
                     }),
                 
-                // Í³¼Æ
+                // Í³ï¿½ï¿½
                 Statistics = new CharacterStatisticsDto
                 {
                     TotalPlayTime = 0,
@@ -974,57 +1008,57 @@ namespace BlazorWebGame.Server.Services.Character
         }
 
         /// <summary>
-        /// »ñÈ¡Ö°ÒµÃèÊö
+        /// ï¿½ï¿½È¡Ö°Òµï¿½ï¿½ï¿½ï¿½
         /// </summary>
         private string GetProfessionDescription(string professionName)
         {
             return professionName switch
             {
-                "Warrior" => "ÓÂÃÍµÄÕ½Ê¿£¬ÉÃ³¤½üÕ½ÎïÀíÊä³öºÍ³ÐÊÜÉËº¦¡£",
-                "Mage" => "Ç¿´óµÄ·¨Ê¦£¬ÕÆÎÕÔªËØÁ¦Á¿£¬ÉÃ³¤Ô¶³ÌÄ§·¨Êä³ö¡£",
-                "Archer" => "Ãô½ÝµÄ¹­¼ýÊÖ£¬ÉÃ³¤Ô¶³ÌÎïÀíÊä³öºÍÉÁ±Ü¡£",
-                "Paladin" => "ÉñÊ¥µÄÆïÊ¿£¬¼æ¾ßÎïÀíÊä³öºÍÖÎÁÆÄÜÁ¦¡£",
+                "Warrior" => "ï¿½ï¿½ï¿½Íµï¿½Õ½Ê¿ï¿½ï¿½ï¿½Ã³ï¿½ï¿½ï¿½Õ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í³ï¿½ï¿½ï¿½ï¿½Ëºï¿½ï¿½ï¿½",
+                "Mage" => "Ç¿ï¿½ï¿½Ä·ï¿½Ê¦ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ôªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ã³ï¿½Ô¶ï¿½ï¿½Ä§ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½",
+                "Archer" => "ï¿½ï¿½ï¿½ÝµÄ¹ï¿½ï¿½ï¿½ï¿½Ö£ï¿½ï¿½Ã³ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü¡ï¿½",
+                "Paladin" => "ï¿½ï¿½Ê¥ï¿½ï¿½ï¿½ï¿½Ê¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½",
                 _ => "Î´ÖªÖ°Òµ"
             };
         }
 
         /// <summary>
-        /// »ñÈ¡ÇøÓòÃû³Æ
+        /// ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         /// </summary>
         private string GetRegionName(string? regionId)
         {
             if (string.IsNullOrEmpty(regionId))
-                return "ÎÞ";
+                return "ï¿½ï¿½";
                 
-            // Ä£ÄâÇøÓòÃû³ÆÓ³Éä
+            // Ä£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó³ï¿½ï¿½
             return regionId switch
             {
-                "start_village" => "ÐÂÊÖ´å",
-                "forest_1" => "ÓÄ°µÉ­ÁÖ",
-                "mine_1" => "ºÚÊ¯¿ó¶´",
-                "city_1" => "°×Â¹³Ç",
+                "start_village" => "ï¿½ï¿½ï¿½Ö´ï¿½",
+                "forest_1" => "ï¿½Ä°ï¿½É­ï¿½ï¿½",
+                "mine_1" => "ï¿½ï¿½Ê¯ï¿½ï¿½",
+                "city_1" => "ï¿½ï¿½Â¹ï¿½ï¿½",
                 _ => regionId
             };
         }
 
         /// <summary>
-        /// »ñÈ¡ÕóÓªÃû³Æ
+        /// ï¿½ï¿½È¡ï¿½ï¿½Óªï¿½ï¿½ï¿½ï¿½
         /// </summary>
         private string GetFactionName(string factionId)
         {
-            // Ä£ÄâÕóÓªÃû³ÆÓ³Éä
+            // Ä£ï¿½ï¿½ï¿½ï¿½Óªï¿½ï¿½ï¿½ï¿½Ó³ï¿½ï¿½
             return factionId switch
             {
-                "villagers" => "´åÃñÁªÃË",
-                "merchants" => "ÉÌÈËÐÐ»á",
-                "warriors" => "Õ½Ê¿¹«»á",
-                "mages" => "·¨Ê¦Ñ§Ôº",
+                "villagers" => "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½",
+                "merchants" => "ï¿½ï¿½ï¿½ï¿½ï¿½Ð»ï¿½",
+                "warriors" => "Õ½Ê¿ï¿½ï¿½ï¿½ï¿½",
+                "mages" => "ï¿½ï¿½Ê¦Ñ§Ôº",
                 _ => factionId
             };
         }
 
         /// <summary>
-        /// »ñÈ¡ÉùÍûµÈ¼¶
+        /// ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½È¼ï¿½
         /// </summary>
         private string GetReputationLevel(int reputation)
         {
@@ -1046,30 +1080,30 @@ namespace BlazorWebGame.Server.Services.Character
         }
 
         /// <summary>
-        /// ³õÊ¼»¯²âÊÔ½ÇÉ«
+        /// ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½Ô½ï¿½É«
         /// </summary>
         private void InitializeTestCharacters()
         {
-            // ´´½¨²âÊÔ½ÇÉ«1
-            var testCharacter1 = new BlazorWebGame.Shared.Models.Character("²âÊÔÕß");
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô½ï¿½É«1
+            var testCharacter1 = new BlazorWebGame.Shared.Models.Character("ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½");
             testCharacter1.GainGold(10000);
             testCharacter1.SetCurrentRegion("start_village");
             testCharacter1.GainReputation("villagers", 3500);
             testCharacter1.GainReputation("merchants", 1500);
             _characters.TryAdd(testCharacter1.Id, testCharacter1);
 
-            // ´´½¨²âÊÔ½ÇÉ«2
-            var testCharacter2 = new BlazorWebGame.Shared.Models.Character("°¢¶ûß¯ÃÖË¹");
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô½ï¿½É«2
+            var testCharacter2 = new BlazorWebGame.Shared.Models.Character("ï¿½ï¿½ï¿½ï¿½ß¯ï¿½ï¿½Ë¹");
             testCharacter2.Professions.SelectBattleProfession("Archer");
             testCharacter2.GainGold(5000);
-            testCharacter2.GainExperience(1200); // Ó¦¸Ã»áÉý¼¶
+            testCharacter2.GainExperience(1200); // Ó¦ï¿½Ã»ï¿½ï¿½ï¿½ï¿½ï¿½
             testCharacter2.SetCurrentRegion("forest_1");
             testCharacter2.GainReputation("villagers", 2000);
             testCharacter2.Attributes.AllocateAttribute("agility", 5);
             testCharacter2.Attributes.AllocateAttribute("stamina", 3);
             _characters.TryAdd(testCharacter2.Id, testCharacter2);
 
-            _logger.LogInformation("³õÊ¼»¯ÁË2¸ö²âÊÔ½ÇÉ«");
+            _logger.LogInformation("ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½2ï¿½ï¿½ï¿½ï¿½ï¿½Ô½ï¿½É«");
         }
 
         #endregion

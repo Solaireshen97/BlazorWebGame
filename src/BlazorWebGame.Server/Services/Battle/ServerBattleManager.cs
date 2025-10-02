@@ -134,10 +134,8 @@ public class ServerBattleManager
             return;
 
         // 战斗实例处理战斗逻辑
-        if (battle.Instance != null)
-        {
-            battle.Instance.Update(elapsedSeconds);
-        }
+        // TODO: 实现战斗更新逻辑，当前BattleInstance没有Update方法
+        // 可以使用ServerCombatEngine来处理战斗逻辑
 
         // 检查战斗胜利条件
         CheckBattleVictoryConditions(battle);
@@ -188,8 +186,8 @@ public class ServerBattleManager
         
         foreach (var enemy in enemies)
         {
-            totalExp += enemy.EnemyData.ExperienceReward;
-            totalGold += enemy.EnemyData.GoldReward;
+            totalExp += enemy.EnemyData.Rewards.ExperienceReward;
+            totalGold += enemy.EnemyData.Rewards.GenerateGoldReward(new Random());
             
             // 收集掉落物品
             var random = new Random();
@@ -230,21 +228,35 @@ public class ServerBattleManager
         
         foreach (var battlePlayer in players)
         {
-            // 获取角色的详细信息
-            var characterResponse = await _enhancedCharacterService.GetCharacterDetails(battlePlayer.Id);
-            if (!characterResponse.IsSuccess || characterResponse.Data == null)
+            try
             {
-                _logger.LogWarning("Failed to get character {CharacterId} to apply battle results", battlePlayer.Id);
-                continue;
+                // 从EnhancedServerCharacterService加载完整的Character领域模型
+                var character = await _enhancedCharacterService.GetCharacterDomainModelAsync(battlePlayer.Id);
+                if (character == null)
+                {
+                    _logger.LogWarning("Failed to load character {CharacterId} to apply battle results", battlePlayer.Id);
+                    continue;
+                }
+                
+                // 使用BattleMapper将战斗结果应用到Character
+                BattleMapper.ApplyBattleResultToCharacter(character, battlePlayer, battle.Result);
+                
+                // 保存更新后的Character到存储
+                var saved = await _enhancedCharacterService.SaveCharacterDomainModelAsync(character);
+                if (saved)
+                {
+                    _logger.LogInformation("Applied battle results to character {CharacterId} ({Name}): +{Exp} exp, +{Gold} gold, {Items} items",
+                        character.Id, character.Name, battle.Result.ExperienceGained, battle.Result.GoldGained, battle.Result.ItemsLooted.Count);
+                }
+                else
+                {
+                    _logger.LogError("Failed to save character {CharacterId} after applying battle results", character.Id);
+                }
             }
-            
-            // 从存储加载完整的Character领域模型
-            // 注意：这里我们需要通过EnhancedServerCharacterService的内部方法加载Character
-            // 由于EnhancedServerCharacterService使用私有方法，我们需要另一种方式
-            // 暂时跳过，后续需要在EnhancedServerCharacterService中添加公共方法
-            
-            _logger.LogInformation("Applied battle results to character {CharacterId}: +{Exp} exp, +{Gold} gold",
-                battlePlayer.Id, battle.Result.ExperienceGained, battle.Result.GoldGained);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error applying battle results to character {CharacterId}", battlePlayer.Id);
+            }
         }
     }
 
@@ -256,12 +268,12 @@ public class ServerBattleManager
         // 解析战斗类型
         BlazorWebGame.Shared.Models.BattleType battleType = request.BattleType switch
         {
-            "Normal" => BattleType.Normal,
-            "Dungeon" => BattleType.Dungeon,
-            "PvP" => BattleType.PvP,
-            "Raid" => BattleType.Raid,
-            "Event" => BattleType.Event,
-            _ => BattleType.Normal
+            "Normal" => BlazorWebGame.Shared.Models.BattleType.Normal,
+            "Dungeon" => BlazorWebGame.Shared.Models.BattleType.Dungeon,
+            "PvP" => BlazorWebGame.Shared.Models.BattleType.PvP,
+            "Raid" => BlazorWebGame.Shared.Models.BattleType.Raid,
+            "Event" => BlazorWebGame.Shared.Models.BattleType.Event,
+            _ => BlazorWebGame.Shared.Models.BattleType.Normal
         };
         
         // 创建战斗
@@ -328,20 +340,20 @@ public class ServerBattleManager
         }
         else if (!string.IsNullOrEmpty(request.PlayerId))
         {
-            // 单人战斗
-            var characterResponse = await _enhancedCharacterService.GetCharacterDetails(request.PlayerId);
-            if (characterResponse.IsSuccess && characterResponse.Data != null)
+            // 单人战斗 - 从EnhancedServerCharacterService加载完整的Character领域模型
+            var character = await _enhancedCharacterService.GetCharacterDomainModelAsync(request.PlayerId);
+            if (character != null)
             {
-                // 需要从CharacterFullDto转换回Character领域模型
-                // 这里需要EnhancedServerCharacterService提供一个方法来获取Character对象
-                // 暂时创建一个简化的BattlePlayer
-                var character = new Character(characterResponse.Data.Name)
-                {
-                    // 设置基础属性
-                };
-                
+                // 使用BattleMapper将Character转换为BattlePlayer
                 var battlePlayer = BattleMapper.ToBattlePlayer(character);
                 players.Add(battlePlayer);
+                
+                _logger.LogInformation("Loaded character {CharacterId} ({Name}) for battle", 
+                    character.Id, character.Name);
+            }
+            else
+            {
+                _logger.LogWarning("Failed to load character {CharacterId} for battle", request.PlayerId);
             }
         }
         
